@@ -1,0 +1,3 @@
+@import "tailwindcss";
+/* Design tokens live in packages/tailwind-config/theme.css. Edit colors there, never here. */
+@import "@repo/tailwind-config";
