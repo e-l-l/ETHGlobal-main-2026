@@ -19,7 +19,7 @@ pnpm install
 pnpm dev
 ```
 
-Open `docs` at [http://localhost:3000](http://localhost:3000) and `web` at [http://localhost:3001](http://localhost:3001).
+Open `web` at [http://localhost:3001](http://localhost:3001).
 
 Run `pnpm build`, `pnpm lint`, and `pnpm check-types` from the repository root to build, lint, and type-check all packages.
 
@@ -29,9 +29,8 @@ This Turborepo includes the following packages/apps:
 
 ### Apps and Packages
 
-- `docs`: a [Next.js](https://nextjs.org/) app with [Tailwind CSS](https://tailwindcss.com/)
-- `web`: another [Next.js](https://nextjs.org/) app with [Tailwind CSS](https://tailwindcss.com/)
-- `ui`: a compiled React component library with [Tailwind CSS](https://tailwindcss.com/) shared by both `web` and `docs` applications
+- `web`: a [Next.js](https://nextjs.org/) app with [Tailwind CSS](https://tailwindcss.com/)
+- `ui`: a compiled React component library with [Tailwind CSS](https://tailwindcss.com/) used by the `web` application
 - `@repo/tailwind-config`: shared Tailwind CSS theme and PostCSS configuration
 - `@repo/eslint-config`: `eslint` flat configurations (includes `@next/eslint-plugin-next` and `eslint-config-prettier`)
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
