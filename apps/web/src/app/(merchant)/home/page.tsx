@@ -1,12 +1,11 @@
 import { KeyValueList, StatCard, StatGrid } from "@/components/data";
 import { AdvanceCard, SalesFeed, SplitRow } from "@/components/domain";
 import { PageHeader, TwoColumn } from "@/components/layout";
-import { Accent, Banner, Card, CardHeader, Eyebrow, Heading, Label, Mono, Pill, TextLink } from "@/components/ui";
-import { SpeakerIcon } from "@/components/icons";
+import { Accent, Card, CardHeader, Eyebrow, Heading, Label, Mono, Pill, TextLink } from "@/components/ui";
 import { formatDays, formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { advance, agentLimits, shop } from "@/lib/mock/shop";
-import { agentSummary, lastAnnouncement, sales, splitSale, today } from "@/lib/mock/merchant";
+import { agentSummary, sales, splitSale, today } from "@/lib/mock/merchant";
 
 export default function HomePage() {
   return (
@@ -80,9 +79,6 @@ export default function HomePage() {
                 </TextLink>
               </div>
             </Card>
-            <Banner tone="tint" icon={<SpeakerIcon size={18} />}>
-              Last sale announced: &ldquo;{lastAnnouncement}&rdquo;
-            </Banner>
           </>
         }
         side={

@@ -24,9 +24,6 @@ export const agentSummary = {
   monthUsed: 100,
 } as const;
 
-/** What the speaker said for the last sale. */
-export const lastAnnouncement = "You received 10 dollars, 1 went to your advance";
-
 /** Today's sales, local currency. The split is derived from advance.holdback. */
 export const sales = [
   { id: "s4", total: 15000, time: "4:20 pm" },

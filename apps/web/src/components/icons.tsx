@@ -139,10 +139,3 @@ export const ShieldIcon = (p: IconProps) => (
     <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z" />
   </Icon>
 );
-
-export const SpeakerIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M4 9v6h4l5 4V5L8 9H4z" />
-    <path d="M16 9a4 4 0 0 1 0 6" />
-  </Icon>
-);
