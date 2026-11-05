@@ -66,10 +66,12 @@ export type PassCardProps = Omit<ComponentPropsWithoutRef<"section">, "children"
   facts?: { label: ReactNode; value: ReactNode }[];
   headline?: ReactNode;
   limit?: ReactNode;
+  /** Small line above the limit figure, e.g. "Your limit now". */
+  limitLabel?: ReactNode;
   footer?: ReactNode;
 };
 
-export function PassCard({ kind, title, privateTag, facts, headline, limit, footer, className, ...props }: PassCardProps) {
+export function PassCard({ kind, title, privateTag, facts, headline, limit, limitLabel, footer, className, ...props }: PassCardProps) {
   return (
     <Card as="section" tone="ink" gap="md" data-kind={kind} className={cn("relative overflow-hidden", className)} {...props}>
       <CardHeader
@@ -89,6 +91,7 @@ export function PassCard({ kind, title, privateTag, facts, headline, limit, foot
       {headline ? (
         <div className="flex flex-col gap-1">
           <span className="text-title text-fg">{headline}</span>
+          {limitLabel && limit ? <span className="mt-2 text-small text-fg-soft">{limitLabel}</span> : null}
           {limit ? <span className={figureClass("xl", "up")}>{limit}</span> : null}
         </div>
       ) : null}

@@ -1,11 +1,11 @@
 "use client";
 
-import { forwardRef, useId, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { forwardRef, useId, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import * as RadioGroup from "@radix-ui/react-radio-group";
 import * as RadixSwitch from "@radix-ui/react-switch";
 import * as RadixTabs from "@radix-ui/react-tabs";
 import { cn } from "@/lib/cn";
-import { MinusIcon, PlusIcon } from "@/components/icons";
+import { CheckIcon, MinusIcon, PlusIcon } from "@/components/icons";
 import { Label, Mono } from "./text";
 import { Pill } from "./status";
 
@@ -229,3 +229,61 @@ export function TabsContent({ className, ...props }: ComponentPropsWithoutRef<ty
   return <RadixTabs.Content className={cn("pt-5", className)} {...props} />;
 }
 
+
+/* ------------------------------------------------------------ ChoiceChips */
+
+export type ChoiceChip = { value: string; label: ReactNode; disabled?: boolean };
+
+export type ChoiceChipsProps = {
+  options: ChoiceChip[];
+  /** Selected values (controlled). */
+  value?: string[];
+  defaultValue?: string[];
+  onValueChange?: (value: string[]) => void;
+  /** Accessible name for the group. */
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+  className?: string;
+};
+
+/** Multi-select toggle pills (aria-pressed buttons). Selected = accent fill with a check. */
+export function ChoiceChips({
+  options,
+  value,
+  defaultValue = [],
+  onValueChange,
+  className,
+  ...aria
+}: ChoiceChipsProps) {
+  const [inner, setInner] = useState<string[]>(defaultValue);
+  const selected = value ?? inner;
+  const toggle = (v: string) => {
+    const next = selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v];
+    if (value === undefined) setInner(next);
+    onValueChange?.(next);
+  };
+  return (
+    <div role="group" className={cn("flex flex-wrap gap-2", className)} {...aria}>
+      {options.map((o) => {
+        const on = selected.includes(o.value);
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={on}
+            disabled={o.disabled}
+            onClick={() => toggle(o.value)}
+            className={cn(
+              "hit-target inline-flex h-8 items-center gap-1.5 rounded-pill border px-3 font-mono text-chip",
+              on ? "border-transparent bg-accent text-ink" : "border-line-strong bg-card text-ink hover:border-ink",
+              "disabled:border-line disabled:bg-subtle disabled:text-muted",
+            )}
+          >
+            {on ? <CheckIcon size={12} strokeWidth={3} /> : null}
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
