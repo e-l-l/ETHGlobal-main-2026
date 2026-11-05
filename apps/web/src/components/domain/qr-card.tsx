@@ -21,6 +21,8 @@ export type QRCardProps = Omit<ComponentPropsWithoutRef<"div">, "children"> & {
   onShare?: () => void;
   onPrint?: () => void;
   qrLabel?: string;
+  /** Replaces the default Share / Print row (e.g. a custom button grid). */
+  actions?: ReactNode;
 };
 
 export function QRCard({
@@ -32,6 +34,7 @@ export function QRCard({
   onShare,
   onPrint,
   qrLabel,
+  actions,
   className,
   ...props
 }: QRCardProps) {
@@ -54,7 +57,7 @@ export function QRCard({
         <span className="text-title text-fg">{shopName}</span>
         {pseudonym ? <Mono>{pseudonym}</Mono> : null}
       </div>
-      {shareLabel || printLabel ? (
+      {actions ?? (shareLabel || printLabel ? (
         <ButtonRow className="w-full md:justify-center">
           {shareLabel ? (
             <Button variant="outline" iconStart={<ShareIcon size={18} />} onClick={onShare}>
@@ -67,7 +70,7 @@ export function QRCard({
             </Button>
           ) : null}
         </ButtonRow>
-      ) : null}
+      ) : null)}
     </Card>
   );
 }
