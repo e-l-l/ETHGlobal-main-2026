@@ -162,35 +162,6 @@ export const cashOut = {
   defaultDestination: "supplier",
 } as const;
 
-/* ------------------------------------------------------------ M19 settings */
-
-export const languages = [
-  { value: "es", label: "Español" },
-  { value: "en", label: "English" },
-] as const;
-
-/* --------------------------------------------------------- M17 fresh shop */
-
-export const freshShop = {
-  newPseudonym: "shop_c912",
-  checks: [
-    { ok: true, text: `Standing Pass and limit ($${agentLimits.perAdvance}) carry over` },
-    { ok: true, text: "No public link between old and new shop" },
-    { ok: false, text: "Your old QR stops working: print the new one" },
-  ],
-} as const;
-
-/* ------------------------------------------------------------ M20 recover */
-
-export const recovery = {
-  progress: 62,
-  steps: [
-    { label: "1. World ID check", status: "done" },
-    { label: "2. Restoring Business Pass and Standing Pass", status: "active" },
-    { label: "3. Ready", status: "todo" },
-  ],
-} as const;
-
 /* ---------------------------------------------------------- P01 world view */
 
 export const worldView = {

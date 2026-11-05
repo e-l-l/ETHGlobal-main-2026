@@ -4,19 +4,17 @@ import { usePathname } from "next/navigation";
 import { MerchantHeader, type NavLink } from "@/components/layout";
 import { routes } from "@/lib/routes";
 
-type NavKey = "home" | "agent" | "qr" | "settings";
+type NavKey = "home" | "agent" | "qr";
 
 const links: NavLink<NavKey>[] = [
   { key: "home", label: "Home", href: routes.home },
   { key: "agent", label: "Agent", href: routes.agent.log },
   { key: "qr", label: "My QR", href: routes.myQr },
-  { key: "settings", label: "Settings", href: routes.settings.index },
 ];
 
 /** Which nav tab owns each route prefix. Anything else (e.g. /world-view) highlights nothing. */
 const sections: [prefix: string, key: NavKey][] = [
   [routes.agent.log, "agent"],
-  [routes.settings.index, "settings"],
   [routes.home, "home"],
   [routes.advance.details, "home"],
   [routes.week, "home"],

@@ -29,11 +29,6 @@ export const routes = {
   },
   repaid: "/repaid",
   cashOut: "/cash-out",
-  settings: {
-    index: "/settings",
-    freshShop: "/settings/fresh-shop",
-    recover: "/settings/recover",
-  },
   worldView: "/world-view",
   /* No dedicated QR screen yet: My QR shows the shop + QR screen (M06). */
   myQr: "/onboarding/shop",
@@ -65,6 +60,3 @@ export const routes = {
   risk: "/risk",
   explorer: "/explorer",
 } as const;
-
-/** Placeholder target for actions that are not wired yet. */
-export const NOT_WIRED = "#";
