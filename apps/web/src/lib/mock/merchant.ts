@@ -3,6 +3,7 @@
  * Shared shop / advance numbers live in ./shop.ts.
  */
 import type { ActivityKind } from "@/components/data";
+import { APP_NAME } from "@/lib/brand";
 import { advance, agentLimits, shop } from "./shop";
 
 /* ------------------------------------------------------------- M10 home */
@@ -160,6 +161,18 @@ export const cashOut = {
     { value: "usd", title: "Keep in dollars", description: "move it later" },
   ],
   defaultDestination: "supplier",
+} as const;
+
+/* --------------------------------------------------------------- M21 my QR */
+
+export const myQr = {
+  /** Shown under the QR; also the encoded value until real pay links exist. */
+  payLink: `pay.${APP_NAME}/corner-kiosk`,
+  howToPay: [
+    "Scan with any phone camera, no app needed",
+    "Pay in any token; you always get dollars",
+    `While an advance is open, ${advance.holdback}% of each sale repays it`,
+  ],
 } as const;
 
 /* ---------------------------------------------------------- P01 world view */

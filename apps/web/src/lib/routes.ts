@@ -30,8 +30,7 @@ export const routes = {
   repaid: "/repaid",
   cashOut: "/cash-out",
   worldView: "/world-view",
-  /* No dedicated QR screen yet: My QR shows the shop + QR screen (M06). */
-  myQr: "/onboarding/shop",
+  myQr: "/qr",
 
   /* Person B: customer pay */
   pay: {

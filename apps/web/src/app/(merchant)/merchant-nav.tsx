@@ -15,6 +15,7 @@ const links: NavLink<NavKey>[] = [
 /** Which nav tab owns each route prefix. Anything else (e.g. /world-view) highlights nothing. */
 const sections: [prefix: string, key: NavKey][] = [
   [routes.agent.log, "agent"],
+  [routes.myQr, "qr"],
   [routes.home, "home"],
   [routes.advance.details, "home"],
   [routes.week, "home"],
