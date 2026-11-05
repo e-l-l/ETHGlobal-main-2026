@@ -1,0 +1,28 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["build:styles", "build:components"],
+      "outputs": []
+    },
+    "build:styles": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/index.css"]
+    },
+    "build:components": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "!dist/**/*.css"]
+    },
+    "dev": {
+      "with": ["dev:styles", "dev:components"]
+    },
+    "dev:styles": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:components": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
