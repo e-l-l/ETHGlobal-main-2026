@@ -14,6 +14,7 @@ const twMerge = extendTailwindMerge({
         "ink", "ink-soft", "muted", "on-ink",
         "accent", "accent-text", "accent-tint", "accent-ink", "accent-line",
         "down", "down-tint", "warn", "warn-tint",
+        "fg", "fg-soft", "fg-muted", "fg-accent", "rule", "rule-strong",
       ],
       text: ["display", "heading", "figure", "title", "lead", "body", "small", "mono", "eyebrow", "chip", "label"],
       radius: ["sm", "md", "lg", "xl", "pill"],

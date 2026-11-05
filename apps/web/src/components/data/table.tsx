@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Pill, type PillTone } from "@/components/ui/status";
+import { Label } from "@/components/ui/text";
 
 /* -------------------------------------------------------- ResponsiveTable */
 
@@ -32,25 +33,21 @@ export function ResponsiveTable<K extends string>({
   return (
     <div className={cn("w-full", className)} {...props}>
       <table className="hidden w-full border-collapse text-small md:table">
-        {caption ? <caption className={cn("pb-3 text-left text-small text-muted", !showCaption && "sr-only")}>{caption}</caption> : null}
+        {caption ? <caption className={cn("pb-3 text-left text-small text-fg-muted", !showCaption && "sr-only")}>{caption}</caption> : null}
         <thead>
           <tr>
             {columns.map((c) => (
-              <th
-                key={c.key}
-                scope="col"
-                className={cn("pb-2.5 font-mono text-label font-normal text-muted uppercase", alignCls[c.align ?? "left"])}
-              >
-                {c.header}
+              <th key={c.key} scope="col" className={cn("pb-2.5 font-normal", alignCls[c.align ?? "left"])}>
+                <Label>{c.header}</Label>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={r.id ?? i} className="border-t border-line">
+            <tr key={r.id ?? i} className="border-t border-rule">
               {columns.map((c) => (
-                <td key={c.key} className={cn("py-3 text-ink tabular-nums", alignCls[c.align ?? "left"])}>
+                <td key={c.key} className={cn("py-3 text-fg tabular-nums", alignCls[c.align ?? "left"])}>
                   {r[c.key]}
                 </td>
               ))}
@@ -61,12 +58,14 @@ export function ResponsiveTable<K extends string>({
 
       <ul className="flex flex-col md:hidden" aria-label={typeof caption === "string" ? caption : undefined}>
         {rows.map((r, i) => (
-          <li key={r.id ?? i} className="border-t border-line py-3">
+          <li key={r.id ?? i} className="border-t border-rule py-3">
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5">
               {columns.map((c) => (
                 <div key={c.key} className="contents">
-                  <dt className="pt-0.5 font-mono text-label text-muted uppercase">{c.header}</dt>
-                  <dd className="text-right text-small text-ink tabular-nums">{r[c.key]}</dd>
+                  <dt className="pt-0.5">
+                    <Label>{c.header}</Label>
+                  </dt>
+                  <dd className="text-right text-small text-fg tabular-nums">{r[c.key]}</dd>
                 </div>
               ))}
             </dl>
@@ -100,15 +99,15 @@ export type ActivityItemProps = Omit<ComponentPropsWithoutRef<"li">, "title"> & 
 export function ActivityItem({ time, title, reason, kind = "neutral", meta, className, ...props }: ActivityItemProps) {
   const pill = <Pill tone={kindTone[kind]}>{time}</Pill>;
   return (
-    <li className={cn("flex gap-4 border-t border-line py-4 first:border-t-0 md:grid md:grid-cols-[120px_1fr]", className)} {...props}>
+    <li className={cn("flex gap-4 border-t border-rule py-4 first:border-t-0 md:grid md:grid-cols-[120px_1fr]", className)} {...props}>
       <div className="hidden md:block">{pill}</div>
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-body font-semibold text-ink">{title}</span>
+          <span className="text-body font-semibold text-fg">{title}</span>
           <span className="md:hidden">{pill}</span>
         </div>
-        {reason ? <p className="text-small text-ink-soft">{reason}</p> : null}
-        {meta ? <p className="font-mono text-chip text-muted">{meta}</p> : null}
+        {reason ? <p className="text-small text-fg-soft">{reason}</p> : null}
+        {meta ? <p className="font-mono text-chip text-fg-muted">{meta}</p> : null}
       </div>
     </li>
   );

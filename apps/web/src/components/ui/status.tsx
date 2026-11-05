@@ -43,6 +43,34 @@ export function Pill({ tone, dot, className, children, ...props }: PillProps) {
   );
 }
 
+/* ------------------------------------------------------------ CheckCircle */
+
+export type CheckCircleProps = ComponentPropsWithoutRef<"span"> & {
+  /** true = accent check, false = red cross. */
+  ok?: boolean;
+  /** Diameter in px. */
+  size?: number;
+};
+
+/** Filled check (or cross) circle used by CheckItem, ProgressSteps and StepRail. */
+export function CheckCircle({ ok = true, size = 20, className, style, children, ...props }: CheckCircleProps) {
+  const icon = Math.round(size * 0.62);
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-pill",
+        ok ? "bg-accent text-ink" : "bg-down-tint text-down",
+        className,
+      )}
+      style={{ width: size, height: size, ...style }}
+      {...props}
+    >
+      {ok ? <CheckIcon size={icon} strokeWidth={3} /> : <CrossIcon size={icon - 1} strokeWidth={3} />}
+      {children}
+    </span>
+  );
+}
+
 /* -------------------------------------------------------------- CheckItem */
 
 export type CheckItemProps = ComponentPropsWithoutRef<"li"> & {
@@ -50,21 +78,14 @@ export type CheckItemProps = ComponentPropsWithoutRef<"li"> & {
   ok?: boolean;
   /** Screen-reader prefix for the icon, e.g. "Yes" / "No". */
   srLabel?: string;
-  onInk?: boolean;
 };
 
-export function CheckItem({ ok = true, srLabel, onInk, className, children, ...props }: CheckItemProps) {
+export function CheckItem({ ok = true, srLabel, className, children, ...props }: CheckItemProps) {
   return (
-    <li className={cn("flex items-start gap-2.5 text-body", onInk ? "text-on-ink" : "text-ink-soft", className)} {...props}>
-      <span
-        className={cn(
-          "mt-[3px] inline-flex size-5 shrink-0 items-center justify-center rounded-pill",
-          ok ? "bg-accent text-ink" : "bg-down-tint text-down",
-        )}
-      >
-        {ok ? <CheckIcon size={13} strokeWidth={3} /> : <CrossIcon size={12} strokeWidth={3} />}
+    <li className={cn("flex items-start gap-2.5 text-body text-fg-soft", className)} {...props}>
+      <CheckCircle ok={ok} size={20} className="mt-[3px]">
         {srLabel ? <span className="sr-only">{srLabel}</span> : null}
-      </span>
+      </CheckCircle>
       <span>{children}</span>
     </li>
   );
@@ -109,11 +130,10 @@ export type SpinnerProps = ComponentPropsWithoutRef<"span"> & {
   size?: 18 | 64;
   /** Screen-reader text. */
   label?: string;
-  /** Use on ink surfaces / ink buttons. */
-  onInk?: boolean;
 };
 
-export function Spinner({ size = 18, label = "Loading", onInk, className, ...props }: SpinnerProps) {
+/** Colors follow the surface (role tokens), so it works on ink cards and ink buttons. */
+export function Spinner({ size = 18, label = "Loading", className, ...props }: SpinnerProps) {
   const stroke = size === 64 ? 5 : 2.5;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -133,7 +153,7 @@ export function Spinner({ size = 18, label = "Loading", onInk, className, ...pro
           r={r}
           fill="none"
           strokeWidth={stroke}
-          className={onInk ? "stroke-on-ink/25" : "stroke-line"}
+          className="stroke-rule"
         />
         <circle
           cx={size / 2}
@@ -143,7 +163,7 @@ export function Spinner({ size = 18, label = "Loading", onInk, className, ...pro
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={`${c * 0.28} ${c}`}
-          className={onInk ? "stroke-on-ink" : "stroke-ink"}
+          className="stroke-fg"
         />
       </svg>
       <span className="sr-only">{label}</span>
@@ -193,7 +213,7 @@ export function ProgressBar({
 
 export function PrivacyNote({ className, children, ...props }: ComponentPropsWithoutRef<"p">) {
   return (
-    <p className={cn("flex items-start gap-2 text-small text-muted", className)} {...props}>
+    <p className={cn("flex items-start gap-2 text-small text-fg-muted", className)} {...props}>
       <LockIcon size={16} className="mt-0.5 shrink-0" />
       <span>{children}</span>
     </p>
@@ -227,9 +247,7 @@ export function ProgressSteps({
         <li key={i} className="flex items-start gap-3" aria-current={s.status === "active" ? "step" : undefined}>
           <span className="mt-0.5 inline-flex size-[22px] shrink-0 items-center justify-center">
             {s.status === "done" ? (
-              <span className="inline-flex size-[22px] items-center justify-center rounded-pill bg-accent text-ink">
-                <CheckIcon size={13} strokeWidth={3} />
-              </span>
+              <CheckCircle size={22} />
             ) : s.status === "active" ? (
               <Spinner size={18} label={statusLabels.active} />
             ) : (
@@ -237,11 +255,11 @@ export function ProgressSteps({
             )}
           </span>
           <span className="flex flex-col gap-0.5">
-            <span className={cn("text-body", s.status === "todo" ? "text-muted" : "font-semibold text-ink")}>
+            <span className={cn("text-body", s.status === "todo" ? "text-fg-muted" : "font-semibold text-fg")}>
               {s.label}
               {s.status !== "active" ? <span className="sr-only"> ({statusLabels[s.status]})</span> : null}
             </span>
-            {s.detail ? <span className="text-small text-muted">{s.detail}</span> : null}
+            {s.detail ? <span className="text-small text-fg-muted">{s.detail}</span> : null}
           </span>
         </li>
       ))}

@@ -5,6 +5,7 @@ import * as RadixDialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/cn";
 import { CrossIcon } from "@/components/icons";
 import { Heading, Text } from "./text";
+import { iconButtonClass } from "./button";
 
 export type DialogProps = {
   open?: boolean;
@@ -44,7 +45,7 @@ export function Dialog({
         <RadixDialog.Content
           className={cn(
             "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] max-w-dialog -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto",
-            "rounded-xl border border-line bg-card p-6 text-ink shadow-dialog focus:outline-none",
+            "rounded-xl border border-line bg-card p-6 text-fg shadow-dialog focus:outline-none",
             className,
           )}
           {...(description ? {} : { "aria-describedby": undefined })}
@@ -52,7 +53,7 @@ export function Dialog({
           {closeLabel ? (
             <RadixDialog.Close
               aria-label={closeLabel}
-              className="absolute top-2 right-2 inline-flex size-11 items-center justify-center rounded-md text-muted hover:bg-subtle hover:text-ink"
+              className={cn(iconButtonClass, "absolute top-2 right-2")}
             >
               <CrossIcon size={20} />
             </RadixDialog.Close>

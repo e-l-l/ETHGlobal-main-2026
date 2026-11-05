@@ -1,5 +1,6 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { Label } from "@/components/ui/text";
 
 /* -------------------------------------------------------------- LineChart */
 
@@ -20,7 +21,7 @@ export type LineChartProps = Omit<ComponentPropsWithoutRef<"figure">, "children"
   area?: boolean;
 };
 
-const markerTone = { down: "stroke-down text-down", muted: "stroke-faint text-muted", "accent-text": "stroke-accent-text text-accent-text" } as const;
+const markerTone = { down: "stroke-down text-down", muted: "stroke-faint text-fg-muted", "accent-text": "stroke-accent-text text-accent-text" } as const;
 
 /** Hand-rolled SVG sparkline/area chart. Stretches to container width. */
 export function LineChart({
@@ -133,21 +134,39 @@ export function WeekSplitBars({
       </div>
       <div className="grid grid-cols-7 gap-2" aria-hidden>
         {dayLabels.map((l, i) => (
-          <span key={i} className="text-center font-mono text-label text-muted uppercase">
+          <Label key={i} className="text-center">
             {l}
-          </span>
+          </Label>
         ))}
       </div>
-      <figcaption className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-chip text-ink-soft">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 bg-ink" aria-hidden />
-          {youLabel}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 bg-accent" aria-hidden />
-          {repayLabel}
-        </span>
+      <figcaption>
+        <SplitLegend you={youLabel} repay={repayLabel} />
       </figcaption>
     </figure>
+  );
+}
+
+/* ------------------------------------------------------------ SplitLegend */
+
+export type SplitLegendProps = Omit<ComponentPropsWithoutRef<"div">, "children"> & {
+  /** Ink square: the merchant's share, e.g. "13,500 to you". */
+  you: ReactNode;
+  /** Accent square: the repayment share. */
+  repay: ReactNode;
+};
+
+/** "■ to you  ■ to repayment" legend used by WeekSplitBars and SplitRow. */
+export function SplitLegend({ you, repay, className, ...props }: SplitLegendProps) {
+  return (
+    <div className={cn("flex flex-wrap gap-x-4 gap-y-1 font-mono text-chip text-fg-soft", className)} {...props}>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden className="size-2.5 bg-ink" />
+        {you}
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden className="size-2.5 bg-accent" />
+        {repay}
+      </span>
+    </div>
   );
 }

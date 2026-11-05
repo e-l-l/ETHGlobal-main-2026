@@ -1,5 +1,17 @@
 const CRYPTO_LIKE = new Set(["USDC", "USDT", "DAI"]);
 
+/* Intl.NumberFormat construction is the expensive part; cache one per locale/precision. */
+const formatters = new Map<string, Intl.NumberFormat>();
+function numberFormat(locale: string, digits: number) {
+  const key = `${locale}|${digits}`;
+  let f = formatters.get(key);
+  if (!f) {
+    f = new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    formatters.set(key, f);
+  }
+  return f;
+}
+
 function fractionDigits(currency: string, amount: number) {
   if (CRYPTO_LIKE.has(currency) || currency === "USD") return Number.isInteger(amount) ? 0 : 2;
   return 0;
@@ -7,14 +19,11 @@ function fractionDigits(currency: string, amount: number) {
 
 /** "$1,234" / "$12.50" for USD; "1,234 USDC"; "ARS 150,000" for other fiat. */
 export function formatMoney(amount: number, currency = "USD", locale = "en-US"): string {
-  const digits = fractionDigits(currency, amount);
-  const num = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(amount);
-  if (currency === "USD") return `${amount < 0 ? "-" : ""}$${num.replace("-", "")}`;
-  if (CRYPTO_LIKE.has(currency)) return `${num} ${currency}`;
-  return `${currency} ${num}`;
+  const num = numberFormat(locale, fractionDigits(currency, amount)).format(Math.abs(amount));
+  const sign = amount < 0 ? "-" : "";
+  if (currency === "USD") return `${sign}$${num}`;
+  if (CRYPTO_LIKE.has(currency)) return `${sign}${num} ${currency}`;
+  return `${currency} ${sign}${num}`;
 }
 
 /** Local-currency approximation line: "≈ ARS 150,000". */

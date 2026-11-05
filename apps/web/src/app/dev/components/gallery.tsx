@@ -160,13 +160,14 @@ export function Gallery() {
             Payment <Accent tone="down">failed</Accent>
           </Heading>
         </Specimen>
-        <Specimen name="Eyebrow" note="tone accent · muted · ink · down · on-ink">
+        <Specimen name="Eyebrow" note="tone accent · muted · ink · down; inside surface-ink tones flip">
           <Eyebrow>Advance · stock</Eyebrow>
           <Eyebrow tone="muted">Public onchain</Eyebrow>
           <Eyebrow tone="ink">This week</Eyebrow>
           <Eyebrow tone="down">It can never</Eyebrow>
-          <span className="rounded-md bg-ink px-3 py-1.5">
-            <Eyebrow tone="on-ink">Business pass</Eyebrow>
+          <span className="surface-ink flex gap-3 rounded-md px-3 py-1.5">
+            <Eyebrow>Accent on ink</Eyebrow>
+            <Eyebrow tone="muted">Business pass</Eyebrow>
           </span>
         </Specimen>
         <Specimen name="Label / Mono / Text">
@@ -227,8 +228,8 @@ export function Gallery() {
             details
           </TextLink>
           <TextLink href="#actions">activity log</TextLink>
-          <span className="rounded-md bg-ink px-3">
-            <TextLink href="#actions" arrow onInk>
+          <span className="surface-ink rounded-md px-3">
+            <TextLink href="#actions" arrow>
               see week
             </TextLink>
           </span>
@@ -246,9 +247,9 @@ export function Gallery() {
           </Card>
           <Card tone="ink">
             <CardHeader aside={<Pill tone="accent" dot>active</Pill>}>
-              <Eyebrow tone="on-ink">Card · ink</Eyebrow>
+              <Eyebrow tone="muted">Card · ink</Eyebrow>
             </CardHeader>
-            <Text tone="on-ink">One hero per screen.</Text>
+            <Text>One hero per screen. Children need no onInk props.</Text>
           </Card>
           <Card tone="tint">
             <Label className="text-accent-ink">Card · tint</Label>
@@ -319,8 +320,8 @@ export function Gallery() {
           <StatusIcon kind="lock" label="Private" />
           <Spinner size={64} label="Verifying" />
           <Spinner />
-          <span className="rounded-md bg-ink p-2">
-            <Spinner onInk />
+          <span className="surface-ink rounded-md p-2">
+            <Spinner />
           </span>
         </Specimen>
         <Specimen name="ProgressBar" note="tone ink · accent; track line · ink-soft; height 4 · 6" className="flex-col items-stretch">
@@ -369,8 +370,8 @@ export function Gallery() {
         <Specimen name="Money" note="figure + local approximation">
           <Money amount={150} local={{ amount: 150000, currency: "ARS" }} size="xl" />
           <Money amount={2500.5} currency="USDC" />
-          <span className="rounded-lg bg-ink p-4">
-            <Money amount={69} onInk accent local={{ amount: 69000, currency: "ARS" }} />
+          <span className="surface-ink rounded-lg p-4">
+            <Money amount={69} accent local={{ amount: 69000, currency: "ARS" }} />
           </span>
         </Specimen>
         <Specimen name="Address" note="truncated mono with copy">

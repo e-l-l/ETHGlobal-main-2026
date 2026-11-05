@@ -52,6 +52,19 @@
   --color-down: #b91c1c;  --color-down-tint: #fee2e2;   /* error, denied, negative */
   --color-warn: #8a5a00;  --color-warn-tint: #fff4de;   /* warning, "watch" */
 
+  /*
+   * Role colors: what components use for "default text / quiet text / hairline".
+   * They follow the surface they sit on: `surface-ink` and `surface-subtle` (below)
+   * remap them, so a <Label> or <Stat> needs no onInk prop.
+   * Use the raw palette (text-ink, bg-accent…) only for fixed pairings, e.g. ink text on accent.
+   */
+  --color-fg: var(--color-ink);
+  --color-fg-soft: var(--color-ink-soft);
+  --color-fg-muted: var(--color-muted);
+  --color-fg-accent: var(--color-accent-text);
+  --color-rule: var(--color-line);
+  --color-rule-strong: var(--color-line-strong);
+
   /* type */
   --font-sans: var(--font-geist), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
@@ -85,10 +98,39 @@
   --container-dialog: 480px;
 }
 
+/* Ink hero surface: dark fill, role colors flip to their on-ink variants. */
+@utility surface-ink {
+  background-color: var(--color-ink);
+  color: var(--color-on-ink);
+  --color-fg: var(--color-on-ink);
+  --color-fg-soft: color-mix(in oklab, var(--color-on-ink) 80%, transparent);
+  --color-fg-muted: color-mix(in oklab, var(--color-on-ink) 70%, transparent);
+  --color-fg-accent: var(--color-accent);
+  --color-rule: color-mix(in oklab, var(--color-on-ink) 15%, transparent);
+  --color-rule-strong: color-mix(in oklab, var(--color-on-ink) 35%, transparent);
+}
+
+/* Quiet fill: `muted` fails AA on subtle, so quiet text steps up to ink-soft. */
+@utility surface-subtle {
+  background-color: var(--color-subtle);
+  --color-fg-muted: var(--color-ink-soft);
+}
+
+/* Extends the hit area to at least 44px tall without changing the visual size. */
+@utility hit-target {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block: min(0px, calc(50% - 22px));
+  }
+}
+
 @layer base {
   html { background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); }
   body { font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
-  :focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

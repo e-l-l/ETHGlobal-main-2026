@@ -19,15 +19,15 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary: "border-transparent bg-accent text-ink hover:bg-accent/80",
-        ink: "border-transparent bg-ink text-on-ink hover:bg-ink/90",
+        ink: "surface-ink border-transparent hover:bg-ink/90",
         outline: "border-line-strong bg-card text-ink hover:border-ink",
         danger: "border-down bg-card text-down hover:bg-down-tint",
         ghost: "border-transparent bg-transparent text-ink hover:bg-subtle",
       },
       size: {
         md: "h-[50px] px-5 text-body",
-        /* 40px visual, 44px hit area via ::after. */
-        sm: "relative h-10 px-4 text-small after:absolute after:inset-x-0 after:-inset-y-0.5",
+        /* 40px visual, 44px hit area. */
+        sm: "hit-target h-10 px-4 text-small",
       },
       fullWidth: {
         /* Default: full width on mobile, auto from md up. */
@@ -81,7 +81,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   );
   const content = (
     <>
-      {loading ? <Spinner size={18} label={loadingLabel} onInk={variant === "ink"} /> : iconStart}
+      {loading ? <Spinner size={18} label={loadingLabel} /> : iconStart}
       {children}
       {!loading ? iconEnd : null}
     </>
@@ -141,6 +141,12 @@ export function ButtonRow({ hint, className, children, ...props }: ButtonRowProp
   );
 }
 
+/* ------------------------------------------------------------ icon button */
+
+/** 44×44 square icon control (back, close, copy). Colors follow the surface. */
+export const iconButtonClass =
+  "inline-flex size-11 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg";
+
 /* --------------------------------------------------------------- BackLink */
 
 export type BackLinkProps = Omit<ComponentPropsWithoutRef<typeof Link>, "children"> & {
@@ -151,7 +157,7 @@ export function BackLink({ label = "Back", className, ...props }: BackLinkProps)
   return (
     <Link
       aria-label={label}
-      className={cn("-ml-2.5 inline-flex size-11 items-center justify-center rounded-md text-ink hover:bg-subtle", className)}
+      className={cn(iconButtonClass, "-ml-2.5 text-fg", className)}
       {...props}
     >
       <ChevronLeftIcon size={24} />
@@ -164,15 +170,14 @@ export function BackLink({ label = "Back", className, ...props }: BackLinkProps)
 export type TextLinkProps = ComponentPropsWithoutRef<typeof Link> & {
   /** Append " →". */
   arrow?: boolean;
-  onInk?: boolean;
 };
 
-export function TextLink({ arrow, onInk, className, children, ...props }: TextLinkProps) {
+export function TextLink({ arrow, className, children, ...props }: TextLinkProps) {
   return (
     <Link
       className={cn(
         "inline-flex min-h-11 items-center text-small underline decoration-1 underline-offset-[3px]",
-        onInk ? "text-on-ink decoration-on-ink/50 hover:decoration-on-ink" : "text-ink decoration-line-strong hover:decoration-ink",
+        "text-fg decoration-rule-strong hover:decoration-fg",
         className,
       )}
       {...props}

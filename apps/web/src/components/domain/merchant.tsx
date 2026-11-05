@@ -5,7 +5,8 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Eyebrow, Label, Mono, Text } from "@/components/ui/text";
 import { TextLink } from "@/components/ui/button";
 import { CheckItem, CheckList, ProgressBar } from "@/components/ui/status";
-import { KeyValueList } from "@/components/data/stat";
+import { KeyValueList, Money, figureClass } from "@/components/data/stat";
+import { SplitLegend } from "@/components/data/charts";
 import { LockIcon } from "@/components/icons";
 
 /* ------------------------------------------------------------ AdvanceCard */
@@ -41,17 +42,15 @@ export function AdvanceCard({
 }: AdvanceCardProps) {
   return (
     <Card as="section" tone="ink" gap="md" className={className} {...props}>
-      <CardHeader aside={href && linkLabel ? <TextLink href={href} arrow onInk>{linkLabel}</TextLink> : null}>
-        <Eyebrow tone="on-ink">{purpose}</Eyebrow>
+      <CardHeader aside={href && linkLabel ? <TextLink href={href} arrow>{linkLabel}</TextLink> : null}>
+        <Eyebrow tone="muted">{purpose}</Eyebrow>
       </CardHeader>
       <div className="flex items-baseline gap-2.5">
-        <span className="text-[44px] leading-none font-semibold tracking-[-0.045em] text-accent tabular-nums md:text-[56px]">
-          {formatMoney(left, currency)}
-        </span>
-        <span className="text-small text-on-ink/70">{leftOfText(formatMoney(total, currency))}</span>
+        <Money amount={left} currency={currency} size="hero" accent />
+        <span className="text-small text-fg-muted">{leftOfText(formatMoney(total, currency))}</span>
       </div>
       <ProgressBar value={percentRepaid} tone="accent" track="ink-soft" label={progressLabel} />
-      {etaText ? <Mono tone="on-ink">{etaText}</Mono> : null}
+      {etaText ? <Mono>{etaText}</Mono> : null}
     </Card>
   );
 }
@@ -76,21 +75,21 @@ export function PassCard({ kind, title, privateTag, facts, headline, limit, foot
       <CardHeader
         aside={
           privateTag ? (
-            <span className="inline-flex min-h-11 items-center gap-1.5 font-mono text-chip text-on-ink/70">
+            <span className="inline-flex min-h-11 items-center gap-1.5 font-mono text-chip text-fg-muted">
               <LockIcon size={13} />
               {privateTag}
             </span>
           ) : null
         }
       >
-        <Eyebrow tone="on-ink" className={kind === "standing" ? "text-accent" : undefined}>
+        <Eyebrow tone={kind === "standing" ? "accent" : "muted"}>
           {title}
         </Eyebrow>
       </CardHeader>
       {headline ? (
         <div className="flex flex-col gap-1">
-          <span className="text-title text-on-ink">{headline}</span>
-          {limit ? <span className="text-[40px] leading-none font-semibold tracking-[-0.04em] text-accent">{limit}</span> : null}
+          <span className="text-title text-fg">{headline}</span>
+          {limit ? <span className={figureClass("xl", "up")}>{limit}</span> : null}
         </div>
       ) : null}
       {facts?.length ? (
@@ -98,14 +97,14 @@ export function PassCard({ kind, title, privateTag, facts, headline, limit, foot
           {facts.map((f, i) => (
             <div key={i} className="flex flex-col gap-1">
               <dt>
-                <Label onInk>{f.label}</Label>
+                <Label>{f.label}</Label>
               </dt>
-              <dd className="text-body font-semibold text-on-ink">{f.value}</dd>
+              <dd className="text-body font-semibold text-fg">{f.value}</dd>
             </div>
           ))}
         </dl>
       ) : null}
-      {footer ? <p className="border-t border-on-ink/15 pt-4 text-small text-on-ink/70">{footer}</p> : null}
+      {footer ? <p className="border-t border-rule pt-4 text-small text-fg-muted">{footer}</p> : null}
     </Card>
   );
 }
@@ -154,19 +153,21 @@ export function SplitRow({ total, time, you, repay, youLabel, repayLabel, classN
   return (
     <li className={cn("flex flex-col gap-1.5 border-t border-dashed border-line-strong py-3.5 first:border-t-0", className)} {...props}>
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-body font-semibold text-ink tabular-nums">{total}</span>
+        <span className="text-body font-semibold text-fg tabular-nums">{total}</span>
         <Mono>{time}</Mono>
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-chip text-ink-soft">
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 bg-ink" />
-          {you} {youLabel}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 bg-accent" />
-          {repay} {repayLabel}
-        </span>
-      </div>
+      <SplitLegend
+        you={
+          <>
+            {you} {youLabel}
+          </>
+        }
+        repay={
+          <>
+            {repay} {repayLabel}
+          </>
+        }
+      />
     </li>
   );
 }
@@ -222,18 +223,13 @@ export function EstimateTiles({ tiles, className, ...props }: EstimateTilesProps
   return (
     <ul className={cn("grid grid-cols-3 gap-2 md:gap-3", className)} {...props}>
       {tiles.map((t, i) => {
-        const ink = i === 1;
         return (
-          <li
-            key={i}
-            className={cn(
-              "flex flex-col gap-1 rounded-lg border p-3 md:p-4",
-              ink ? "border-ink bg-ink text-on-ink" : "border-line bg-card text-ink",
-            )}
-          >
-            <Label onInk={ink}>{t.label}</Label>
-            <span className="text-title tabular-nums">{t.value}</span>
-            {t.sub ? <Text size="small" tone={ink ? "on-ink" : "muted"}>{t.sub}</Text> : null}
+          <li key={i} className="flex">
+            <Card tone={i === 1 ? "ink" : "default"} gap="none" className="w-full gap-1 p-3 md:p-4">
+              <Label>{t.label}</Label>
+              <span className="text-title text-fg tabular-nums">{t.value}</span>
+              {t.sub ? <Text size="small" tone="muted">{t.sub}</Text> : null}
+            </Card>
           </li>
         );
       })}

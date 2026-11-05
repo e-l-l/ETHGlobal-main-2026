@@ -11,16 +11,15 @@ export type NavLink<K extends string = string> = { key: K; label: ReactNode; hre
 
 export type BrandProps = Omit<ComponentPropsWithoutRef<"span">, "children"> & {
   href?: string;
-  onInk?: boolean;
   /** Defaults to APP_NAME. */
   name?: ReactNode;
 };
 
-export function Brand({ href, onInk, name = APP_NAME, className, ...props }: BrandProps) {
+export function Brand({ href, name = APP_NAME, className, ...props }: BrandProps) {
   const inner = (
     <>
       <span aria-hidden className="size-2.5 shrink-0 bg-accent" />
-      <span className={cn("font-mono text-eyebrow tracking-[0.02em]", onInk ? "text-on-ink" : "text-ink")}>{name}</span>
+      <span className="font-mono text-eyebrow tracking-[0.02em] text-fg">{name}</span>
     </>
   );
   const cls = cn("inline-flex items-center gap-2", className);
@@ -51,8 +50,7 @@ export function WorldViewToggle({ label, pressed, className, ...props }: WorldVi
     <Link
       aria-current={pressed ? "page" : undefined}
       className={cn(
-        "relative inline-flex h-9 items-center gap-1.5 rounded-pill border px-3 font-mono text-chip",
-        "after:absolute after:-inset-y-1 after:inset-x-0",
+        "hit-target inline-flex h-9 items-center gap-1.5 rounded-pill border px-3 font-mono text-chip",
         pressed ? "border-ink bg-ink text-on-ink" : "border-line-strong bg-card text-ink hover:border-ink",
         className,
       )}
@@ -61,6 +59,45 @@ export function WorldViewToggle({ label, pressed, className, ...props }: WorldVi
       <EyeIcon size={15} />
       {label}
     </Link>
+  );
+}
+
+/* -------------------------------------------------------------- HeaderNav */
+
+type HeaderNavProps<K extends string> = {
+  links: NavLink<K>[];
+  active?: K;
+  label: string;
+  className?: string;
+  listClassName?: string;
+  linkClassName?: string;
+};
+
+/** Tab-style nav row shared by MerchantHeader and LenderHeader. */
+function HeaderNav<K extends string>({ links, active, label, className, listClassName, linkClassName }: HeaderNavProps<K>) {
+  return (
+    <nav aria-label={label} className={className}>
+      <ul className={cn("flex gap-5", listClassName)}>
+        {links.map((l) => {
+          const isActive = l.key === active;
+          return (
+            <li key={l.key}>
+              <Link
+                href={l.href}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "inline-flex h-11 items-center border-b-2 text-small",
+                  isActive ? "border-accent font-semibold text-fg" : "border-transparent text-fg-soft hover:text-fg",
+                  linkClassName,
+                )}
+              >
+                {l.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 
@@ -90,27 +127,13 @@ export function MerchantHeader<K extends string>({
           <Brand href={brandHref} />
           <WorldViewToggle className="md:order-last md:ml-auto" {...worldView} />
         </div>
-        <nav aria-label={navLabel} className="-mx-4 border-t border-line px-4 md:mx-0 md:border-t-0 md:px-0">
-          <ul className="flex gap-5">
-            {links.map((l) => {
-              const isActive = l.key === active;
-              return (
-                <li key={l.key}>
-                  <Link
-                    href={l.href}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "-mb-px inline-flex h-11 items-center border-b-2 text-small md:h-14",
-                      isActive ? "border-accent font-semibold text-ink" : "border-transparent text-ink-soft hover:text-ink",
-                    )}
-                  >
-                    {l.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+        <HeaderNav
+          links={links}
+          active={active}
+          label={navLabel}
+          linkClassName="-mb-px md:h-14"
+          className="-mx-4 border-t border-line px-4 md:mx-0 md:border-t-0 md:px-0"
+        />
       </div>
     </header>
   );
@@ -175,33 +198,17 @@ export function LenderHeader<K extends string>({
           <div className="md:order-last md:ml-auto">{wallet}</div>
         </div>
         {/* Mobile: one horizontally scrollable row with fade edges. */}
-        <nav
-          aria-label={navLabel}
+        <HeaderNav
+          links={links}
+          active={active}
+          label={navLabel}
+          linkClassName="md:h-16"
+          listClassName="whitespace-nowrap"
           className={cn(
             "-mx-4 min-w-0 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:overflow-visible md:px-0",
             "[mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-24px),transparent)] md:[mask-image:none]",
           )}
-        >
-          <ul className="flex gap-5 whitespace-nowrap">
-            {links.map((l) => {
-              const isActive = l.key === active;
-              return (
-                <li key={l.key}>
-                  <Link
-                    href={l.href}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "inline-flex h-11 items-center border-b-2 text-small md:h-16",
-                      isActive ? "border-accent font-semibold text-ink" : "border-transparent text-ink-soft hover:text-ink",
-                    )}
-                  >
-                    {l.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+        />
       </div>
     </header>
   );

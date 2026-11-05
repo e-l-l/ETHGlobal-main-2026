@@ -1,10 +1,10 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { CheckIcon } from "@/components/icons";
+import { CheckCircle } from "@/components/ui/status";
 import { Eyebrow } from "@/components/ui/text";
 import { Brand } from "./header";
 
-/* ---------------------------------------------------------- MerchantShell */
+/* ------------------------------------------------------------------ shells */
 
 export type ShellProps = {
   header: ReactNode;
@@ -14,33 +14,28 @@ export type ShellProps = {
   className?: string;
 };
 
-export function MerchantShell({ header, notice, children, className }: ShellProps) {
+const dotGrid = {
+  backgroundImage: "radial-gradient(color-mix(in oklab, var(--color-ink) 6%, transparent) 1px, transparent 1px)",
+  backgroundSize: "24px 24px",
+} as const;
+
+function Shell({ header, notice, children, className, dotted }: ShellProps & { dotted?: boolean }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-paper">
+    <div className="flex min-h-dvh flex-col bg-paper" style={dotted ? dotGrid : undefined}>
       {notice}
       {header}
-      <main className={cn("mx-auto flex w-full max-w-app flex-col gap-6 px-4 py-8 md:px-5 md:py-12", className)}>{children}</main>
+      <main className={cn("mx-auto flex w-full max-w-app flex-col px-4 md:px-5", className)}>{children}</main>
     </div>
   );
 }
 
-/* ------------------------------------------------------------ LenderShell */
+export function MerchantShell({ className, ...props }: ShellProps) {
+  return <Shell className={cn("gap-6 py-8 md:py-12", className)} {...props} />;
+}
 
-export function LenderShell({ header, notice, children, className }: ShellProps) {
-  return (
-    <div
-      className="flex min-h-dvh flex-col bg-paper"
-      style={{
-        backgroundImage:
-          "radial-gradient(color-mix(in oklab, var(--color-ink) 6%, transparent) 1px, transparent 1px)",
-        backgroundSize: "24px 24px",
-      }}
-    >
-      {notice}
-      {header}
-      <main className={cn("mx-auto flex w-full max-w-app flex-col gap-7 px-4 pt-12 pb-16 md:px-5", className)}>{children}</main>
-    </div>
-  );
+/** Paper with a subtle 24px dot grid. */
+export function LenderShell({ className, ...props }: ShellProps) {
+  return <Shell dotted className={cn("gap-7 pt-12 pb-16", className)} {...props} />;
 }
 
 /* --------------------------------------------------------------- StepRail */
@@ -56,8 +51,8 @@ export type StepRailProps = Omit<ComponentPropsWithoutRef<"aside">, "children"> 
 
 export function StepRail({ steps, current, footer, listLabel = "Steps", className, ...props }: StepRailProps) {
   return (
-    <aside className={cn("flex flex-col gap-12 bg-ink p-8 text-on-ink", className)} {...props}>
-      <Brand onInk />
+    <aside className={cn("surface-ink flex flex-col gap-12 p-8", className)} {...props}>
+      <Brand />
       <ol aria-label={listLabel} className="flex flex-col gap-5">
         {steps.map((s, i) => {
           const state = i < current ? "done" : i === current ? "current" : "todo";
@@ -67,22 +62,24 @@ export function StepRail({ steps, current, footer, listLabel = "Steps", classNam
               aria-current={state === "current" ? "step" : undefined}
               className={cn("flex items-center gap-3", state === "todo" && "opacity-70")}
             >
-              <span
-                className={cn(
-                  "inline-flex size-7 shrink-0 items-center justify-center rounded-pill font-mono text-chip",
-                  state === "done" && "bg-accent text-ink",
-                  state === "current" && "bg-on-ink text-ink",
-                  state === "todo" && "border border-on-ink/50 text-on-ink",
-                )}
-              >
-                {state === "done" ? <CheckIcon size={14} strokeWidth={3} /> : i + 1}
-              </span>
-              <span className={cn("text-body", state === "current" ? "font-semibold" : "text-on-ink/85")}>{s}</span>
+              {state === "done" ? (
+                <CheckCircle size={28} />
+              ) : (
+                <span
+                  className={cn(
+                    "inline-flex size-7 shrink-0 items-center justify-center rounded-pill font-mono text-chip",
+                    state === "current" ? "bg-fg text-ink" : "border border-rule-strong text-fg",
+                  )}
+                >
+                  {i + 1}
+                </span>
+              )}
+              <span className={cn("text-body", state === "current" ? "font-semibold text-fg" : "text-fg-soft")}>{s}</span>
             </li>
           );
         })}
       </ol>
-      {footer ? <div className="mt-auto text-small text-on-ink/70">{footer}</div> : null}
+      {footer ? <div className="mt-auto text-small text-fg-muted">{footer}</div> : null}
     </aside>
   );
 }
@@ -108,11 +105,11 @@ export function StepProgress({
     <div className={cn("flex flex-col gap-2.5", className)} {...props}>
       <div className="flex gap-1.5" aria-hidden>
         {steps.map((_, i) => (
-          <span key={i} className={cn("h-1 flex-1", i <= current ? "bg-ink" : "bg-line")} />
+          <span key={i} className={cn("h-1 flex-1", i <= current ? "bg-fg" : "bg-rule")} />
         ))}
       </div>
       <Eyebrow tone="muted">
-        {formatCount(current + 1, steps.length)} · <span className="text-ink">{steps[current]}</span>
+        {formatCount(current + 1, steps.length)} · <span className="text-fg">{steps[current]}</span>
       </Eyebrow>
     </div>
   );
@@ -196,7 +193,6 @@ export function TwoColumn({ main, side, ratio = "3:2", mobileOrder = "main-first
         className={cn(
           "flex min-w-0 flex-col gap-6",
           ratio === "3:2" ? "grow-[3] basis-[380px]" : "grow basis-[380px]",
-          mobileOrder === "side-first" && "order-2 md:order-none",
         )}
       >
         {main}
@@ -205,7 +201,7 @@ export function TwoColumn({ main, side, ratio = "3:2", mobileOrder = "main-first
         className={cn(
           "flex min-w-0 flex-col gap-6",
           ratio === "3:2" ? "grow-[2] basis-[280px]" : "grow basis-[380px]",
-          mobileOrder === "side-first" && "order-1 md:order-none",
+          mobileOrder === "side-first" && "max-md:order-first",
         )}
       >
         {side}

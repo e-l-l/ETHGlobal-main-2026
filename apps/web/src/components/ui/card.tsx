@@ -3,16 +3,30 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/cn";
 import { AlertIcon, InfoIcon } from "@/components/icons";
 
+/* --------------------------------------------------------------- surfaces */
+
+/**
+ * Surface fills shared by Card, Banner and tiles. `surface-ink` / `surface-subtle`
+ * (theme.css) also remap role colors, so children need no onInk props.
+ */
+export const surfaces = {
+  default: "border-line bg-card text-fg",
+  ink: "surface-ink border-ink",
+  tint: "border-accent-line bg-accent-tint text-accent-ink",
+  subtle: "surface-subtle border-transparent text-fg",
+  warn: "border-transparent bg-warn-tint text-warn",
+  down: "border-transparent bg-down-tint text-down",
+} as const;
+
 /* ------------------------------------------------------------------- Card */
 
 const cardVariants = cva("flex flex-col rounded-lg border", {
   variants: {
     tone: {
-      default: "border-line bg-card text-ink",
-      ink: "border-ink bg-ink text-on-ink",
-      tint: "border-accent-line bg-accent-tint text-accent-ink",
-      /* muted fails AA on subtle; remap the token inside this surface. */
-      subtle: "border-transparent bg-subtle text-ink [--color-muted:var(--color-ink-soft)]",
+      default: surfaces.default,
+      ink: surfaces.ink,
+      tint: surfaces.tint,
+      subtle: surfaces.subtle,
     },
     padding: {
       sm: "p-4",
@@ -57,28 +71,27 @@ export function CardHeader({ aside, className, children, ...props }: CardHeaderP
 
 /* ----------------------------------------------------------------- Banner */
 
-const bannerTones = {
-  tint: { cls: "border-accent-line bg-accent-tint text-accent-ink", icon: <InfoIcon size={18} /> },
-  warn: { cls: "border-transparent bg-warn-tint text-warn", icon: <AlertIcon size={18} /> },
-  down: { cls: "border-transparent bg-down-tint text-down", icon: <AlertIcon size={18} /> },
-  ink: { cls: "border-ink bg-ink text-on-ink", icon: <InfoIcon size={18} /> },
+const bannerIcons = {
+  tint: <InfoIcon size={18} />,
+  warn: <AlertIcon size={18} />,
+  down: <AlertIcon size={18} />,
+  ink: <InfoIcon size={18} />,
 } as const;
 
 export type BannerProps = ComponentPropsWithoutRef<"div"> & {
-  tone?: keyof typeof bannerTones;
+  tone?: keyof typeof bannerIcons;
   /** Override the default icon; pass null to hide. */
   icon?: ReactNode;
 };
 
 export function Banner({ tone = "tint", icon, className, children, ...props }: BannerProps) {
-  const t = bannerTones[tone];
   return (
     <div
       role={tone === "down" ? "alert" : "status"}
-      className={cn("flex items-start gap-2.5 rounded-md border px-4 py-3 text-small", t.cls, className)}
+      className={cn("flex items-start gap-2.5 rounded-md border px-4 py-3 text-small", surfaces[tone], className)}
       {...props}
     >
-      {icon === null ? null : <span className="mt-px shrink-0" aria-hidden>{icon ?? t.icon}</span>}
+      {icon === null ? null : <span className="mt-px shrink-0" aria-hidden>{icon ?? bannerIcons[tone]}</span>}
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
