@@ -87,7 +87,7 @@ function parseOwner(header: string | undefined) {
 
 describe("owner auth", () => {
   it("signs the exact message: lowercase shop id, decimal chain id, unix seconds", async () => {
-    expect(ownerAuthMessage(SHOP, 11155111, 1_700_000_000)).toBe(`DripMoni shop owner\nshop: ${SHOP_LC}\nchain: 11155111\nissued: 1700000000`);
+    expect(ownerAuthMessage(SHOP, 11155111, 1_700_000_000)).toBe(`DripMoney shop owner\nshop: ${SHOP_LC}\nchain: 11155111\nissued: 1700000000`);
     expect(() => ownerAuthMessage("0x1234", 1, 1)).toThrow();
 
     const account = privateKeyToAccount(`0x${"11".repeat(32)}`);
@@ -247,7 +247,7 @@ describe("human-limit fields on merchant / agent views", () => {
 describe("reason messages", () => {
   it("new World ID codes have plain merchant-facing English", () => {
     // Also the World ID stop-screen copy.
-    expect(reasonMessage("human_banned")).toBe("This World ID can't borrow on DripMoni after a default.");
+    expect(reasonMessage("human_banned")).toBe("This World ID can't borrow on DripMoney after a default.");
     expect(reasonMessage("human_has_open_advance")).toBe("Repay your open advance first.");
     expect(reasonMessage("human_not_verified")).toBe("Verify you're a unique human with World ID first.");
     expect(reasonMessage("few_payers")).toMatch(/fewer than 5 different customers/);
@@ -273,7 +273,7 @@ describe("World ID FIRST: checkHuman → ticket → createShop / bindHumanTicket
   it("mock: mockWorld=banned / open_advance → stop screen copy, no ticket", async () => {
     const banned = createMRA({ mode: "mock", mockWorld: "banned" });
     expect(await banned.onboarding.checkHuman()).toEqual({
-      eligible: false, reason: "human_banned", message: "This World ID can't borrow on DripMoni after a default.", source: "mock",
+      eligible: false, reason: "human_banned", message: "This World ID can't borrow on DripMoney after a default.", source: "mock",
     });
     expect(await banned.raw.vault.get("world_ticket")).toBeUndefined();
     const open = createMRA({ mode: "mock", mockWorld: "open_advance" });
@@ -318,7 +318,7 @@ describe("World ID FIRST: checkHuman → ticket → createShop / bindHumanTicket
   it("real: banned → stop screen; expired / used tickets → needsWorldId; transient errors keep the ticket", async () => {
     const banned = fakeFetch(() => ({ json: { eligible: false, reason: "human_banned" } }));
     const a = await realMra(banned.fn);
-    expect(await a.mra.onboarding.checkHuman()).toEqual({ eligible: false, reason: "human_banned", message: "This World ID can't borrow on DripMoni after a default.", source: "api" });
+    expect(await a.mra.onboarding.checkHuman()).toEqual({ eligible: false, reason: "human_banned", message: "This World ID can't borrow on DripMoney after a default.", source: "api" });
     expect(await a.mra.raw.vault.get("world_ticket")).toBeUndefined();
 
     const now = Math.floor(Date.now() / 1000);

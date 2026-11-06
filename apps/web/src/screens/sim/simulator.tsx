@@ -432,7 +432,7 @@ export function SimulatorScreen() {
   if (view.kind === "pick") {
     return (
       <LendShell>
-        <LendHero label={SIM_DEMO ? "Simulator · demo" : "Simulator · public devnet"} title="Watch DripMoni run, live on our devnet.">
+        <LendHero label={SIM_DEMO ? "Simulator · demo" : "Simulator · public devnet"} title="Watch DripMoney run, live on our devnet.">
           Pick a shop. You&rsquo;ll see a real ZK proof, the AI underwriter, and money moving between the shop, the vault, DripCoin and the reserve. Each run takes under a minute.
         </LendHero>
         <LedgerStrip ledger={stateLedger} live={!SIM_DEMO} />

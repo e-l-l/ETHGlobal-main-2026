@@ -125,7 +125,7 @@ else showRetry(r.message);                                              // verif
 
 **Screen 2a, stop screen** (exact copy, also what `r.message` / `reasonMessage(reason)` returns):
 
-- `human_banned`: **"This World ID can't borrow on DripMoni after a default."**
+- `human_banned`: **"This World ID can't borrow on DripMoney after a default."**
 - `human_has_open_advance`: **"Repay your open advance first."** (Link to the open advance if the device has it.)
 
 **Screen 5, Create shop.** `createShop(name)` registers the shop, then binds it to the human from screen 2 with the
@@ -170,7 +170,7 @@ URL, or `createMRA({ mode: "mock", mockWorld: "banned" })`.
   `shop_bound_to_other_human` / `ticket_used` (the ticket already bound another shop; the same shop again is a
   no-op success).
 - `GET /shops/{shopId}/human?tier=` → `{"verified"}`; with the owner header also `{"banned", "unlock"}`.
-- Owner message: `"DripMoni shop owner\nshop: <shopId lowercase>\nchain: <chainId>\nissued: <unix s>"`, valid ±10 min.
+- Owner message: `"DripMoney shop owner\nshop: <shopId lowercase>\nchain: <chainId>\nissued: <unix s>"`, valid ±10 min.
 
 **Red-line codes on `POST /offers`** (`result: "rejected"`, no model was called), the backstop:
 `human_not_verified` → send to the World ID screen, then `bindHumanTicket()`; `human_banned` → the banned stop
@@ -180,7 +180,7 @@ at $50 of the $100 limit".
 **Other screen states**
 
 1. **Banned after onboarding** (`banned === true` on home, or an offer rejected with `human_banned`): "This World ID
-   can't borrow on DripMoni after a default." No retry button; the shop can still sell.
+   can't borrow on DripMoney after a default." No retry button; the shop can still sell.
 2. **Unlock progress on home and advance:** "Available now $`availableNow` of $`limit`". A 3-step bar from
    `unlockSteps` (50% / 75% / 100%, ticked when `unlocked`). If `nextUnlockAt`: "Next unlock on `<date>` if you keep
    up the weekly minimum (1% plus fee every 7 days)." If frozen (`unlock.frozen` from `humanStatus`): "Unlock paused:

@@ -114,7 +114,7 @@ class HumanError(ValueError):
 
 def owner_auth_message(shop_id: str, chain_id: int, issued_at: int) -> str:
     """The exact text the shop owner signs (EIP-191 personal_sign). The SDK builds the same string."""
-    return f"DripMoni shop owner\nshop: {shop_id.lower()}\nchain: {int(chain_id)}\nissued: {int(issued_at)}"
+    return f"DripMoney shop owner\nshop: {shop_id.lower()}\nchain: {int(chain_id)}\nissued: {int(issued_at)}"
 
 
 def parse_owner_auth(authorization: str | None) -> tuple[int, str] | None:

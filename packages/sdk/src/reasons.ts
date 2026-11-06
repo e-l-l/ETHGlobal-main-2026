@@ -18,7 +18,7 @@ export const REASON_MESSAGES: Record<string, string> = {
   payer_velocity: "Too many first-time customers paid you in a short time. We'll look again once your sales settle.",
   human_not_verified: "Verify you're a unique human with World ID first.",
   // Also the World ID stop-screen copy (onboarding.checkHuman, before any business step).
-  human_banned: "This World ID can't borrow on DripMoni after a default.",
+  human_banned: "This World ID can't borrow on DripMoney after a default.",
   human_has_open_advance: "Repay your open advance first.",
 };
 

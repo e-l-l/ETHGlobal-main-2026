@@ -7,7 +7,7 @@
  * - zkProofs:     proofs the chain verified, decoded from the events AND the tx input (which draw function, proof size,
  *                 public inputs, which verifier ran it)
  * - deviceProofs: proofs generated in this browser (every prover.prove() is logged by adapters/proof-log.ts)
- * - transactions: recent DripMoni transactions by kind (the explorer() logs, plus repayments, late fees, mandates, swaps)
+ * - transactions: recent DripMoney transactions by kind (the explorer() logs, plus repayments, late fees, mandates, swaps)
  * - ai:           recent agent decisions (risk agent, this shop's managed agent, offers this device received)
  * - privacy:      what is public, what is never stored, what the AI sees, and how chain reads are routed
  * - checks:       live, read-only ✅/❌ checks (code exists, offer hash matches, verifiers wired, pool + oracle live)

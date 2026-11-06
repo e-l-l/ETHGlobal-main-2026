@@ -20,7 +20,7 @@ const OWNER_AUTH_REUSE_S = 300;
 /**
  * The exact EIP-191 text the shop owner (the wallet that called registerShop) signs:
  *
- *   DripMoni shop owner
+ *   DripMoney shop owner
  *   shop: <shopId, lowercase 0x + 64 hex>
  *   chain: <chainId>
  *   issued: <unix seconds>
@@ -29,7 +29,7 @@ export function ownerAuthMessage(shopId: string, chainId: number, issuedAt: numb
   if (!SHOP_ID.test(shopId)) throw new MRAError("invalid_request", "invalid shop id");
   if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new MRAError("invalid_request", "invalid chain id");
   if (!Number.isSafeInteger(issuedAt) || issuedAt <= 0) throw new MRAError("invalid_request", "invalid issuedAt");
-  return `DripMoni shop owner\nshop: ${shopId.toLowerCase()}\nchain: ${chainId}\nissued: ${issuedAt}`;
+  return `DripMoney shop owner\nshop: ${shopId.toLowerCase()}\nchain: ${chainId}\nissued: ${issuedAt}`;
 }
 
 /**

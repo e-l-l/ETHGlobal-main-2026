@@ -91,7 +91,7 @@ export function HomeScreen({ initial, demo }: { initial: HomeView | null; demo?:
         <DarkBlock className="flex-row flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
             <HeroLabel>Advances off</HeroLabel>
-            <span className="font-body text-read text-canvas">This World ID can&apos;t borrow on DripMoni after a default. Payments still work.</span>
+            <span className="font-body text-read text-canvas">This World ID can&apos;t borrow on DripMoney after a default. Payments still work.</span>
           </div>
           <Button href={routes.blocked} variant="lime" size="sm" width="auto">
             What this means
@@ -230,7 +230,7 @@ export function HomeScreen({ initial, demo }: { initial: HomeView | null; demo?:
               <HeroLabel>Advance</HeroLabel>
               <span className="font-display text-h1 text-canvas">{data.banned ? "Advances off." : "No open advance."}</span>
               <Text className="text-honeydew">
-                {data.banned ? "This World ID can't borrow on DripMoni after a default." : "Your agent draws one for stock when your payments can pay it back."}
+                {data.banned ? "This World ID can't borrow on DripMoney after a default." : "Your agent draws one for stock when your payments can pay it back."}
               </Text>
             </HeroBlock>
           )}

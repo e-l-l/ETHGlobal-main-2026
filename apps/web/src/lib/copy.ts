@@ -146,7 +146,7 @@ const en = {
       { k: "Never", v: "Your name, address, face or phone number." },
       {
         k: "Onchain",
-        v: "Nothing. The check stays between this phone and DripMoni.",
+        v: "Nothing. The check stays between this phone and DripMoney.",
       },
     ],
     plain: "We check two things: you're one real person, and you're cleared to borrow. Then you prove your business.",

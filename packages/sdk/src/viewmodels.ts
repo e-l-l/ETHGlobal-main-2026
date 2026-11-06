@@ -135,7 +135,7 @@ export type HumanCheckStep = "verifying_human" | "checking" | "eligible" | "stop
 /**
  * `onboarding.checkHuman()`: World ID FIRST, before any business step. Eligible → the ticket is saved on the device
  * and `createShop()` binds it automatically. Not eligible → show the stop screen with `message`:
- *   human_banned           "This World ID can't borrow on DripMoni after a default."
+ *   human_banned           "This World ID can't borrow on DripMoney after a default."
  *   human_has_open_advance "Repay your open advance first."
  * Other `reason`s are errors from the proof (verification_failed | wrong_action | unknown_or_used_nonce |
  * invalid_request | rate_limited): let the merchant retry the scan.

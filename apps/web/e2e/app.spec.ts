@@ -127,7 +127,7 @@ test.describe("journeys", () => {
 
   test("a banned World ID is stopped before any business step", async ({ page }) => {
     for (const [mock, text] of [
-      ["banned", "This World ID can't borrow on DripMoni after a default."],
+      ["banned", "This World ID can't borrow on DripMoney after a default."],
       ["open_advance", "Repay your open advance first."],
     ]) {
       await page.goto(`/onboarding?mockWorld=${mock}`);

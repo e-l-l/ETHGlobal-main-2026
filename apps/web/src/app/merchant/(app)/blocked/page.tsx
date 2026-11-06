@@ -28,7 +28,7 @@ function Banned() {
         </span>
         <HeroLabel>Advances off for this World ID</HeroLabel>
         <h1 className="m-0 font-display text-h1-sm text-canvas md:text-h1">
-          This World ID can&rsquo;t borrow on DripMoni after a default.
+          This World ID can&rsquo;t borrow on DripMoney after a default.
         </h1>
         <Text className="text-honeydew">
           This World ID can&rsquo;t take new advances, on any shop, because an earlier advance was not repaid.
