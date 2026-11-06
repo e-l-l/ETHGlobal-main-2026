@@ -37,18 +37,18 @@ export function Split() {
           <NineToOne />
           <div className="flex justify-between gap-4">
             <div className="flex flex-col gap-1">
-              <span className="font-display text-[32px] leading-normal font-bold tracking-[-0.025em]">
+              <span className="font-display text-[32px] leading-[normal] font-bold tracking-[-0.025em]">
                 90%
               </span>
-              <span className="text-note leading-normal text-charcoal-soft">
+              <span className="text-note leading-[normal] text-charcoal-soft">
                 yours, to spend or save
               </span>
             </div>
             <div className="flex flex-col items-end gap-1 text-right">
-              <span className="font-display text-[32px] leading-normal font-bold tracking-[-0.025em] text-hunter">
+              <span className="font-display text-[32px] leading-[normal] font-bold tracking-[-0.025em] text-hunter">
                 10%
               </span>
-              <span className="text-note leading-normal text-charcoal-soft">
+              <span className="text-note leading-[normal] text-charcoal-soft">
                 drips back to the advance
               </span>
             </div>

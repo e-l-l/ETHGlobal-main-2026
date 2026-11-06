@@ -17,10 +17,10 @@ function DayCard({
   return (
     <Card gap="sm" className="p-5">
       <div className="flex justify-between gap-3">
-        <span className="font-display text-[20px] leading-normal font-bold">
+        <span className="font-display text-[20px] leading-[normal] font-bold">
           {title}
         </span>
-        <span className="font-ledger text-ledger leading-normal text-charcoal-muted">
+        <span className="font-ledger text-ledger leading-[normal] text-charcoal-muted">
           {sales}
         </span>
       </div>
@@ -28,7 +28,7 @@ function DayCard({
         <div className="flex-9 rounded-chip bg-unlit" />
         <div className="min-w-1 flex-1 rounded-chip bg-hunter" />
       </div>
-      <span className="text-note leading-normal text-charcoal-soft">
+      <span className="text-note leading-[normal] text-charcoal-soft">
         {children}
       </span>
     </Card>

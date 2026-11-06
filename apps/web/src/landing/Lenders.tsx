@@ -55,7 +55,7 @@ export function Lenders() {
               "Withdraw what isn’t lent out, anytime",
             ]}
           />
-          <Button href="/earn" width="auto" className="mt-auto self-start px-6">
+          <Button href="/earn" width="auto" className="mt-auto self-start px-6 py-0">
             Deposit USDC
           </Button>
         </Card>
@@ -84,7 +84,7 @@ export function Lenders() {
             href="/junior"
             variant="lime"
             width="auto"
-            className={`mt-auto self-start px-6 ${RING_ON_HUNTER}`}
+            className={`mt-auto self-start px-6 py-0 ${RING_ON_HUNTER}`}
           >
             Buy Junior on Uniswap
           </Button>

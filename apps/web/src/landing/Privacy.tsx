@@ -53,7 +53,7 @@ function ViewToggle({
             aria-pressed={on}
             onClick={() => onChange(o.value)}
             className={cn(
-              "min-h-11 cursor-pointer rounded-md border-0 px-4.5 font-body text-[14px] leading-normal font-semibold",
+              "min-h-11 cursor-pointer rounded-md border-0 px-4.5 font-body text-[14px] leading-[normal] font-semibold",
               "transition-colors duration-150 ease-snappy",
               on
                 ? "bg-lime text-charcoal"
@@ -74,7 +74,7 @@ function LedgerCard({ view }: { view: View }) {
   return (
     <div className="min-w-0 flex-[1_1_420px] overflow-hidden rounded-xl border border-honeydew/16 bg-forest">
       <div className="flex items-center justify-between gap-3 border-b border-honeydew/14 px-5 py-4.5">
-        <span className="font-ledger text-ledger leading-normal text-canvas">
+        <span className="font-ledger text-ledger leading-[normal] text-canvas">
           {world ? "shop_7f3a" : "Kiosco Doña Rosa"}
         </span>
         {world ? (
@@ -113,7 +113,7 @@ function LedgerCard({ view }: { view: View }) {
                     </span>
                   </span>
                 ) : (
-                  <span className="text-right text-read leading-normal font-semibold text-canvas">
+                  <span className="text-right text-read leading-[normal] font-semibold text-canvas">
                     {world ? r.world : r.phone}
                   </span>
                 )}
@@ -153,7 +153,7 @@ export function Privacy() {
             for yourself.
           </p>
           <ViewToggle view={view} onChange={setView} />
-          <ul className="m-0 mt-2 flex list-none flex-col gap-2.5 p-0 text-note leading-normal text-honeydew">
+          <ul className="m-0 mt-2 flex list-none flex-col gap-2.5 p-0 text-note leading-[normal] text-honeydew">
             {PROMISES.map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-2.5">
                 <Icon size={18} className="flex-none text-lime" />

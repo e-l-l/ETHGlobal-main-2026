@@ -25,7 +25,7 @@ export function FinalCta() {
             href="/onboarding"
             variant="lime"
             width="auto"
-            className={`px-7 ${RING_ON_HUNTER}`}
+            className={`px-7 py-0 ${RING_ON_HUNTER}`}
           >
             Get an advance
           </Button>
@@ -33,7 +33,7 @@ export function FinalCta() {
             href="#lenders"
             variant="ghost"
             width="auto"
-            className={`border-honeydew px-6 text-canvas hover:bg-forest ${RING_ON_HUNTER}`}
+            className={`border-honeydew px-6 py-0 text-canvas hover:bg-forest ${RING_ON_HUNTER}`}
           >
             Lend to shops
           </Button>

@@ -90,7 +90,7 @@ export function HowItWorks() {
           <Card as="article" key={s.n} gap="sm" className="p-6">
             <div className="flex items-center justify-between">
               {s.icon}
-              <span className="font-ledger text-ledger leading-normal text-charcoal-muted">
+              <span className="font-ledger text-ledger leading-[normal] text-charcoal-muted">
                 {s.n}
               </span>
             </div>

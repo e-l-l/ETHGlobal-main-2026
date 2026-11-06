@@ -28,7 +28,7 @@ function Nav() {
       <nav
         aria-label="Main"
         className={cn(
-          "mx-auto flex max-w-210 flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-lg py-2 pr-2 pl-5",
+          "mx-auto box-content flex max-w-210 flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-lg py-2 pr-2 pl-5",
           FROST,
         )}
       >
@@ -66,7 +66,7 @@ function SaleCard() {
   return (
     <div
       className={cn(
-        "relative flex max-w-95 flex-col gap-3.5 rounded-3xl p-5.5",
+        "relative box-content flex max-w-95 flex-col gap-3.5 rounded-3xl p-5.5",
         FROST,
       )}
     >
@@ -80,7 +80,7 @@ function SaleCard() {
         <div className="flex-9 rounded-chip border border-surface/90 bg-surface/70" />
         <div className="flex-1 rounded-chip bg-hunter" />
       </div>
-      <div className="flex justify-between text-note text-charcoal">
+      <div className="flex justify-between text-note leading-[normal] text-charcoal">
         <span>$9.00 yours</span>
         <span className="font-semibold text-hunter">$1.00 drips back</span>
       </div>
@@ -92,7 +92,7 @@ function AdvanceCard() {
   return (
     <div
       className={cn(
-        "relative flex max-w-95 flex-col gap-2 rounded-3xl p-5.5",
+        "relative box-content flex max-w-95 flex-col gap-2 rounded-3xl p-5.5",
         FROST,
       )}
     >
@@ -151,19 +151,19 @@ export function Hero() {
             We never ask for your name, phone or contacts.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Button href="/onboarding" width="auto" className="px-6">
+            <Button href="/onboarding" width="auto" className="px-6 py-0">
               Get an advance
             </Button>
             <Button
               href="#lenders"
               variant="secondary"
               width="auto"
-              className="px-6"
+              className="px-6 py-0"
             >
               Lend to shops
             </Button>
           </div>
-          <ul className="m-0 flex list-none flex-wrap items-center gap-x-5 gap-y-2 p-0 text-note leading-normal text-charcoal-soft">
+          <ul className="m-0 flex list-none flex-wrap items-center gap-x-5 gap-y-2 p-0 text-note leading-[normal] text-charcoal-soft">
             {PROMISES.map((p) => (
               <li key={p} className="inline-flex items-center gap-2">
                 <CheckGlyph size={18} className="text-sage" />

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <>
-      <main className="min-w-0 bg-canvas text-charcoal">
+      <main className="min-w-0 bg-canvas leading-[normal] text-charcoal">
         <Hero />
         <div className="h-12" />
         <Partners />

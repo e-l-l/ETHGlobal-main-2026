@@ -16,7 +16,7 @@ export function Section({
   return (
     <section
       className={cn(
-        "mx-auto box-border w-full max-w-300 px-[clamp(16px,4vw,40px)] pb-24",
+        "mx-auto box-content max-w-300 px-[clamp(16px,4vw,40px)] pb-24",
         className,
       )}
       {...props}
