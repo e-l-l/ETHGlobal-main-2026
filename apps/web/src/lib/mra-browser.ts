@@ -34,7 +34,9 @@ import { WORLD_MODE, setWorldPrompt } from "./world-prompt";
 export const MRA_BROWSER_STATUS: {
   anonRpc: "off" | "anon" | "direct-fallback" | "fail-closed";
   prover: "worker" | "none";
-  wallet: "burner" | "none";
+  wallet: "burner" | "injected" | "none";
+  /** The injected wallet's name ("MetaMask", …) when wallet === "injected". */
+  walletName?: string;
   /** The wallet's address, for the wallet chip. Never the key. */
   address?: `0x${string}`;
 } = { anonRpc: "off", prover: "none", wallet: "none" };
@@ -120,7 +122,13 @@ async function loadProver(): Promise<Prover | undefined> {
  * over `window.ethereum` here (createWalletClient({ account, chain, transport: custom(eth) })).
  */
 async function loadWallet(vault: CredentialVault): Promise<MRAConfig["wallet"]> {
-  if (!MRA_ENV.burnerWallet || MRA_MODE === "mock") return undefined;
+  if (MRA_MODE === "mock") return undefined;
+  if (MRA_MODE === "sepolia" && getWalletMode() === "injected") {
+    const injected = await loadInjectedWallet();
+    if (injected) return injected;
+    // Fall through to the burner: the wallet refused, is missing, or is on the wrong chain.
+  }
+  if (!MRA_ENV.burnerWallet) return undefined;
   try {
     const chainId = deploymentFor(MRA_MODE).chainId;
     const rpcUrl = MRA_ENV.rpcUrl ?? (MRA_MODE === "local" ? DEFAULTS.local.rpcUrl : DEFAULTS.sepolia.rpcUrl);
@@ -132,6 +140,98 @@ async function loadWallet(vault: CredentialVault): Promise<MRAConfig["wallet"]> 
     return undefined;
   }
 }
+
+/* ------------------------------------------- browser (injected) wallet, opt-in */
+
+/** localStorage flag read once per tab: "injected" uses window.ethereum (MetaMask, …), anything else the burner. */
+export const WALLET_MODE_KEY = "mra.walletMode";
+export type WalletMode = "injected" | "device";
+
+export function getWalletMode(): WalletMode {
+  try {
+    return window.localStorage.getItem(WALLET_MODE_KEY) === "injected" ? "injected" : "device";
+  } catch {
+    return "device";
+  }
+}
+
+/** Set the flag and reload: the MRA client is created once per tab, so a reload is the clean switch. */
+export function setWalletMode(mode: WalletMode) {
+  try {
+    window.localStorage.setItem(WALLET_MODE_KEY, mode);
+  } catch {
+    /* private mode: stays on the device wallet */
+  }
+  window.location.reload();
+}
+
+type Eip1193 = {
+  request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+  on?(event: string, fn: (...a: unknown[]) => void): void;
+  removeListener?(event: string, fn: (...a: unknown[]) => void): void;
+  isMetaMask?: boolean;
+  isCoinbaseWallet?: boolean;
+  isRabby?: boolean;
+  isBraveWallet?: boolean;
+};
+
+export function injectedProvider(): Eip1193 | undefined {
+  if (typeof window === "undefined") return undefined;
+  return (window as unknown as { ethereum?: Eip1193 }).ethereum;
+}
+
+export function injectedName(eth: Eip1193 | undefined): string {
+  if (!eth) return "Browser wallet";
+  if (eth.isRabby) return "Rabby";
+  if (eth.isBraveWallet) return "Brave Wallet";
+  if (eth.isCoinbaseWallet) return "Coinbase Wallet";
+  if (eth.isMetaMask) return "MetaMask";
+  return "Browser wallet";
+}
+
+const SEPOLIA_HEX = "0xaa36a7";
+
+/** Accounts + switch to Sepolia (adding it when the wallet doesn't know it), then a viem WalletClient over it. */
+async function loadInjectedWallet(): Promise<MRAConfig["wallet"]> {
+  const eth = injectedProvider();
+  if (!eth) return undefined;
+  try {
+    const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+    const address = accounts?.[0] as `0x${string}` | undefined;
+    if (!address) return undefined;
+    try {
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SEPOLIA_HEX }] });
+    } catch (e) {
+      if ((e as { code?: number })?.code !== 4902) throw e;
+      await eth.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: SEPOLIA_HEX,
+            chainName: "Sepolia",
+            nativeCurrency: { name: "Sepolia ETH", symbol: "ETH", decimals: 18 },
+            rpcUrls: ["https://sepolia.gateway.tenderly.co"],
+            blockExplorerUrls: ["https://sepolia.etherscan.io"],
+          },
+        ],
+      });
+    }
+    const chainId = (await eth.request({ method: "eth_chainId" })) as string;
+    if (chainId?.toLowerCase() !== SEPOLIA_HEX) return undefined;
+    // viem is an SDK dependency, not a direct apps/web one: import the SDK's copy so the WalletClient type matches.
+    const { createWalletClient, custom } = await import("../../../../packages/sdk/node_modules/viem");
+    const { sepolia } = await import("../../../../packages/sdk/node_modules/viem/chains");
+    const wallet = createWalletClient({ account: address, chain: sepolia, transport: custom(eth) });
+    MRA_BROWSER_STATUS.address = address;
+    MRA_BROWSER_STATUS.walletName = injectedName(eth);
+    injectedWallet = true;
+    return wallet as MRAConfig["wallet"];
+  } catch {
+    return undefined;
+  }
+}
+
+let injectedWallet = false;
 
 /* ------------------------------------- INJECTION POINTS: Reclaim, Agent Pass, IDKit */
 
@@ -219,7 +319,7 @@ export async function browserConfig(base: MRAConfig): Promise<MRAConfig> {
   }
   if (wallet) {
     cfg.wallet = wallet;
-    MRA_BROWSER_STATUS.wallet = "burner";
+    MRA_BROWSER_STATUS.wallet = injectedWallet ? "injected" : "burner";
   }
 
   let rpc: RpcConfig = { ...base.rpc };

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { ConnectWallet } from "@/components/connect-wallet";
 import { AppHeader, SideNav, TextLink, type IconProps, type NavItem } from "@/final";
 import { shop } from "@/lib/mock/shop";
 import { routes } from "@/lib/routes";
@@ -98,6 +99,7 @@ export function MerchantSideNav() {
       account={{ name, id, initials: initialsOf(name) }}
       footer={
         <>
+          <ConnectWallet compact className="px-3 py-1" />
           <TextLink href={routes.settings} className="min-h-11 px-3 text-note">
             Settings
           </TextLink>

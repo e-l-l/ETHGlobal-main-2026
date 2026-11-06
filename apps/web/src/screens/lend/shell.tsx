@@ -3,6 +3,7 @@
 import { useEffect, useId, useState, type ReactNode, type SVGProps } from "react";
 import { AppHeader, CopyHash, JarBandStrip, Label, Page, type NavItem } from "@/final";
 import { BlockBand, BlockWall } from "@/blocks";
+import { ConnectWallet } from "@/components/connect-wallet";
 import { cn } from "@/lib/cn";
 import { MRA_ENV, getMRA, isMock } from "@/lib/mra";
 import { routes } from "@/lib/routes";
@@ -151,7 +152,7 @@ export function PrivateReadsChip() {
 export function LendShell({ width = "wide", children }: { width?: "wide" | "narrow"; children: ReactNode }) {
   return (
     <>
-      <AppHeader home={routes.home} nav={LEND_NAV} end={<><PrivateReadsChip /><WalletChip /></>} />
+      <AppHeader home={routes.home} nav={LEND_NAV} end={<><PrivateReadsChip />{isMock ? <WalletChip /> : <ConnectWallet />}</>} />
       <Page width={width} tabs>
         {children}
       </Page>
