@@ -573,3 +573,187 @@ export type FundResult = {
   usdc?: number;
   txHashes?: string[];
 };
+
+/* ------------------------------------------- proof center ("Verify it yourself") */
+
+/** One deployed contract, with its bytecode size read live (`getCode`) to prove it is really there. */
+export type ProofCenterContractVM = {
+  /** "AdvanceBook", "HonkVerifier", … (the deployment JSON key, or "DripCoin (JuniorVault)"). */
+  name: string;
+  /** Plain-English role, e.g. "Checks Standing Pass proofs (Noir / UltraHonk)". */
+  role: string;
+  address: string;
+  /** Etherscan on Sepolia; null on the local devnet (use `explorer.appRoute`). */
+  explorerUrl: string | null;
+  /** Bytes of deployed code; 0 = nothing at that address; null = not read (mock or RPC error). */
+  codeSize: number | null;
+};
+
+export type ProofPublicInputVM = { label: string; value: string };
+
+export type ZkProofKind = "business_pass" | "standing_pass" | "pass_issued";
+
+/** One proof (or credential issue) that happened onchain, decoded from the event and the tx input. */
+export type ZkProofVM = {
+  kind: ZkProofKind;
+  /** The Noir circuit (business_pass / standing_pass) or, for a pass issue, the tree it joins. */
+  circuit: "business_pass" | "standing_pass";
+  /** Short headline: "First advance unlocked by a Business Pass proof". */
+  title: string;
+  /** The contract that checked it: HonkVerifier (standing_pass), BusinessPassVerifier (business_pass), or the registry / book for a pass issue. */
+  verifier: { name: string; address: string; explorerUrl: string | null };
+  /** AdvanceBook function the tx called: drawFirst | drawWithPass | drawByMandate | registerMandate | claimStandingPass | issue. */
+  fn?: string;
+  /** Length of the proof argument in bytes (7,616 for this UltraHonk build). Absent when the tx carries no proof. */
+  proofBytes?: number;
+  /** How many public inputs the verifier checked (5 standing_pass, 9 business_pass). */
+  publicInputCount?: number;
+  /** The key public inputs, shortened for display. */
+  publicInputs?: ProofPublicInputVM[];
+  /** The one-time nullifier this proof spent, shortened ("0x1a2b…9f0e"). */
+  nullifierShort?: string;
+  txHash: string;
+  explorerUrl: string | null;
+  block: number;
+  /** Unix seconds. */
+  at: number;
+  /** "2m ago" / "Today" / "Nov 4". */
+  when: string;
+  /** Plain-English explanation for judges. */
+  note: string;
+};
+
+/** A proof generated in THIS browser (every `prover.prove` call is logged; no inputs, no secrets). */
+export type DeviceProofVM = {
+  circuit: "business_pass" | "standing_pass";
+  /** Wall-clock proving time on this device. */
+  ms: number;
+  proofBytes: number;
+  publicInputCount: number;
+  /** Unix seconds. */
+  at: number;
+  when: string;
+  /** true/false = checked with the same bb.js verifier on this device; null = not checked here (the contract checks it on submit). */
+  verifiedLocally: boolean | null;
+  /** false when proving failed (then `error` is a short code, e.g. "witness_failed"). */
+  ok: boolean;
+  error?: string;
+  /** "worker" (real Noir + bb.js in a Web Worker) or "mock" (fake bytes, mock mode). */
+  prover: string;
+};
+
+export type ProofTxKind =
+  | "sale"
+  | "repayment_split"
+  | "advance_opened"
+  | "advance_repaid"
+  | "advance_written_off"
+  | "late_fee"
+  | "mandate"
+  | "swap"
+  | "limits_changed"
+  | "pass_issued"
+  | "standing_pass"
+  | "shop_registered";
+
+export type ProofTxVM = {
+  kind: ProofTxKind;
+  title: string;
+  detail: string;
+  txHash: string;
+  explorerUrl: string | null;
+  block?: number;
+  when: string;
+};
+
+export type AiActor = "underwriter" | "critic" | "managed_agent" | "risk_agent";
+
+export type AiDecisionVM = {
+  actor: AiActor;
+  /** e.g. "offered", "declined", "send_back", "drew", "skipped", "lowered_limits", "calm". */
+  outcome: string;
+  title: string;
+  /** Machine reason codes (red lines, Critic flags, agent codes): show with `reasonMessage(code)`. */
+  reasonCodes: string[];
+  reason: string;
+  /** Unix seconds (0 when unknown). */
+  at: number;
+  when: string;
+};
+
+export type ProofCenterAiVM = {
+  /** "api": agents API (risk status / this shop's agent log); "device": decisions this device received; "unavailable": nothing to show. */
+  source: "mock" | "api" | "device" | "unavailable";
+  summary: {
+    offersMade: number;
+    /** Refused in code by a red line, before any model ran. */
+    refusedByRedLines: number;
+    /** The Critic model sent the Underwriter's draft back (or rejected it). */
+    criticSendBacks: number;
+    agentDraws: number;
+    agentSkips: number;
+    /** Risk agent: last tick lowered limits (1) or not (0), plus onchain LimitsChanged in the window. */
+    limitsLowered: number;
+  };
+  /** Newest first, at most 5. */
+  latest: AiDecisionVM[];
+  note: string;
+};
+
+export type PrivacyItemVM = { label: string; detail: string };
+
+export type ProofCenterPrivacyVM = {
+  /** What anyone can read onchain. */
+  publicOnchain: PrivacyItemVM[];
+  /** What is never stored anywhere (not onchain, not in our database). */
+  neverStored: PrivacyItemVM[];
+  /** What the AI agents see (numbers and hashed payers only). */
+  aiSees: PrivacyItemVM[];
+  /** What the AI never sees. */
+  aiNeverSees: PrivacyItemVM[];
+  /** What the SDK knows about chain reads. The browser's live Anon-RPC state (MRA_BROWSER_STATUS.anonRpc) is more precise: prefer it when present. */
+  rpc: { mode: "anon" | "direct" | "none"; label: string; detail: string };
+};
+
+export type ProofCheckVM = {
+  id: "contracts_have_code" | "offer_hash_matches" | "verifiers_wired" | "contracts_wired" | "pool_live" | "oracle_live";
+  label: string;
+  /** true = ✅, false = ❌, null = could not check (RPC error / mock). */
+  ok: boolean | null;
+  detail: string;
+};
+
+/** `mra.protocol.proofCenter()`: everything the "Proof center / Verify it yourself" screen shows. */
+export type ProofCenterView = {
+  network: { mode: Mode; chainId: number; name: string; block: number | null };
+  explorer: { name: string; baseUrl: string | null; appRoute: string };
+  contracts: ProofCenterContractVM[];
+  zkProofs: ZkProofVM[];
+  deviceProofs: DeviceProofVM[];
+  /** Newest first, at most `perKind` rows of each kind (so 20 sales don't hide the rest). */
+  transactions: ProofTxVM[];
+  /** Every transaction found in the window, counted by kind (before the row limits). */
+  transactionCounts: Partial<Record<ProofTxKind, number>>;
+  ai: ProofCenterAiVM;
+  privacy: ProofCenterPrivacyVM;
+  checks: ProofCheckVM[];
+  /** Section-level problems ("zkProofs: RPC timed out"); the rest of the view still renders. */
+  errors: string[];
+  /** Block window scanned for events (real modes). */
+  window?: { fromBlock: number; toBlock: number };
+  source: Source;
+};
+
+export type ProofCenterOptions = {
+  /** Days of events to scan (from the deploy block at most). Default 3. */
+  days?: number;
+  /** Max zkProofs / transactions rows. Default 10 / 20. */
+  limit?: number;
+  txLimit?: number;
+  /** Max transaction rows of one kind. Default 5. */
+  perKind?: number;
+  /** Device proofs to return. Default 5. */
+  deviceLimit?: number;
+  /** Skip the live checks (saves ~15 reads). Default false. */
+  skipChecks?: boolean;
+};

@@ -78,6 +78,9 @@ export function splitSale(total: number, holdbackPct: number) {
   return { you: total - repay, repay };
 }
 
+/** Block explorer for a chain id: Etherscan for Sepolia / mainnet, undefined for the local devnet. */
+export const etherscanFor = (chainId: number) => (chainId === 11_155_111 ? "https://sepolia.etherscan.io" : chainId === 1 ? "https://etherscan.io" : undefined);
+
 export const truncate = (s: string, head = 6, tail = 4) => (s.length <= head + tail + 1 ? s : `${s.slice(0, head)}…${s.slice(-tail)}`);
 
 /**

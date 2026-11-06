@@ -1,5 +1,6 @@
 import { AgentsApi, IssuerApi } from "./api/clients.js";
 import { mockProver, unconfiguredProver, type Prover } from "./adapters/prover.js";
+import { createProofLog, withProofLog, type ProofLog } from "./adapters/proof-log.js";
 import { defaultVault, MemoryVault, type CredentialVault, type Session } from "./adapters/vault.js";
 import {
   issuerMockReclaim,
@@ -16,6 +17,7 @@ import type { ResolvedConfig } from "./config.js";
 import { ChainError, ConfigError, NotSupportedError, VaultError } from "./errors.js";
 import type { FetchFn } from "./http.js";
 import type { AgentStatus, FundResult, Mode, NetworkInfo } from "./viewmodels.js";
+import type { Decision } from "./api/types.js";
 import { ApiError } from "./errors.js";
 import { anonFetchFrom } from "./transport/anon.js";
 
@@ -29,11 +31,30 @@ export type MockState = {
   humanVerified: boolean;
 };
 
+/** An underwriting decision this device received from POST /offers (Proof center AI card). No features, no offer. */
+export type DecisionLogEntry = {
+  id: string;
+  at: number;
+  tier: number;
+  result: Decision["result"];
+  redlineHits: string[];
+  verdict: "approve" | "reject" | "send_back" | null;
+  flags: string[];
+  clampChanges: number;
+  amount?: number;
+  summary?: string;
+};
+
 export type Ctx = {
   mode: Mode;
   cfg: ResolvedConfig;
   vault: CredentialVault;
+  /** The configured prover, wrapped so every prove() is logged in `proofLog`. */
   prover: Prover;
+  /** Proofs generated on this device (Proof center). */
+  proofLog: ProofLog;
+  /** Offer decisions this device received, newest first (in memory, max 20). */
+  decisionLog: DecisionLogEntry[];
   reclaim: ReclaimAdapter;
   agentPass: AgentPassAdapter;
   idkit: IdkitAdapter;
@@ -108,11 +129,33 @@ export function createContext(cfg: ResolvedConfig): Ctx {
   }
   const realReclaim = () => (lazyReclaim ??= issuerMockReclaim(getIssuer()));
 
+  const vault = cfg.vault ?? (isMock ? new MemoryVault() : defaultVault());
+  const proofLog = createProofLog(vault);
+  const decisionLog: DecisionLogEntry[] = [];
+  const logDecision = (d: Decision) => {
+    if (!d || typeof d.decision_id !== "string") return;
+    decisionLog.unshift({
+      id: d.decision_id,
+      at: d.created_at,
+      tier: d.tier,
+      result: d.result,
+      redlineHits: [...(d.redline_hits ?? [])],
+      verdict: d.verdict?.verdict ?? null,
+      flags: (d.verdict?.flags ?? []).map((f) => f.code),
+      clampChanges: d.clamp_changes?.length ?? 0,
+      ...(d.draft ? { amount: d.draft.amount } : {}),
+      ...(d.verdict?.summary_en ? { summary: d.verdict.summary_en } : d.draft?.reasons_en?.[0] ? { summary: d.draft.reasons_en[0] } : {}),
+    });
+    if (decisionLog.length > 20) decisionLog.length = 20;
+  };
+
   const ctx: Ctx = {
     mode,
     cfg,
-    vault: cfg.vault ?? (isMock ? new MemoryVault() : defaultVault()),
-    prover: cfg.prover ?? (isMock ? mockProver() : unconfiguredProver()),
+    vault,
+    prover: withProofLog(cfg.prover ?? (isMock ? mockProver() : unconfiguredProver()), proofLog),
+    proofLog,
+    decisionLog,
     // local mode: the issuer's ISSUER_MOCK=1 /mock/proof stands in for the Reclaim app (everything after is real).
     reclaim: cfg.reclaim ?? (isMock ? mockReclaim() : { kind: "issuer-mock", start: (r) => realReclaim().start(r), wait: (id, o) => realReclaim().wait(id, o) }),
     // The backend defaults to WORLD_MOCK=1, so the mock Agent Pass / IDKit payloads work against it too.
@@ -123,7 +166,20 @@ export function createContext(cfg: ResolvedConfig): Ctx {
     api() {
       if (isMock) throw new NotSupportedError("the agents API", mode);
       if (!cfg.apiUrl) throw new ConfigError("config_invalid", "apiUrl is required in sepolia mode");
-      return (api ??= new AgentsApi({ baseUrl: cfg.apiUrl, timeoutMs: cfg.timeoutMs, ...(cfg.fetch ? { fetch: cfg.fetch } : {}) }));
+      if (api) return api;
+      const a = new AgentsApi({ baseUrl: cfg.apiUrl, timeoutMs: cfg.timeoutMs, ...(cfg.fetch ? { fetch: cfg.fetch } : {}) });
+      // Remember the decisions this device receives (Proof center AI card). The response itself is untouched.
+      const requestOffer = a.requestOffer.bind(a);
+      a.requestOffer = async (body) => {
+        const d = await requestOffer(body);
+        try {
+          logDecision(d);
+        } catch {
+          /* logging never breaks an offer */
+        }
+        return d;
+      };
+      return (api = a);
     },
     issuer: () => {
       if (isMock) throw new NotSupportedError("the issuer", mode);

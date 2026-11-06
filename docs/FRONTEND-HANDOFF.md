@@ -148,3 +148,56 @@ On the agents service, set `WORLD_MOCK=0`, `WORLD_AGENT_PASS_CLIENT_ID`, `WORLD_
 For production, set `WORLD_ENVIRONMENT=production` and use the production recovery action; complete verification in World App. For simulator testing, set `WORLD_ENVIRONMENT=staging`, create/select the matching staging action for the configured app, rebuild with `NEXT_PUBLIC_WORLD_MODE=real`, and scan the recovery QR using [World's simulator](https://simulator.worldcoin.org). The agents API pins the expected environment, so staging and production proofs cannot be mixed. Agent Pass still uses the configured OIDC issuer.
 
 On a phone, open the agent approval screen, continue with World, scan `verificationUriComplete` (or open `verificationUri`), and approve or deny the request in World App. For recovery, back up with a passphrase, then restore on a second device after proving the same World identity and entering that passphrase.
+
+## Proof center screen ("Verify it yourself")
+
+A judge-facing screen showing that the ZK proofs, the onchain transactions, the AI decisions and the privacy claims are real, with a link for every claim. One SDK call powers it, and it works the same in mock, local and sepolia:
+
+```ts
+const v = await mra.protocol.proofCenter();          // ProofCenterView
+// options: { days?: 3, limit?: 10, txLimit?: 20, perKind?: 5, deviceLimit?: 5, skipChecks?: false }
+```
+
+It is read-only: no wallet and no transactions. In real modes it makes 14 event queries, each split into 9,000-block chunks over `max(deployBlock, head − days)` (1 chunk on today's young deployment, 3 for a full 3-day window). It also makes 9 `getCode` calls, about 13 `eth_call` reads (batched by Multicall3 on Sepolia), one `getTransaction` per proof row, and one `getBlock` per distinct block shown. Run it on screen open plus a manual "Refresh" button. Don't poll it. Each section fails on its own: problems go to `v.errors: string[]` and the other cards still render. Types are in `packages/sdk/src/viewmodels.ts` (search "proof center"), the implementation is `packages/sdk/src/domains/proofs.ts`, and the mock data is `packages/sdk/src/mock/proofs.ts`.
+
+Top-level fields: `network {mode, chainId, name, block}`, `explorer {name, baseUrl, appRoute}` (Etherscan on Sepolia; on the local devnet `baseUrl` is null, so link to `appRoute` = `/explorer`), `window {fromBlock, toBlock}`, `source` (`"mock"` / `"chain"`), `errors`.
+
+### Suggested layout: 7 cards, top to bottom
+
+Header: **"Verify it yourself"**. Subline: *"Everything below is read live from {network.name}, block {network.block}. Tap any row to check it on {explorer.name}."* In mock mode, show an "Example data" badge (`source === "mock"`).
+
+**1. Live checks** (`v.checks: ProofCheckVM[]`). Put these first because they are the quickest proof. Each row is `label` with ✅ (`ok === true`), ❌ (`false`) or ⚪ (`null`, could not check), and `detail` underneath in small text. The ids are stable: `contracts_have_code`, `offer_hash_matches`, `verifiers_wired`, `contracts_wired`, `pool_live`, `oracle_live`. Card copy: *"Checks your browser just ran against the chain. Nothing here is precomputed."*
+
+**2. Contracts** (`v.contracts: ProofCenterContractVM[]`, 9 rows: AdvanceBook, BusinessPassRegistry, HonkVerifier, BusinessPassVerifier, SeniorVault, DripCoin (JuniorVault), RiskHook, PoolManager, USDC). Each row shows `name`, `role`, a shortened `address` linking to `explorerUrl`, and a chip `{codeSize.toLocaleString()} bytes of code` (✅ if > 0; `null` = not read). Card copy: *"Every contract, as deployed. The code size is read live, so an empty address would show 0."*
+
+**3. ZK proofs verified onchain** (`v.zkProofs: ZkProofVM[]`, newest first). Each row shows:
+- the `title`, plus a `kind` badge: `business_pass` = "Business Pass proof", `standing_pass` = "Standing Pass proof", `pass_issued` = "Pass issued";
+- "Checked by **{verifier.name}**", linking to `verifier.explorerUrl`;
+- `fn` in monospace (`drawFirst` / `drawWithPass` / `registerMandate` / `drawByMandate` / `claimStandingPass` / `issue`);
+- when present, a proof chip `{proofBytes} bytes · {publicInputCount} public inputs` (both circuits' proofs are 7,616 bytes);
+- an expandable `publicInputs` list (`label: value`; values are already shortened);
+- `nullifierShort` labelled "one-time nullifier";
+- `when`, linking to `explorerUrl`;
+- the `note` in plain English, e.g. *"The contract ran the Noir verifier on this proof; it would revert if the proof were fake."*
+
+`drawByMandate` rows have no `proofBytes`, because that transaction carries no proof. The proof was checked when the mandate was registered, and the note says so. Empty state: *"No proofs onchain yet in this window. Open an advance to see one appear here."*
+
+**4. Proofs made on this device** (`v.deviceProofs: DeviceProofVM[]`, latest 5). Each row: `circuit` (Business Pass / Standing Pass), "{(ms/1000).toFixed(1)} s on this device", `{proofBytes} bytes`, `when`. If `ok === false`, show "Failed: {error}". `verifiedLocally` is `null` in the browser; the contract verifies the proof when it is submitted, so show nothing for null. Card copy: *"Your secrets never left this phone. The proof was generated here, in your browser, and only the proof was sent."* Empty state: *"No proofs generated on this device yet. Get a Business Pass or draw an advance."*
+
+**5. Transactions** (`v.transactions: ProofTxVM[]`, newest first, at most 5 per kind). Show kind filter chips with counts from `v.transactionCounts`. The kinds are `sale`, `repayment_split`, `advance_opened`, `advance_repaid`, `advance_written_off`, `late_fee`, `mandate`, `swap`, `limits_changed`, `pass_issued`, `standing_pass`, `shop_registered`. Each row shows `title`, `detail` and `when`, linking to `explorerUrl` (null in mock and local mode, so don't render a link). These are the same events as `protocol.explorer()`, plus repayment splits, late fees, mandates and Uniswap v4 swaps.
+
+**6. AI decisions** (`v.ai: ProofCenterAiVM`). Show a stat row from `summary`: offers made · refused by red lines · Critic send-backs · agent draws · agent skips · limits lowered. Under it, the `latest` list (at most 5): an actor badge (`underwriter`, `critic`, `managed_agent`, `risk_agent`), then `title`, `reason`, `when`, and the `reasonCodes` as chips (render them with `reasonMessage(code)` where it knows the code). The data comes from the agents API risk status, this shop's agent log (when this device set up an agent) and the offers this device received. If `source === "unavailable"`, show the `note` only. Card copy: the `note`, which reads *"Red lines run in plain code before any model. A second model (the Critic) checks every draft. The signer clamps every offer to onchain limits."*
+
+**7. Privacy** (`v.privacy: ProofCenterPrivacyVM`). Use four short lists, each item `label` in bold with `detail` under it:
+- "Public onchain" (`publicOnchain`);
+- "Never stored, anywhere" (`neverStored`: name, address, phone, sales login, raw World ID nullifier, pass secrets);
+- "What the AI sees" (`aiSees`: numbers and hashed payers only);
+- "What the AI never sees" (`aiNeverSees`).
+
+Finish with an RPC badge. `privacy.rpc` is what the SDK knows from its config (`anon` / `direct` / `none`). The browser's live state is more precise, so prefer `MRA_BROWSER_STATUS.anonRpc` (and `getAnonRpc()?.status().label`) from `apps/web/src/lib/mra-browser.ts` when present, falling back to `privacy.rpc.label` / `.detail`.
+
+### Notes
+
+- Device proofs are logged by wrapping the configured prover in `createMRA` (`packages/sdk/src/adapters/proof-log.ts`). Every `prove()` (onboarding, draws, mandates, the post-claim self-check) records `{circuit, ms, proofBytes, publicInputCount, at, ok, error?, prover}`, with no inputs and no secrets. Records are kept in memory and mirrored to the CredentialVault key `proof_log` (max 20), so a proof made before a reload still shows. Nothing changes for callers: `mra.raw.prover` still has `warmup()`, `onProgress()` and `terminate()`.
+- On the current Sepolia deployment (deploy block 12,076,513), the screen shows a Business Pass issue, shops and sales, and no advances yet. Open one advance before the demo so card 3 has a decoded `drawFirst` proof row.
+- Sanity script (read-only): `cd packages/sdk && pnpm build && node scripts/proof-center-sanity.mjs [rpcUrl]` prints the counts per section and the checks.
