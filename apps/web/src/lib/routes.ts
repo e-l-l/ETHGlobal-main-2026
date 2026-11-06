@@ -1,23 +1,54 @@
 /**
- * Every screen link goes through here, so a route can be empty
- * and the other person's buttons still point at the right place.
+ * Every screen link goes through here. One table, one place to move a route.
  *
- * Welcome is the app front door at "/". Onboarding follows the work-split.md paths (/onboarding/…).
+ *   /            landing page (marketing, reserved)
+ *   /home        web-app entry: pick merchant, lender or the public dashboard
+ *   /onboarding  merchant sign-up (welcome → prove → verifying → pass → shop)
+ *   /merchant    the merchant app after sign-up
+ *   /pay         what a customer sees
+ *   /portal      demo seller portal the private check reads from
+ *   /earn …      lenders, junior, public dashboard
  */
 export const routes = {
-  welcome: "/",
+  landing: "/",
+  home: "/home",
+
+  /* Merchant onboarding */
+  welcome: "/onboarding",
   prove: "/onboarding/prove",
   verifying: "/onboarding/verifying",
   pass: "/onboarding/pass",
   failed: "/onboarding/failed",
   shop: "/onboarding/shop",
 
+  /* Merchant app */
+  merchant: "/merchant",
+  advance: {
+    details: "/merchant/advance",
+    arrived: "/merchant/advance/arrived",
+  },
+  week: "/merchant/week",
+  agent: {
+    log: "/merchant/agent",
+    manage: "/merchant/agent/manage",
+    setup: "/merchant/agent/setup",
+    approve: "/merchant/agent/approve",
+    denied: "/merchant/agent/denied",
+  },
+  repaid: "/merchant/repaid",
+  cashOut: "/merchant/cash-out",
+  worldView: "/merchant/world-view",
+  myQr: "/merchant/qr",
+
+  /* Customer */
   pay: "/pay/corner-kiosk",
   paid: "/pay/corner-kiosk/paid",
 
+  /* Demo seller portal */
   portalLogin: "/portal/login",
   portal: "/portal",
 
+  /* Lenders and public */
   earn: "/earn",
   deposit: "/earn/deposit",
   position: "/earn/position",
@@ -28,28 +59,9 @@ export const routes = {
   risk: "/risk",
   explorer: "/explorer",
 
+  /* Dev */
   screens: "/screens",
-  kit: "/dev/components",
-  kit2: "/dev2/components",
-
-  /* Person A: merchant app */
-  home: "/home",
-  advance: {
-    details: "/advance",
-    arrived: "/advance/arrived",
-  },
-  week: "/week",
-  agent: {
-    log: "/agent",
-    manage: "/agent/manage",
-    setup: "/agent/setup",
-    approve: "/agent/approve",
-    denied: "/agent/denied",
-  },
-  repaid: "/repaid",
-  cashOut: "/cash-out",
-  worldView: "/world-view",
-  myQr: "/qr",
+  kit: "/final/components",
 } as const;
 
 export type FailReason = "too-new" | "suspended" | "revenue-low";

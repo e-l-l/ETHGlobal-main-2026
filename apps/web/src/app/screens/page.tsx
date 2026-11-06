@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { Main, Row, Screen, TopBar } from "@/jar/app";
-import { jarViewport } from "@/lib/viewport";
-import { routes, verifyingHref, failedHref } from "@/lib/routes";
+import { AppHeader, Label, Ledger, ListRow, Page, PageHead, RowList } from "@/final";
+import { failedHref, routes, verifyingHref } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "All screens" };
-export const viewport = jarViewport("dark");
 
-const GROUPS: { group: string; screens: { id: string; title: string; href: string }[] }[] = [
+type Item = { id: string; title: string; href: string };
+
+const GROUPS: { group: string; screens: Item[] }[] = [
+  { group: "Entry", screens: [{ id: "—", title: "Home hub", href: routes.home }] },
   {
     group: "Merchant onboarding",
     screens: [
@@ -19,6 +20,24 @@ const GROUPS: { group: string; screens: { id: string; title: string; href: strin
     ],
   },
   {
+    group: "Merchant app",
+    screens: [
+      { id: "M07", title: "Agent setup", href: routes.agent.setup },
+      { id: "M08", title: "Approve", href: routes.agent.approve },
+      { id: "M09", title: "Agent denied", href: routes.agent.denied },
+      { id: "M10", title: "Dashboard", href: routes.merchant },
+      { id: "M11", title: "Advance arrived", href: routes.advance.arrived },
+      { id: "M12", title: "Advance details", href: routes.advance.details },
+      { id: "M13", title: "Bad week", href: routes.week },
+      { id: "M14", title: "Agent log", href: routes.agent.log },
+      { id: "M15", title: "Manage agent", href: routes.agent.manage },
+      { id: "M16", title: "Repaid", href: routes.repaid },
+      { id: "M18", title: "Cash out", href: routes.cashOut },
+      { id: "P01", title: "My QR", href: routes.myQr },
+      { id: "P01", title: "World view", href: routes.worldView },
+    ],
+  },
+  {
     group: "Customer",
     screens: [
       { id: "C01", title: "Scan and pay", href: routes.pay },
@@ -28,19 +47,19 @@ const GROUPS: { group: string; screens: { id: string; title: string; href: strin
   {
     group: "Demo seller portal",
     screens: [
-      { id: "X01", title: "Portal login", href: routes.portalLogin },
-      { id: "X02", title: "Portal dashboard", href: routes.portal },
+      { id: "S01", title: "Portal login", href: routes.portalLogin },
+      { id: "S02", title: "Portal dashboard", href: routes.portal },
     ],
   },
   {
-    group: "Lender and risk taker",
+    group: "Lenders",
     screens: [
       { id: "L01", title: "Earn", href: routes.earn },
       { id: "L02", title: "Deposit or withdraw", href: routes.deposit },
       { id: "L03", title: "My position", href: routes.position },
-      { id: "R01", title: "Junior vault", href: routes.junior },
-      { id: "R02", title: "Mint or redeem", href: routes.mint },
-      { id: "R03", title: "Trade JAR-J", href: routes.trade },
+      { id: "J01", title: "Junior vault", href: routes.junior },
+      { id: "J02", title: "Mint or redeem", href: routes.mint },
+      { id: "J03", title: "Trade JAR-J", href: routes.trade },
     ],
   },
   {
@@ -51,36 +70,29 @@ const GROUPS: { group: string; screens: { id: string; title: string; href: strin
       { id: "P04", title: "Explorer", href: routes.explorer },
     ],
   },
-  {
-    group: "Merchant app (Person A)",
-    screens: [
-      { id: "M07", title: "Agent setup", href: routes.agent.setup },
-      { id: "M10", title: "Home", href: routes.home },
-      { id: "P01", title: "World view", href: routes.worldView },
-    ],
-  },
 ];
 
-export default function Page() {
+export default function Page_() {
   return (
-    <Screen>
-      <TopBar back={routes.welcome} title="All screens" world={false} />
-      <Main enter="none">
-        {GROUPS.map((g) => (
-          <section key={g.group} className="dj-stack" style={{ gap: 8 }} aria-label={g.group}>
-            <h2 className="dj-label" style={{ margin: 0 }}>
-              {g.group}
-            </h2>
-            <ul className="app-rows">
-              {g.screens.map((s) => (
-                <li key={s.id}>
-                  <Row href={s.href} lead={<span className="dj-mono" style={{ fontSize: 11 }}>{s.id}</span>} title={s.title} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </Main>
-    </Screen>
+    <>
+      <AppHeader home={routes.home} world={false} />
+      <Page>
+        <PageHead back={routes.home} label="Dev" title="All screens">
+          Every route with its canvas ID.
+        </PageHead>
+        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
+          {GROUPS.map((g) => (
+            <section key={g.group} aria-label={g.group} className="flex min-w-0 flex-col gap-2">
+              <Label as="h2">{g.group}</Label>
+              <RowList>
+                {g.screens.map((s) => (
+                  <ListRow key={s.id + s.title} href={s.href} lead={<Ledger className="text-hunter">{s.id}</Ledger>} title={s.title} sub={<Ledger className="text-charcoal-muted">{s.href}</Ledger>} />
+                ))}
+              </RowList>
+            </section>
+          ))}
+        </div>
+      </Page>
+    </>
   );
 }

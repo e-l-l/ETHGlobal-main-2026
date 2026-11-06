@@ -8,7 +8,7 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${PORT}` },
   webServer: {
     command: `pnpm build && pnpm start --port ${PORT}`,
-    url: `http://localhost:${PORT}/dev/components`,
+    url: `http://localhost:${PORT}/final/components`,
     env: { NEXT_PUBLIC_SHOW_KIT: "1" },
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,

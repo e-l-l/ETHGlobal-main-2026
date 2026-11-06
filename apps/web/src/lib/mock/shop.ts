@@ -1,34 +1,22 @@
 /**
- * Shared mock data (Person A + Person B). Static until the real data layer lands;
- * keep every number here so screens agree with each other.
+ * The demo shop. One source for every screen (onboarding, merchant app, customer, lender)
+ * so the same number never shows two ways. Static until the real data layer lands.
  */
 
-/* ------------------------------------------------------- Person B screens */
+/** Example rate, anay-design.md section 8. Always labelled as an example in the UI. */
+export const ARS_PER_USD = 1010;
 
-export const SHOP = {
+export const shop = {
   name: "Corner Kiosk",
+  /** Public pseudonym. The only thing onchain that names the shop. */
   id: "shop_7f3a",
   initials: "CK",
   country: "Argentina",
   band: "2",
   bandRange: "$2,000–5,000 a month",
   months: "6+ months",
-  /** Example rate, anay-design.md section 8. Same value as ARS_PER_USD in jar/format.ts. */
-  arsPerUsd: 1010,
-  advance: {
-    drawn: 100,
-    fee: 15,
-    total: 115,
-    repaid: 46,
-    percentRepaid: 40,
-    holdback: "10%",
-  },
-  limits: [
-    { label: "First advance · now", cap: "$100" },
-    { label: "1 repaid", cap: "$250" },
-    { label: "2 repaid", cap: "$500" },
-    { label: "3 or more", cap: "$500" },
-  ],
+  localCurrency: "ARS",
+  usdToLocal: ARS_PER_USD,
 } as const;
 
 export const WALLET = "0x7a3e5b2c4d1f9e8a7b6c5d4e3f2a1b0c9d8e91c2";
@@ -36,21 +24,23 @@ export const WALLET = "0x7a3e5b2c4d1f9e8a7b6c5d4e3f2a1b0c9d8e91c2";
 /** Ordinary names offered on Create shop. Neutral on purpose: nothing about the owner. */
 export const SHOP_NAME_IDEAS = ["Corner Kiosk", "Kiosco Sol", "La Esquina", "Stall 14"] as const;
 
-/* ------------------------------------------------------- Person A screens */
+/** Max advance per tier, unlocked by repaid advances. */
+export const limitsLadder = [
+  { label: "First advance", cap: 50 },
+  { label: "1 repaid", cap: 100 },
+  { label: "2 repaid", cap: 250 },
+  { label: "3 or more", cap: 500 },
+] as const;
 
-export const shop = {
-  name: "Corner Kiosk",
-  pseudonym: "shop_7f3a",
-  localCurrency: "ARS",
-  /** 1 USD ≈ 1,500 ARS */
-  usdToLocal: 1500,
-} as const;
+/** Index into limitsLadder: Corner Kiosk has repaid one advance, so its limit is $100. */
+export const currentTier = 1;
 
-const drawn = 100;
+const drawn = limitsLadder[currentTier].cap;
 const fee = 15;
 const repaid = 46;
 const total = drawn + fee;
 
+/** The advance currently being repaid. */
 export const advance = {
   purpose: "stock",
   drawn,
@@ -71,28 +61,17 @@ export const advance = {
 } as const;
 
 export const agentLimits = {
-  perAdvance: 100,
+  perAdvance: limitsLadder[currentTier].cap,
   perMonth: 200,
   purpose: "stock",
 } as const;
 
-/** Max advance per tier, unlocked by repaid advances. */
-export const limitsLadder = [
-  { label: "First advance", cap: 50 },
-  { label: "1 repaid", cap: 100 },
-  { label: "2 repaid", cap: 250 },
-  { label: "3 or more", cap: 500 },
-] as const;
-
-/** Index into limitsLadder for this shop. */
-export const currentTier = 1;
-
-/** Local-currency value of a USD amount at the mock rate. */
+/** Local-currency value of a USD amount at the example rate. */
 export function toLocal(usd: number) {
   return usd * shop.usdToLocal;
 }
 
-/** USD value of a local-currency amount at the mock rate. */
+/** USD value of a local-currency amount at the example rate. */
 export function toUsd(local: number) {
   return local / shop.usdToLocal;
 }

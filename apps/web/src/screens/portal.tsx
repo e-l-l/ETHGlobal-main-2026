@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
-import { ActionBar, LinkButton, Main, Note, Screen, Stat, TopBar } from "@/jar/app";
-import { Bars } from "@/jar/app-data";
-import { Button, Pill } from "@/jar/controls";
+import { useId, useState, type ReactNode } from "react";
+import { ActionBar, Banner, Button, Card, ChevronLeftIcon, Heading, Label, Ledger, ListRow, Page, Pill, RowList, StatGrid, Text, TextField } from "@/final";
+import { APP_NAME } from "@/lib/brand";
+import { cn } from "@/lib/cn";
 import { routes, verifyingHref, type FailReason } from "@/lib/routes";
 
 /*
- * Demo seller portal (X01–X02). A separate, deliberately unbranded site: neutral greys,
- * no dollarjar mark. It stands in for the marketplace the private check reads from.
+ * Demo seller portal (S01–S02). A fictional third-party marketplace, deliberately NOT DripMoni:
+ * plain neutral header, no logo, no brand colours. It stands in for the site the private check reads from.
  */
 
 type Account = {
@@ -91,116 +91,142 @@ function account(key?: string) {
 
 const PORTAL = "Demo Seller Portal";
 
+const neutralButton = "bg-charcoal hover:bg-charcoal-soft";
+
+function PortalHeader({ back, end }: { back?: boolean; end?: ReactNode }) {
+  return (
+    <header className="border-b border-hairline bg-surface">
+      <div className="mx-auto flex h-14 w-full max-w-[1120px] items-center justify-between gap-4 px-4 md:px-8">
+        <span className="font-body text-read font-bold text-charcoal">{PORTAL}</span>
+        <div className="flex items-center gap-2">
+          {back ? (
+            <Link href={routes.prove} className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 font-body text-note font-semibold text-charcoal-soft hover:bg-well">
+              <ChevronLeftIcon size={16} />
+              Back to {APP_NAME}
+            </Link>
+          ) : null}
+          {end}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function DemoBanner() {
+  return <Banner>This is a demo marketplace, not part of {APP_NAME}. {APP_NAME} reads it only to run a private check.</Banner>;
+}
+
 export function PortalLogin() {
   const router = useRouter();
   const [key, setKey] = useState(ACCOUNTS[0]!.key);
   const [busy, setBusy] = useState(false);
   const name = useId();
-  const emailId = useId();
-  const passId = useId();
   const a = account(key);
 
   return (
-    <Screen mode="portal">
-      <TopBar back={routes.prove} backLabel="Back to dollarjar" title={PORTAL} heading={false} world={false} />
-      <Main tight>
-        <div className="dj-stack" style={{ gap: 6 }}>
-          <h1 className="app-display" style={{ fontSize: 28 }}>
-            Log in
-          </h1>
-          <p className="dj-small">Seeded accounts for the demo. Each one ends in a different result.</p>
+    <>
+      <PortalHeader back />
+      <Page width="narrow">
+        <DemoBanner />
+        <div className="flex flex-col gap-1.5">
+          <Heading level={1}>Log in</Heading>
+          <Text size="note">Seeded accounts for the demo. Each one ends in a different result.</Text>
         </div>
-        <div role="radiogroup" aria-label="Demo account" className="dj-stack" style={{ gap: 8 }}>
+        <div role="radiogroup" aria-label="Demo account" className="flex flex-col gap-2">
           {ACCOUNTS.map((acc) => (
-            <label key={acc.key} className="app-pick">
-              <input type="radio" name={name} value={acc.key} checked={key === acc.key} onChange={() => setKey(acc.key)} />
-              <span className="app-pick__radio" aria-hidden />
-              <span className="dj-stack" style={{ gap: 0, flex: 1, minWidth: 0 }}>
-                <span style={{ fontWeight: 600 }}>{acc.name}</span>
-                <span className="dj-small">{acc.shop}</span>
+            <label
+              key={acc.key}
+              className={cn(
+                "flex min-h-16 cursor-pointer items-center gap-3 rounded-lg border bg-surface px-4 py-3 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-charcoal",
+                key === acc.key ? "border-charcoal" : "border-hairline hover:bg-well",
+              )}
+            >
+              <input type="radio" name={name} value={acc.key} checked={key === acc.key} onChange={() => setKey(acc.key)} className="size-4.5 shrink-0 accent-charcoal" />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="font-body text-read font-semibold text-charcoal">{acc.name}</span>
+                <span className="font-body text-note text-charcoal-muted">{acc.shop}</span>
               </span>
-              <Pill kind={acc.outcome ? "risk" : "saving"}>{acc.tag}</Pill>
+              <Pill tone={acc.outcome ? "risk" : "locked"}>{acc.tag}</Pill>
             </label>
           ))}
         </div>
-        <div className="app-stats">
-          <div className="dj-stack" style={{ gap: 6, minWidth: 0 }}>
-            <label className="dj-label" htmlFor={emailId}>
-              Email
-            </label>
-            <input id={emailId} className="dj-input" type="email" value={a.email} readOnly autoComplete="username" style={{ fontWeight: 400, fontSize: 16 }} />
-          </div>
-          <div className="dj-stack" style={{ gap: 6, minWidth: 0 }}>
-            <label className="dj-label" htmlFor={passId}>
-              Password
-            </label>
-            <input id={passId} className="dj-input" type="password" value="demo-pass" readOnly autoComplete="current-password" />
-          </div>
+        <div className="flex flex-col gap-4">
+          <TextField label="Email" type="email" value={a.email} readOnly autoComplete="username" />
+          <TextField label="Password" type="password" value="demo-pass" readOnly autoComplete="current-password" />
         </div>
-      </Main>
-      <ActionBar>
-        <Button
-          block
-          loading={busy}
-          loadingLabel="Logging in"
-          onClick={() => {
-            setBusy(true);
-            window.setTimeout(() => router.push(`${routes.portal}?acct=${a.key}`), 600);
-          }}
-        >
-          Log in as {a.name}
-        </Button>
-      </ActionBar>
-    </Screen>
+        <ActionBar>
+          <Button
+            className={neutralButton}
+            loading={busy}
+            onClick={() => {
+              setBusy(true);
+              window.setTimeout(() => router.push(`${routes.portal}?acct=${a.key}`), 600);
+            }}
+          >
+            Log in as {a.name}
+          </Button>
+        </ActionBar>
+      </Page>
+    </>
+  );
+}
+
+function WeeklyBars({ values, label }: { values: number[]; label: string }) {
+  const max = Math.max(...values, 1);
+  return (
+    <div role="img" aria-label={label} className="flex h-32 items-end gap-1.5">
+      {values.map((v, i) => (
+        <span key={i} className="flex-1 rounded-t-[3px] bg-charcoal-muted" style={{ height: `${Math.max(2, (v / max) * 100)}%` }} />
+      ))}
+    </div>
   );
 }
 
 export function PortalDashboard({ acct }: { acct?: string }) {
   const a = account(acct);
   return (
-    <Screen mode="portal">
-      <TopBar
-        title={PORTAL}
-        world={false}
+    <>
+      <PortalHeader
         end={
-          <Link href={routes.portalLogin} className="app-chip">
+          <Link href={routes.portalLogin} className="inline-flex min-h-11 items-center rounded-md px-3 font-body text-note font-semibold text-charcoal-soft hover:bg-well">
             Log out
           </Link>
         }
       />
-      <Main tight enter="fade">
-        <div className="dj-stack" style={{ gap: 2 }}>
-          <span className="dj-label">Available · {a.name}</span>
-          <span className="dj-balance">{a.balance}</span>
-          <span className="dj-small">Selling since {a.since}</span>
+      <Page>
+        <DemoBanner />
+        <div className="flex flex-col gap-1">
+          <Label>Available · {a.name}</Label>
+          <span className="font-display text-amount text-charcoal tabular-nums">{a.balance}</span>
+          <Text size="note" tone="muted">
+            Selling since {a.since}
+          </Text>
         </div>
-        {a.outcome === "suspended" ? <Note tone="risk">This account is suspended. Payouts are on hold.</Note> : null}
-        <section className="dj-card" style={{ gap: 12 }}>
-          <div className="dj-between">
-            <span className="dj-label">Sales, last 12 weeks</span>
-            <span className="dj-mono">{a.month} / mo</span>
+        {a.outcome === "suspended" ? <Banner tone="risk">This account is suspended. Payouts are on hold.</Banner> : null}
+        <Card as="section">
+          <div className="flex items-center justify-between gap-3">
+            <Label>Sales, last 12 weeks</Label>
+            <Ledger>{a.month} / mo</Ledger>
           </div>
-          <Bars values={a.weeks} label={`Weekly sales for ${a.name}, last 12 weeks`} />
-        </section>
-        <div className="app-stats">
-          <Stat label="This month" value={a.month.replace("ARS ", "")} sub="ARS" />
-          <Stat label="Account" value={a.outcome === "suspended" ? "Suspended" : "Active"} sub={`since ${a.since}`} />
-        </div>
-        <ul className="app-rows" aria-label="Latest transactions">
+          <WeeklyBars values={a.weeks} label={`Weekly sales for ${a.name}, last 12 weeks`} />
+        </Card>
+        <StatGrid
+          items={[
+            { label: "This month", value: a.month.replace("ARS ", ""), sub: "ARS" },
+            { label: "Account", value: a.outcome === "suspended" ? "Suspended" : "Active", sub: `since ${a.since}` },
+          ]}
+        />
+        <RowList label="Latest transactions">
           {a.tx.map((t) => (
-            <li key={t.what + t.when} className="app-row" style={{ cursor: "default", minHeight: 52 }}>
-              <span className="app-row__body">
-                <span className="app-row__title">{t.what}</span>
-                <span className="app-row__sub">{t.when}</span>
-              </span>
-              <span className="app-row__end dj-mono">{t.amount}</span>
-            </li>
+            <ListRow key={t.what + t.when} title={t.what} sub={t.when} end={<Ledger className="text-charcoal">{t.amount}</Ledger>} />
           ))}
-        </ul>
-      </Main>
-      <ActionBar hint="dollarjar asks for 4 facts: country, revenue band, months selling, standing. Not these rows.">
-        <LinkButton href={verifyingHref(a.outcome)}>Share 4 facts privately</LinkButton>
-      </ActionBar>
-    </Screen>
+        </RowList>
+        <ActionBar hint={`${APP_NAME} asks for 4 facts: country, revenue band, months selling, standing. Not these rows.`}>
+          <Button href={verifyingHref(a.outcome)} className={neutralButton}>
+            Share 4 facts privately
+          </Button>
+        </ActionBar>
+      </Page>
+    </>
   );
 }

@@ -4,7 +4,7 @@
 
 > Every sale puts 10% in your dollar jar. Your jar and your record unlock stock on credit, and nobody can tell who owes.
 
-**Product name:** Dollar Jar (wordmark `dollarjar`, lowercase). DripPay was tried and dropped.
+**Product name:** DripMoni (renamed Nov 6, 2026; was Dollar Jar, wordmark `dollarjar`). The "dollar jar" stays as the name of the 10% savings mechanic. Every surface reads the name from `apps/web/src/lib/brand.ts`.
 
 ---
 

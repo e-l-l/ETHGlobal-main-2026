@@ -1,41 +1,34 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { APP_NAME } from "@/lib/brand";
-
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  style: "italic",
-  variable: "--font-instrument-serif",
-  display: "swap",
-});
+import { jarFonts } from "@/final/fonts";
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
-  description: "A private cash advance for a shop. Customers pay. Lenders earn. The books stay on the phone.",
+  description: "Every sale puts 10% in your dollar jar. Your jar and your record unlock stock on credit, and nobody can tell who owes.",
 };
 
+/* Light only. Status bar matches the canvas token in packages/tailwind-config/final.css. */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#fafcf8",
+  interactiveWidget: "resizes-content",
+  themeColor: "#f6faf5",
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable} ${instrumentSerif.variable}`}>
-      <body>
+    <html lang="en" className={jarFonts}>
+      <body className="min-h-dvh bg-canvas font-body text-read text-charcoal tabular-nums antialiased">
         <a
-          href="#content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:text-ink"
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-surface focus:px-3 focus:py-2 focus:text-charcoal"
         >
           Skip to content
         </a>
-        <div id="content">{children}</div>
+        <div className="flex min-h-dvh flex-col">{children}</div>
       </body>
     </html>
   );

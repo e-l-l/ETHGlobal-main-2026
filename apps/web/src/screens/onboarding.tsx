@@ -1,60 +1,64 @@
-import { ActionBar, LangToggle, LinkButton, Main, Note, Screen, TopBar, DoneMark } from "@/jar/app";
-import { I } from "@/jar/app-icons";
-import { Coin } from "@/jar/app-data";
-import { Lockup, JarMark } from "@/jar/mark";
-import { Pill } from "@/jar/controls";
-import type { BusinessPassView } from "@repo/sdk";
+import type { ReactNode } from "react";
+import {
+  ActionBar,
+  Banner,
+  Button,
+  Card,
+  CheckIcon,
+  Divider,
+  GradientHero,
+  Heading,
+  JarMark,
+  KeyValue,
+  Label,
+  LockIcon,
+  PageHead,
+  Pill,
+  ShieldIcon,
+  Text,
+  Page,
+} from "@/final";
 import { copy, type Lang } from "@/lib/copy";
 import { isFailReason, routes } from "@/lib/routes";
-import { DemoMenu, FailSheet, PassFacts } from "./onboarding-client";
+import { FailSheet, OnboardingHeader, World, WorldNote } from "./onboarding-client";
+
+function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <li className="flex items-start gap-3 font-body text-read text-charcoal">
+      <span className="mt-0.5 shrink-0 text-hunter">{icon}</span>
+      <span>{children}</span>
+    </li>
+  );
+}
 
 /* M01 Welcome. One promise, one action. The gradient sits in its own block; text sits on solid ground. */
 export function WelcomeScreen({ lang }: { lang: Lang }) {
   const t = copy[lang].welcome;
   return (
-    <Screen lang={lang}>
-      <TopBar
-        brand
-        world={false}
-        start={<Lockup size={26} />}
-        end={
-          <>
-            <LangToggle lang={lang} />
-            <DemoMenu lang={lang} />
-          </>
-        }
-      />
-      <Main>
-        <div className="app-hero">
-          <Coin size={120} intro label="dollarjar" />
+    <>
+      <OnboardingHeader lang={lang} />
+      <Page width="narrow">
+        <GradientHero />
+        <div className="flex flex-col gap-2.5">
+          <Label>{t.eyebrow}</Label>
+          <Heading level={1} size="hero">
+            {t.title}
+          </Heading>
+          <Text>{t.body}</Text>
         </div>
-        <div className="dj-stack" style={{ gap: 10 }}>
-          <span className="dj-label">{t.eyebrow}</span>
-          <h1 className="dj-display-xl">{t.title}</h1>
-          <p className="dj-body">{t.body}</p>
-        </div>
-        <ul className="app-facts">
-          <li>
-            <I.lock />
-            <span>{t.promise1}</span>
-          </li>
-          <li>
-            <I.shield />
-            <span>{t.promise2}</span>
-          </li>
-          <li>
-            <I.check />
-            <span>{t.promise3}</span>
-          </li>
+        <ul className="m-0 flex list-none flex-col gap-3 p-0">
+          <Fact icon={<LockIcon size={20} />}>{t.promise1}</Fact>
+          <Fact icon={<ShieldIcon size={20} />}>{t.promise2}</Fact>
+          <Fact icon={<CheckIcon size={20} />}>{t.promise3}</Fact>
         </ul>
-      </Main>
-      <ActionBar>
-        <LinkButton href={routes.prove}>{t.cta}</LinkButton>
-        <LinkButton href={routes.earn} variant="ghost">
-          {t.lend}
-        </LinkButton>
-      </ActionBar>
-    </Screen>
+        <ActionBar>
+          <Button href={routes.prove}>{t.cta}</Button>
+          <Button href={routes.home} variant="ghost">
+            {t.back}
+          </Button>
+        </ActionBar>
+      </Page>
+    </>
   );
 }
 
@@ -63,77 +67,77 @@ export function ProveScreen({ lang }: { lang: Lang }) {
   const c = copy[lang];
   const t = c.prove;
   return (
-    <Screen lang={lang}>
-      <TopBar back={routes.welcome} steps={{ at: 1, of: 3, label: c.steps(1) }} end={<LangToggle lang={lang} />} worldNote={t.world} />
-      <Main>
-        <div className="dj-stack" style={{ gap: 8 }}>
-          <h1 className="app-display">{t.title}</h1>
-          <p className="dj-body">{t.body}</p>
-        </div>
-        <section className="dj-card" aria-label={t.weCheck} style={{ gap: 14 }}>
-          <span className="dj-label">{t.weCheck}</span>
-          <ul className="app-facts">
+    <>
+      <OnboardingHeader lang={lang} step={1} />
+      <Page width="narrow">
+        <PageHead back={routes.welcome} backLabel={c.welcome.back} title={t.title}>
+          {t.body}
+        </PageHead>
+        <Card as="section" aria-label={t.weCheck}>
+          <Label>{t.weCheck}</Label>
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {t.facts.map((f) => (
-              <li key={f}>
-                <I.check />
-                <span>{f}</span>
-              </li>
+              <Fact key={f} icon={<CheckIcon size={20} />}>
+                {f}
+              </Fact>
             ))}
           </ul>
-          <hr className="dj-divider" />
-          <p className="dj-row dj-small" style={{ alignItems: "flex-start", gap: 10 }}>
-            <span style={{ color: "var(--text-3)", display: "inline-flex", marginTop: 1 }}>
-              <I.lock />
-            </span>
+          <Divider />
+          <p className="m-0 flex items-start gap-2.5 font-body text-note text-charcoal-soft">
+            <LockIcon size={18} className="mt-px shrink-0 text-charcoal-muted" />
             {t.neverSee}
           </p>
-        </section>
-        <div style={{ display: "flex", justifyContent: "center" }}>
+        </Card>
+        <WorldNote>{t.world}</WorldNote>
+        <div className="flex justify-center">
           <FailSheet lang={lang} />
         </div>
-      </Main>
-      <ActionBar hint={t.time}>
-        <LinkButton href={routes.portalLogin}>{t.cta}</LinkButton>
-        <LinkButton href={routes.verifying} variant="ghost">
-          {t.demoShop}
-        </LinkButton>
-      </ActionBar>
-    </Screen>
+        <ActionBar hint={t.time}>
+          <Button href={routes.portalLogin}>{t.cta}</Button>
+          <Button href={routes.verifying} variant="ghost">
+            {t.demoShop}
+          </Button>
+        </ActionBar>
+      </Page>
+    </>
   );
 }
 
-/* M04 Business Pass: `onboarding.pass()`. A rare, first-time moment: the check draws itself, then the pass. */
-export function PassScreen({ lang, pass }: { lang: Lang; pass: BusinessPassView | null }) {
+/* M04 Business Pass. A rare, first-time moment. */
+export function PassScreen({ lang }: { lang: Lang }) {
   const c = copy[lang];
   const t = c.pass;
   return (
-    <Screen lang={lang}>
-      <TopBar back={routes.prove} steps={{ at: 2, of: 3, label: c.steps(2) }} end={<LangToggle lang={lang} />} worldNote={t.world} />
-      <Main>
-        <div className="dj-stack" style={{ alignItems: "center", textAlign: "center", gap: 12, paddingTop: 8 }}>
-          <DoneMark size={72} />
-          <h1 className="app-display">{t.title}</h1>
-          <p className="dj-body">{t.body}</p>
+    <>
+      <OnboardingHeader lang={lang} step={2} />
+      <Page width="narrow">
+        <div className="flex flex-col items-center gap-3 pt-2 text-center">
+          <span className="grid size-18 place-items-center rounded-full bg-hunter text-lime">
+            <CheckIcon size={36} strokeWidth={3} />
+          </span>
+          <Heading level={1}>{t.title}</Heading>
+          <Text>{t.body}</Text>
         </div>
-        <section className="dj-card" aria-label="Business Pass">
-          <div className="dj-between" style={{ alignItems: "center" }}>
-            <span className="dj-row" style={{ gap: 8 }}>
-              <JarMark size={20} />
-              <span className="dj-label">Business Pass</span>
-            </span>
-            <Pill kind="locked">{lang === "es" ? "En este teléfono" : "On this phone"}</Pill>
-          </div>
-          <PassFacts lang={lang} initial={pass} />
-          <p className="dj-body" style={{ color: "var(--text)", fontWeight: 700 }}>
-            {t.learned}
-          </p>
-        </section>
-        <Note>{t.next}</Note>
-      </Main>
-      <ActionBar>
-        <LinkButton href={routes.shop}>{t.cta}</LinkButton>
-      </ActionBar>
-    </Screen>
+        <World kind="priv">
+          <Card as="section" aria-label="Business Pass" tone="tint">
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2">
+                <JarMark size={24} lit={2} />
+                <Label>Business Pass</Label>
+              </span>
+              <Pill tone="locked">{lang === "es" ? "En este teléfono" : "On this phone"}</Pill>
+            </div>
+            <KeyValue rows={t.facts.map((f) => [f.k, f.v])} />
+            <p className="m-0 font-body text-read font-bold text-charcoal">{t.learned}</p>
+          </Card>
+        </World>
+        <WorldNote>{t.world}</WorldNote>
+        <Banner>{t.next}</Banner>
+        <ActionBar>
+          <Button href={routes.shop}>{t.cta}</Button>
+        </ActionBar>
+      </Page>
+    </>
   );
 }
 
@@ -142,23 +146,24 @@ export function FailedScreen({ lang, reason }: { lang: Lang; reason?: string }) 
   const t = copy[lang].failed;
   const f = isFailReason(reason) ? t[reason] : t.generic;
   return (
-    <Screen lang={lang}>
-      <TopBar back={routes.prove} end={<LangToggle lang={lang} />} worldNote={t.world} />
-      <Main>
-        <div className="dj-stack" style={{ gap: 14, paddingTop: 16 }}>
-          <JarMark lit={0} variant="meter" size={64} label={lang === "es" ? "Sin verificar" : "Not verified"} />
-          <Pill kind="risk">{f.tag}</Pill>
-          <h1 className="app-display">{f.title}</h1>
-          <p className="dj-body">{f.body}</p>
+    <>
+      <OnboardingHeader lang={lang} />
+      <Page width="narrow">
+        <div className="flex flex-col items-start gap-3.5 pt-2">
+          <JarMark lit={0} on="meter" size={64} label={lang === "es" ? "Sin verificar" : "Not verified"} />
+          <Pill tone="risk">{f.tag}</Pill>
+          <Heading level={1}>{f.title}</Heading>
+          <Text>{f.body}</Text>
         </div>
-        <Note tone="warn">{f.next}</Note>
-      </Main>
-      <ActionBar>
-        <LinkButton href={routes.portalLogin}>{t.retry}</LinkButton>
-        <LinkButton href={routes.welcome} variant="ghost">
-          {t.start}
-        </LinkButton>
-      </ActionBar>
-    </Screen>
+        <Banner tone="caution">{f.next}</Banner>
+        <WorldNote>{t.world}</WorldNote>
+        <ActionBar>
+          <Button href={routes.portalLogin}>{t.retry}</Button>
+          <Button href={routes.welcome} variant="ghost">
+            {t.start}
+          </Button>
+        </ActionBar>
+      </Page>
+    </>
   );
 }

@@ -19,10 +19,7 @@ const en = {
     promise2: "Your agent only draws inside limits you set.",
     promise3: "A slow week slows repayment. No extra fee.",
     cta: "Prove your business",
-    lend: "I have dollars to lend",
-    demo: "Demo",
-    demoTitle: "Jump to a role",
-    demoBody: "Every screen is live with example data. Nothing leaves this phone.",
+    back: "Back",
   },
   steps: (at: number) => `Step ${at} of 3`,
   prove: {
@@ -111,10 +108,7 @@ const es: typeof en = {
     promise2: "Tu agente solo retira dentro de los límites que vos ponés.",
     promise3: "Una semana floja frena el pago. Sin recargo.",
     cta: "Probá tu negocio",
-    lend: "Tengo dólares para prestar",
-    demo: "Demo",
-    demoTitle: "Ir a un rol",
-    demoBody: "Todas las pantallas andan con datos de ejemplo. Nada sale de este teléfono.",
+    back: "Volver",
   },
   steps: (at: number) => `Paso ${at} de 3`,
   prove: {
