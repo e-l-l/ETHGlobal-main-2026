@@ -89,7 +89,9 @@ contract AdvanceBookInvariantTest is StdInvariant, BaseTest {
     }
     function invariant_accounting() public view {
         assertEq(senior.totalAssets(), senior.idle() + senior.outstanding());
-        assertEq(junior.totalAssets(), junior.idle() + junior.outstanding());
+        uint256 gross = junior.idle() + junior.outstanding();
+        uint256 provision = book.delinquentPrincipal();
+        assertEq(junior.totalAssets(), gross > provision ? gross - provision : 0);
         assertEq(usdc.balanceOf(address(book)), book.reserve());
         uint256 activePrincipal;
         for (uint256 id = 1; id < book.nextAdvanceId(); ++id) {

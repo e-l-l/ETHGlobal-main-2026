@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 import {Policy, Offer} from "./Policy.sol";
@@ -86,8 +87,8 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
 
     // ---------------------------------------------------------------- constants
 
-    uint16 public constant SENIOR_FEE_BPS = 6000;
-    uint16 public constant JUNIOR_FEE_BPS = 3000; // reserve gets the remainder
+    uint16 public constant MAX_PROTOCOL_FEE_BPS = 2000;
+    uint64 public constant DELINQUENCY_WINDOW = 14 days;
     uint16 internal constant BPS = 10_000;
     /// @dev v2 minimum-repayment rule: the default clock (`lastSaleAt`) only restarts once at least
     ///      MIN_REPAY_BPS of totalOwed has been repaid within one REPAY_WINDOW.
@@ -166,6 +167,11 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
 
     // ---------------------------------------------------------------- storage
 
+    address public treasury;
+    uint16 public seniorFeeBps = 5333;
+    uint16 public juniorFeeBps = 2667;
+    uint16 public reserveFeeBps = 1000;
+    uint16 public protocolFeeBps = 1000;
     uint256 public reserve;
     uint256 public nextAdvanceId; // ids start at 1
     mapping(bytes32 => Shop) public shops;
@@ -184,7 +190,7 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
     /// even when gas is sponsored and the tx sender is a bundler or relayer.
     event Sale(bytes32 indexed shopId, address indexed payer, uint256 amount, uint256 repayment);
     event RepaymentSplit(
-        uint256 indexed advanceId, uint256 principalPart, uint256 seniorFee, uint256 juniorFee, uint256 reserveFee
+        uint256 indexed advanceId, uint256 principalPart, uint256 seniorFee, uint256 juniorFee, uint256 reserveFee, uint256 protocolFee
     );
     event AdvanceOpened(
         uint256 indexed id, bytes32 indexed shopId, uint256 amount, uint256 totalOwed, uint16 holdbackBps, uint8 tier
@@ -201,10 +207,14 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
     event MandateDrawn(uint256 indexed mandateId, uint256 indexed advanceId, uint256 amount);
     event MandateRevoked(uint256 indexed mandateId);
     event AgentPassAttesterSet(address attester);
+    event TreasurySet(address indexed treasury);
+    event FeeSharesSet(uint16 seniorBps, uint16 juniorBps, uint16 reserveBps, uint16 protocolBps);
 
     // ---------------------------------------------------------------- errors
 
     error ZeroAddress();
+    error InvalidFeeShares();
+    error InsufficientJuniorCover(uint256 assets, uint256 required);
     error ZeroAmount();
     error InvalidShopId();
     error InvalidDefaultWindow();
@@ -250,6 +260,7 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
                 || c.agentPassAttester == address(0)
         ) revert ZeroAddress();
         if (c.defaultWindow == 0) revert InvalidDefaultWindow();
+        treasury = c.owner;
         usdc = c.usdc;
         senior = c.senior;
         junior = c.junior;
@@ -303,6 +314,7 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         uint256 principalPart;
         uint256 seniorFee;
         uint256 juniorFee;
+        uint256 protocolFee;
 
         if (advanceId != 0) {
             Advance storage a = advances[advanceId];
@@ -322,16 +334,17 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
                     principalPart = repaidAfter * a.principal / a.totalOwed - a.principalRepaid;
                 }
                 uint256 fee = rep - principalPart;
-                seniorFee = fee * SENIOR_FEE_BPS / BPS;
-                juniorFee = fee * JUNIOR_FEE_BPS / BPS;
-                uint256 reserveFee = fee - seniorFee - juniorFee;
+                seniorFee = Math.mulDiv(fee, seniorFeeBps, BPS);
+                juniorFee = Math.mulDiv(fee, juniorFeeBps, BPS);
+                protocolFee = Math.mulDiv(fee, protocolFeeBps, BPS);
+                uint256 reserveFee = fee - seniorFee - juniorFee - protocolFee;
 
                 // effects
                 a.repaid = repaidAfter;
                 a.principalRepaid += principalPart;
                 _noteRepayment(a, rep);
                 reserve += reserveFee;
-                emit RepaymentSplit(advanceId, principalPart, seniorFee, juniorFee, reserveFee);
+                emit RepaymentSplit(advanceId, principalPart, seniorFee, juniorFee, reserveFee, protocolFee);
 
                 if (repaidAfter == a.totalOwed) {
                     a.status = Status.Repaid;
@@ -350,6 +363,7 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
             if (principalPart > 0) senior.principalReturned(principalPart);
         }
         if (juniorFee > 0) usdc.safeTransfer(address(junior), juniorFee);
+        if (protocolFee > 0) usdc.safeTransfer(treasury, protocolFee);
     }
 
     // ---------------------------------------------------------------- draws
@@ -499,6 +513,18 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         emit AgentPassAttesterSet(a);
     }
 
+    function setTreasury(address t) external onlyOwner {
+        if (t == address(0)) revert ZeroAddress();
+        treasury = t;
+        emit TreasurySet(t);
+    }
+
+    function setFeeShares(uint16 s, uint16 j, uint16 r, uint16 p) external onlyOwner {
+        if (uint256(s) + j + r + p != BPS || p > MAX_PROTOCOL_FEE_BPS) revert InvalidFeeShares();
+        seniorFeeBps = s; juniorFeeBps = j; reserveFeeBps = r; protocolFeeBps = p;
+        emit FeeSharesSet(s, j, r, p);
+    }
+
     // ---------------------------------------------------------------- credential
 
     /// @notice Insert the pending Standing Pass commitment of a repaid advance. Anyone may call
@@ -607,6 +633,15 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         return poseidon2.hash_3(TAG_COMMIT, h, count);
     }
 
+    function delinquentPrincipal() public view returns (uint256 amount) {
+        for (uint256 id = 1; id < nextAdvanceId; ++id) {
+            Advance storage a = advances[id];
+            if (a.status == Status.Active && block.timestamp >= uint256(a.lastSaleAt) + DELINQUENCY_WINDOW) {
+                amount += a.principal - a.principalRepaid;
+            }
+        }
+    }
+
     /// @notice Outstanding senior principal (the exposure Policy caps).
     function exposure() public view returns (uint256) {
         return senior.outstanding();
@@ -701,6 +736,10 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         if (o.amount == 0 || o.recipient == address(0) || totalOwed < o.amount || o.holdbackBps == 0) {
             revert InvalidOfferTerms();
         }
+
+        uint256 required = Math.mulDiv(senior.outstanding() + o.amount, junior.coverRatioBps(), BPS, Math.Rounding.Ceil);
+        uint256 assets = junior.totalAssets();
+        if (assets < required) revert InsufficientJuniorCover(assets, required);
 
         id = nextAdvanceId++;
         advances[id] = Advance({

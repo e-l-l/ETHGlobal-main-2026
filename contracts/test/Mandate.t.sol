@@ -286,6 +286,16 @@ contract MandateTest is BaseTest {
 
     // ------------------------------------------------------------------ draws
 
+    function test_drawByMandate_enforcesCover() public {
+        uint256 id = _register(_req(0, 1), BIZ_NULL);
+        junior.withdraw(junior.maxWithdraw(address(this)), address(this), address(this));
+        (Offer memory o, bytes memory sig) = _mOffer(0, 50e6, 0, 0);
+        bytes memory agentSig = _agentSig(id, o.offerId, AGENT_PK);
+        vm.expectRevert(abi.encodeWithSelector(AdvanceBook.InsufficientJuniorCover.selector, 0, 5e6));
+        book.drawByMandate(o, sig, id, agentSig);
+        assertEq(book.getMandate(id).drawnInPeriod, 0);
+    }
+
     function test_drawByMandate_happy_relayerSubmits_firstDrawCarriesCredential() public {
         uint256 id = _register(_req(0, 1), BIZ_NULL);
         vm.expectEmit(true, true, false, true, address(book));

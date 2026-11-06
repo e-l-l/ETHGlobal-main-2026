@@ -44,7 +44,7 @@ contract Deploy is Script {
             mock.mint(owner, 60_000e6);
         }
         TrancheVault senior = new TrancheVault(IERC20(token), "Senior", "SNR", owner, TrancheVault(address(0)), 0);
-        TrancheVault junior = new TrancheVault(IERC20(token), "Junior", "JNR", owner, senior, 1000);
+        TrancheVault junior = new TrancheVault(IERC20(token), "DripCoin", "DRIP", owner, senior, 1500);
         AdvanceBook book = deployBook(token, senior, junior, owner);
         senior.setBook(address(book));
         junior.setBook(address(book));

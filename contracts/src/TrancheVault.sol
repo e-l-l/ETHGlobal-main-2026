@@ -9,6 +9,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
+interface IProvisionBook { function delinquentPrincipal() external view returns (uint256); }
+
 contract TrancheVault is ERC4626, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -20,7 +22,10 @@ contract TrancheVault is ERC4626, Ownable, ReentrancyGuard {
     error CoverageViolation();
     error UnexpectedAssetAmount();
     TrancheVault public immutable coverRef;
-    uint16 public immutable coverRatioBps;
+    uint16 public coverRatioBps;
+    event CoverRatioSet(uint16 ratioBps);
+    error InvalidCoverRatio();
+    error ProvisionedDepositsDisabled();
     address public book;
     uint256 public outstanding;
 
@@ -32,6 +37,7 @@ contract TrancheVault is ERC4626, Ownable, ReentrancyGuard {
         TrancheVault coverRef_,
         uint16 coverRatioBps_
     ) ERC20(name_, symbol_) ERC4626(usdc) Ownable(owner_) {
+        if (coverRatioBps_ > 10000) revert InvalidCoverRatio();
         coverRef = coverRef_;
         coverRatioBps = coverRatioBps_;
     }
@@ -47,8 +53,21 @@ contract TrancheVault is ERC4626, Ownable, ReentrancyGuard {
         book = b;
     }
 
+    function setCoverRatio(uint16 ratioBps) external onlyOwner {
+        if (ratioBps > 10000) revert InvalidCoverRatio();
+        coverRatioBps = ratioBps;
+        emit CoverRatioSet(ratioBps);
+    }
+
     function idle() public view virtual returns (uint256) { return IERC20(asset()).balanceOf(address(this)); }
-    function totalAssets() public view virtual override returns (uint256) { return idle() + outstanding; }
+    function totalAssets() public view virtual override returns (uint256) {
+        uint256 assets = idle() + outstanding;
+        if (address(coverRef) != address(0) && book.code.length != 0) {
+            uint256 provision = IProvisionBook(book).delinquentPrincipal();
+            return assets > provision ? assets - provision : 0;
+        }
+        return assets;
+    }
 
     function lend(address to, uint256 amount) external virtual onlyBook nonReentrant {
         if (amount > idle()) revert InsufficientIdle();
@@ -74,7 +93,7 @@ contract TrancheVault is ERC4626, Ownable, ReentrancyGuard {
     function _available() internal view returns (uint256) {
         uint256 available = idle();
         if (address(coverRef) != address(0)) {
-            uint256 required = Math.mulDiv(coverRef.outstanding(), coverRatioBps, 1e4);
+            uint256 required = Math.mulDiv(coverRef.outstanding(), coverRatioBps, 1e4, Math.Rounding.Ceil);
             uint256 assets = totalAssets();
             available = Math.min(available, assets > required ? assets - required : 0);
         }
@@ -93,6 +112,7 @@ contract TrancheVault is ERC4626, Ownable, ReentrancyGuard {
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override nonReentrant {
+        if (address(coverRef) != address(0) && book.code.length != 0 && IProvisionBook(book).delinquentPrincipal() != 0) revert ProvisionedDepositsDisabled();
         uint256 beforeBalance = idle();
         super._deposit(caller, receiver, assets, shares);
         if (idle() - beforeBalance != assets) revert UnexpectedAssetAmount();

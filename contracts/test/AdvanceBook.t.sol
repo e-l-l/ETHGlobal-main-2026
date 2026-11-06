@@ -186,6 +186,7 @@ contract AdvanceBookTest is Test {
         uint256 book;
         uint256 reserve;
         uint256 outstanding;
+        uint256 treasury;
     }
 
     function setUp() public {
@@ -336,6 +337,7 @@ contract AdvanceBookTest is Test {
         b.book = usdc.balanceOf(address(book));
         b.reserve = book.reserve();
         b.outstanding = senior.outstanding();
+        b.treasury = usdc.balanceOf(book.treasury());
     }
 
     /// @dev Root of a depth-16 tree whose only non-zero leaf is `leaf` at index 0, computed directly.
@@ -440,12 +442,12 @@ contract AdvanceBookTest is Test {
         book.pay(SHOP, 100e6);
 
         assertEq(usdc.balanceOf(payout), 12 * 90e6 + 95e6, "merchant payout");
-        assertEq(usdc.balanceOf(address(senior)), SENIOR_SEED - 100e6 + 100e6 + 15e6, "senior");
-        assertEq(usdc.balanceOf(address(junior)), JUNIOR_SEED + 7_500_000, "junior");
+        assertEq(usdc.balanceOf(address(senior)), SENIOR_SEED + 13_332_500, "senior");
+        assertEq(usdc.balanceOf(address(junior)), JUNIOR_SEED + 6_667_500, "junior");
         assertEq(book.reserve(), 2_500_000, "reserve");
         assertEq(usdc.balanceOf(address(book)), 2_500_000, "book custody == reserve");
         assertEq(senior.outstanding(), 0);
-        assertEq(senior.totalAssets(), SENIOR_SEED + 15e6, "senior earned 60% of fee");
+        assertEq(senior.totalAssets(), SENIOR_SEED + 13_332_500, "senior earned its fee share");
 
         AdvanceBook.Advance memory a = _adv(id);
         assertEq(uint8(a.status), uint8(AdvanceBook.Status.Repaid));
@@ -466,7 +468,7 @@ contract AdvanceBookTest is Test {
         uint256 id = _drawFirst(SHOP, 100e6, 12500, 1000);
         usdc.mint(customer, 100e6);
         vm.expectEmit(true, false, false, true, address(book));
-        emit AdvanceBook.RepaymentSplit(id, 8e6, 1_200_000, 600_000, 200_000);
+        emit AdvanceBook.RepaymentSplit(id, 8e6, 1_066_600, 533_400, 200_000, 200_000);
         vm.expectEmit(true, true, false, true, address(book));
         emit AdvanceBook.Sale(SHOP, customer, 100e6, 10e6);
         vm.prank(customer);
@@ -497,13 +499,13 @@ contract AdvanceBookTest is Test {
         uint256 toJunior = usdc.balanceOf(address(junior)) - b0.junior;
         uint256 toReserve = book.reserve() - b0.reserve;
         uint256 toPayout = usdc.balanceOf(payout) - b0.payout;
-        assertEq(toSenior + toJunior + toReserve, 55e6, "repayments == totalOwed");
+        assertEq(toSenior + toJunior + toReserve + usdc.balanceOf(owner) - b0.treasury, 55e6, "repayments == totalOwed");
         assertEq(toPayout + 55e6, spent, "conservation");
         // fee = 5e6: senior got 50e6 principal + ~60%, junior ~30%, reserve the rest (>= 10% by rounding)
-        assertLe(toJunior, 1_500_000);
-        assertGe(toJunior, 1_500_000 - i);
-        assertLe(toSenior - 50e6, 3_000_000);
-        assertGe(toSenior - 50e6, 3_000_000 - i);
+        assertLe(toJunior, 1_333_500);
+        assertGe(toJunior, 1_333_500 - i);
+        assertLe(toSenior - 50e6, 2_666_500);
+        assertGe(toSenior - 50e6, 2_666_500 - i);
         assertGe(toReserve, 500_000);
     }
 
@@ -760,6 +762,56 @@ contract AdvanceBookTest is Test {
         assertEq(_adv(id).shopId, SHOP);
     }
 
+    function test_coverBlocksFirstAndRollsBackOffer() public {
+        vm.prank(lp); junior.withdraw(JUNIOR_SEED, lp, lp);
+        Offer memory o = _offer(SHOP, 100e6, 11500, 1000, 0);
+        bytes memory sig = _sign(o);
+        vm.expectRevert(abi.encodeWithSelector(AdvanceBook.InsufficientJuniorCover.selector, 0, 10e6));
+        book.drawFirst(o, sig, hex"01", EMPTY_ROOT, COMMIT1_VEC);
+        _seed(junior, 10e6);
+        book.drawFirst(o, sig, hex"01", EMPTY_ROOT, COMMIT1_VEC);
+    }
+
+    function test_coverBlocksStandingDraw() public {
+        (uint256 root, Offer memory o, bytes memory sig, uint256 next) = _passSetup();
+        uint256 available = junior.maxWithdraw(lp);
+        vm.prank(lp); junior.withdraw(available, lp, lp);
+        vm.expectRevert(abi.encodeWithSelector(AdvanceBook.InsufficientJuniorCover.selector, junior.totalAssets(), 25e6));
+        book.drawWithPass(o, sig, hex"01", root, NULL_VEC, next);
+        assertFalse(book.nullifierSpent(NULL_VEC));
+    }
+
+    function test_delinquencyProvisionAndRecovery() public {
+        uint256 id = _drawFirst(SHOP, 100e6, 11500, 1000);
+        uint256 beforeAssets = junior.totalAssets();
+        vm.warp(block.timestamp + 14 days - 1);
+        assertEq(junior.totalAssets(), beforeAssets);
+        vm.warp(block.timestamp + 1);
+        assertEq(book.delinquentPrincipal(), 100e6);
+        assertEq(junior.totalAssets(), beforeAssets - 100e6);
+        assertLt(junior.previewRedeem(junior.balanceOf(lp)), beforeAssets);
+        vm.expectRevert(TrancheVault.ProvisionedDepositsDisabled.selector);
+        vm.prank(lp); junior.deposit(1, lp);
+        _pay(SHOP, 20e6);
+        assertEq(book.delinquentPrincipal(), 0);
+        assertEq(uint8(_adv(id).status), uint8(AdvanceBook.Status.Active));
+    }
+
+    function test_feeConfiguration() public {
+        vm.prank(lp); vm.expectRevert(); book.setTreasury(lp);
+        vm.startPrank(owner);
+        vm.expectRevert(AdvanceBook.ZeroAddress.selector); book.setTreasury(address(0));
+        vm.expectRevert(AdvanceBook.InvalidFeeShares.selector); book.setFeeShares(5000, 2000, 500, 2500);
+        vm.expectRevert(AdvanceBook.InvalidFeeShares.selector); book.setFeeShares(5000, 2000, 1000, 1000);
+        book.setTreasury(lp);
+        book.setFeeShares(5000, 3000, 0, 2000);
+        vm.stopPrank();
+        _drawFirst(SHOP, 100e6, 12500, 1000);
+        uint256 prior = usdc.balanceOf(lp);
+        _pay(SHOP, 100e6);
+        assertEq(usdc.balanceOf(lp) - prior, 400_000);
+    }
+
     // ================================================================== drawWithPass
 
     function _passSetup() internal returns (uint256 root, Offer memory o, bytes memory sig, uint256 next) {
@@ -967,8 +1019,8 @@ contract AdvanceBookTest is Test {
         book.writeOff(id);
 
         assertEq(usdc.balanceOf(address(senior)), seniorBefore + 76e6);
-        assertEq(seniorBefore, 927_600_000);
-        assertEq(usdc.balanceOf(address(junior)), JUNIOR_SEED + 1_800_000 - 76e6);
+        assertEq(seniorBefore, 927_199_800);
+        assertEq(usdc.balanceOf(address(junior)), JUNIOR_SEED + 1_600_200 - 76e6);
         assertEq(senior.outstanding(), 0);
         assertEq(usdc.balanceOf(keeper), BOUNTY);
         assertEq(book.reserve(), 5_600_000);
@@ -990,9 +1042,9 @@ contract AdvanceBookTest is Test {
         book.writeOff(id);
 
         assertEq(usdc.balanceOf(address(junior)), 0);
-        assertEq(usdc.balanceOf(address(senior)), 927_600_000 + 20e6 + 600_000);
+        assertEq(usdc.balanceOf(address(senior)), 927_199_800 + 20e6 + 600_000);
         assertEq(senior.outstanding(), 0);
-        assertEq(senior.totalAssets(), 948_200_000, "senior realised 55.4 loss");
+        assertEq(senior.totalAssets(), 947_799_800, "senior realised 55.4 loss");
         assertEq(book.reserve(), 0);
         assertEq(usdc.balanceOf(address(book)), 0);
         assertEq(usdc.balanceOf(keeper), 0);
@@ -1013,7 +1065,7 @@ contract AdvanceBookTest is Test {
         assertEq(book.reserve(), 0);
         assertEq(usdc.balanceOf(address(book)), 0);
         assertEq(senior.outstanding(), 0);
-        assertEq(senior.totalAssets(), 927_600_000 + 76e6);
+        assertEq(senior.totalAssets(), 927_199_800 + 76e6);
     }
 
     function test_writeOff_afterwards_shopFree_secondWriteOffReverts() public {
@@ -1079,7 +1131,7 @@ contract AdvanceBookTest is Test {
         uint256 toJunior = b1.junior - b0.junior;
         uint256 toReserve = b1.reserve - b0.reserve;
 
-        assertEq(toPayout + toSenior + toJunior + toReserve, amount, "conservation");
+        assertEq(toPayout + toSenior + toJunior + toReserve + b1.treasury - b0.treasury, amount, "conservation");
         assertEq(amount - toPayout, expectedRep, "repayment");
         assertEq(b1.book, b1.reserve, "custody == reserve");
         uint256 principalPart = b0.outstanding - b1.outstanding;
@@ -1105,7 +1157,7 @@ contract AdvanceBookTest is Test {
             _pay(SHOP, amt);
             Bal memory b1 = _snap();
             assertEq(
-                (b1.payout - b0.payout) + (b1.senior - b0.senior) + (b1.junior - b0.junior) + (b1.reserve - b0.reserve),
+                (b1.payout - b0.payout) + (b1.senior - b0.senior) + (b1.junior - b0.junior) + (b1.reserve - b0.reserve) + (b1.treasury - b0.treasury),
                 amt,
                 "per-sale conservation"
             );
@@ -1120,11 +1172,11 @@ contract AdvanceBookTest is Test {
         uint256 toReserve = end.reserve - start.reserve;
         assertEq(end.outstanding, 0);
         assertEq(_adv(id).principalRepaid, principal);
-        assertEq(toSenior + toJunior + toReserve, owed, "all of totalOwed distributed");
-        assertLe(toSenior - principal, fee * 6000 / 10_000);
-        assertGe(toSenior - principal + n, fee * 6000 / 10_000);
-        assertLe(toJunior, fee * 3000 / 10_000);
-        assertGe(toJunior + n, fee * 3000 / 10_000);
+        assertEq(toSenior + toJunior + toReserve + end.treasury - start.treasury, owed, "all of totalOwed distributed");
+        assertLe(toSenior - principal, fee * 5333 / 10_000);
+        assertGe(toSenior - principal + n, fee * 5333 / 10_000);
+        assertLe(toJunior, fee * 2667 / 10_000);
+        assertGe(toJunior + n, fee * 2667 / 10_000);
     }
 
     // ================================================================== real-dependency tests (skipped now)

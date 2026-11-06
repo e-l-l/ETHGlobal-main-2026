@@ -1,5 +1,11 @@
 # Contracts spec (v2): shared contract for all builders
 
+> **Contract changes pending redeployment:** Collected fees use configurable senior / junior / reserve / protocol shares of 5333 / 2667 / 1000 / 1000 bps. The treasury defaults to the owner and may be changed by the owner; protocol share is capped at 2000 bps, and shares must sum to 10000. For each payment, senior, junior and protocol shares round down independently and the reserve receives the entire remainder. Thus a single $15 fee pays $7.9995 senior, $4.0005 junior, $1.50 reserve and $1.50 protocol; multiple payments may shift up to three base units per payment to reserve. Fees are paid only as collected. `setTreasury` rejects zero (`ZeroAddress`); `setFeeShares` rejects invalid sums or protocol shares (`InvalidFeeShares`). Both emit events.
+>
+> All draw routes require junior assets, excluding reserve, to cover `ceil((senior outstanding + new principal) * coverRatioBps / 10000)`; otherwise `InsufficientJuniorCover(assets, required)`. Junior withdrawals use the same ceiling and ratio. The vault owner may configure the ratio from 0 to 10000 bps (`InvalidCoverRatio` otherwise), and deployment defaults to 1500 bps. Losses can subsequently put the pool below the ratio; they do not revert. The junior token on a new deployment is DripCoin (DRIP): junior, takes losses first; existing deployed tokens remain Junior/JNR.
+>
+> At 14 days since the last qualifying repayment, each active advance contributes its remaining principal to a provision. Junior `totalAssets` is `max(0, idle + outstanding - sum(delinquent unpaid principal))`. A qualifying repayment removes the advance from this estimate; write-off removes it and realizes the loss through the existing waterfall. Junior deposits are disabled while any provision exists (`ProvisionedDepositsDisabled`) to avoid capturing a subsequent recovery at a discounted price. This conservative estimate assumes full principal loss and does not net reserve or predict recoveries. Calculating it scans all historical advances: gas grows without bound, so this prototype needs bounded bookkeeping before production use. A default window at or below 14 days permits write-off before provisioning.
+>
 > **v2** (Business Pass + managed-agent mandates): `BusinessPassRegistry` (issuer-attested Business Pass tree), `business_pass` circuit + `BusinessPassVerifier`, `drawFirst` takes a Business Pass proof (no World ID anywhere in credit), `registerMandate` / `drawByMandate` / `revokeMandate`, Offer field `worldNullifierHash` → `passNullifier` plus `minRevenueBand`, and the minimum-repayment rule. See "v2" below; it overrides anything older in this file.
 > v1.1 changes: `BookConfig` struct constructor, cumulative principal split, `lastSaleAt` restarts only on repaying sales, and `TrancheVault.totalAssets` is `virtual`.
 > Status: 152 tests, all passing (2 invariant suites, 2 real-proof E2E suites). `forge build --sizes`: AdvanceBook 23,005 B runtime (limit 24,576), BusinessPassRegistry 5,674 B.
@@ -148,7 +154,7 @@ contract TrancheVault is ERC4626, Ownable {
 ```
 - Fees arrive as plain USDC transfers into the vault, which raise the share price.
 - `maxWithdraw` and `maxRedeem` are limited by `idle()`.
-- If `coverRef != address(0)` (the junior vault), withdrawals are further limited so that `totalAssets() >= coverRef.outstanding() * coverRatioBps / 1e4` afterwards.
+- If `coverRef != address(0)` (the junior vault), withdrawals are further limited so that `totalAssets() >= ceil(coverRef.outstanding() * coverRatioBps / 1e4)` afterwards.
 - Decimals offset stays 0 (shares have 6 decimals). Mitigate inflation with OpenZeppelin's virtual shares plus a seed deposit in the deploy script. Test the donation case.
 - **The junior token is the junior vault's share token**, and it's what trades on Uniswap.
 
@@ -191,8 +197,8 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
 4. Split `rep` into principal and fee:
    - principal part, **computed cumulatively** (v1.1): `floor(repaidAfter * principal / totalOwed) - principalRepaid`. This is always `<= rep`, and exactly `principal - principalRepaid` on the final repayment. A per-sale `rep * principal / totalOwed` rounds down every sale and can leave an advance that can never be repaid.
    - fee part `= rep - principal part`
-5. Send USDC to the senior vault for the principal part plus `fee * 6000 / 1e4`, and call `senior.principalReturned(principalPart)`.
-6. Send `fee * 3000 / 1e4` to the junior vault. The remainder goes to `reserve`.
+5. Send the principal and senior fee share to the senior vault and call `senior.principalReturned(principalPart)`.
+6. Send the junior fee share to the junior vault and the protocol share to treasury; allocate the remainder to reserve as described above.
 7. Update `lastSaleAt` **only when `rep > 0`** (v1.1), so sales too small to repay anything can't delay a write-off. If `repaid == totalOwed`: status Repaid, clear `shop.activeAdvanceId`, emit `AdvanceRepaid`.
 8. Emit `Sale(shopId, payer = msg.sender, amount, rep)` (v1.2: `payer` indexed for the agents).
 
@@ -245,7 +251,7 @@ contract RiskHook is BaseHook {   // OpenZeppelin uniswap-hooks BaseHook
   - `setBook` on both vaults; seed deposits
   - an EIP-712 offer signer helper `_signOffer(Offer, pk)`
 - `test/invariant/`: handler-driven invariants. Each must hold after every call:
-  - for each vault, `totalAssets == idle + outstanding`
+  - senior `totalAssets == idle + outstanding`; junior subtracts the delinquency provision as described above
   - `senior.outstanding == Σ(active principal − principalRepaid)`
   - book USDC balance `== reserve`
   - no advance has `repaid > totalOwed`

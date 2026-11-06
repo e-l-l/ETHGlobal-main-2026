@@ -20,6 +20,8 @@ contract TrancheVaultTest is Test {
     address lender = address(0x123);
     address borrower = address(0x456);
 
+    function delinquentPrincipal() external pure returns (uint256) { return 0; }
+
     function setUp() public {
         token = new VaultTestToken();
         senior = new TrancheVault(IERC20(token), "Senior", "S", address(this), TrancheVault(address(0)), 0);
