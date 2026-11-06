@@ -344,6 +344,30 @@ class Web3ChainReader:
             raise ChainError("deployments file has no poolKey")
         return int(self.hook.functions.consult(self.dep.pool_key, int(seconds_ago)).call())
 
+    def _junior_pool_id(self) -> bytes:
+        if self.dep.pool_key is None:
+            raise ChainError("deployments file has no poolKey")
+        from eth_abi import encode
+        c0, c1, fee, spacing, hooks = self.dep.pool_key
+        return Web3.keccak(encode(["address", "address", "uint24", "int24", "address"],
+                                  [Web3.to_checksum_address(c0), Web3.to_checksum_address(c1), int(fee),
+                                   int(spacing), Web3.to_checksum_address(hooks)]))
+
+    def junior_oracle_observation_count(self) -> int:
+        """Populated RiskHook oracle slots for the junior/USDC pool (RiskHook.oracleState(poolId).count)."""
+        _index, count, _last_tick, _initialized = self.hook.functions.oracleState(self._junior_pool_id()).call()
+        return int(count)
+
+    def junior_pool_liquidity(self) -> int:
+        """In-range liquidity of the junior/USDC v4 pool via PoolManager.extsload (v4-core StateLibrary layout:
+        the pools mapping is at slot 6; liquidity is the uint128 at the pool state slot + 3)."""
+        state = int.from_bytes(Web3.keccak(self._junior_pool_id() + (6).to_bytes(32, "big")), "big")
+        pm = self.w3.eth.contract(address=self.dep["PoolManager"], abi=[
+            {"name": "extsload", "type": "function", "stateMutability": "view",
+             "inputs": [{"name": "slot", "type": "bytes32"}], "outputs": [{"type": "bytes32"}]}])
+        word = pm.functions.extsload((state + 3).to_bytes(32, "big")).call()
+        return int.from_bytes(word, "big") & ((1 << 128) - 1)
+
     def shop_payout(self, shop_id: str) -> str | None:
         _owner, payout, _active = self.book.functions.shops(_bytes32(shop_id)).call()
         if not payout or int(payout, 16) == 0:

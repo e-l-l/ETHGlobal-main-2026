@@ -91,6 +91,11 @@ def funded_payers(payers: set[str], funders: dict[str, list[str]], payout: str |
             s_l = s.lower()
             if s_l != ZERO_ADDRESS and s_l != a:
                 by_payer[a].add(s_l)
+    graph = {a.lower(): {s.lower() for s in srcs if s.lower() != ZERO_ADDRESS}
+             for a, srcs in funders.items()}
+    for payer, srcs in by_payer.items():
+        srcs.update(grandparent for parent in list(srcs) for grandparent in graph.get(parent, set())
+                    if grandparent != payer)
     fan_out: Counter[str] = Counter()
     for srcs in by_payer.values():
         fan_out.update(srcs)
@@ -116,9 +121,11 @@ def build_features(shop_id: str, sales: list[SaleEvent], funders: dict[str, list
             uniq[(s.tx_hash.lower(), s.log_index)] = s
     history = sorted(uniq.values(), key=lambda s: (s.timestamp, s.block_number, s.log_index))
 
+    first_seen_seconds: dict[str, int] = {}
     first_seen: dict[str, int] = {}
     for s in history:
         first_seen.setdefault(s.payer.lower(), s.timestamp // DAY)
+        first_seen_seconds.setdefault(s.payer.lower(), s.timestamp)
 
     daily_units = [0] * WINDOW_DAYS
     hours = [0] * 24
@@ -172,6 +179,7 @@ def build_features(shop_id: str, sales: list[SaleEvent], funders: dict[str, list
         hour_of_day_entropy=normalised_entropy(hours, 24),
         spike_ratio=spike(daily),
         funded_by_shop_share=(funded_units / rev_30d_units) if rev_30d_units else 0.0,
+        first_time_payers_1h=sum(1 for ts in first_seen_seconds.values() if now - 3600 <= ts <= now),
         median_payer_wallet_age_days=None,
         top_payers_hashed=hashed[:TOP_PAYERS],
         shop_label=shop_label,

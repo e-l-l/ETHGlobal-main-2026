@@ -37,9 +37,7 @@ def features_payload(features: ShopFeatures) -> dict[str, Any]:
             data[key] = [[h, _round(share, 4)] for h, share in value]
         else:
             data[key] = _round(value, 4)
-    label = data.get("shop_label")
-    if isinstance(label, str) and len(label) > MAX_LABEL_CHARS:
-        data["shop_label"] = label[:MAX_LABEL_CHARS] + "…"
+    data.pop("shop_label", None)  # Never send merchant-controlled free text to either model.
     return data
 
 
@@ -67,6 +65,10 @@ def build_critic_user(features: ShopFeatures, draft: OfferDraft) -> str:
         "features": features_payload(features),
         "draft": draft.model_dump(include=set(DRAFT_NUMBER_FIELDS)),
         "red_lines": red_lines_payload(features),
+        "skipped_checks": (["few_payers", "few_active_days", "sales_spike"]
+                           + (["payer_concentration"] if features.sales_count_30d
+                              < redlines.MIN_SALES_FOR_CONCENTRATION else [])
+                           if features.cold_start and features.proven_revenue_band else []),
     }
     return (
         "Review this draft offer. The shop's data and the draft's numbers are below; "

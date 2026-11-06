@@ -181,8 +181,9 @@ export const myQr = {
 export const worldView = {
   public: [
     { k: "Shop", v: shop.pseudonym },
-    { k: "Sale amounts", v: "15,000 · 4,500 …" },
-    { k: "Advance drawn", v: "$100 · 9:12" },
+    { k: "Sales", v: "payer addresses and amounts" },
+    { k: "Advance", v: "amount and tier" },
+    { k: "Payout and owner addresses", v: "public on registration" },
     { k: "Repayments", v: `${advance.holdback}% per sale` },
     { k: "Nullifier", v: "0x9c1e…a7" },
   ],
@@ -190,7 +191,7 @@ export const worldView = {
     { k: "Your name", v: "never collected" },
     { k: "Business facts", v: "AR · band 2 · 6m+" },
     { k: "Standing Pass", v: "1 repaid" },
-    { k: "Who paid you", v: "hashed, never shown" },
+    { k: "Pass secrets", v: "held on this device" },
     { k: "Backup key", v: "this device only" },
   ],
 };

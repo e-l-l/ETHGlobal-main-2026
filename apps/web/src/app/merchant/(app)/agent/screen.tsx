@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentLogView, AgentStatusView } from "@repo/sdk";
-import { ActionBar, Banner, Button, Card, Heading, Page, PageHead, Pill, StatGrid, Text } from "@/final";
+import { ActionBar, AgentStop, Banner, Button, Card, Heading, Page, PageHead, Pill, StatGrid, Text } from "@/final";
 import { formatMoney } from "@/lib/format";
 import { isMock } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
@@ -74,6 +74,8 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
           { label: "Held back", value: skipped, sub: "declined, waited or paused" },
         ]}
       />
+      <Text>Remaining allowance: {status.remainingAllowance === undefined ? "Unavailable" : formatMoney(status.remainingAllowance)} · Expiry: {status.expiry ? new Date(status.expiry * 1000).toLocaleDateString() : "unavailable"}</Text>
+      {status.active ? <AgentStop onDone={reload} /> : null}
       {!isMock && status.active ? <RunAgentNow onDone={reload} /> : null}
       <Heading level={2} size="h2" className="mt-2">
         Decisions

@@ -10,6 +10,7 @@ import {
   Card,
   CheckIcon,
   CopyHash,
+  DemoBadge,
   Heading,
   Keypad,
   KeyValue,
@@ -116,6 +117,7 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
     <>
       <PayHeader lang={lang} />
       <Page width="narrow">
+        <DemoBadge>Faucet-funded test dollars · test USDC</DemoBadge>
         <WorldMark kind="pub" show={wv}>
           <WaveBand>
             <Label className="text-honeydew/80">{t.verified}</Label>

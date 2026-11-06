@@ -12,6 +12,7 @@ import {
   Label,
   LockIcon,
   PageHead,
+  DemoBadge,
   Pill,
   ShieldIcon,
   Text,
@@ -70,6 +71,7 @@ export function ProveScreen({ lang }: { lang: Lang }) {
     <>
       <OnboardingHeader lang={lang} step={1} />
       <Page width="narrow">
+        <DemoBadge>Demo attestor · demo seller portal</DemoBadge>
         <PageHead back={routes.welcome} backLabel={c.welcome.back} title={t.title}>
           {t.body}
         </PageHead>

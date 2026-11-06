@@ -252,7 +252,7 @@ export function FinalGallery() {
             </Spec>
             <Spec name="Token badge · app icons">
               <div className="flex items-center gap-4">
-                <TokenBadge size={44} label="JAR-J" />
+                <TokenBadge size={44} label="DRIP" />
                 <AppIcon size={64} />
                 <AppIcon size={64} tone="charcoal" />
               </div>

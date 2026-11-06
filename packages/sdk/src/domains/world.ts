@@ -11,7 +11,7 @@ const PUBLIC_BY_STEP: Record<WorldStep, (keyof typeof ROW)[]> = {
   pass: ["pass"],
   shop: ["shop"],
   agent: ["shop", "mandate"],
-  advance: ["shop", "sales", "drawn", "repayments", "nullifier"],
+  advance: ["shop", "addresses", "sales", "drawn", "repayments", "nullifier"],
   sale: ["shop", "sales", "repayments"],
   repaid: ["shop", "repayments", "standing"],
   "fresh-shop": ["newShop", "nullifier"],
@@ -20,12 +20,13 @@ const ROW = {
   pass: { k: "Business Pass", v: "a commitment, no attributes" },
   shop: { k: "Shop", v: S.shop.pseudonym },
   mandate: { k: "Agent mandate", v: "limits + an agent key" },
+  addresses: M.worldView.public[3]!,
   sales: M.worldView.public[1]!,
   drawn: M.worldView.public[2]!,
-  repayments: M.worldView.public[3]!,
-  nullifier: M.worldView.public[4]!,
+  repayments: M.worldView.public[4]!,
+  nullifier: M.worldView.public[5]!,
   standing: { k: "Standing Pass", v: "a new commitment" },
-  newShop: { k: "Shop", v: "a new pseudonym, unlinked" },
+  newShop: { k: "Shop", v: "a new pseudonym; links may be inferred" },
 } satisfies Record<string, KV>;
 
 export function worldDomain(ctx: Ctx) {
@@ -49,9 +50,9 @@ export function worldDomain(ctx: Ctx) {
         try {
           const home = await merchantDomain(ctx).home();
           shop = home.shop;
-          rows.sales = { k: "Sale amounts", v: home.sales.slice(0, 2).map((x) => x.total.toLocaleString("en-US")).join(" · ") + (home.sales.length > 2 ? " …" : "") || "none yet" };
+          rows.sales = { k: "Sales", v: "payer addresses and amounts are public" };
           if (home.advance) {
-            rows.drawn = { k: "Advance drawn", v: `$${home.advance.drawn} · ${home.advance.drawnAt.split(" ").pop() ?? ""}` };
+            rows.drawn = { k: "Advance drawn", v: `$${home.advance.drawn} · tier is public` };
             rows.repayments = { k: "Repayments", v: `${home.advance.holdback}% per sale` };
           }
         } catch {

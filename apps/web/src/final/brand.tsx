@@ -84,7 +84,7 @@ export function Lockup({ size = 32, on = "light" }: { size?: number; on?: "light
   );
 }
 
-/** Token badge: drop in a Hunter coin. JAR-J, wallet lists, onchain contexts. */
+/** Token badge: drop in a Hunter coin. DRIP, wallet lists, onchain contexts. */
 export function TokenBadge({ size = 40, label }: { size?: number; label?: string }) {
   return (
     <span
