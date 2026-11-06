@@ -1,5 +1,5 @@
 /** COPIED from apps/web/src/lib/mock/lend.ts (imports rewritten, values untouched). */
-import type { LossTier } from "../viewmodels.js";
+import type { LossTier, RiskPanelView, WaterfallView } from "../viewmodels.js";
 import { routes } from "./routes.js";
 
 /**
@@ -193,3 +193,115 @@ export const lenderLinks = [
 ] as const;
 
 export type LenderKey = (typeof lenderLinks)[number]["key"];
+
+/* ------------------------------------------------------------------------------------------------------------------
+ * Lender risk panel + live loss waterfall (SDK-only mock: apps/web reads it through `lender.riskPanel()` /
+ * `lender.waterfall()`). Every overlapping number matches VAULT / TIER_CAPS above (test/lender-risk.test.ts checks):
+ * junior $42,000 + reserve $8,400 against $248,000 outstanding = 20.3% coverage; $1,100 written off; 23 write-offs
+ * of 1,284 advances = the "1.8%" count rate on Earn; JAR-J $0.982 spot, $0.986 TWAP against a $1.000 book.
+ * ---------------------------------------------------------------------------------------------------------------- */
+
+const SEPOLIA_SCAN = "https://sepolia.etherscan.io/address/";
+const contract = (label: string, address: string) => ({ label, address, href: `${SEPOLIA_SCAN}${address}` });
+
+export const RISK_PANEL: RiskPanelView = {
+  defaultRate: {
+    value: "0.2%",
+    pct: 0.18,
+    lost: "$1,100",
+    advanced: "$612,000",
+    writeOffs: 23,
+    advances: 1284,
+    note: "$1,100 of $612,000 principal lost · 23 of 1,284 advances written off (1.8% by count)",
+    tone: "ok",
+  },
+  repayment: {
+    open: 1061,
+    buckets: [
+      { key: "on_track", label: "On track", rule: "a repaying sale in the last 7 days", count: 1012, principal: "$236,900", tone: "ok" },
+      { key: "slow", label: "Slow", rule: "last repaying sale 7–30 days ago", count: 41, principal: "$9,300", tone: "watch" },
+      { key: "quiet", label: "30+ days quiet", rule: "no repaying sale for 30 days: write-off eligible", count: 8, principal: "$1,800", tone: "risk" },
+    ],
+    eligibleNow: 8,
+    note: "Counted from each advance's last repaying sale, or its draw if it has none yet. The contract lets anyone write an advance off after 30 days without a qualifying sale: 8 can be written off now.",
+  },
+  cohort: {
+    points: [
+      { day: 7, pct: 21, value: "21%", advances: 1190 },
+      { day: 14, pct: 43, value: "43%", advances: 1105 },
+      { day: 30, pct: 78, value: "78%", advances: 940 },
+    ],
+    enough: true,
+    note: "Share of principal repaid by each day since draw. Only advances at least that old count (day 7: 1190 · day 14: 1105 · day 30: 940).",
+  },
+  coverage: {
+    value: VAULT.coverage,
+    pct: 20.3,
+    cushion: "$50,400",
+    outstanding: VAULT.outstanding,
+    note: "$50,400 of junior and reserve against $248,000 lent out.",
+    tone: "ok",
+  },
+  market: {
+    spot: VAULT.juniorPrice,
+    twap1h: VAULT.juniorTwap,
+    twap24h: "$0.998",
+    book: "$1.000",
+    vsBook: "1.4% under book",
+    change1hVs24h: "−1.2%",
+    ratio: 0.988,
+    trigger: { threshold: 0.9, state: "armed", note: "Armed: it fires if the 1h price drops under 0.90× the 24h price." },
+    read: "Traders price JAR-J 1.4% under its book value: they expect losses beyond the $1,100 written off so far.",
+    tone: "ok",
+  },
+  agent: {
+    tierCaps: [
+      { tier: 0, cap: "$50", floor: "$25", atFloor: false },
+      { tier: 1, cap: "$100", floor: "$50", atFloor: false },
+      { tier: 2, cap: "$250", floor: "$100", atFloor: false },
+      { tier: 3, cap: "$250", floor: "$100", was: "$500", atFloor: false },
+    ],
+    recentlyLowered: true,
+    lastChange: "Lowered today, 2:41 pm",
+    lastCheck: "today, 2:41 pm · junior twap drop",
+    triggers: ["junior_twap_drop"],
+    from: "api",
+  },
+  contracts: [
+    contract("AdvanceBook", "0x873bb34ad35a66947dbd2f9482d15ba5d400d8db"),
+    contract("Senior vault", "0x51892eb237ae06e85b59007270dc28142a69ff95"),
+    contract("Junior vault (JAR-J)", "0x30911a69b90523fa53f2dd3e8096ac3096c61a90"),
+    contract("RiskHook", "0x216ec669911e5e042c73de8f593397a51e00d044"),
+  ],
+  approximations: [],
+  source: "mock",
+};
+
+export const WATERFALL: WaterfallView = {
+  layers: [
+    {
+      key: "jar",
+      title: "Shops' holdback",
+      description: "Fees still owed on open advances, paid from future sales. Not set aside: an estimate, and it only counts while shops keep selling.",
+      amount: "$37,200",
+      usd: 37200,
+      estimated: true,
+    },
+    { key: "junior", title: "Junior (JAR-J)", description: "Cash in the junior vault. Takes the first write-off.", amount: VAULT.junior, usd: 42000, estimated: false },
+    { key: "reserve", title: "Reserve", description: "Fees and hook fees held back. Pays what junior can't.", amount: VAULT.reserve, usd: 8400, estimated: false },
+    {
+      key: "senior",
+      title: "Senior vault",
+      description: "Lenders. Loses only after junior and the reserve run out.",
+      amount: VAULT.senior,
+      usd: 310000,
+      estimated: false,
+      yours: `Yours ${VAULT.positionValue}`,
+    },
+  ],
+  protection: "$50,400",
+  protectionUsd: 50400,
+  headline: "$50,400 of protection ahead of every senior dollar",
+  sub: "Junior $42,000 + reserve $8,400: 20.3% of the $248,000 lent out. The shops' holdback is not counted.",
+  source: "mock",
+};

@@ -23,13 +23,14 @@ import {
   Text,
   TokenBadge,
 } from "@/final";
-import type { EarnView, JuniorView, PositionView, ProtocolView, RiskView } from "@repo/sdk";
+import type { EarnView, JuniorView, PositionView, ProtocolView, RiskPanelView, RiskView, WaterfallView } from "@repo/sdk";
 import { isMock } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
 import { LendShell, Pub } from "./shell";
+import { LiveWaterfall, MarketView, RiskInPublic, RiskLoading } from "./risk";
 import { reasonLines, vaultNumbers } from "./vault";
 
 const pct = (a: number, b: number) => `${(((b - a) / b) * 100).toFixed(1)}%`;
@@ -37,8 +38,9 @@ const usd2 = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigit
 const price = (v: number) => `$${v.toFixed(3)}`;
 
 /* ------------------------------------------------------------------ L01 Earn */
-export function EarnScreen({ initial }: { initial: EarnView | null }) {
+export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null; initialRisk?: { panel: RiskPanelView; waterfall: WaterfallView } | null }) {
   const { data, error } = useMRA(q.earn, { initial });
+  const risk = useMRA(q.earnRisk, { initial: initialRisk ?? null });
   if (!data) return <MRAState error={error} />;
   const VAULT = data.vault;
   const wroteOff = VAULT.writtenOff !== "$0" && VAULT.writtenOff !== "—";
@@ -88,12 +90,17 @@ export function EarnScreen({ initial }: { initial: EarnView | null }) {
           ) : wroteOff ? (
             <Banner>Written off so far: {VAULT.writtenOff}. Junior and the reserve absorb a loss before senior does.</Banner>
           ) : null}
-          <Card>
-            <Label>Who takes a loss first</Label>
-            <LossWaterfall you="senior" />
-          </Card>
+          {risk.data ? (
+            <LiveWaterfall waterfall={risk.data.waterfall} you="senior" />
+          ) : (
+            <Card>
+              <Label>Who takes a loss first</Label>
+              <LossWaterfall you="senior" />
+            </Card>
+          )}
         </Stack>
       </Columns>
+      {risk.data ? <RiskInPublic panel={risk.data.panel} /> : <RiskLoading what="Risk, in public" error={risk.error} />}
     </LendShell>
   );
 }
@@ -167,8 +174,9 @@ export function PositionScreen({ initial }: { initial: PositionView | null }) {
 }
 
 /* ---------------------------------------------------------------- J01 Junior */
-export function JuniorScreen({ initial }: { initial: JuniorView | null }) {
+export function JuniorScreen({ initial, initialPanel }: { initial: JuniorView | null; initialPanel?: RiskPanelView | null }) {
   const { data, error } = useMRA(q.junior, { initial });
+  const panel = useMRA(q.riskPanel, { initial: initialPanel ?? null });
   if (!data) return <MRAState error={error} />;
   const { vault, juniorSeries, writeOffIndex } = data;
   const VAULT = vaultNumbers(vault);
@@ -225,6 +233,7 @@ export function JuniorScreen({ initial }: { initial: JuniorView | null }) {
               { label: "Pool", value: isMock ? "$42k" : vault.junior },
             ]}
           />
+          {panel.data ? <MarketView panel={panel.data} /> : <RiskLoading what="What the market thinks" error={panel.error} />}
         </Stack>
         <Card>
           <Label>Who takes a loss first</Label>

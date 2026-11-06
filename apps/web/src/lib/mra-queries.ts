@@ -46,6 +46,12 @@ export const q = {
 
   /* lenders and public */
   earn: (m: MRA) => m.lender.overview(), // L01
+  /** L01 "Risk, in public" + the live loss waterfall: one shared public read. */
+  earnRisk: async (m: MRA) => {
+    const [panel, waterfall] = await Promise.all([m.lender.riskPanel(), m.lender.waterfall()]);
+    return { panel, waterfall };
+  },
+  riskPanel: (m: MRA) => m.lender.riskPanel(), // J01 market view
   deposit: (m: MRA) => m.lender.depositView(), // L02
   position: (m: MRA) => m.lender.position(), // L03
   junior: (m: MRA) => m.lender.junior.overview(), // J01

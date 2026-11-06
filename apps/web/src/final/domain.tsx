@@ -50,33 +50,53 @@ export function SaleRow({ amount, time, item }: { amount: number; time: string; 
 
 /* -------------------------------------------------------------- Waterfall */
 
-/** Who absorbs a loss, top first. The viewer's layer fills Hunter. */
-export function LossWaterfall({ you }: { you: "jar" | "junior" | "reserve" | "senior" }) {
+export type LossLayerKey = "jar" | "junior" | "reserve" | "senior";
+
+/** Live numbers for one layer (from the SDK's `lender.waterfall()`). Title / description override the defaults. */
+export type LossLayerAmount = { key: LossLayerKey; amount: string; title?: string; description?: string; estimated?: boolean; yours?: string };
+
+/**
+ * Who absorbs a loss, top first. The viewer's layer fills Hunter. Pass `layers` to show live amounts per layer
+ * (an estimated one is tagged "est."); without it, the static version renders exactly as before.
+ */
+export function LossWaterfall({ you, layers }: { you: LossLayerKey; layers?: readonly LossLayerAmount[] }) {
   const tiers = [
     { k: "jar", t: "Shop's jar", d: "First 10% of every sale" },
     { k: "junior", t: "Junior (JAR-J)", d: "First loss for a 30% fee share" },
     { k: "reserve", t: "Reserve", d: "Protocol buffer" },
     { k: "senior", t: "Senior vault", d: "Lenders, paid last to lose" },
   ] as const;
+  const live = new Map(layers?.map((l) => [l.key, l]));
   return (
     <ol className="m-0 flex list-none flex-col p-0">
-      {tiers.map((t, i) => (
-        <li key={t.k} className="flex flex-col">
-          {i > 0 ? <span aria-hidden className="grid h-5.5 place-items-center text-charcoal-muted"><ChevronRightIcon size={16} className="rotate-90" /></span> : null}
-          <div
-            className={cn(
-              "flex items-center gap-3 rounded-xl border px-4 py-3.5",
-              t.k === you ? "border-hunter bg-hunter text-canvas" : "border-hairline bg-surface text-charcoal",
-            )}
-          >
-            <span className={cn("font-ledger text-tag font-semibold", t.k === you ? "text-lime" : "text-charcoal-muted")}>0{i + 1}</span>
-            <div className="flex min-w-0 flex-col">
-              <span className="font-body text-read font-semibold">{t.t}{t.k === you ? " · you" : ""}</span>
-              <span className={cn("font-body text-note", t.k === you ? "text-honeydew/85" : "text-charcoal-muted")}>{t.d}</span>
+      {tiers.map((t, i) => {
+        const l = live.get(t.k);
+        const mine = t.k === you;
+        return (
+          <li key={t.k} className="flex flex-col">
+            {i > 0 ? <span aria-hidden className="grid h-5.5 place-items-center text-charcoal-muted"><ChevronRightIcon size={16} className="rotate-90" /></span> : null}
+            <div
+              className={cn(
+                "flex items-center gap-3 rounded-xl border px-4 py-3.5",
+                mine ? "border-hunter bg-hunter text-canvas" : "border-hairline bg-surface text-charcoal",
+              )}
+            >
+              <span className={cn("font-ledger text-tag font-semibold", l && "self-start pt-0.5", mine ? "text-lime" : "text-charcoal-muted")}>0{i + 1}</span>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <span className="font-body text-read font-semibold">{l?.title ?? t.t}{mine ? " · you" : ""}</span>
+                <span className={cn("font-body text-note", mine ? "text-honeydew/85" : "text-charcoal-muted")}>{l?.description ?? t.d}</span>
+              </div>
+              {l ? (
+                <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+                  <span className={cn("font-display text-h2 tabular-nums", mine ? "text-lime" : "text-charcoal")}>{l.amount}</span>
+                  {l.estimated ? <span className={cn("font-ledger text-tag font-semibold uppercase", mine ? "text-honeydew/80" : "text-charcoal-muted")}>est.</span> : null}
+                  {l.yours ? <span className={cn("font-ledger text-ledger", mine ? "text-honeydew/85" : "text-charcoal-soft")}>{l.yours}</span> : null}
+                </div>
+              ) : null}
             </div>
-          </div>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ol>
   );
 }

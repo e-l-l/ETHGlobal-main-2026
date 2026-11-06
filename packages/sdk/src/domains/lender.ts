@@ -1,5 +1,6 @@
 import { encodeAbiParameters, keccak256, maxUint256, parseAbiItem, type Hex } from "viem";
 import { erc20Abi, riskHookAbi, trancheVaultAbi } from "../abi/index.js";
+import type { RiskStatus } from "../api/types.js";
 import type { Addr, PositionSnapshot, ProtocolSnapshot, Receipt } from "../chain/chain.js";
 import type { Ctx } from "../context.js";
 import { ChainError, ConfigError, MRAError } from "../errors.js";
@@ -13,6 +14,7 @@ import type {
   LossTier,
   PositionRowVM,
   PositionView,
+  RiskPanelView,
   SwapResult,
   SwapSide,
   TradeRowVM,
@@ -20,7 +22,9 @@ import type {
   TxResult,
   TxStep,
   VaultVM,
+  WaterfallView,
 } from "../viewmodels.js";
+import { gatherRiskRaw, riskPanelFrom, waterfallFrom, type RiskRaw } from "./lender-risk.js";
 import { ago, clock, coveragePct, coverageStr, int, money, num, pctStr, shortDate, toBase, usd } from "./util.js";
 
 const DAY = 86_400;
@@ -381,6 +385,26 @@ export function lenderDomain(ctx: Ctx) {
   const isMock = ctx.mode === "mock";
   const mockVault = (): VaultVM => ({ ...L.VAULT });
 
+  /** One public read shared by riskPanel() and waterfall() when a screen asks for both at once (15 s). */
+  let riskRead: { at: number; p: Promise<RiskRaw> } | undefined;
+  const RISK_TTL_MS = 15_000;
+  function riskRaw(): Promise<RiskRaw> {
+    if (riskRead && Date.now() - riskRead.at < RISK_TTL_MS) return riskRead.p;
+    const chain = ctx.chain();
+    let api: { riskStatus(): Promise<RiskStatus> } | undefined;
+    try {
+      api = ctx.cfg.apiUrl ? ctx.api() : undefined;
+    } catch {
+      api = undefined;
+    }
+    const p = gatherRiskRaw(chain, { api, now: ctx.now(), account: (chain.walletAddress() ?? ctx.cfg.account) as Addr | undefined });
+    riskRead = { at: Date.now(), p };
+    p.catch(() => {
+      if (riskRead?.p === p) riskRead = undefined;
+    });
+    return p;
+  }
+
   async function move(kind: "deposit" | "withdraw", tranche: Tranche, amount: number, onStep?: (s: TxStep) => void): Promise<TxResult> {
     if (!(amount > 0)) throw new MRAError("invalid_request", "amount must be positive");
     const label = tranche === "senior" ? "sUSD" : "jUSD";
@@ -469,6 +493,20 @@ export function lenderDomain(ctx: Ctx) {
       const account = (ctx.chain().walletAddress() ?? ctx.cfg.account) as Addr | undefined;
       const [rows, { series }] = await Promise.all([account ? positionRows(ctx, account) : Promise.resolve([]), shareSeries(ctx, "senior", usd(s.snap.seniorSharePrice), s.writeOffBlocks)]);
       return { vault: s.vault, positionRows: rows, positionActivity: rows.map((r) => ({ when: r.when, what: r.action, amount: r.amount })), seniorSeries: series, source: "chain" };
+    },
+    /**
+     * L01 / J01 "Risk, in public": default rate, repayment buckets, cohort curve, coverage, the market's view of JAR-J
+     * and the Risk agent's caps. Public chain data only (plus the agents API's public /risk/status when it answers).
+     * Aggregate: no shop id or pseudonym anywhere in the result.
+     */
+    async riskPanel(): Promise<RiskPanelView> {
+      if (isMock) return ctx.mocked(L.RISK_PANEL);
+      return riskPanelFrom(await riskRaw());
+    },
+    /** L01 "Who absorbs a loss first", with live amounts per layer, in the order a loss hits them. */
+    async waterfall(): Promise<WaterfallView> {
+      if (isMock) return ctx.mocked(L.WATERFALL);
+      return waterfallFrom(await riskRaw());
     },
     junior,
     /** Relative time helper for "x ago" labels in lender tables. */

@@ -40,6 +40,8 @@ export type AdvanceOnchain = {
   principal: bigint;
   totalOwed: bigint;
   repaid: bigint;
+  /** Principal returned so far (the rest of `repaid` was fee). Optional so older fakes still type-check. */
+  principalRepaid?: bigint;
   holdbackBps: number;
   tier: number;
   lastSaleAt: bigint;
@@ -336,6 +338,7 @@ export function createChain(opts: ChainOptions): Chain {
         principal: a.principal,
         totalOwed: a.totalOwed,
         repaid: a.repaid,
+        principalRepaid: a.principalRepaid,
         holdbackBps: Number(a.holdbackBps),
         tier: Number(a.tier),
         lastSaleAt: a.lastSaleAt,

@@ -19,6 +19,7 @@ export { createChain, isTransientWriteError, advanceStatusName, type Chain, type
 export { DEPLOYMENTS, deploymentFor, parseDeployment, type Deployment } from "./chain/deployments.js";
 export { poolSwapTestAbi, poolIdOf, poolKeyOf, poolSlots, decodeSlot0, decodeBalanceDelta, priceOf, priceLimit, parseSwapReceipt, type PoolKey, type Slot0 } from "./chain/swap.js";
 export type { JuniorSwapOptions } from "./domains/lender.js";
+export { riskPanelFrom, waterfallFrom, gatherRiskRaw, TWAP_TRIGGER, type RiskRaw } from "./domains/lender-risk.js";
 export * as abi from "./abi/index.js";
 
 // Injectable adapters

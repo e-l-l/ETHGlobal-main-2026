@@ -86,10 +86,10 @@ Machine-readable as `SCREENS` (`src/screens.ts`). View-model types are in `src/v
 | C02 | Paid | `/pay/corner-kiosk/paid` | `result of pay.pay(...)` | `PayReceipt` |
 | S01 | Portal login | `/portal/login` | — (demo-portal app; seeded accounts) | — |
 | S02 | Portal dashboard | `/portal` | — (the page the Reclaim proof reads) | — |
-| L01 | Earn | `/earn` | `lender.overview()` | `EarnView` |
+| L01 | Earn | `/earn` | `lender.overview()` + `lender.riskPanel()` + `lender.waterfall()` | `EarnView`, `RiskPanelView`, `WaterfallView` |
 | L02 | Deposit | `/earn/deposit` | `lender.depositView(), lender.deposit(amount), lender.withdraw(amount)` | `DepositView, TxResult` |
 | L03 | Position | `/earn/position` | `lender.position()` | `PositionView` |
-| J01 | Junior | `/junior` | `lender.junior.overview()` | `JuniorView` |
+| J01 | Junior | `/junior` | `lender.junior.overview()` + `lender.riskPanel()` (`market`) | `JuniorView`, `RiskPanelView` |
 | J02 | Mint | `/junior/mint` | `lender.junior.mintView(), lender.junior.deposit / withdraw` | `DepositView, TxResult` |
 | J03 | Trade | `/junior/trade` | `lender.junior.trade()`, `lender.junior.swap({ side, amount, slippageBps })` (real Uniswap v4 swap via PoolSwapTest; mock simulates) | `TradeView, SwapResult` |
 | P02 | Protocol | `/protocol` | `protocol.stats()` | `ProtocolView` |
@@ -219,6 +219,7 @@ Verified: proofs from this code path (Node WASM, the browser main thread, and th
 | Lender deposit / withdraw / mint / redeem | Simulated steps | **Real** wallet transactions |
 | Junior swap (J03 buy/sell button) | Not provided | **Not implemented.** The view is real; the swap needs a v4 router. |
 | Protocol stats / explorer | apps/web values | **Real chain** logs |
+| Lender risk panel / loss waterfall (`lender.riskPanel()`, `lender.waterfall()`) | SDK mock (`RISK_PANEL`, `WATERFALL`), consistent with the VAULT numbers | **Real chain**, aggregate only: `AdvanceOpened` / `RepaymentSplit` / `AdvanceRepaid` / `AdvanceWrittenOff` / `LimitsChanged` logs, `getAdvance` for open advances, `defaultWindow`, vault totals, reserve, RiskHook `consult` (1h, 24h) and pool `slot0`; `/risk/status` when it answers. The shops' holdback layer is an estimate (fees still owed), labelled as such. |
 | Risk | apps/web values | **Real** `GET /risk/status` + `LimitsChanged` logs |
 | World view | apps/web values (step-aware) | From this device's vault and the real chain |
 | Recovery | In-memory backup | **Real** `/recovery/verify` + `PUT` / `GET /recovery/backup` (mock IDKit payload unless `idkit()` is injected) |

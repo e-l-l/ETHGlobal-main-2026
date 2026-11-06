@@ -295,6 +295,88 @@ export type TradeRowVM = { id: string; time: string; side: string; amount: strin
 
 /** L01 Earn. */
 export type EarnView = { vault: VaultVM; feeSplit: KV[]; waterfall: [LossTier, LossTier, LossTier]; seniorSeries: number[]; source: Source };
+/* ---------------------------------------------- lender risk panel (L01 / J01) */
+
+/** A tone the screens map to their pills: ok (calm), watch (look at it), risk (act), none (no data yet). */
+export type RiskTone = "ok" | "watch" | "risk" | "none";
+
+/** Open advances by how long since their last repaying sale. Aggregate only: counts and principal, no shop ids. */
+export type RepaymentBucketVM = {
+  key: "on_track" | "slow" | "quiet";
+  label: string;
+  /** "a repaying sale in the last 7 days" etc. */
+  rule: string;
+  count: number;
+  /** Unrepaid principal in this bucket. */
+  principal: string;
+  tone: RiskTone;
+};
+
+/** % of principal repaid by day N since draw, over advances at least N days old. `pct` null = no advance is old enough. */
+export type CohortPointVM = { day: 7 | 14 | 30; pct: number | null; value: string; advances: number };
+
+export type RiskPanelView = {
+  /** Principal lost to write-offs ÷ total principal ever advanced. */
+  defaultRate: { value: string; pct: number; lost: string; advanced: string; writeOffs: number; advances: number; note: string; tone: RiskTone };
+  repayment: { open: number; buckets: [RepaymentBucketVM, RepaymentBucketVM, RepaymentBucketVM]; eligibleNow: number; note: string };
+  cohort: { points: [CohortPointVM, CohortPointVM, CohortPointVM]; enough: boolean; note: string };
+  /** (reserve + junior assets) ÷ outstanding. "—" with nothing outstanding. */
+  coverage: { value: string; pct: number | null; cushion: string; outstanding: string; note: string; tone: RiskTone };
+  /** The junior token's price on the RiskHook pool: what the market thinks. */
+  market: {
+    spot: string;
+    twap1h: string;
+    twap24h: string;
+    book: string;
+    /** "1.4% under book" / "at book" / "—". */
+    vsBook: string;
+    /** 1h TWAP vs 24h TWAP, "−1.2%" ("—" when the oracle has under 24h of history). */
+    change1hVs24h: string;
+    ratio: number | null;
+    trigger: { threshold: number; state: "armed" | "fired" | "not_armed"; note: string };
+    /** One plain sentence: what the price says. */
+    read: string;
+    tone: RiskTone;
+  };
+  /** The Risk agent: caps vs floors, and whether it lowered them recently. */
+  agent: {
+    tierCaps: { tier: number; cap: string; floor: string; was?: string; atFloor: boolean }[];
+    recentlyLowered: boolean;
+    lastChange: string;
+    lastCheck: string;
+    triggers: string[];
+    from: "api" | "chain";
+  };
+  /** Contracts anyone can check these numbers against. `href` only on public networks. */
+  contracts: { label: string; address: string; href?: string }[];
+  /** Plain notes on what is estimated and why. */
+  approximations: string[];
+  source: Source;
+};
+
+/** One layer of the loss waterfall, in the order a loss hits it. */
+export type WaterfallLayerVM = {
+  key: "jar" | "junior" | "reserve" | "senior";
+  title: string;
+  description: string;
+  amount: string;
+  usd: number;
+  /** True when the amount is an estimate rather than cash held onchain. */
+  estimated: boolean;
+  /** The viewer's own stake in this layer ("Your $2,541.40"), when there is one. */
+  yours?: string;
+};
+
+export type WaterfallView = {
+  layers: [WaterfallLayerVM, WaterfallLayerVM, WaterfallLayerVM, WaterfallLayerVM];
+  /** Cash that absorbs a loss before any senior dollar: junior + reserve. */
+  protection: string;
+  protectionUsd: number;
+  headline: string;
+  sub: string;
+  source: Source;
+};
+
 /** L02 Deposit / J02 Mint. */
 export type DepositView = { vault: VaultVM; source: Source };
 /** L03 Position. */
