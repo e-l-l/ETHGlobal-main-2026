@@ -62,7 +62,7 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
               ]}
             />
             <Text size="note" tone="muted">
-              No late fee if you pay on time. Pay early, pay less.
+              {advance.feeRule} Pay early, pay less.
             </Text>
           </Card>
           <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-2">

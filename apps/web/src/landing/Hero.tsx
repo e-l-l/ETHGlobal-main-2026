@@ -12,7 +12,7 @@ const NAV = [
 
 const PROMISES = [
   "0.5% a week, never more than 3%",
-  "No penalty for slow weeks",
+  "A slow week just pays back less",
   "Your agent, your limits",
 ];
 

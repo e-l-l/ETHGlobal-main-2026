@@ -454,7 +454,7 @@ export function MintScreen({ initial }: { initial: DepositView | null }) {
   ];
   return (
     <LendShell>
-      <PageHead back={routes.dripcoin} backLabel="DripCoin" label="DripCoin · DRIP" title="Mint or redeem DRIP">
+      <PageHead back={routes.dripcoin} backLabel="DripCoin" label="DripCoin (DRIP)" title="Mint or redeem DRIP">
         Mint at book value with USDC, or redeem DRIP back to USDC.
       </PageHead>
       <Columns ratio="3:2">

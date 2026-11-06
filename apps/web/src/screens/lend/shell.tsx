@@ -49,6 +49,13 @@ const ExplorerTabIcon = () => (
   </Svg>
 );
 
+const VerifyTabIcon = () => (
+  <Svg>
+    <path d="M12 3 5 6v5c0 4.5 3 8.5 7 10 4-1.5 7-5.5 7-10V6z" />
+    <path d="m9 12 2 2 4-4" />
+  </Svg>
+);
+
 const SimulatorTabIcon = () => (
   <Svg>
     <circle cx="12" cy="12" r="9" />
@@ -64,6 +71,7 @@ export const LEND_NAV: NavItem[] = [
   { key: "risk", label: "Risk", href: routes.risk, icon: <RiskTabIcon /> },
   { key: "explorer", label: "Explorer", href: routes.explorer, icon: <ExplorerTabIcon /> },
   { key: "simulator", label: "Simulator", href: routes.simulator, icon: <SimulatorTabIcon /> },
+  { key: "proof", label: "Verify", href: routes.proof, icon: <VerifyTabIcon /> },
 ];
 
 const burnerAddress = async (m: { wallet: { address(): string | undefined } }) => m.wallet.address() ?? null;

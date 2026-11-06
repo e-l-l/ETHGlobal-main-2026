@@ -102,7 +102,7 @@ export function AdvanceDetailsScreen({ initial, demo }: { initial: AdvanceDetail
             <Text size="note" tone={behind ? undefined : "muted"} className={behind ? "text-caution" : undefined}>
               {behind
                 ? "While you are behind, the fee runs at 1% a week. Catch up and it drops back to 0.5%."
-                : `No late fee if you pay on time.${usual && etaKnown(usual.days) ? ` At your usual sales this is paid off in about ${usual.days} ${usual.days === 1 ? "day" : "days"}.` : ""}`}
+                : `Keep up the weekly minimum and the fee stays 0.5% a week.${usual && etaKnown(usual.days) ? ` At your usual sales this is paid off in about ${usual.days} ${usual.days === 1 ? "day" : "days"}.` : ""}`}
             </Text>
           </Card>
 
@@ -121,8 +121,7 @@ export function AdvanceDetailsScreen({ initial, demo }: { initial: AdvanceDetail
           ) : null}
 
           <PlainWords className="lg:p-4">
-            <p className="m-0">{advance.feeRule}</p>
-            <p className="m-0 pt-2">The minimum is 1% of the advance plus the fee, every 7 days. Your sales usually cover it on their own.</p>
+            <p className="m-0">The minimum is 1% of the advance plus the fee, every 7 days. Your sales usually cover it on their own.</p>
             <p className="m-0 pt-2 text-note">≈{formatPercent(Math.round(advance.annualizedCostPercent))}/yr maximum (simple, not an APR).</p>
           </PlainWords>
         </Stack>

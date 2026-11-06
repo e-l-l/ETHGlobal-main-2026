@@ -80,10 +80,17 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
             </Card>
             <Card>
               <Label>Late fee</Label>
-              <span className={`font-display text-h1 tabular-nums ${advance.lateFee > 0 ? "text-caution" : "text-fern"}`}>{formatMoney(advance.lateFee).replace(/\.00$/, "")}</span>
-              <Text size="note" tone="muted">
-                {advance.lateFee > 0 ? "goes to the safety reserve" : "you kept up"}
-              </Text>
+              {advance.lateFee === 0 ? (
+                <>
+                  <span className="font-display text-h1 tabular-nums text-fern">$0</span>
+                  <Text size="note" tone="muted">On time: no late fee.</Text>
+                </>
+              ) : (
+                <>
+                  <span className="font-display text-h1 tabular-nums text-caution">{formatMoney(advance.lateFee)}</span>
+                  <Text size="note" tone="muted">Late fee {formatMoney(advance.lateFee)}{advance.lateFeeHint ? `. ${advance.lateFeeHint}` : ", paid to the safety reserve."}</Text>
+                </>
+              )}
             </Card>
             <Card>
               <Label>New estimate</Label>
@@ -106,7 +113,7 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
           <CheckList
             items={[
               { text: `You pay back ${formatPercent(advance.holdback)} of what you take in. Take in less, pay less.` },
-              { text: `No penalty and no late fee. The fee keeps adding 0.5% a week but stops at ${formatPercent(advance.maxFeeBps / 100)} (${formatMoney((advance.drawn * advance.maxFeeBps) / 10_000)}).` },
+              { text: `On time, no late fee. The fee keeps adding 0.5% a week but stops at ${formatPercent(advance.maxFeeBps / 100)} (${formatMoney((advance.drawn * advance.maxFeeBps) / 10_000)}).` },
               { text: `The weekly minimum is 1% of the advance plus the fee. ${advance.feeRule}`, caution: true },
             ]}
           />

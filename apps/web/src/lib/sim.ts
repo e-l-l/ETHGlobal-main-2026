@@ -54,6 +54,7 @@ export type StepKind =
   | "ban"
   | "refused"
   | "world_view"
+  | "unlock"
   | "info"
   | "error"
   | (string & {});
@@ -98,8 +99,8 @@ export const ARCHETYPES: Archetype[] = [
   { id: "honest_kiosk", name: "Honest kiosk", city: "Buenos Aires", blurb: "Steady sales every day.", expected: "Repays on time and claims a Standing Pass." },
   { id: "slow_week", name: "Slow week", city: "Lagos", blurb: "Sales dip for a week, then recover.", expected: "Repayment slows. Still on time, no penalty." },
   { id: "wash_ring", name: "Wash ring", city: "", blurb: "Circular funding and very few real payers.", expected: "Red lines fire or the Critic agent rejects it." },
-  { id: "defaulter", name: "Defaulter", city: "", blurb: "Sales stop right after drawing.", expected: "Write-off, World ID ban, then a refused retry on a new shop." },
-  { id: "repeat_borrower", name: "Repeat borrower", city: "", blurb: "A merchant who has repaid before.", expected: "Uses the Standing Pass and gets a tier 1 offer." },
+  { id: "defaulter", name: "Defaulter", city: "", blurb: "Sales stop right after drawing.", expected: "Write-off and a World ID ban. The retry on a new wallet is stopped at the World ID check." },
+  { id: "repeat_borrower", name: "Repeat borrower", city: "", blurb: "A merchant who has repaid before.", expected: "Uses the Standing Pass: tier 1, first draw capped at 50% of the limit." },
 ];
 
 /** Our copy wins over the API's short blurbs; unknown archetypes keep theirs. */
@@ -126,13 +127,16 @@ const DEMO_LEDGER: Required<Pick<SimLedger, "senior_assets" | "junior_assets" | 
   tier_caps: [50, 100, 200, 300],
 };
 
-type Script = [day: number, kind: StepKind, title: string, detail: string, ledger?: Partial<SimLedger>, tx?: boolean][];
+type Script = [day: number, kind: StepKind, title: string, detail: string, ledger?: Partial<SimLedger>, tx?: boolean, data?: Record<string, unknown>][];
 
 const FAKE_TX = (n: number) => `0x${(n * 2654435761).toString(16).padStart(8, "0").repeat(8)}`;
 
 const OPEN: Script = [
-  [0, "zk_proof", "Business Pass proved", "Zero-knowledge proof checked onchain. No name, no sales history shared.", undefined, true],
-  [0, "world_id", "World ID verified", "One unique person, bound to this shop. Only an anonymous code is kept."],
+  [0, "world_id", "World ID first: a unique human, cleared to borrow", "Before any business step the merchant proved with World ID that a unique person is applying, not banned and with no open advance elsewhere."],
+  [0, "info", "Business Pass issued (zkTLS stand-in)", "The seller portal's sales history, signed for this merchant only."],
+  [0, "zk_proof", "Zero-knowledge proof: Business Pass", "Checked onchain. No name, no sales history shared.", undefined, true],
+  [0, "shop", "Merchant opens a pseudonymous shop", "A fresh wallet. Nothing onchain links it to the person.", undefined, true],
+  [0, "world_id", "Shop bound to the World ID from the first step", "Linked privately to the human checked at the start. No second scan."],
 ];
 
 const SCRIPTS: Record<string, Script> = {
@@ -157,7 +161,7 @@ const SCRIPTS: Record<string, Script> = {
     ...OPEN,
     [0, "redlines", "Red lines fire", "Most sales come from 3 wallets that the shop funded itself."],
     [0, "critic", "Critic agent rejects", "Circular funding: the money goes around and comes back as sales."],
-    [0, "refused", "No offer made", "Nothing was lent. The vault and DripCoin are untouched."],
+    [0, "offer", "No offer: no money moves", "Nothing was lent. The vault and DripCoin are untouched."],
   ],
   defaulter: [
     ...OPEN,
@@ -169,15 +173,16 @@ const SCRIPTS: Record<string, Script> = {
     [9, "late", "Behind the weekly minimum", "The fee doubles to 1% a week (max 6%) until they catch up. The extra goes to the reserve."],
     [16, "risk", "Risk agent lowers the top cap", "DRIP price fell to 0.94 of its daily average. Tier 3: $300 → $225.", { junior_pool_price: 0.941, tier_caps: [50, 100, 200, 225] }, true],
     [30, "writeoff", "Written off: $47.73", "DripCoin takes the loss first. The vault is not touched.", { junior_assets: 9_792.27, outstanding: 12_452.27, junior_pool_price: 0.974 }, true],
-    [30, "ban", "World ID banned", "This person can't take new advances on any shop."],
-    [31, "refused", "Retry on a new shop refused", "Same World ID, new shop: rejected with human_banned before any model ran."],
+    [30, "world_id", "World ID banned: this person can't borrow again, on any shop", "The offer signer banned the World ID behind this shop. A private list: nothing about the person went onchain.", undefined, false, { banned: true }],
+    [31, "world_view", "World ID check: banned, stopped before any business step", "Same person, brand-new wallet, trying again. The very first screen is World ID, and it answered human_banned: no Business Pass proof, no shop, no transaction. Outstanding stays at $12,452.27.", undefined, false, { eligible: false, reason: "human_banned", business_pass: "not started", shop: "not created", outstanding_before: 12_452.27, outstanding_after: 12_452.27, unchanged: true }],
   ],
   repeat_borrower: [
     ...OPEN,
     [0, "standing_pass", "Standing Pass proved", "One earlier advance repaid, proved without showing which one.", undefined, true],
-    [0, "underwriter", "Underwriter offers $100", "Tier 1: the Standing Pass lifted the cap from $50."],
-    [0, "draw", "Advance drawn", "$100 paid to the supplier", { outstanding: 12_550 }, true],
-    [16, "repay", "Advance repaid", "$100 back plus a $1.71 fee", { outstanding: 12_450 }, true],
+    [0, "standing_pass", "Tier-1 limit on the fresh pseudonym: $100", "The Standing Pass lifted the cap from $50."],
+    [0, "draw", "Advance drawn: $50 paid out", "$50 paid to the supplier", { outstanding: 12_500 }, true],
+    [0, "unlock", "Gradual unlock: $50 of the $100 limit", "The first advance at a new level is capped at 50%. Each full week of on-time minimums unlocks 25% more: 50% = $50, 75% = $75, 100% = $100."],
+    [16, "repay", "Advance repaid", "$50 back plus a $0.86 fee", { outstanding: 12_450 }, true],
   ],
 };
 
@@ -189,9 +194,9 @@ const DEMO_PACE = 1400;
 function demoView(d: DemoRun): SimRun {
   const shown = Math.min(d.script.length, Math.floor((Date.now() - d.startedAt) / DEMO_PACE) + 1);
   let ledger: SimLedger = { ...DEMO_LEDGER };
-  const steps: SimStep[] = d.script.slice(0, shown).map(([day, kind, title, detail, change, tx], i) => {
+  const steps: SimStep[] = d.script.slice(0, shown).map(([day, kind, title, detail, change, tx, data], i) => {
     ledger = { ...ledger, ...change };
-    return { i, at: d.startedAt / 1000 + i, sim_day: day, kind, title, detail, data: { ledger }, tx: tx ? FAKE_TX(i + 1) : null };
+    return { i, at: d.startedAt / 1000 + i, sim_day: day, kind, title, detail, data: { ...data, ledger }, tx: tx ? FAKE_TX(i + 1) : null };
   });
   const done = shown >= d.script.length;
   return { ...d.run, status: done ? "done" : "running", steps, ledger, done_reason: done ? "Scenario complete" : null };
@@ -237,4 +242,14 @@ export function latestLedger(run: SimRun | null): SimLedger | null {
     if (l) return l;
   }
   return run.ledger;
+}
+
+/** The World ID ban after a write-off (kind world_id, or the older "ban"). */
+export function isBanStep(s: SimStep): boolean {
+  return s.kind === "ban" || (s.kind === "world_id" && (s.data?.banned === true || /\bbanned\b/i.test(s.title)));
+}
+
+/** The defaulter's retry, refused at the World ID check before any business step: the demo highlight. */
+export function isRefusedRetry(s: SimStep): boolean {
+  return s.kind === "refused" || s.data?.reason === "human_banned" || (s.kind === "world_view" && /\bbanned\b/i.test(s.title));
 }

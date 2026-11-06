@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { AgentApproveView, AgentSetupStep } from "@repo/sdk";
 import { Accent, ActionBar, Banner, BrandPanel, Button, Card, Heading, OfferDisclosure, SplitPage, Steps, Text, TextLink } from "@/final";
-import { CardTitle, PlainWords } from "../../../_ui";
+import { CardTitle } from "../../../_ui";
 import { UnlockMeter } from "../../../_unlock";
 import { capitalize, formatMoney, formatPercent } from "@/lib/format";
 import { isMock } from "@/lib/mra";
@@ -31,9 +31,6 @@ const STEP_INDEX: Record<AgentSetupStep, number> = {
   activating: 3,
   done: 4,
 };
-
-const DEFAULT_FEE_RULE =
-  "Paying on time keeps your fee at 0.5% a week, max 3%. If you fall behind the minimum, the fee doubles to 1% a week (max 6% total) until you catch up; the extra goes to the safety reserve.";
 
 /**
  * M08 Approve: `agent.approveView(limits)`, then (live modes) `agent.setup(limits, { onStep })`: World Agent Pass,
@@ -74,7 +71,12 @@ export function ApproveScreen({
   const worldReal = WORLD_MODE === "real";
   const waiting = setup.pending && step !== undefined;
   const passPrompt = setup.pending && step === "awaiting_agent_pass" ? worldPrompt : undefined;
-  const maxFee = (advance.drawn * advance.maxFeeBps) / 10_000;
+  // The first draw is capped by the gradual unlock: suggest at most `availableNow`, and price the offer at that size.
+  const firstDraw = data.availableNow > 0 ? Math.min(agentLimits.perAdvance, data.availableNow) : agentLimits.perAdvance;
+  const capped = firstDraw < agentLimits.perAdvance;
+  const scale = advance.drawn > 0 ? firstDraw / advance.drawn : 1;
+  const owed = advance.owedNow * scale;
+  const maxFee = (firstDraw * advance.maxFeeBps) / 10_000;
 
   const approve = () => {
     setup.run(limits ?? agentLimits).then(
@@ -103,7 +105,7 @@ export function ApproveScreen({
               </>
             ) : (
               <>
-                {formatMoney(advance.drawn).replace(/\.00$/, "")} for {agentLimits.purpose}, <Accent>repaid as you sell.</Accent>
+                {formatMoney(firstDraw).replace(/\.00$/, "")} for {agentLimits.purpose}, <Accent>repaid as you sell.</Accent>
               </>
             )
           }
@@ -116,7 +118,7 @@ export function ApproveScreen({
           {waiting ? null : (
             <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
               {[
-                `Advance ${formatMoney(advance.drawn)}`,
+                `Advance ${formatMoney(firstDraw)}`,
                 `${formatPercent(advance.holdback)} of each payment`,
                 `Max fee ${formatMoney(maxFee)}`,
               ].map((chip) => (
@@ -163,24 +165,29 @@ export function ApproveScreen({
               unlockSteps={data.unlockSteps}
               nextUnlockAt={data.nextUnlockAt}
             />
-            <Text size="note">Each on-time week unlocks +25%; falling behind pauses it.</Text>
+            {capped ? (
+              <Text size="note">
+                Your first advance is up to {formatMoney(firstDraw)}. The rest of your {formatMoney(agentLimits.perAdvance)} per-advance limit unlocks as you pay on time.
+              </Text>
+            ) : null}
           </Card>
           <Card padding="lg">
             <CardTitle>The offer</CardTitle>
             <OfferDisclosure
-              principal={advance.drawn}
+              principal={firstDraw}
               maxFeeBps={advance.maxFeeBps}
-              feeIfRepaidIn2Weeks={advance.feeIfRepaidIn2Weeks}
+              feeIfRepaidIn2Weeks={advance.feeIfRepaidIn2Weeks * scale}
               annualizedCostPercent={advance.annualizedCostPercent}
               holdback={advance.holdback}
+              {...(advance.feeRule ? { feeRule: advance.feeRule } : {})}
               estimates={[100, 200, 400].map((sales, i) => ({
                 label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!,
-                days: Math.ceil(advance.owedNow / ((sales * advance.holdback) / 100)),
+                days: Math.ceil(owed / ((sales * advance.holdback) / 100)),
               }))}
             />
             <ApproveMarks
               rows={[
-                ["Max per advance", formatMoney(agentLimits.perAdvance)],
+                ["Max per advance", capped ? `${formatMoney(agentLimits.perAdvance)} (${formatMoney(firstDraw)} available now)` : formatMoney(agentLimits.perAdvance)],
                 ["Max per month", formatMoney(agentLimits.perMonth)],
                 ["Draws for", capitalize(agentLimits.purpose)],
               ]}
@@ -190,7 +197,6 @@ export function ApproveScreen({
               Illustrative terms at your maximum per-draw limit; future offers may differ. Mandate expires after 90 days.
             </Text>
           </Card>
-          <PlainWords label="Pay on time, pay less">{advance.feeRule || DEFAULT_FEE_RULE}</PlainWords>
           {setup.error && !errorHref ? <Banner tone="risk">Not approved ({setup.error}). Nothing was drawn.</Banner> : null}
           <ActionBar>
             {isMock ? (

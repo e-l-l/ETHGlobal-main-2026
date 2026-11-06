@@ -32,10 +32,10 @@ export function UnlockMeter({ availableNow, limit, unlockSteps, nextUnlockAt, fr
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <Label className={dark ? "text-lime" : "text-charcoal-muted"}>Available now</Label>
+        <Label className={dark ? "text-lime" : "text-charcoal-muted"}>Gradual unlock</Label>
         <span className={cn("font-body text-read", muted)}>
           <span className={cn("font-display text-h2 font-bold tabular-nums", dark ? "text-canvas" : "text-charcoal")}>{formatMoney(availableNow, "USD").replace(/\.00$/, "")}</span>{" "}
-          of {formatMoney(limit, "USD").replace(/\.00$/, "")} limit
+          of your {formatMoney(limit, "USD").replace(/\.00$/, "")} limit available now
         </span>
       </div>
       <ol aria-label={`Unlocked ${formatMoney(availableNow)} of ${formatMoney(limit)}`} className="m-0 grid list-none gap-1.5 p-0" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
@@ -57,12 +57,12 @@ export function UnlockMeter({ availableNow, limit, unlockSteps, nextUnlockAt, fr
       </ol>
       <p className={cn("m-0 font-body text-note", frozen ? (dark ? "text-caution-tint" : "text-caution") : muted)}>
         {frozen
-          ? "Unlock paused: the weekly minimum was missed."
+          ? "Unlock paused: the weekly minimum was missed. Catch up and each on-time week unlocks +25% again."
           : nextUnlockAt
-            ? `Next unlock on ${unlockDate(nextUnlockAt)} if you keep up the weekly minimum (1% plus fee every 7 days).`
+            ? `Next +25% on ${unlockDate(nextUnlockAt)} if you keep up the weekly minimum (1% plus fee every 7 days). Falling behind pauses it.`
             : availableNow >= limit
               ? "Your whole limit is unlocked."
-              : "Each on-time week unlocks another 25%."}
+              : "Each on-time week unlocks +25%; falling behind pauses it."}
       </p>
     </div>
   );

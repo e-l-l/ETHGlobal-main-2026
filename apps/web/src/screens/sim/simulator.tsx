@@ -9,6 +9,8 @@ import {
   ARCHETYPES,
   SIM_DEMO,
   SimBusyError,
+  isBanStep,
+  isRefusedRetry,
   latestLedger,
   sim,
   type Archetype,
@@ -49,6 +51,8 @@ const I = {
   loss: <Svg><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" /></Svg>,
   ban: <Svg><circle cx="12" cy="12" r="9" /><path d="M6 6l12 12" /></Svg>,
   eye: <Svg><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></Svg>,
+  unlock: <Svg><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.5-2" /></Svg>,
+  info: <Svg><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 8h.01" /></Svg>,
   dot: <Svg><circle cx="12" cy="12" r="3" /></Svg>,
 };
 
@@ -78,9 +82,16 @@ const KIND: Record<string, { icon: ReactNode; tone?: Tone }> = {
   ban: { icon: I.ban, tone: "bad" },
   refused: { icon: I.ban, tone: "moment" },
   world_view: { icon: I.eye },
+  unlock: { icon: I.unlock },
+  info: { icon: I.info },
   error: { icon: I.ban, tone: "bad" },
 };
-const kindOf = (k: string): { icon: ReactNode; tone?: Tone } => KIND[k] ?? { icon: I.dot };
+/** The kind picks the icon; the World ID ban and the refused retry get their own look whatever kind carries them. */
+function styleOf(s: SimStep): { icon: ReactNode; tone?: Tone } {
+  if (isRefusedRetry(s)) return { icon: I.ban, tone: "moment" };
+  if (isBanStep(s)) return { icon: I.ban, tone: "bad" };
+  return KIND[s.kind] ?? { icon: I.dot };
+}
 
 /* ------------------------------------------------------------------ ledger strip */
 
@@ -97,15 +108,16 @@ function LedgerStrip({ ledger, before, live }: { ledger: SimLedger | null; befor
   const l = ledger ?? {};
   const b = before ?? undefined;
   const caps = l.tier_caps?.length ? l.tier_caps : [50, 100, 200, 300];
-  const items: { k: string; v: ReactNode; d?: ReactNode }[] = [
+  const items: { k: string; v: ReactNode; d?: ReactNode; wide?: boolean }[] = [
     { k: "Vault", v: usd(l.senior_assets), d: <Delta now={l.senior_assets} before={b?.senior_assets} fmt={formatMoney} /> },
     { k: "DRIP price", v: price(l.junior_pool_price ?? l.junior_share_price), d: <Delta now={l.junior_pool_price} before={b?.junior_pool_price} fmt={(d) => `$${d.toFixed(3)}`} /> },
     { k: "Reserve", v: usd(l.reserve), d: <Delta now={l.reserve} before={b?.reserve} fmt={formatMoney} /> },
     { k: "Outstanding", v: usd(l.outstanding), d: <Delta now={l.outstanding} before={b?.outstanding} fmt={formatMoney} /> },
     {
       k: "Tier caps",
+      wide: true,
       v: (
-        <span className="flex flex-wrap gap-x-1.5">
+        <span className="flex flex-nowrap gap-x-1.5 whitespace-nowrap">
           {caps.map((c, i) => (
             <span key={i} className={cn(b?.tier_caps?.[i] !== undefined && b.tier_caps[i] !== c && "text-lime")}>
               ${Math.round(c)}
@@ -122,9 +134,9 @@ function LedgerStrip({ ledger, before, live }: { ledger: SimLedger | null; befor
         <span aria-hidden className={cn("size-2 rounded-full bg-lime", live && "animate-pulse motion-reduce:animate-none")} />
         <Label className="text-lime">{SIM_DEMO ? "Ledger · demo" : "Live ledger · devnet"}</Label>
       </div>
-      <dl className="m-0 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+      <dl className="m-0 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
         {items.map((it) => (
-          <div key={it.k} className="flex min-w-0 flex-col gap-1">
+          <div key={it.k} className={cn("flex min-w-0 flex-col gap-1", it.wide && "col-span-2 sm:col-span-4 lg:col-span-1")}>
             <dt className="font-ledger text-tag font-medium uppercase text-honeydew">{it.k}</dt>
             <dd className="m-0 font-display text-h2 tabular-nums">{it.v}</dd>
             {it.d ? <dd className="m-0 min-h-4">{it.d}</dd> : null}
@@ -198,7 +210,7 @@ function StatusPill({ status, day }: { status: SimRun["status"]; day?: number })
 const toneCls: Record<Tone, { icon: string; title: string }> = {
   plain: { icon: "bg-honeydew text-hunter", title: "text-charcoal" },
   warn: { icon: "bg-caution-tint text-caution", title: "text-charcoal" },
-  bad: { icon: "bg-risk-tint text-risk", title: "text-charcoal" },
+  bad: { icon: "bg-risk-tint text-risk", title: "text-risk" },
   moment: { icon: "bg-lime text-charcoal", title: "text-canvas" },
 };
 
@@ -206,7 +218,7 @@ function Timeline({ steps, running }: { steps: SimStep[]; running: boolean }) {
   return (
     <ol aria-label="Run steps" aria-live="polite" className="m-0 flex list-none flex-col p-0">
       {steps.map((s, idx) => {
-        const k = kindOf(s.kind);
+        const k = styleOf(s);
         const tone = k.tone ?? "plain";
         const t = toneCls[tone];
         const last = idx === steps.length - 1;
@@ -219,10 +231,11 @@ function Timeline({ steps, running }: { steps: SimStep[]; running: boolean }) {
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <span className={cn("font-ledger text-tag font-medium uppercase", moment ? "text-lime" : "text-charcoal-muted")}>
-                Day {s.sim_day} · {s.kind.replace(/_/g, " ")}
+                {moment ? "The moment to watch · " : ""}Day {s.sim_day} · {s.kind.replace(/_/g, " ")}
               </span>
-              <span className={cn("font-body text-read font-semibold", t.title)}>{s.title}</span>
+              <span className={cn("font-body font-semibold", moment ? "text-h2 font-display" : "text-read", t.title)}>{s.title}</span>
               {s.detail ? <span className={cn("font-body text-note", moment ? "text-honeydew" : "text-charcoal-soft")}>{s.detail}</span> : null}
+              {moment ? <RefusalFacts step={s} /> : null}
             </div>
             {s.tx ? (
               <a
@@ -246,13 +259,32 @@ function Timeline({ steps, running }: { steps: SimStep[]; running: boolean }) {
   );
 }
 
+/** Under the refused retry: what never happened, in chips a judge can read from across the room. */
+function RefusalFacts({ step }: { step: SimStep }) {
+  const d = step.data ?? {};
+  const out = typeof d.outstanding_after === "number" ? d.outstanding_after : undefined;
+  const facts = [
+    `World ID: ${typeof d.reason === "string" ? d.reason : "human_banned"}`,
+    `Business Pass: ${typeof d.business_pass === "string" ? d.business_pass : "not started"}`,
+    `Shop: ${typeof d.shop === "string" ? d.shop : "not created"}`,
+    out !== undefined ? `Outstanding: ${formatMoney(out)}${d.unchanged === false ? "" : ", unchanged"}` : "No money moved",
+  ];
+  return (
+    <ul aria-label="What the retry never reached" className="m-0 mt-2 flex list-none flex-wrap gap-2 p-0">
+      {facts.map((f) => (
+        <li key={f} className="rounded-chip bg-deep px-2.5 py-1 font-ledger text-tag font-semibold uppercase text-lime">{f}</li>
+      ))}
+    </ul>
+  );
+}
+
 function Queued({ ahead }: { ahead: number }) {
   return (
     <Card as="section" gap="sm" className="max-w-[560px]">
       <Label>In line</Label>
       <Heading level={2} size="h1">{ahead === 0 ? "You're next" : `${ahead} ${ahead === 1 ? "run" : "runs"} ahead of you`}</Heading>
-      <Text>Runs go one at a time so every step lands onchain in order. Each takes about two minutes. This page starts on its own when it&rsquo;s your turn.</Text>
-      <Ledger className="text-charcoal-muted">≈ {Math.max(1, ahead * 2)} min</Ledger>
+      <Text>Runs go one at a time so every step lands onchain in order. Each takes about a minute. This page starts on its own when it&rsquo;s your turn.</Text>
+      <Ledger className="text-charcoal-muted">≈ {Math.max(1, ahead)} min</Ledger>
     </Card>
   );
 }
@@ -276,12 +308,14 @@ function Busy({ onRetry }: { onRetry: () => void }) {
 }
 
 function RunAside({ run, archetype, onAgain }: { run: SimRun; archetype?: Archetype; onAgain: () => void }) {
-  const defaulter = run.archetype === "defaulter";
+  const refused = run.steps.some(isRefusedRetry);
+  const defaulter = run.archetype === "defaulter" || refused;
+  const finished = run.status === "done";
   return (
     <div className="flex flex-col gap-4">
       {defaulter ? (
         <Card tone="hunter" as="section" gap="sm">
-          <Label className="text-lime">The moment to watch</Label>
+          <Label className="text-lime">{refused ? "Retry refused at the World ID step" : "The moment to watch"}</Label>
           <Heading level={2} size="h2" className="text-canvas">One person can&rsquo;t default and start over on a new shop.</Heading>
           <p className="m-0 font-body text-note text-honeydew">
             The shop owner proved they&rsquo;re a unique person with World ID. After the write-off that anonymous ID is banned, so the retry on a fresh shop is refused before any model runs.
@@ -298,6 +332,11 @@ function RunAside({ run, archetype, onAgain }: { run: SimRun; archetype?: Archet
       <div className="flex flex-col gap-2">
         <Button width="full" onClick={onAgain}>Run another</Button>
         <Button width="full" variant="secondary" href={routes.explorer}>Open in Explorer</Button>
+        {finished ? (
+          <TextLink href={routes.proof} arrow className="self-center">
+            See these proofs onchain
+          </TextLink>
+        ) : null}
       </div>
     </div>
   );
@@ -394,7 +433,7 @@ export function SimulatorScreen() {
     return (
       <LendShell>
         <LendHero label={SIM_DEMO ? "Simulator · demo" : "Simulator · public devnet"} title="Watch DripMoni run, live on our devnet.">
-          Pick a shop. You&rsquo;ll see a real ZK proof, the AI underwriter, and money moving between the shop, the vault, DripCoin and the reserve. Each run takes about two minutes.
+          Pick a shop. You&rsquo;ll see a real ZK proof, the AI underwriter, and money moving between the shop, the vault, DripCoin and the reserve. Each run takes under a minute.
         </LendHero>
         <LedgerStrip ledger={stateLedger} live={!SIM_DEMO} />
         <section aria-labelledby="pick-h" className="flex flex-col gap-4">

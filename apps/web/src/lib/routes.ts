@@ -3,7 +3,7 @@
  *
  *   /            landing page (marketing, reserved)
  *   /home        web-app entry: pick merchant, lender or the public dashboard
- *   /onboarding  merchant sign-up (welcome → prove → verifying → pass → shop → world-id)
+ *   /onboarding  merchant sign-up (welcome → world-id → prove → verifying → pass → shop), World ID first
  *   /merchant    the merchant app after sign-up
  *   /pay         what a customer sees
  *   /portal      demo seller portal the private check reads from
@@ -23,8 +23,10 @@ export const routes = {
   pass: "/onboarding/pass",
   failed: "/onboarding/failed",
   shop: "/onboarding/shop",
-  /** After the shop exists: prove a unique human with World ID (verifyHuman needs the shop id). */
+  /** World ID FIRST, right after welcome (`checkHuman`). `?bind=1`: the shop exists, link it (`bindHumanTicket`). */
   worldId: "/onboarding/world-id",
+  /** Stop screen: `?reason=human_banned|human_has_open_advance`. No business steps after it. */
+  worldIdStopped: "/onboarding/world-id/stopped",
 
   /* Merchant app */
   merchant: "/merchant",
@@ -72,6 +74,8 @@ export const routes = {
   risk: "/risk",
   explorer: "/explorer",
   simulator: "/simulator",
+  /** Verify it yourself: proofs, txs and AI decisions with a link for each. */
+  proof: "/proof",
 
   /* Dev */
   screens: "/screens",
@@ -97,10 +101,26 @@ export function blockedHref(reason: BlockedReason = "banned") {
 
 /** Where a World ID red line (POST /offers `redline_hits`, or a setup error code) sends the merchant; undefined for others. */
 export function redlineHref(code: string | undefined): string | undefined {
-  if (code === "human_not_verified") return routes.worldId;
+  if (code === "human_not_verified") return worldIdHref({ bind: true });
   if (code === "human_banned") return blockedHref("banned");
   if (code === "human_has_open_advance") return blockedHref("open_advance");
   return undefined;
+}
+
+/**
+ * The World ID screen. `bind`: the shop already exists (re-check, then link it with `bindHumanTicket`, no second shop).
+ * `mockWorld` (mock mode only): forward `?mockWorld=banned|open_advance` so the SDK mock shows the stop screens.
+ */
+export function worldIdHref(opts: { bind?: boolean; mockWorld?: string } = {}) {
+  const p = new URLSearchParams();
+  if (opts.bind) p.set("bind", "1");
+  if (opts.mockWorld) p.set("mockWorld", opts.mockWorld);
+  const qs = p.toString();
+  return qs ? `${routes.worldId}?${qs}` : routes.worldId;
+}
+
+export function worldIdStoppedHref(reason: string) {
+  return `${routes.worldIdStopped}?reason=${encodeURIComponent(reason)}`;
 }
 
 export function failedHref(reason: FailReason) {

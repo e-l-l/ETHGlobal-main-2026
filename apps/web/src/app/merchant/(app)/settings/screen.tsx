@@ -2,17 +2,12 @@
 
 import { useEffect, useState } from "react";
 import type { HumanStatusView } from "@repo/sdk";
-import { Button, Card, Columns, KeyValue, Page, PageHead, Pill, Stack, Text } from "@/final";
+import { Button, Card, Columns, CopyHash, KeyValue, Page, PageHead, Pill, Stack, Text } from "@/final";
 import { CURRENCIES, setCurrency, useCurrency, type CurrencyCode } from "@/lib/currency";
 import { isMock, withMRA } from "@/lib/mra";
 import { routes } from "@/lib/routes";
 import { shop } from "@/lib/mock/shop";
 import { CardTitle, DarkBlock, HeroLabel } from "../../_ui";
-
-/** "0x1234…abcd" → "0x12…cd" style: enough to recognise, short enough for a chip. */
-function shortAddress(a: string) {
-  return `${a.slice(0, 4)}…${a.slice(-2)}`;
-}
 
 /** This device's burner wallet and the shop's World ID status, read once on mount. */
 function useDeviceFacts() {
@@ -37,7 +32,7 @@ function useDeviceFacts() {
 export function SettingsScreen() {
   const cur = useCurrency();
   const { wallet, human } = useDeviceFacts();
-  const walletLabel = wallet ? shortAddress(wallet) : isMock ? "0x12…ab" : "Not set up yet";
+  const walletLabel = isMock ? "0x12…ab" : "Not set up yet";
   const worldRows: [string, string][] = human
     ? [
         ["Unique person", human.humanVerified ? "Verified ✓" : "Not verified"],
@@ -61,10 +56,11 @@ export function SettingsScreen() {
             <div className="flex flex-wrap items-center gap-3 rounded-md bg-well px-4 py-3 font-body">
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="text-read font-semibold text-charcoal">
-                  Your device wallet <span className="font-ledger text-note">{walletLabel}</span>
+                  Your device wallet{wallet ? null : <> <span className="font-ledger text-note">{walletLabel}</span></>}
                 </span>
                 <span className="text-note text-charcoal-muted">funded by demo faucet · made on this phone, no wallet app needed</span>
               </div>
+              {wallet ? <CopyHash value={wallet} short /> : null}
             </div>
           </Card>
           <Card>

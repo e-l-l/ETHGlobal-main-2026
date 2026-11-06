@@ -56,6 +56,13 @@ export function HomeScreen({ initial, demo }: { initial: HomeView | null; demo?:
   const available = cash?.available;
   const lit = Math.min(4, Math.max(1, currentTier + 1)) as 1 | 2 | 3 | 4;
   const eta = advance ? (etaKnown(advance.etaDays) ? `${formatDays(advance.etaDays)} to go at this pace` : ETA_PENDING) : "";
+  // "Fee so far $x · owed now $y · eta", plus the late fee only when there is one; caution tone while behind.
+  const feeLine = advance ? (
+    <span className={behind ? "text-caution-tint" : undefined}>
+      Fee so far {formatMoney(advance.feeSoFar)} · owed now {formatMoney(advance.owedNow)} · {eta}
+      {advance.lateFee > 0 ? ` · late fee ${formatMoney(advance.lateFee)}` : ""}
+    </span>
+  ) : null;
 
   const agentPill = agentOn ? (
     <Pill tone="saving" dot>
@@ -124,6 +131,7 @@ export function HomeScreen({ initial, demo }: { initial: HomeView | null; demo?:
                 Details
               </TextLink>
             </div>
+            <div className="font-body text-note text-honeydew">{feeLine}</div>
           </div>
         ) : null}
       </HeroBlock>
@@ -213,27 +221,32 @@ export function HomeScreen({ initial, demo }: { initial: HomeView | null; demo?:
                   <span>
                     {formatMoney(advance.repaid)} paid back · {formatPercent(advance.pct)}
                   </span>
-                  <span>
-                    Fee so far {formatMoney(advance.feeSoFar)}
-                    {advance.lateFee > 0 ? ` · late fee ${formatMoney(advance.lateFee)}` : ""} · owed now {formatMoney(advance.owedNow)} · {eta}
-                  </span>
+                  {feeLine}
                 </div>
               </div>
             </HeroBlock>
           ) : (
             <HeroBlock seed={3} className="hidden rounded-none lg:flex">
               <HeroLabel>Advance</HeroLabel>
-              <span className="font-display text-h1 text-canvas">No open advance.</span>
-              <Text className="text-honeydew">Your agent draws one for stock when your payments can pay it back.</Text>
+              <span className="font-display text-h1 text-canvas">{data.banned ? "Advances off." : "No open advance."}</span>
+              <Text className="text-honeydew">
+                {data.banned ? "This World ID can't borrow on DripMoni after a default." : "Your agent draws one for stock when your payments can pay it back."}
+              </Text>
             </HeroBlock>
           )}
 
           <Card gap="sm" className="lg:rounded-none lg:border-0 lg:border-b lg:border-hairline lg:px-5 lg:py-4">
             <CardTitle
               end={
-                <TextLink href={agentOn ? routes.agent.log : routes.agent.setup} arrow>
-                  {agentOn ? "Activity" : "Set up"}
-                </TextLink>
+                agentOn ? (
+                  <TextLink href={routes.agent.log} arrow>
+                    Activity
+                  </TextLink>
+                ) : data.banned ? null : (
+                  <TextLink href={routes.agent.setup} arrow>
+                    Set up
+                  </TextLink>
+                )
               }
             >
               Your agent

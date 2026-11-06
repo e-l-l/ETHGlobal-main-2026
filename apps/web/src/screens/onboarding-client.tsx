@@ -27,21 +27,21 @@ import {
   TextField,
   TextLink,
 } from "@/final";
-import type { BusinessPassView, HumanVerifyStep, ProveStep } from "@repo/sdk";
+import type { BusinessPassView, HumanCheckStep, ProveStep, ShopHumanBinding } from "@repo/sdk";
 import { appUrl } from "@/lib/brand";
 import { PanelBlocks, litTiles } from "./panel-blocks";
 import { copy, stepEyebrow } from "@/lib/copy";
 import { explorerTxUrl, isMock, withMRA } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
-import { failedHref, isFailReason, routes, verifyingHref, type FailReason } from "@/lib/routes";
+import { failedHref, isFailReason, redlineHref, routes, verifyingHref, worldIdHref, worldIdStoppedHref, type FailReason } from "@/lib/routes";
 import { useMRA, useMRAAction } from "@/lib/use-mra";
 import { useWorldPrompt } from "@/lib/world-prompt";
 import { IdkitWait } from "@/app/merchant/_world";
 
 /* ---------------------------------------------------------- Shared bits */
 
-/** Step progress at the top of the form column: five bars and "Step 1 of 5". */
+/** Step progress at the top of the form column: five bars and "Step 1 of 5" (1 World ID, 2 prove, 3 verifying, 4 pass, 5 shop). */
 export function StepProgress({ at }: { at: number }) {
   const c = copy;
   return (
@@ -177,7 +177,7 @@ export function VerifyingScreen({ outcome }: { outcome?: string }) {
           <BrandPanel
             /* Two more tiles light as each of the three checks completes. */
             top={<PanelBlocks seed={17} lit={litTiles(done * 2)} />}
-            eyebrow={stepEyebrow(2)}
+            eyebrow={stepEyebrow(3)}
             title={
               <>
                 {t.title} <Accent>{t.accent}</Accent>
@@ -187,7 +187,7 @@ export function VerifyingScreen({ outcome }: { outcome?: string }) {
           />
         }
       >
-        <StepProgress at={2} />
+        <StepProgress at={3} />
         <div className="flex items-center gap-4">
           <JarMark loading size={64} label={`${t.title} ${t.accent}`} />
           <div className="flex min-w-0 flex-col gap-1">
@@ -218,8 +218,10 @@ export function VerifyingScreen({ outcome }: { outcome?: string }) {
 
 /* --------------------------------------------------------- M06 Create shop
  * The QR updates as you type, so the name and what customers will see are one thing.
- * Name ideas come from `onboarding.nameIdeas()`. Live modes: the CTA is `onboarding.createShop(name)` (a fresh
- * pseudonymous shop id registered onchain from this device's wallet), then M07. Mock keeps the plain link.
+ * Name ideas come from `onboarding.nameIdeas()`. The CTA is `onboarding.createShop(name)` (live: a fresh pseudonymous
+ * shop id registered onchain from this device's wallet), which also binds the World ID from step 1 (`shop.human`):
+ * verified → agent setup; `needsWorldId` (ticket expired / missing) → the World ID screen in bind mode; otherwise
+ * retry `bindHumanTicket()` here. The shop is created once; retries never create a second one.
  */
 type ShopDraft = { nameIdeas: string[]; pseudonym: string };
 
@@ -234,6 +236,9 @@ function ShopForm({ draft }: { draft: ShopDraft }) {
   const t = c.shop;
   const router = useRouter();
   const create = useMRAAction((m, shopName: string) => m.onboarding.createShop(shopName));
+  const bind = useMRAAction((m) => m.onboarding.bindHumanTicket());
+  const [created, setCreated] = useState(false);
+  const [bindReason, setBindReason] = useState<string | undefined>();
   const fallbackName = draft.nameIdeas[0] ?? "";
   const [name, setName] = useState<string>(fallbackName);
   const clean = name.trim();
@@ -241,13 +246,24 @@ function ShopForm({ draft }: { draft: ShopDraft }) {
   // Live: the pseudonym is minted on create (random id), so there is none to show before.
   const pseudonym = isMock ? draft.pseudonym : create.pending ? "shop_…" : "shop_····";
 
+  const onHuman = (h: ShopHumanBinding) => {
+    if (h.verified) router.push(routes.agent.setup);
+    else if (h.needsWorldId) router.push(worldIdHref({ bind: true }));
+    else setBindReason(h.reason);
+  };
+  // Backstop: a World ID red line surfacing as an error code goes to its screen.
+  const redline = redlineHref(create.error ?? bind.error);
+  useEffect(() => {
+    if (redline) router.replace(redline);
+  }, [redline, router]);
+
   return (
     <>
       <SplitPage
         panel={
           <BrandPanel
             top={<PanelBlocks seed={29} lit={litTiles(6)} />}
-            eyebrow={stepEyebrow(4)}
+            eyebrow={stepEyebrow(5)}
             title={
               <>
                 {t.panelTitle} <Accent>{t.accent}</Accent>
@@ -257,7 +273,7 @@ function ShopForm({ draft }: { draft: ShopDraft }) {
           />
         }
       >
-        <StepProgress at={4} />
+        <StepProgress at={5} />
         <div className="flex flex-col gap-2">
           <Heading level={2} size="h1">
             {t.title}
@@ -288,17 +304,29 @@ function ShopForm({ draft }: { draft: ShopDraft }) {
           </Card>
         </div>
         {create.error ? <Banner tone="caution">{`Couldn't create the shop (${create.error}).`}</Banner> : null}
+        {bindReason || bind.error ? <Banner tone="caution">{c.worldId.bindFailed(bindReason ?? bind.error ?? "")}</Banner> : null}
         <ActionBar>
-          {clean.length < 2 ? (
+          {created ? (
+            <Button
+              loading={bind.pending}
+              onClick={() => {
+                setBindReason(undefined);
+                bind.run().then(onHuman, () => undefined);
+              }}
+            >
+              {c.worldId.bindRetry}
+            </Button>
+          ) : clean.length < 2 ? (
             <Button disabled>{t.empty}</Button>
-          ) : isMock ? (
-            <Button href={routes.worldId}>{t.cta}</Button>
           ) : (
             <Button
               loading={create.pending}
               onClick={() => {
                 create.run(clean).then(
-                  () => router.push(routes.worldId),
+                  (shop) => {
+                    setCreated(true);
+                    onHuman(shop.human ?? { verified: true }); // no binding info: the offer signer is the backstop
+                  },
                   () => undefined,
                 );
               }}
@@ -338,50 +366,75 @@ export function PassFacts({ initial }: { initial: BusinessPassView | null }) {
   );
 }
 
-/* ------------------------------------------------------- M06b World ID
- * After the shop exists (verifyHuman signs with the shop's key): `onboarding.verifyHuman({ onStep })` runs IDKit for
- * the borrower action. Verified → agent setup. `verification_failed` → retry; `shop_bound_to_other_human` → this shop
- * belongs to someone else (restore instead). Real World mode shows the IDKit QR from ./world-prompt while it waits.
+/* ------------------------------------------------------- M01a World ID (step 1)
+ * World ID FIRST, before any business step: `onboarding.checkHuman({ onStep })` (verifying_human → checking →
+ * eligible | stopped). Eligible → prove business (the ticket waits on this device for `createShop()`). Banned / open
+ * advance → the stop screen (no business steps, no retry). Anything else (verification_failed, ...) → retry here.
+ * `bind`: the shop exists but isn't linked (ticket expired / missing, or an offer said `human_not_verified`):
+ * `checkHuman()` again, then `bindHumanTicket()`. `needsWorldId` → scan again; otherwise retry the link only.
+ * Real World mode shows the IDKit QR from ./world-prompt while it waits. Mock: `?mockWorld=banned|open_advance`.
  */
-const HUMAN_DONE: Record<HumanVerifyStep, number> = {
-  signing_owner: 0,
-  verifying_human: 1,
-  verified: 3,
-};
+const STOP_REASONS = new Set(["human_banned", "human_has_open_advance"]);
 
-export function WorldIdScreen() {
+type WorldPhase = HumanCheckStep | "binding";
+
+/** Phase → how many of the three list items are done. */
+const PHASE_DONE: Record<WorldPhase, number> = { verifying_human: 0, checking: 1, eligible: 2, binding: 2, stopped: 1 };
+
+export function WorldIdScreen({ bind = false }: { bind?: boolean }) {
   const t = copy.worldId;
   const router = useRouter();
-  const [step, setStep] = useState<HumanVerifyStep | undefined>();
-  const [reason, setReason] = useState<string | undefined>();
-  const verify = useMRAAction((m) => m.onboarding.verifyHuman({ onStep: setStep }));
+  const [phase, setPhase] = useState<WorldPhase | undefined>();
+  const [failure, setFailure] = useState<string | undefined>();
+  /** Bind mode: a fresh ticket is on the device, so a retry only re-runs `bindHumanTicket()`. */
+  const [ticket, setTicket] = useState(false);
+  const check = useMRAAction((m) => m.onboarding.checkHuman({ onStep: setPhase }));
+  const link = useMRAAction((m) => m.onboarding.bindHumanTicket());
   const prompt = useWorldPrompt("idkit");
-  const waiting = verify.pending;
-  const failure = reason ?? verify.error;
+  const waiting = check.pending || link.pending;
+  const shown = failure ?? check.error ?? link.error;
 
-  const run = () => {
-    setReason(undefined);
-    setStep(undefined);
-    verify.run().then(
-      (r) => {
-        if (r.verified) router.push(routes.agent.setup);
-        else setReason(r.reason ?? "verification_failed");
-      },
-      () => undefined,
-    );
+  const run = async () => {
+    setFailure(undefined);
+    setPhase(undefined);
+    if (!(bind && ticket)) {
+      const r = await check.run().catch(() => undefined);
+      if (!r) return;
+      if (!r.eligible) {
+        if (STOP_REASONS.has(r.reason)) router.replace(worldIdStoppedHref(r.reason));
+        else setFailure(r.reason);
+        return;
+      }
+      if (!bind) {
+        router.push(routes.prove);
+        return;
+      }
+      setTicket(true);
+    }
+    setPhase("binding");
+    const h = await link.run().catch(() => undefined);
+    if (!h) return;
+    if (h.verified) {
+      router.push(routes.agent.setup);
+      return;
+    }
+    if (h.needsWorldId) setTicket(false);
+    setFailure(h.needsWorldId ? h.reason : `bind:${h.reason}`);
   };
 
-  const done = step ? HUMAN_DONE[step] : 0;
-  const steps = t.steps.map((label, i) => ({
+  const done = phase ? PHASE_DONE[phase] : 0;
+  const steps = (bind ? t.bindSteps : t.steps).map((label, i) => ({
     label,
     state: (i < done ? "done" : i === done ? "current" : "next") as "done" | "current" | "next",
   }));
+  const bindFailure = shown?.startsWith("bind:") ? shown.slice(5) : undefined;
 
   return (
     <SplitPage
       panel={
         <BrandPanel
-          eyebrow={stepEyebrow(5)}
+          top={<PanelBlocks seed={7} lit={litTiles(bind ? 6 : 0)} />}
+          eyebrow={bind ? `World ID · ${copy.stepNames[4]}` : stepEyebrow(1)}
           title={
             <>
               {t.panelTitle} <Accent>{t.accent}</Accent>
@@ -391,7 +444,7 @@ export function WorldIdScreen() {
         />
       }
     >
-      <StepProgress at={5} />
+      {bind ? null : <StepProgress at={1} />}
       {waiting ? (
         <>
           <div className="flex flex-col gap-2">
@@ -408,37 +461,18 @@ export function WorldIdScreen() {
             {steps.find((s) => s.state === "current")?.label ?? ""}
           </p>
         </>
-      ) : failure === "shop_bound_to_other_human" ? (
-        <>
-          <div className="flex flex-col gap-2">
-            <Heading level={2} size="h1">
-              {t.failedTitle}
-            </Heading>
-            <Text>{t.failedBody}</Text>
-          </div>
-          <Banner tone="caution">
-            <span className="flex flex-col gap-1">
-              <strong className="font-semibold">{t.bound}</strong>
-              <span>{t.boundBody}</span>
-            </span>
-          </Banner>
-          <ActionBar>
-            <Button href={routes.restore}>{t.restore}</Button>
-            <Button href={routes.welcome} variant="ghost">
-              {copy.failed.start}
-            </Button>
-          </ActionBar>
-        </>
       ) : (
         <>
           <div className="flex flex-col gap-2">
             <Heading level={2} size="h1">
-              {failure ? t.failedTitle : t.title}
+              {shown && !bindFailure ? t.failedTitle : bind ? t.bindTitle : t.title}
             </Heading>
-            <Text>{failure ? t.failedBody : t.body}</Text>
+            <Text>{shown && !bindFailure ? t.failedBody : bind ? t.bindBody : t.body}</Text>
           </div>
-          {failure ? (
-            <Banner tone="caution">{failure === "verification_failed" ? t.failed : t.other(failure)}</Banner>
+          {shown ? (
+            <Banner tone="caution">
+              {bindFailure ? t.bindFailed(bindFailure) : shown === "verification_failed" ? t.failed : t.other(shown)}
+            </Banner>
           ) : (
             <>
               <Card>
@@ -451,10 +485,10 @@ export function WorldIdScreen() {
             </>
           )}
           <ActionBar>
-            <Button onClick={run} loading={verify.pending}>
-              {failure ? t.retry : t.cta}
+            <Button onClick={() => void run()} loading={waiting}>
+              {bindFailure ? t.bindRetry : shown ? t.retry : t.cta}
             </Button>
-            {failure ? null : <Text size="note">{t.note}</Text>}
+            {shown ? null : <Text size="note">{t.note}</Text>}
           </ActionBar>
         </>
       )}
