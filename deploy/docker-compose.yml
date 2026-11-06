@@ -85,40 +85,27 @@ services:
     mem_limit: 768m
 
   app:
-    # Merchant UI (app/, built by the frontend team). Optional: started only with `--profile ui` or when
-    # deploy.sh finds app/Dockerfile.
+    # Merchant UI (apps/web). Started when deploy.sh finds apps/web/Dockerfile (or with `--profile ui`).
     profiles: ["ui"]
     <<: [*restart, *logging]
     build:
-      context: ../apps/web
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apps/web/Dockerfile
       args:
-        # Public, build-time values (inlined into the browser bundle). Set them in deploy/env/compose.env.
-        NEXT_PUBLIC_API_MODE: ${NEXT_PUBLIC_API_MODE:-}
-        NEXT_PUBLIC_RPC_MODE: ${NEXT_PUBLIC_RPC_MODE:-}
-        NEXT_PUBLIC_RECLAIM_MODE: ${NEXT_PUBLIC_RECLAIM_MODE:-}
-        NEXT_PUBLIC_WORLD_MODE: ${NEXT_PUBLIC_WORLD_MODE:-}
-        NEXT_PUBLIC_AGENT_PASS_MODE: ${NEXT_PUBLIC_AGENT_PASS_MODE:-}
-        NEXT_PUBLIC_PROVER_MODE: ${NEXT_PUBLIC_PROVER_MODE:-}
+        # Public, build-time values (inlined into the browser bundle). Override in deploy/env/compose.env.
+        NEXT_PUBLIC_MRA_MODE: ${NEXT_PUBLIC_MRA_MODE:-sepolia}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.${HOST_SUFFIX:-localhost}}
+        NEXT_PUBLIC_ISSUER_URL: ${NEXT_PUBLIC_ISSUER_URL:-https://issuer.${HOST_SUFFIX:-localhost}}
         NEXT_PUBLIC_RPC_URL: ${NEXT_PUBLIC_RPC_URL:-}
-        NEXT_PUBLIC_CHAIN_ID: ${NEXT_PUBLIC_CHAIN_ID:-}
-        NEXT_PUBLIC_ANON_RPC_SPECIFIER: ${NEXT_PUBLIC_ANON_RPC_SPECIFIER:-}
-        NEXT_PUBLIC_ANON_RPC_BOOTSTRAP_URL: ${NEXT_PUBLIC_ANON_RPC_BOOTSTRAP_URL:-}
-        NEXT_PUBLIC_ANON_RPC_CONFIG: ${NEXT_PUBLIC_ANON_RPC_CONFIG:-}
-        NEXT_PUBLIC_BUSINESS_REGISTRY: ${NEXT_PUBLIC_BUSINESS_REGISTRY:-}
-        NEXT_PUBLIC_BIZ_COUNTRY: ${NEXT_PUBLIC_BIZ_COUNTRY:-}
-        NEXT_PUBLIC_BIZ_REVENUE_BAND: ${NEXT_PUBLIC_BIZ_REVENUE_BAND:-}
-        NEXT_PUBLIC_WORLD_APP_ID: ${NEXT_PUBLIC_WORLD_APP_ID:-}
-        NEXT_PUBLIC_WORLD_ACTION: ${NEXT_PUBLIC_WORLD_ACTION:-}
-        NEXT_PUBLIC_WORLD_RP_ID: ${NEXT_PUBLIC_WORLD_RP_ID:-}
-        NEXT_PUBLIC_AGENT_KEY: ${NEXT_PUBLIC_AGENT_KEY:-}
-        NEXT_PUBLIC_DEMO_SHOP_LABEL: ${NEXT_PUBLIC_DEMO_SHOP_LABEL:-}
+        NEXT_PUBLIC_ANON_RPC: ${NEXT_PUBLIC_ANON_RPC:-1}
+        NEXT_PUBLIC_ANON_NETWORK: ${NEXT_PUBLIC_ANON_NETWORK:-nox}
+        NEXT_PUBLIC_ANON_RPC_STRICT: ${NEXT_PUBLIC_ANON_RPC_STRICT:-}
+        NEXT_PUBLIC_LENDER_ACCOUNT: ${NEXT_PUBLIC_LENDER_ACCOUNT:-}
     image: mra-app:local
     init: true
     env_file:
       - path: ./env/app.env
-        required: true
+        required: false
     environment:
       API_URL: http://agents-api:8787
       APP_ORIGIN: https://app.${HOST_SUFFIX:-localhost}

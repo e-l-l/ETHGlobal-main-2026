@@ -71,7 +71,7 @@ require_keys agents.env RPC_URL CHAIN_ID LLM_PROVIDER OFFER_SIGNER_PRIVATE_KEY R
 require_keys demo-portal.env SESSION_SECRET
 # The merchant UI (app/) is built by the frontend team; it is optional until it lands in the repo.
 HAS_APP=0; [[ -f "$REPO_DIR/apps/web/Dockerfile" ]] && HAS_APP=1
-[[ $HAS_APP == 1 ]] && require_keys app.env
+[[ $HAS_APP == 1 && ! -f "$ENV_DIR/app.env" ]] && c_info "app.env not found: apps/web runs on its build-time NEXT_PUBLIC_* values (fine)"
 # Public devnet: its own env file with the PUBLIC anvil keys (created from the template on first use).
 DEVNET_ON=0; devnet_enabled && DEVNET_ON=1
 if [[ $DEVNET_ON == 1 ]]; then
