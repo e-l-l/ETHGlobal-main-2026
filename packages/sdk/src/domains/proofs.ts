@@ -559,8 +559,7 @@ export async function proofCenter(ctx: Ctx, opts: ProofCenterOptions = {}): Prom
       await Promise.all(
         PROOF_CENTER_CONTRACTS.map(async ({ key }) => {
           try {
-            const code = await chain.client.getCode({ address: d[key] as Addr });
-            sizes[key] = code ? (code.length - 2) / 2 : 0;
+            sizes[key] = await chain.codeSize(d[key] as Addr);
           } catch {
             sizes[key] = null;
           }

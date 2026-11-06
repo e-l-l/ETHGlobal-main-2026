@@ -17,6 +17,7 @@
  * prover) are loaded by `./mra-browser` through dynamic import(), only outside mock mode.
  */
 import { createMRA, parseDeployment, type Deployment, type MRA, type MRAConfig, type Mode } from "@repo/sdk";
+import { cacheClear, cacheIdentity } from "./mra-cache";
 import { ARS_PER_USD, shop } from "./mock/shop";
 
 export type { MRA };
@@ -128,8 +129,25 @@ export function getMRA(): Promise<MRA> {
   return (browserInstance ??= (async () => {
     if (isMock) return createMRA(baseConfig());
     const { browserConfig } = await import("./mra-browser");
-    return createMRA(await browserConfig(baseConfig()));
+    const mra = createMRA(await browserConfig(baseConfig()));
+    // The read cache (lib/mra-cache) is filed under mode + this device's wallet: another wallet, another cache.
+    cacheIdentity(`${MRA_MODE}|${mra.wallet.address()?.toLowerCase() ?? "-"}`);
+    warm(mra);
+    return mra;
   })());
+}
+
+/**
+ * After the instance is up, prime the SDK's in-memory caches (finalized event logs, block times, code sizes) with the
+ * reads most pages need, so the next screen only fetches what's new. Off the critical path: starts after the page's own
+ * reads, never throws, never runs in mock mode.
+ */
+function warm(mra: MRA) {
+  if (isMock || typeof window === "undefined") return;
+  window.setTimeout(() => {
+    void mra.merchant.home().catch(() => undefined); // throws session_missing with no shop: ignored
+    void mra.lender.junior.overview().catch(() => undefined);
+  }, 1_500);
 }
 
 /** Sepolia Etherscan (or nothing on anvil / mock) for a tx hash: the C02 receipt link. */
@@ -140,7 +158,10 @@ export function explorerTxUrl(hash: string | undefined): string | undefined {
 
 /** Run one SDK call from an event handler: `await withMRA((m) => m.pay.pay(id, 10))`. */
 export async function withMRA<T>(fn: (mra: MRA) => Promise<T>): Promise<T> {
-  return fn(await getMRA());
+  const out = await fn(await getMRA());
+  // Event handlers use this for writes: drop cached reads so no screen shows the pre-write state.
+  cacheClear();
+  return out;
 }
 
 /** The stable error code of anything the SDK threw ("session_missing", "wallet_required", ...). */
