@@ -2,7 +2,7 @@
 
 For the EF Best Use of Anon-RPC track.
 
-**Status: wired in apps/web.** A Chrome measurement routed 26/26 SDK reads with zero direct reads on Nox and Nym; see [SDK measurement](../../packages/sdk/README.md#anon-rpc-reposdkbrowseranon). This is not a measurement of every service or every session.
+**Status: on by default on the hosted app.** Browser reads go through Anon-RPC over Nox (`NEXT_PUBLIC_ANON_RPC=1`). Backend reads use Tenderly directly, and writes are public transactions. A Chrome measurement routed 26/26 SDK reads with zero direct reads on Nox and Nym; see [SDK measurement](../../packages/sdk/README.md#anon-rpc-reposdkbrowseranon). This is not a measurement of every service or every session.
 
 ## Why ZK needs network privacy
 
@@ -24,7 +24,7 @@ Source: [`docs/privacy-architecture.md`](../../docs/privacy-architecture.md) sec
 ## What exists in the code
 
 - **App:**
-  - `NEXT_PUBLIC_RPC_MODE = mock | anon | plain`
+  - `NEXT_PUBLIC_ANON_RPC` (default on for Sepolia), `NEXT_PUBLIC_ANON_NETWORK` (default `nox`), `NEXT_PUBLIC_ANON_RPC_STRICT` (default off: fall back to direct reads if Anon-RPC is unavailable) ([`apps/web/src/lib/mra.ts`](../../apps/web/src/lib/mra.ts))
   - `NEXT_PUBLIC_ANON_RPC_SPECIFIER`, `NEXT_PUBLIC_ANON_RPC_BOOTSTRAP_URL`, `NEXT_PUBLIC_ANON_RPC_CONFIG`
 
   All of these are in [`deploy/env/compose.env.example`](../../deploy/env/compose.env.example). These values are inlined at build time.
@@ -37,4 +37,4 @@ The app downloads whole trees and builds paths locally. The measured 26 reads do
 
 ## Fallback
 
-If Anon-RPC is unavailable on stage, set `NEXT_PUBLIC_RPC_MODE=plain` and **say so out loud**. Don't claim privacy that isn't running.
+If Anon-RPC is unavailable on stage, the app falls back to direct reads (strict mode is off by default), or you can build with `NEXT_PUBLIC_ANON_RPC=0`. Either way, **say so out loud**. Don't claim privacy that isn't running.

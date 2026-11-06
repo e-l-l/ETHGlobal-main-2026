@@ -23,7 +23,7 @@ Context: in Kenya and Nigeria, regulators have fined and shut down digital loan 
 ### Level 0: basics (no ZK, about 2 hours)
 - No phone number, contact access, ID upload or photo anywhere in the flow.
 - Shop names don't mention debt: `chai-stall.pay`, never `chai-stall.advance`.
-- Advances go to a **fresh payout address**, in **fixed sizes** ($50, $100, $250, $500) so amounts don't fingerprint the borrower.
+- Advances go to a **fresh payout address**, in **fixed sizes** (tier caps $50, $100, $200, $300) so amounts don't fingerprint the borrower.
 - Every RPC read goes through Anon-RPC.
 - No analytics or trackers in the client.
 
@@ -43,14 +43,14 @@ nullifier  = Poseidon2(TAG_NULL, secret)         // hash_2; published when the c
 The secret is generated and stored only on the merchant's device.
 
 **Lifecycle**
-1. **First advance.** The merchant proves uniqueness with World ID (action `first-advance`, usable once per human). They submit `h1`. The contract stores pending commitment `Poseidon2(h1, 1)` with the advance.
+1. **First advance.** The merchant has already passed World ID (the first onboarding step, checked offchain; nothing about the person goes onchain) and proves a Business Pass in ZK (`drawFirst`). They submit `h1`. The contract stores pending commitment `Poseidon2(h1, 1)` with the advance.
 2. **Full repayment.** Anyone (in practice, our relayer) calls `claimStandingPass`, which inserts the pending commitment into the tree. The credential is now live.
 3. **Next advance.** The merchant proves in the browser that they own a live credential with count `k ≥ tier`. The proof spends it (publishing the nullifier) and binds a new pending commitment with count `k + 1`.
 4. **Default.** The pending commitment is never inserted. The old credential is already spent, so there's nothing left to borrow with.
 
 The scheme also guarantees two things:
 - **At most one active advance.** Each live credential can be spent once, and the next one only exists after repayment.
-- **No restart after default.** World ID `first-advance` works once per human.
+- **No restart after default.** A write-off bans the human behind the shop. The ban is enforced by our offer signer from a private HMAC list of World nullifiers, so their next attempt stops at the World ID step. It is enforced offchain; the roadmap is a ZK "not in the banned set" proof.
 
 **Circuit: `standing_pass`**
 
@@ -96,7 +96,9 @@ The scheme also guarantees two things:
   - the verifier needs solc ≥0.8.27 and the optimizer turned on
 - **Every private input must be constrained,** and public inputs must be in the order `[root, nullifier, tier, commitmentNext, context]`.
 
-### Level 2: zkTLS sales proof (stretch)
+### Level 2: zkTLS sales proof (built as the Business Pass)
+
+> **Status:** built. The live demo uses a demo seller portal and a mock attestor; the real Reclaim path is built and tested ([zktls-spike.md](zktls-spike.md), `issuer/src/reclaim.ts`). The original plan follows.
 
 The merchant proves their Mercado Pago, M-Pesa or Paystack statement shows sales of at least $X a month, from at least N customers, and reveals nothing else. This fixes **cold start** (new merchants have no onchain history) without exposing their books. Check before 21:00 whether a zkTLS SDK such as Reclaim or vlayer has a working provider for these sites.
 

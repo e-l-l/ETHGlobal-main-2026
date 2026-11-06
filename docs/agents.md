@@ -17,7 +17,7 @@
 - **Cannot:** raise an amount or approve anything on its own. An offer is signed only if the Critic approves.
 
 ### Risk
-- Watches the junior token's **TWAP** (from `RiskHook.consult`, never the spot price) on Uniswap, the default rate and repayment speed.
+- Watches the DripCoin (DRIP) **TWAP** (from `RiskHook.consult`, never the spot price) on Uniswap, the default rate and repayment speed.
 - Calls `lowerLimits` on `AdvanceBook` (cap per tier, total exposure) **only within preset bounds**, and only downward. Restoring limits needs an admin or a timelock.
 
 ## Offer schema
@@ -100,5 +100,5 @@ onchain events → FEATURES (Python) → red lines (code) → Underwriter → Cr
   - **Laya:** open-weight classifiers; needs fine-tuning data we don't have
 
   Neither is on the critical path. Jev would also add another third party that sees our data, which matters for CROPS.
-- **World Agent Pass:** the merchant approves each agent-prepared draw. The demo also needs a **denied path** where the draw doesn't happen. Integration point: between the signed offer and `/relay/draw-*`. Docs still to be read.
+- **World Agent Pass:** the merchant delegates **once** to their managed agent, with limits. The backend validates World's `id_token`, the attester signs, and `registerMandate` lands onchain. After that, `drawByMandate` needs no taps, and the contract enforces the mandate limits on every draw. A denied or expired approval means no mandate and no draws. See [WORLD_DEBRIEF.md](submission/WORLD_DEBRIEF.md).
 - **Local dev:** `agents/scripts/devnet.sh` (anvil + full deploy, including the real `HonkVerifier`) and `seed_demo.py` (chai-stall, wash-trader, ghost-shop).

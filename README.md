@@ -18,9 +18,9 @@
 
 | Live | Simulated or planned |
 |---|---|
-| Sepolia contracts; browser-generated ZK proofs verified onchain; Bedrock AI underwriting; managed agents and Risk agent; test-USDC payments; v4 DripCoin swap via RiskHook; Anon-RPC app reads | Mock zkTLS attestor and fictional seller portal; World test-mode stub (real OIDC/IDKit built and tested, pending keys); cash-out; any-token checkout; testnet money |
+| Sepolia contracts; browser-generated ZK proofs verified onchain (decoded at `/proof`); real World IDKit + Agent Pass wired live; Bedrock AI underwriting; managed agents and Risk agent; test-USDC checkout; v4 DripCoin swap via RiskHook; Anon-RPC browser reads (Nox, on by default) | Demo seller portal + mock zkTLS attestor (real Reclaim path built and tested); World test mode as a fallback and in the simulator; simulator time is fast-forwarded on a public devnet; cash-out; pay in any token via Uniswap (roadmap); testnet money |
 
-DripCoin (DRIP): junior, takes losses first. The deployed contract still uses Junior/JNR until redeploy. The demo pool is seeded; its price is not a validated credit oracle. See [privacy architecture](docs/privacy-architecture.md) for public data and trust boundaries and [economics](docs/economics.md) for fees and risks.
+DripCoin (DRIP) is the junior, first-loss tranche share (ERC-4626); the deployed vault is named "DripCoin"/"DRIP". The demo pool is seeded by the team; its price is an early-warning signal, not a validated credit oracle. See [privacy architecture](docs/privacy-architecture.md) for public data and trust boundaries and [economics](docs/economics.md) for fees and risks.
 
 ## What it is
 
@@ -28,9 +28,9 @@ DripMoney is a private **merchant cash advance** for small shops in dollar-short
 
 1. **Prove the business, not the person.** The merchant proves with zkTLS that their seller dashboard shows a country, a revenue band and 6+ months of activity. That becomes a **Business Pass**. We never ask for a name, phone number or contacts.
 2. **Get paid in stablecoins.** Customers scan the shop's QR and pay in test USDC. While an advance is active, 8% of each sale goes toward repayment; without an advance there is no holdback. Any-token checkout swaps are planned.
-3. **An agent draws stock on credit.** The merchant sets limits (max per advance, max per month, recipient and expiry) and approves them once with a **test-mode World Agent Pass**. The cash-flow agent draws small advances to pay suppliers, and `PolicyGuard` enforces the limits onchain.
-4. **Repay through sales, build a private record.** Repayment comes out of the 8% split automatically. The fee is 0.5% per week while principal remains, capped at 3%; early payoff saves fee. A fully repaid advance mints a **Standing Pass**, a Noir zero-knowledge credential that raises the merchant's limit without revealing their history.
-5. **Lenders fund it.** A senior ERC-4626 USDC vault earns most of the fee. A junior first-loss token (DripCoin (DRIP)) earns more for taking losses first, and trades on a Uniswap v4 pool with a `RiskHook`.
+3. **An agent draws stock on credit.** World ID comes first: before any business step, the merchant proves they are a unique human who is not banned and has no open advance. They then set limits (max per advance, max per month, recipient and expiry) and delegate **once** with a **World Agent Pass**, with no approval on each draw. The cash-flow agent draws small advances to pay suppliers, and `AdvanceBook` (via `Policy`) enforces the mandate limits and tier caps onchain.
+4. **Repay through sales, build a private record.** Repayment comes out of the 8% split automatically. The fee is 0.5% per week while principal remains, capped at 3%; early payoff saves fee. Falling behind the minimum (1% of owed per 7 days) adds a late fee of 0.5% per week (capped at 3%, so 6% total), paid 100% to the reserve. After 30 days anyone can write the advance off, and the human behind it is banned at the World ID step. A fully repaid advance mints a **Standing Pass**, a Noir zero-knowledge credential that raises the merchant's limit without revealing their history.
+5. **Lenders fund it.** Fees split 40% senior vault, 30% DripCoin (DRIP), 20% reserve, 10% protocol. DRIP is the junior first-loss tranche (it must cover 20% of senior outstanding) and trades on a Uniswap v4 pool whose `RiskHook` takes a 0.3% USDC-side fee (75% to the reserve, 25% to the treasury).
 
 The **World view** toggle on every screen shows exactly which data is onchain and which stays on the device.
 
@@ -46,8 +46,18 @@ The **World view** toggle on every screen shows exactly which data is onchain an
 | Agents service (Python): Underwriter, Critic, managed cash-flow agents, Risk agent, keeper, relayer | ✅ Running on EC2, 406 tests |
 | Business Pass issuer (zkTLS → attestation) | ✅ Running; demo uses a mock attestor; the real Reclaim path is built and tested |
 | `@repo/sdk`: the one integration layer every screen uses | ✅ Anon-RPC wired in the app (26/26 reads routed in a Chrome measurement), in-browser prover, burner wallet + demo faucet |
-| World Agent Pass + IDKit | 🟡 Built and tested; test mode until the World app keys are added |
+| World ID (IDKit) + Agent Pass | ✅ Real mode wired live on the hosted app (`WORLD_MOCK=0`, `NEXT_PUBLIC_WORLD_MODE=real`); test mode as a fallback and in the simulator |
+| Proof center and simulator | ✅ `/proof` decodes onchain ZK proofs, txs and AI decisions; `/simulator` runs real proofs, AI and devnet txs with time fast-forwarded |
 | Live demo | https://app.65-1-36-70.sslip.io (public devnet for the default scene: `rpc.` / `api-devnet.`) |
+
+## CROPS
+
+- **C (censorship resistance):** if our API, relayer, issuer or agents disappear, the contracts keep working. Anyone can call `pay`, `repay`, `writeOff` (for a 5 USDC bounty), `RiskHook.flush` and the ERC-4626 vault deposits and withdrawals. The contracts are non-upgradeable and have no pause. New advances need a signed offer, and new passes need the issuer, but both are replaceable services that the owner can rotate.
+- **O (open source):** [MIT](LICENSE). The whole stack builds and runs locally with no real keys ([docs/LOCAL.md](docs/LOCAL.md)).
+- **P (privacy, the lead property):** ZK passes (Business Pass, Standing Pass) are built on the device, and only proofs reach the chain. Browser reads go through Anon-RPC (Nox) by default. World ID is kept only as an HMAC on our server, and nothing about the person goes onchain. What stays public: the shop pseudonym's sales, repayments and advance sizes, and every transaction (writes are public, and backend reads use Tenderly). **No third-party analytics or trackers** ship in `apps/web`.
+- **S (security):** the contract enforces tier caps, the exposure cap, mandate limits and 20% junior cover. Agents only propose signed offers, and the Risk agent can only lower limits, never below the floors. This is **unaudited hackathon code**.
+
+Details and honest gaps: [docs/submission/CROPS.md](docs/submission/CROPS.md).
 
 ## Quick start
 
@@ -81,13 +91,13 @@ No other secrets are needed today. All data comes from `apps/web/src/lib/mock`.
 
 | Who | Start here | Flow |
 |---|---|---|
-| Merchant, new | `/onboarding` | Welcome → Prove business (zkTLS) → Verifying → Business Pass → Create shop |
+| Merchant, new | `/onboarding` | Welcome → World ID (stop screen if banned or an advance is open) → Prove business (zkTLS) → Verifying → Business Pass → Create shop (bound via a sealed ticket) |
 | Merchant, signed up | `/merchant` | Home and live sales · advance details · bad week · agent log, setup, approve and manage · repaid / Standing Pass · cash out · my QR · World view |
 | Customer | `/pay/corner-kiosk` | Pay with test USDC → receipt. The advance is never mentioned. |
 | Demo seller portal | `/portal/login` | The page the zkTLS proof reads from (stand-in for Mercado Pago) |
 | Lender | `/earn` | Vault: overview, deposit / withdraw, position |
 | Risk taker | `/dripcoin` | DripCoin (DRIP): overview, mint / redeem, trade on Uniswap v4 |
-| Public / judges | `/protocol` | Protocol dashboard, `/risk` status, `/explorer` |
+| Public / judges | `/protocol`, `/proof`, `/simulator` | Protocol dashboard, `/risk` status, `/explorer`, the proof center, and the simulator |
 | Dev | `/screens`, `/final/components` | Every screen on one page; the component gallery |
 
 Every route lives in [`apps/web/src/lib/routes.ts`](apps/web/src/lib/routes.ts). Link through `routes.*` rather than hard-coding paths.
@@ -145,14 +155,14 @@ Full spec: [anay-design.md](anay-design.md).
 
 | Doc | Covers |
 |---|---|
-| [architecture.md](anay-docs/architecture.md) | System diagram, contracts, off-chain services, onboarding and advance lifecycle, chain and deployment |
-| [economics.md](anay-docs/economics.md) | Time-based fee, 8% holdback, $50/$100/$200/$300 tier caps, and the 40/30/20/10 fee waterfall |
-| [zk-privacy.md](anay-docs/zk-privacy.md) | Threat model, Business Pass (zkTLS), Standing Pass (Noir), what is and isn't hidden |
-| [agents.md](anay-docs/agents.md) | Cash-flow, Underwriter, Critic and Risk agents; mandates; what agents can't do |
-| [ux.md](anay-docs/ux.md) | Users, every screen, copy rules |
-| [hackathon.md](anay-docs/hackathon.md) | Partner tracks, prizes and submission checklists |
-| [judge-qa.md](anay-docs/judge-qa.md) | The hard questions and our answers |
-| [research.md](anay-docs/research.md) | Why a cash advance and not a payday loan |
+| [architecture.md](docs/architecture.md) | System diagram, contracts, off-chain services, onboarding and advance lifecycle, chain and deployment |
+| [economics.md](docs/economics.md) | Time-based fee, 8% holdback, $50/$100/$200/$300 tier caps, and the 40/30/20/10 fee waterfall |
+| [zk-privacy.md](docs/zk-privacy.md) | Threat model, Business Pass (zkTLS), Standing Pass (Noir), what is and isn't hidden |
+| [agents.md](docs/agents.md) | Cash-flow, Underwriter, Critic and Risk agents; mandates; what agents can't do |
+| [ux.md](docs/ux.md) | Users, every screen, copy rules |
+| [hackathon.md](docs/hackathon.md) | Partner tracks, prizes and submission checklists |
+| [judge-qa.md](docs/judge-qa.md) | The hard questions and our answers |
+| [research.md](docs/research.md) | Why a cash advance and not a payday loan |
 | [privacy-architecture.md](docs/privacy-architecture.md) | The full privacy design: Business Pass, Agent Pass, Anon-RPC, who learns what |
 | [packages/sdk/README.md](packages/sdk/README.md) | How any frontend plugs in: every screen → SDK call → view-model |
 | [integration-keys.md](docs/integration-keys.md) | Every key and app id for real mode, and where to get it |

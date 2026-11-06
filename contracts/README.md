@@ -1,6 +1,6 @@
 # Contracts
 
-Foundry project for Merchant Revenue Advance. The full spec is in [SPEC.md](SPEC.md), and the architecture and the "who calls what" table are in [../docs/architecture.md](../docs/architecture.md).
+Foundry project for DripMoney. The full spec is in [SPEC.md](SPEC.md), and the architecture and the "who calls what" table are in [../docs/architecture.md](../docs/architecture.md).
 
 | Contract | What it does |
 |---|---|
@@ -8,8 +8,8 @@ Foundry project for Merchant Revenue Advance. The full spec is in [SPEC.md](SPEC
 | `src/BusinessPassRegistry.sol` | Business Pass tree: issuer-attested (zkTLS verified offchain), one pass per business via a peppered business nullifier; attribute-free events |
 | `src/Policy.sol` | EIP-712 agent offers, tier caps, exposure cap, downward-only risk limits (inherited by AdvanceBook) |
 | `src/StandingPassTree.sol` | Depth-16 Poseidon2 Merkle tree of ZK credentials (inherited by AdvanceBook) |
-| `src/TrancheVault.sol` | ERC-4626 senior and junior vaults. The junior shares are the junior token. |
-| `src/RiskHook.sol` | Uniswap v4 hook: USDC fee to the reserve, TWAP for the Risk agent |
+| `src/TrancheVault.sol` | ERC-4626 senior and junior vaults. The junior shares are DripCoin (DRIP), with 20% cover of senior outstanding. |
+| `src/RiskHook.sol` | Uniswap v4 hook: 0.3% USDC-side fee (`flush`: 75% reserve, 25% treasury), TWAP for the Risk agent |
 
 ## Build and test
 
@@ -57,8 +57,8 @@ Addresses are in [`agents/deployments/sepolia.json`](../agents/deployments/sepol
 |---|---|
 | AdvanceBook | `0x82cd71d8eefa47492be6b8dcf596a18a7753a0b1` |
 | BusinessPassRegistry | `0x40700886396bafb5ee4f260487a6584efa511adb` |
-| SeniorVault / JuniorVault (junior token) | `0xc2286c564bde614ca1414518d02cacec77f3e297` / `0x5998b918db6edaccde4ce3fc282b9b057ab8d81c` |
-| RiskHook (Uniswap v4, junior/USDC pool) | `0xf5174b8f8642aef786e6bb1c1facac6d0f201044` |
+| SeniorVault / JuniorVault (DripCoin, DRIP) | `0xc2286c564bde614ca1414518d02cacec77f3e297` / `0x5998b918db6edaccde4ce3fc282b9b057ab8d81c` |
+| RiskHook (Uniswap v4, DRIP/USDC pool) | `0xf5174b8f8642aef786e6bb1c1facac6d0f201044` |
 | MockUSDC (demo) | `0x6603ac3f0a1ea33f232c97655a1b4f91280e55bb` |
 | HonkVerifier / BusinessPassVerifier | `0x7764690108c612fafde5eeb1cbe2f20d80e42017` / `0xb79d40dcda63d941a31d866028d5d6852550136a` |
 

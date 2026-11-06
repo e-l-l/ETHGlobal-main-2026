@@ -1,28 +1,34 @@
 # Uniswap v4 developer feedback
 
-Project: Merchant Revenue Advance (ETHGlobal Mumbai, From Scratch). Track: Build with Uniswap.
+Project: DripMoney (ETHGlobal Mumbai, From Scratch). Track: Build with Uniswap.
 
 Paths are relative to the repo root. Contract line numbers refer to the code as submitted.
 
 ## What we built with v4
 
-The junior tranche of our lending book is an ERC-4626 vault, and its shares are the "junior token". It takes first loss on merchant defaults. We list it against USDC on a v4 pool with a custom hook, so the market prices default risk in public, and our Risk agent reads that price.
+The junior tranche of our lending book is an ERC-4626 vault, and its shares are DripCoin (DRIP). It takes first loss on merchant defaults. We list it against USDC on a v4 pool with a custom hook. The pool gives junior holders an exit and gives our Risk agent one public early-warning signal (its TWAP).
 
 | Piece | Where |
 |---|---|
-| `RiskHook`, a `BaseHook` from OpenZeppelin uniswap-hooks. Permissions: `afterInitialize`, `afterSwap`, `afterSwapReturnDelta` | [`contracts/src/RiskHook.sol` L36-L86](../../contracts/src/RiskHook.sol#L36-L86) |
-| **USDC-only fee to the reserve.** The fee is charged only when the swap's *unspecified* currency is USDC. It is taken with `poolManager.take` and returned as the afterSwap delta. Swaps whose unspecified side is the junior token pay nothing. | [`_afterSwap`, L97-L120](../../contracts/src/RiskHook.sol#L97-L120) |
-| **Permissionless `flush()`** sends accrued USDC to `AdvanceBook.depositReserve`. The reserve covers losses after the junior tranche. | [L125-L135](../../contracts/src/RiskHook.sol#L125-L135), [`contracts/src/AdvanceBook.sol` L561](../../contracts/src/AdvanceBook.sol#L561) |
-| **64-slot TWAP oracle.** Per pool, a ring buffer of `(timestamp, tickCumulative)`, written at most once per block. It accumulates the tick that held since the last observation (v3 semantics), so a same-block move-and-revert adds nothing. | [`_recordObservation`, L139-L156](../../contracts/src/RiskHook.sol#L139-L156) |
-| **`consult(key, secondsAgo)`** returns the time-weighted mean tick, interpolating between observations | [L160-L206](../../contracts/src/RiskHook.sol#L160-L206) |
-| Risk agent reads `consult` (1h vs 24h TWAP; a drop of more than 10% fires a trigger). It can only call `lowerLimits` (downward, above floors). | [`agents/src/mra_agents/chain.py` L352-L355](../../agents/src/mra_agents/chain.py#L352), [`agents/src/mra_agents/risk.py`](../../agents/src/mra_agents/risk.py), [`contracts/src/Policy.sol` L125-L133](../../contracts/src/Policy.sol#L125) |
+| `RiskHook`, a `BaseHook` from OpenZeppelin uniswap-hooks. Permissions: `afterInitialize`, `afterSwap`, `afterSwapReturnDelta` | [`contracts/src/RiskHook.sol` L37-L90](../../contracts/src/RiskHook.sol#L37-L90) |
+| **USDC-only fee (0.3%, 3000 pips).** The fee is charged only when the swap's *unspecified* currency is USDC. It is taken with `poolManager.take` and returned as the afterSwap delta. Swaps whose unspecified side is DRIP pay nothing. | [`_afterSwap`, L101-L124](../../contracts/src/RiskHook.sol#L101-L124) |
+| **Permissionless `flush()`** sends 75% of accrued USDC to `AdvanceBook.depositReserve` and 25% to the protocol treasury. The reserve covers losses after the junior tranche. | [L129-L142](../../contracts/src/RiskHook.sol#L129-L142), [`contracts/src/AdvanceBook.sol` L553](../../contracts/src/AdvanceBook.sol#L553) |
+| **64-slot TWAP oracle.** Per pool, a ring buffer of `(timestamp, tickCumulative)`, written at most once per block. It accumulates the tick that held since the last observation (v3 semantics), so a same-block move-and-revert adds nothing. | [`_recordObservation`, L153-L170](../../contracts/src/RiskHook.sol#L153-L170) |
+| **`consult(key, secondsAgo)`** returns the time-weighted mean tick, interpolating between observations | [L174-L220](../../contracts/src/RiskHook.sol#L174-L220) |
+| Risk agent reads `consult` (1h vs 24h TWAP; a drop of more than 10% fires a trigger). It also watches write-offs and repayment pace. It can only call `lowerLimits` (downward, above floors). | [`agents/src/mra_agents/chain.py` L375](../../agents/src/mra_agents/chain.py#L375), [`agents/src/mra_agents/risk.py`](../../agents/src/mra_agents/risk.py), [`contracts/src/Policy.sol` L125-L133](../../contracts/src/Policy.sol#L125) |
 | Hook address mined with `HookMiner`; pool initialised (fee 3000, tick spacing 60, `sqrtPriceX96 = 2^96`, i.e. price 1) | [`contracts/script/Deploy.s.sol` L65-L77](../../contracts/script/Deploy.s.sol#L65-L77) |
 | Tests: 21 tests, including fee direction, flush, TWAP and the HookMiner address | [`contracts/test/RiskHook.t.sol`](../../contracts/test/RiskHook.t.sol) |
-| **In-app swap on Sepolia.** `/junior/trade` swaps DripCoin (DRIP) ⇄ USDC for real from the app's burner wallet through Uniswap's official v4 `PoolSwapTest`. Buys are exact-output, so both directions leave USDC unspecified and pay the hook fee. The result shows the fee and the new TWAP observation. The pool is seeded by a script. | [`packages/sdk/src/domains/lender.ts`](../../packages/sdk/src/domains/lender.ts) (`junior.swap`), [`packages/sdk/src/chain/swap.ts`](../../packages/sdk/src/chain/swap.ts), [`apps/web/src/screens/lend/client.tsx`](../../apps/web/src/screens/lend/client.tsx), [`agents/scripts/seed_junior_pool.py`](../../agents/scripts/seed_junior_pool.py) |
+| **In-app swap on Sepolia.** `/dripcoin/trade` swaps DripCoin (DRIP) ⇄ USDC for real from the app's burner wallet through Uniswap's official v4 `PoolSwapTest`. Buys are exact-output, so both directions leave USDC unspecified and pay the hook fee. The result shows the fee and the new TWAP observation. The pool is seeded by a script. | [`packages/sdk/src/domains/lender.ts`](../../packages/sdk/src/domains/lender.ts) (`junior.swap`), [`packages/sdk/src/chain/swap.ts`](../../packages/sdk/src/chain/swap.ts), [`apps/web/src/screens/lend/client.tsx`](../../apps/web/src/screens/lend/client.tsx), [`agents/scripts/seed_junior_pool.py`](../../agents/scripts/seed_junior_pool.py) |
 
-Live on Sepolia: RiskHook `0xf5174b8f8642aef786e6bb1c1facac6d0f201044` on PoolManager `0xE03A1074c86CFeDd5C142C4F04F1a1536e203543`. Pool key: junior `0x5998…d81c` / MockUSDC `0x6603…55bb`, fee 3000, tick spacing 60 (`agents/deployments/sepolia.json`).
+Live on Sepolia: RiskHook `0xf5174b8f8642aef786e6bb1c1facac6d0f201044` on PoolManager `0xE03A1074c86CFeDd5C142C4F04F1a1536e203543`. Pool key: DRIP (JuniorVault) `0x5998b918db6edaccde4ce3fc282b9b057ab8d81c` / MockUSDC `0x6603ac3f0a1ea33f232c97655a1b4f91280e55bb`, fee 3000, tick spacing 60 (`agents/deployments/sepolia.json`).
 
-Not built: Uniswap API swaps at checkout (customer pays in USDT, it settles in USDC). Checkout takes USDC only at submission; the app defaults to USDC in live mode and does not claim a swap. The v4 integration we ship is the junior-token market above, which is core to the product: it prices default risk and drives the Risk agent.
+Not built: Uniswap API swaps at checkout (customer pays in USDT, it settles in USDC). Checkout takes USDC only; paying in any token is roadmap. The v4 integration we ship is the DRIP/USDC market above.
+
+### Known limitations
+
+- **The hook does not restrict itself to one pool key.** Any pool initialised with `RiskHook` as its hook gets an oracle slot and pays the USDC-side fee. We only seed and read the DRIP/USDC pool, but a production version should check the pool key in `_afterInitialize`.
+- **The TWAP on a thin, team-seeded pool is an early-warning signal, not a manipulation-resistant oracle.** That is why the Risk agent can only lower limits (never below the floors), and why the TWAP is one of three triggers, with write-offs and repayment pace.
+- **Checkout any-token swaps are not built.** Checkout is USDC only.
 
 ## What worked
 
@@ -37,9 +43,9 @@ Not built: Uniswap API swaps at checkout (customer pays in USDT, it settles in U
 1. **PoolManager's exact solc pin.** `PoolManager.sol` pins `pragma solidity 0.8.26` exactly, and hook tests compile it, so nothing in the same compilation unit may require a newer compiler. In our build that was the Barretenberg-generated ZK verifier (`>=0.8.27`), which we had to compile as a separate unit and never import. The same applies to newer OpenZeppelin modules: we checked OpenZeppelin Contracts 5.7.0, where most files are `^0.8.20`–`^0.8.26`, but new modules such as `utils/RateLimiter.sol` and `crosschain/CrosschainRemoteExecutor.sol` are `^0.8.27`. A floating `^0.8.26` pragma on PoolManager, or a note in the v4 docs, would have saved time.
 2. **We use uniswap-hooks' bundled OpenZeppelin (5.5.0).** To avoid two OZ copies, every `@openzeppelin/contracts/` import is remapped to `lib/uniswap-hooks/lib/openzeppelin-contracts`, and v4-core and v4-periphery are also taken from inside uniswap-hooks ([`contracts/remappings.txt`](../../contracts/remappings.txt)). It works, but it ties our whole project's OZ version to the hooks library. We had to make this a rule: "never add or upgrade libraries" ([`contracts/SPEC.md`](../../contracts/SPEC.md), Toolchain).
 3. **`afterSwapReturnDelta` sign conventions.** The hard part was not the code. It was working out three things:
-   - which currency is "unspecified": it is currency0 if and only if `exactInput != zeroForOne` ([L105-L107](../../contracts/src/RiskHook.sol#L105-L107))
+   - which currency is "unspecified": it is currency0 if and only if `exactInput != zeroForOne` ([L109-L111](../../contracts/src/RiskHook.sol#L109-L111))
    - that the sign of `amountSpecified` encodes exact-in vs exact-out
-   - that a **positive** returned `int128` means the hook is owed that amount, which PoolManager then takes from the swapper's delta ([L115-L119](../../contracts/src/RiskHook.sol#L115-L119))
+   - that a **positive** returned `int128` means the hook is owed that amount, which PoolManager then takes from the swapper's delta ([L120-L123](../../contracts/src/RiskHook.sol#L120-L123))
 
    The result is that exact-in/USDC-out swappers receive `out - fee` and exact-out/USDC-in swappers pay `in + fee`. We pinned each of the four direction cases with a test, plus a fuzz test ([`RiskHook.t.sol` L244-L290](../../contracts/test/RiskHook.t.sol#L244-L290)). A table of the four cases in the custom-accounting guide would help.
 4. **HookMiner deployer address.** In tests the CREATE2 deployer is the test contract (`HookMiner.find(address(this), …)`). In a `forge script` broadcast it is the CREATE2 factory `0x4e59b44847b379578588920cA78FbF26c0B4956C` ([`Deploy.s.sol` L23, L70](../../contracts/script/Deploy.s.sol#L23)). If you pass the wrong one, the address silently fails to match the flags. We added `require(address(hook) == predicted)` (L72). HookMiner could return or document this more clearly.

@@ -1,69 +1,48 @@
-# Demo script
+# Demo script (≤ 3 minutes)
 
-Judging gives 4 minutes of demo and 3 of questions. Below: a live script, a video outline, and a fallback for every live dependency.
+One narrative for the live demo and the video: ETHGlobal allows 2–4 minutes, and EF CROPS wants 3 minutes or less. The scene-by-scene recording checklist is in [VIDEO.md](VIDEO.md).
 
 Cast:
 - **Presenter**
-- **Merchant phone:** "Kiosco Don Pepe", demo account `donpepe`, band 2, Argentina
-- **Customer phone:** a judge, if they're willing
-- **Laptop:** explorer plus the "what the world sees" panel
+- **Merchant phone:** "Kiosco Don Pepe", Argentina, with World App installed
+- **Customer:** a judge or a second browser profile
+- **Laptop:** `/proof`, `/simulator`, `/earn`, `/dripcoin/trade`
 
-## Live: 4 minutes
+Live app: https://app.65-1-36-70.sslip.io
 
-| Time | Scene | What the judge sees |
-|---|---|---|
-| 0:00–0:20 | **Problem.** A kiosco owner in Buenos Aires needs dollars for stock today. Her sales arrive next week. Loan apps would want her contacts. | One slide |
-| 0:20–1:00 | **Business Pass demo (mock attestor, fictional portal).** On the phone she logs into her seller dashboard (the PagoSur demo portal, introduced as a stand-in) inside the Reclaim flow. The mock issuer checks the demo evidence, sees the account ID transiently and signs. The relayer calls `BusinessPassRegistry.issue`. | The app shows "Verified business · Argentina · revenue band 2 · 6+ months. The issuer sees the account ID transiently." The explorer shows only `BusinessPassIssued(index, root)`. |
-| 1:00–1:35 | **Managed agent, set up once with Agent Pass.** She sets limits (max per draw, max per month) and approves in the World test-mode stub. Then `registerMandate` lands onchain. *Quick aside:* a second try with "deny" means no attestation, no mandate and no draws. | One approval screen, then "Your agent is active". There will be no more taps. |
-| 1:35–2:05 | **Automatic draw, then a live sale.** Her agent requests an offer: the Underwriter proposes, the Critic approves, code clamps, the offer is signed, and the relayer calls `drawByMandate`. USDC goes to a fresh address. A judge pays the QR. | The phone says, in voice: **"You received 10 dollars, 1 went to your advance."** The advance balance falls. |
-| 2:05–2:35 | **The wash trader is caught.** `wash-trader` applies. Its payers were funded from the shop's own payout address, and its shop name holds an injection string. The circular-funding red line fires for this seeded example; other wash patterns can evade the checks. Then we force an oversized offer, and the contract reverts. | The rejection reasons on screen, and a reverted tx |
-| 2:35–3:15 | **A default the junior tranche absorbs.** A shop with no repaying sale for 30 days: anyone calls `writeOff`. The junior vault pays first, then the reserve, and senior is untouched. A separate scripted junior sale moves the seeded Uniswap v4 pool price; the write-off alone does not cause a trade. The Risk agent reads `RiskHook.consult` (the TWAP) and calls `lowerLimits`. | The write-off event, junior share price down, the pool price down, and tier caps lowered onchain (down only) |
-| 3:15–3:45 | **What the world sees.** A side-by-side panel: what the chain, the customer, us, the AI and the RPC provider each learned. | Shop owner and payout, sales payer/amount/shop, advance amount/tier/shop, and the advance-to-commitment claim are public; a later proof hides the selected leaf. Correlation remains possible. |
-| 3:45–4:00 | **Close.** Repayment lives inside the payment. Agents propose, the contract decides. Privacy is a property of the system. | Repo and contract addresses |
+## The narrative
 
-Optional if there's time: a Standing Pass. The repaid merchant opens a fresh shop and wallet, proves "1 repaid" in ZK, and may get a higher limit; timing and other metadata may correlate activity.
+| # | Time | Scene | What the judge sees | Say out loud |
+|---|---|---|---|---|
+| 1 | 0:00–0:15 | **Problem** | One slide or a kiosk photo | "A kiosco owner in Buenos Aires needs dollars for stock today. Her sales come next week. Loan apps want her name, phone and contacts. DripMoney gives her a small advance that repays itself from sales, without knowing who she is." |
+| 2 | 0:15–0:50 | **World ID first → Business Pass → shop** | Phone: `/onboarding`. World ID (real IDKit, World App) comes first, before any business step. Then she proves her seller dashboard (the demo portal) with zkTLS and gets a Business Pass. The shop is created and bound to her World ID with a sealed ticket. | "World ID comes first, so a banned human stops right here. The business is proven with zkTLS. **This portal and attestor are a demo stand-in; the real Reclaim path is built and tested.** Nothing about her goes onchain: only a ZK proof." |
+| 3 | 0:50–1:10 | **The agent draws $50** | She sets limits and delegates **once** with World Agent Pass. Her cash-flow agent requests an offer: the Underwriter proposes, the Critic checks, code clamps, and the offer is signed. `drawByMandate` lands, and $50 test USDC arrives. | "She delegates once and never taps again. The agent proposes, the contract decides: caps are enforced onchain." |
+| 4 | 1:10–1:30 | **A customer pays: 92/8** | The customer pays the shop's QR in test USDC. 92% goes to the merchant and 8% repays the advance; the balance owed falls. | "Repayment lives inside the payment. A slow day just repays less, as long as she meets the 1% weekly minimum." |
+| 5 | 1:30–1:50 | **The proof center** | Laptop: `/proof`. The draw's onchain ZK proof, decoded, with the tx link and the AI decision behind it. | "Don't trust us, verify it: the proof is onchain and decoded here, and so is the AI's reasoning." |
+| 6 | 1:50–2:35 | **The simulator: a defaulter** | Laptop: `/simulator`, `defaulter` run. The shop goes quiet → behind the minimum, so the **late fee** accrues to the reserve → 30 days → **write-off** → **DRIP absorbs** the loss and senior is untouched → a DRIP holder sells, and the **Risk agent** lowers caps (TWAP plus write-offs and repayment pace) → the **World ID ban** → the same human tries a new shop and is **refused at the World ID step**. | "**This is our public devnet, with real proofs, real AI and real transactions, but time is fast-forwarded.** World runs in test mode here so the run is unattended. The ban lives in our offer signer as a private HMAC list. Nothing about the person goes onchain." |
+| 7 | 2:35–3:00 | **The lenders** | `/earn`: the fee split 40% senior, 30% DRIP, 20% reserve, 10% protocol. Then `/dripcoin/trade`: a DRIP ⇄ USDC swap on Uniswap v4, with the RiskHook's 0.3% fee going to the reserve. | "Senior earns most and loses last. DRIP takes first loss for 30%. **This is Sepolia testnet money**, and the DRIP pool is seeded by us, so its price is an early warning, not an oracle." Close: "Private credit for the smallest shops: repayment inside the payment, agents that propose, and a contract that decides." |
 
-### Timing caveat for the default scene
+## Honest lines (say them, don't skip them)
 
-`writeOff` needs 30 days with no repaying sale. The Risk agent's triggers are:
-- a 1h TWAP more than 10% below the 24h TWAP
-- at least 2 write-offs in 7 days
-- slow repayment
-- exposure above 80%
-
-None of these can happen live on Sepolia in 40 seconds. **Label the selected scene as time-warped or seeded:**
-- (a) Run this scene on the local devnet, where `agents/scripts/e2e_local.py` moves the clock 31 days. Say so on stage.
-- (b) Prepare an advance on Sepolia ahead of time that is already past its window, plus a scripted junior sell to move the TWAP.
-
-## Video outline (2–4 min; aim for 3:00)
-
-ETHGlobal wants 2–4 minutes, 720p or better, a human voice and no speed-up. EF CROPS wants 3 minutes or less with the privacy property shown end to end. **One 3:00 cut meets both.**
-
-1. 0:00–0:20: The problem, and the one-line idea (repayment inside the payment)
-2. 0:20–0:55: Business Pass via zkTLS, plus the explorer showing only `BusinessPassIssued`
-3. 0:55–1:20: Agent Pass delegation, once, plus a 3-second denied path
-4. 1:20–1:50: The automatic draw, the live sale and the voice line
-5. 1:50–2:15: The wash trader rejected, and an oversized draw reverting
-6. 2:15–2:40: Time-warped default, junior absorbs, separate scripted sell in a seeded pool, then Risk agent lowering caps
-7. 2:40–3:00: The "what the world sees" panel, then the close
-
-**TODO:** record it, and check resolution, voice and that nothing is sped up.
+- "The seller portal and attestor are a demo stand-in. The real Reclaim zkTLS path is built and tested."
+- "Everything is on testnet: Sepolia and a MockUSDC."
+- "The simulator runs on our public devnet with time fast-forwarded. The proofs, the AI calls and the transactions are real."
+- "World ID and Agent Pass are real on the hosted app; the simulator uses World's test mode."
+- "Checkout is USDC only. Paying in any token via Uniswap is roadmap."
+- If asked: "This is unaudited hackathon code."
 
 ## Fallbacks for each live dependency
 
-General switch: the app's **Demo menu** sets any integration to `mock` (stored in localStorage, no redeploy). Every mode defaults to mock when unset ([`deploy/README.md`](../../deploy/README.md)).
-
 | Dependency | If it fails | Fallback |
 |---|---|---|
-| Reclaim zkTLS (attestors, provider, login webview) | No proof, or the proof is slow | Issuer mock mode (`ISSUER_MOCK=1`, `/mock/proof`). It skips only the Reclaim signature check; everything else is real. If needed, a pre-recorded proof JSON plus a replayed `issue()` tx ([`docs/zktls-spike.md`](../../docs/zktls-spike.md)). |
-| World Agent Pass and IDKit | OIDC or verify fails | `WORLD_MOCK=1` with `approve`, `deny` or `expire`. Say "mock" on stage. |
-| Bedrock judge models | Timeout or access error | Switch to `LLM_PROVIDER=anthropic` (Claude), or `NEXT_PUBLIC_API_MODE=mock`. The Risk agent has its own deterministic −25% fallback. |
-| Sepolia RPC | Errors or "block not found" | Use the Tenderly gateway (the one that worked for deploys). Otherwise run the laptop devnet. |
-| Anon-RPC | Not available | `NEXT_PUBLIC_RPC_MODE=plain`, said out loud |
-| Uniswap pool movement | Not enough price move to show | A separate scripted junior sell; label the seeded pool and do not attribute the trade to write-off. |
-| Voice announcement | No audio | Turn up the phone volume and show the on-screen text. **TODO: confirm where the voice line is implemented and that it works on the demo phone.** |
-| EC2 box | Down | `./deploy/compose.sh restart <service>`, or the laptop fallback `./deploy/local.sh --mock` with anvil, `devnet.sh` and `seed_demo.py`. Present from the laptop browser. |
-| Venue Wi-Fi | Down | Phone on mobile data, or the laptop fallback. Last resort: the recorded happy-path screen capture. |
-| Relayer gas | Out of Sepolia ETH | **TODO: top up the relayer and risk manager the evening before** (deploy checklist) |
+| World IDKit / Agent Pass (real) | World App or verify fails on stage | Switch to World test mode (`WORLD_MOCK=1` on the agents service, app built with `NEXT_PUBLIC_WORLD_MODE=mock`). **Say "test mode" out loud.** Or show scene 2 through the simulator, which already uses test mode. |
+| Reclaim zkTLS | n/a in the live demo | The live demo already uses the mock attestor (`ISSUER_MOCK=1`). |
+| Bedrock judge models | Timeout or access error | `LLM_PROVIDER=anthropic` (Claude). The Risk agent has its own deterministic −25% fallback. |
+| Sepolia RPC | Errors or "block not found" | Use the Tenderly gateway. Otherwise run scenes 3–6 in the simulator. |
+| Anon-RPC (Nox) | Slow or unavailable | The app falls back to direct reads when strict mode is off (the default). **Say so out loud**; don't claim network privacy that isn't running. |
+| Simulator run | Fails mid-way | Rerun it (it restores the caps and pool price for the next judge), or show a recorded run. |
+| EC2 box | Down | `./deploy/compose.sh restart <service>`, or the laptop stack ([`docs/LOCAL.md`](../LOCAL.md)). |
+| Venue Wi-Fi | Down | Phone on mobile data, or the laptop stack. Last resort: the recorded video. |
+| Relayer gas | Out of Sepolia ETH | Top up the relayer and risk manager before judging. |
 
-Before the demo, run `uv run python scripts/smoke_sepolia.py` (read-only). Expect `SMOKE PASS`.
+Before the demo, run `uv run python scripts/smoke_sepolia.py` in `agents/` (read-only). Expect `SMOKE PASS`.

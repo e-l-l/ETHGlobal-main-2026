@@ -17,7 +17,7 @@ Who we're designing for: a kiosco owner in Buenos Aires, a phone-accessory selle
 | **Voice announcement on each sale**, read out by the browser's speech synthesis: *"You received 10 dollars, 1 went to your advance"* | Mumbai judges know the Paytm soundbox. It's the most memorable demo moment and takes about 20 lines of code. |
 | **Local currency next to dollars** (ARS, NGN, KES) | Makes the case for stablecoins without explaining it |
 | **"Bad week" screen**: repayment slows, nothing is penalised | Our strongest argument for these economies |
-| **Offer screen in plain words**: one flat fee, days to repay for a slow, normal and busy week, the Underwriter's reasons, the next limit | Builds trust and answers "is this predatory?" upfront |
+| **Offer screen in plain words**: the fee (0.5% a week while owed, max 3%; a late fee only if behind the 1% weekly minimum), days to repay for a slow, normal and busy week, the Underwriter's reasons, the next limit | Builds trust and answers "is this predatory?" upfront |
 | **Denied screen with a next step** ("sell 2 more weeks through your link to unlock $50") | World's track requires a denied path anyway |
 | **Standing Pass screen**: "You've repaid 1 advance. Your limit is now $100. No one can see your history." | Makes the ZK benefit something the merchant can feel |
 | **Judge-ready payment**: a pre-funded web wallet on a demo phone, gas paid by us, "received" shown as soon as the payment is sent | A judge with no Sepolia USDC, or a 12+ second wait, kills the demo |

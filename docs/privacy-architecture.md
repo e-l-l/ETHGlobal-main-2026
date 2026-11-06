@@ -1,6 +1,6 @@
 # The full picture: a private, ZK-based, trustworthy lending platform
 
-**Scope:** ZK proofs hide credential details, not public transaction history. The demo uses a mock business attestor and World test-mode stub; the real Reclaim and World OIDC/IDKit paths are built and tested, pending production credentials.
+**Scope:** ZK proofs hide credential details, not public transaction history. On the hosted app, real World IDKit and Agent Pass are wired live (test mode remains available as a fallback, and the simulator uses it for unattended runs). The live demo proves the business with a demo seller portal and a mock attestor; the real Reclaim path is built and tested ([zktls-spike.md](zktls-spike.md), `issuer/src/reclaim.ts`).
 
 This doc ties together the pieces we've built and the pieces we still need. Each layer has a status:
 - ✅ built and tested
@@ -13,7 +13,7 @@ This doc ties together the pieces we've built and the pieces we still need. Each
 
 Onchain, shop registration exposes owner and payout addresses; sales expose payer, amount and shop; advances expose amount, tier and shop. `claimStandingPass` publicly links the advance ID to the inserted commitment. A later proof hides which Standing Pass leaf is used, but timing, tier, wallet reuse and payment flows can narrow candidates. Identity, seller account and business facts beyond the proved predicates are not published by the credential proof. They are not guaranteed unlinkable from external data.
 
-The issuer sees the seller account ID transiently and holds the HMAC pepper. The relayer sees requests and can correlate or censor them. Anon-RPC protects configured reads, not transaction metadata or all service interactions. Today the effective anonymity set is small and unmeasured: it depends on eligible, indistinguishable real leaves, not tree capacity. The fictional seller portal and mock attestor do not establish a real business. World is in test mode; a unique human would not prove a unique business.
+The issuer sees the seller account ID transiently and holds the HMAC pepper. The relayer sees requests and can correlate or censor them. Anon-RPC protects configured reads, not transaction metadata or all service interactions. Today the effective anonymity set is small and unmeasured: it depends on eligible, indistinguishable real leaves, not tree capacity. The demo seller portal and mock attestor do not establish a real business. World ID proves a unique human, which does not prove a unique business.
 
 ## 1. The five layers
 
@@ -23,11 +23,11 @@ The issuer sees the seller account ID transiently and holds the HMAC pepper. The
 ├──────────────────────────────────────────────────────────────────────────────────────────────┤
 │ 4. CREDIT PRIVACY     Standing Pass (ZK): "I repaid ≥ N advances". Proof hides the selected leaf; metadata may correlate.      │ ✅
 ├──────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 3. BUSINESS PRIVACY   Business Pass (zkTLS → ZK): "my business is real, active, earns ≥ band".   │ 🟡
+│ 3. BUSINESS PRIVACY   Business Pass (zkTLS → ZK): "my business is real, active, earns ≥ band".   │ ✅ (demo attestor live; real Reclaim path built and tested)
 │                       Yes/no answers only. No name, no ID, no sector, no exact numbers.         │
 ├──────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 2. HUMAN CONSENT      World Agent Pass: test-mode stub for delegation.  │ 🟡
-│                       World IDKit: test-mode recovery.         │
+│ 2. HUMAN CONSENT      World ID first (IDKit), Agent Pass delegation once, IDKit recovery. Live.  │ ✅
+│                       Test mode kept as a fallback; the simulator uses it.          │
 ├──────────────────────────────────────────────────────────────────────────────────────────────┤
 │ 1. MONEY              Vaults, waterfall, repayment-at-the-till, Uniswap risk market.            │ ✅
 │                       Public, auditable, enforced by contracts. Borrowers are pseudonyms.       │
@@ -86,7 +86,9 @@ uniqueness: businessNullifier = HMAC(issuerPepper, accountId) stored as "used": 
 
 ---
 
-## 3. Where World fits: at human moments, never in the credit decision 🟡
+## 3. Where World fits: at human moments, never in the credit decision ✅
+
+**Status:** real World IDKit and Agent Pass are wired live on the hosted app (`WORLD_MOCK=0`, app built with `NEXT_PUBLIC_WORLD_MODE=real`). Test mode remains available as a fallback, and the simulator uses it for unattended runs.
 
 **In the demo, credit can be automatic within a mandate.** Agents underwrite, code clamps, the contract decides, and no human is in the loop on any draw. World sits only where a genuinely *human* question exists:
 
@@ -94,7 +96,7 @@ uniqueness: businessNullifier = HMAC(issuerPepper, accountId) stored as "used": 
 |---|---|---|---|
 | **Delegating to the merchant's managed cash-flow agent, once** | **Agent Pass** | We host one agent per merchant. Before it may draw advances on the merchant's behalf, a **real, consenting human** must authorise it, with limits. Without this, anyone could run bots posing as merchants' agents. A denied or expired approval means no mandate and no automatic draws. | Agent Pass |
 | **Recovering credentials on a new phone** | **IDKit** (Proof of Human) | The Business Pass and Standing Pass secrets live on the device. Only the same human can unlock their encrypted backup. Proof of Human is the minimum sufficient credential: we need "same unique human", not age or nationality. | Best Use of IDKit |
-| **Before a shop's first advance** | **IDKit** (Proof of Human) | One defaulter must not walk away and borrow again under a fresh pseudonym. "Same unique human" is exactly the question, and nothing more. | Best Use of IDKit |
+| **First onboarding step, before any business step** | **IDKit** (Proof of Human) | One defaulter must not walk away and borrow again under a fresh pseudonym. A banned human, or one with an open advance, is stopped here; otherwise the shop is bound to this human with a sealed ticket. The ban (after a write-off) is enforced by our offer signer from a private HMAC list; nothing about the person goes onchain. "Same unique human" is exactly the question, and nothing more. | Best Use of IDKit |
 | Business verification, credit decisions | *(none)* | The business is proven by zkTLS from a KYC'd platform. Decisions are agents + code + contract. | — |
 
 ### World ID binding: what we store and what we don't
@@ -160,7 +162,7 @@ Merchant can revoke any time; mandates expire on pseudonym rotation.
 - **Roadmap 🔭:** managed agents run in a TEE so even we can't look inside.
 - **Trade-off:** draws under one mandate are linkable to each other. Rotating the pseudonym and mandate per credit cycle bounds this.
 
-## 4. Where Anon-RPC fits: ZK leaks without network privacy 🟡
+## 4. Where Anon-RPC fits: ZK leaks without network privacy ✅
 
 A ZK proof hides *which* credential you hold. But to **build** the proof, the app must fetch the Merkle tree, and if it asks an RPC provider "give me leaf #417", the provider learns exactly who you are. The same goes for checking your balance, your advance or your shop's sales.
 
@@ -171,7 +173,7 @@ A ZK proof hides *which* credential you hold. But to **build** the proof, the ap
 | Writes: draws, claims | **Our relayer** (Anon-RPC is reads only) | A merchant wallet can link advances |
 | Our backend's reads (indexer, features) | Configured RPC provider today | Provider sees backend reads |
 
-**Status:** app reads are wired; 26/26 measured SDK reads were routed in Chrome on Sepolia. Backend reads use its configured RPC.
+**Status:** browser reads go through Anon-RPC (Nox) by default on the hosted app (`NEXT_PUBLIC_ANON_RPC=1`); 26/26 measured SDK reads were routed in Chrome on Sepolia. If Anon-RPC is unavailable and strict mode is off (the default), the app falls back to direct reads. Backend reads use Tenderly directly, and writes are public transactions.
 
 **EF CROPS story:** "Private is the reason it exists." Credentials (ZK), network (Anon-RPC), writes (relayer), with issuer and relayer trust boundaries. The README CROPS section lists what each third party learns (section 6).
 
@@ -183,9 +185,10 @@ A ZK proof hides *which* credential you hold. But to **build** the proof, the ap
 
 | Piece | What it is | Token? |
 |---|---|---|
-| **Senior vault** | ERC-4626 over USDC. Lends principal; earns 60% of fees; loses last. | `sUSDC` vault shares (transferable ERC-20, not traded by us) |
-| **Junior vault** | ERC-4626 over USDC. First-loss buffer; earns 30% of fees; withdrawals are constrained by 10% of senior outstanding, but draws do not enforce that coverage. | **Junior token** = its shares, **traded on Uniswap v4** |
-| **Reserve** | USDC held in `AdvanceBook`. Earns 10% of fees + Uniswap hook fees. Covers losses after junior; pays write-off bounties. | none |
+| **Senior vault** | ERC-4626 over USDC. Lends principal; earns 40% of fees; loses last. | `sUSDC` vault shares (transferable ERC-20, not traded by us) |
+| **Junior vault** | ERC-4626 over USDC. First-loss buffer; earns 30% of fees. Junior assets must cover 20% of senior outstanding (`coverRatioBps = 2000`): a draw reverts if it would break this (`InsufficientJuniorCover`), and junior withdrawals are limited by it. | **DripCoin (DRIP)** = its shares, **traded on Uniswap v4** |
+| **Reserve** | USDC held in `AdvanceBook`. Earns 20% of fees, 100% of late fees, and 75% of Uniswap hook fees (`RiskHook.flush`; the other 25% goes to the protocol treasury). Covers losses after junior; pays write-off bounties. | none |
+| **Protocol** | Earns 10% of fees and 25% of hook fees. | none |
 | **Standing Pass / Business Pass** | ZK credentials (Merkle leaves) | **Not tokens.** Non-transferable, private, no market |
 | **Protocol token** | **None.** No governance token, no points | Trust: nothing to pump |
 
@@ -193,31 +196,35 @@ A ZK proof hides *which* credential you hold. But to **build** the proof, the ap
 
 ```
 Lenders ──USDC──► Senior vault ──lend──► fresh merchant address
-Risk takers ──USDC──► Junior vault (shares = junior token ⇄ Uniswap v4 pool + RiskHook)
+Risk takers ──USDC──► Junior vault (shares = DripCoin (DRIP) ⇄ Uniswap v4 pool + RiskHook)
 Customer ──pay──► AdvanceBook ──92%──► merchant
-                              └─10%──► principal → Senior ; fee → 60% Senior / 30% Junior / 10% Reserve
+                              └──8%──► fee first → 40% Senior / 30% Junior (DRIP) / 20% Reserve / 10% Protocol
+                                       late fee (if behind) → 100% Reserve ; then principal → Senior
 Default (30 days, no repaying sale) ─► anyone calls writeOff (bounty) ─► Junior pays → Reserve pays → Senior writes down
-Uniswap swaps (junior/USDC) ─► hook fee → Reserve ; TWAP → Risk agent → lowerLimits (down only)
+Uniswap swaps (DRIP/USDC) ─► 0.3% hook fee (USDC side only) → flush: 75% Reserve / 25% treasury ; TWAP → Risk agent → lowerLimits (down only)
 ```
 
 ### Why lenders can trust a book they can't see the borrowers of
 
 - **Every number is onchain and auditable:** total outstanding, each advance's size and repayment, defaults, the reserve, both vaults' assets. **Only identities are hidden.**
 - **Invariants tested:** accounting adds up, no USDC is lost or created (about 4,000 random calls per run).
-- **First-loss capital (junior + reserve)** stands in front of senior, and the junior must stay ≥ 10% of what senior has lent.
-- **Risk is priced publicly:** the junior token's TWAP is a live market estimate. Limits only fall automatically; raising them needs the owner (to be a multisig).
+- **First-loss capital (junior + reserve)** stands in front of senior, and the junior must stay ≥ 20% of what senior has lent (checked on every draw).
+- **Risk is priced publicly:** the DRIP TWAP is one early-warning signal (with write-offs and repayment pace). On a thin, team-seeded pool it is noisy and manipulable, which is why it can only lower limits. Limits only fall automatically; raising them needs the owner (to be a multisig).
 - **Non-upgradeable, no pause, nobody can touch funds.** Operator powers are listed in [architecture.md](architecture.md#operator-powers-named-for-crops).
 - **Underwriting is bounded:** agents propose, and a code clamp plus the onchain caps decide (per tier, total exposure, fixed sizes).
 
-### Decisions to confirm (proposals)
+### Deployed terms (Sepolia, AdvanceBook `0x82cd71d8…a0b1`)
 
-| Decision | Proposal |
+| Decision | Deployed |
 |---|---|
-| Fee split senior / junior / reserve | 60 / 30 / 10 (built) |
-| Junior coverage | ≥ 10% of senior outstanding (built) |
-| Tier caps | $50 / $100 / $250 / $500 (built) |
-| Default window and bounty | 30 days, 5 USDC (built) |
-| **Minimum repayment per window** | **Add:** at least 1% of owed per 7 days, or the clock keeps running. Stops tiny sales delaying write-off. |
+| Fee | 0.5% per week on principal while owed, capped at 3% (signed in each offer) |
+| Holdback | 8% of each sale while an advance is active |
+| Fee split senior / junior (DRIP) / reserve / protocol | 40 / 30 / 20 / 10 |
+| Junior coverage | ≥ 20% of senior outstanding, enforced on every draw |
+| Tier caps | $50 / $100 / $200 / $300 (Risk agent can lower them to $50 floors) |
+| Default window and bounty | 30 days after the last on-time repayment, 5 USDC |
+| **Minimum repayment** | At least 1% of owed (principal plus fee) per 7 days. Below it, the advance is behind and a late fee accrues: an extra 0.5% per week, capped at 3% (6% total with the base fee), paid 100% to the reserve. |
+| Uniswap hook fee | 0.3% (3000 pips), only when the swap's unspecified currency is USDC |
 | Pool starting price | Junior at its vault share price (≈ 1.00 USDC at launch), not a fixed 1:1 |
 | Idle senior USDC | Stays idle at the hackathon. Roadmap 🔭: a yield venue |
 | Who seeds | Hackathon: us. Pitch: stablecoin DAOs and treasuries (senior), crypto-native risk takers (junior) |
@@ -257,16 +264,18 @@ A customer who pays at the stall learns its **pseudonym**, and can then see that
 ## 7. The end-to-end journey
 
 ```
+⓪ Human     World ID first (IDKit): banned or open advance → stop screen; else a sealed eligibility ticket
 ① Onboard   zkTLS of seller dashboard ─► issuer (business nullifier) ─► Business Pass leaf onchain
-② Shop      Merchant registers a fresh pseudonymous shop ID; prints a QR
+② Shop      Merchant registers a fresh pseudonymous shop ID, bound privately to the World ID via the ticket; prints a QR
 ③ Offer     App reads tree via Anon-RPC, builds Business Pass proof in browser (Noir/bb.js)
             Agents: red lines → Underwriter (Mistral) → independent Critic (Kimi) → clamp → EIP-712 offer
 ④ Delegate  Once: World Agent Pass approves the merchant's managed agent + limits → mandate onchain (denied → no mandate)
 ⑤ Draw      Automatic: managed agent → offer → relayer drawByMandate ─► USDC to a fresh address. Nobody taps.
-⑥ Sell      Customers pay the QR; 8% repays automatically; voice: "Recibiste 10 dólares, 80 centavos fueron a tu adelanto"
+⑥ Sell      Customers pay the QR in USDC; 8% repays automatically, 92% goes to the merchant
 ⑦ Repaid    Relayer claims the Standing Pass (count = 1). Merchant rotates to a new shop ID.
 ⑧ Grow      Next advance: Standing Pass proof (tier 1+) from a fresh shop and a fresh wallet: no visible link.
-⑨ Default   No repaying sale for 30 days → anyone writes off → junior absorbs → junior TWAP falls → Risk agent lowers caps
+⑨ Default   Behind the 1%/7-day minimum → late fee to reserve → 30 days → anyone writes off → DRIP absorbs → Risk agent
+            (TWAP, write-offs, repayment pace) lowers caps → World ID ban → refused at the World ID step
 ```
 
 ---
@@ -281,7 +290,7 @@ A customer who pays at the stall learns its **pseudonym**, and can then see that
 | 4 | **Managed agent + mandates** with **World Agent Pass** delegation (denied path = no mandate), and **IDKit credential recovery** | M | World tracks; fully automatic credit |
 | 5 | Pseudonym rotation after repayment (app flow + agents read Standing Pass/Business Pass bands) | S | Breaks linkability |
 | 6 | Recipient commitment in the offer | S | Our server never learns the payout address |
-| 7 | Minimum-repayment-per-window rule | S | Closes the tiny-sales loophole |
+| 7 | Minimum-repayment-per-window rule, plus late fee ✅ built | S | Closes the tiny-sales loophole |
 | — | Shielded settlement, OPRF nullifiers, association sets, selective disclosure | 🔭 | The pitch's north star |
 
 **What wins it:** the demo shows a merchant proving "real business, real human, real revenue" with **zero personal data**, getting an AI-underwritten advance, repaying at the till, and coming back under a **new pseudonym with their reputation intact**, while judges see public metadata and the limits of unlinkability.

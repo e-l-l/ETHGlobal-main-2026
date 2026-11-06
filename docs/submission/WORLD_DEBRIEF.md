@@ -2,7 +2,9 @@
 
 Tracks: **World ID Agent Pass** and **Best Use of IDKit**.
 
-Status: both flows are implemented in the backend, but have run **only in mock mode** (`WORLD_MOCK=1`, the default) so far. Each `TODO` below needs a real run.
+Status: **real World IDKit and Agent Pass are wired live** on the hosted app (`WORLD_MOCK=0`; the app is built with `NEXT_PUBLIC_WORLD_MODE=real`). Test mode remains available as a fallback, and the simulator uses it for unattended runs. The first real end-to-end phone test is under way at the time of writing.
+
+> **`TODO(team): paste time-to-first-success and result of the first real run`** (date/time, elapsed time from first attempt, pass/fail, anything that broke).
 
 Code: [`agents/src/mra_agents/world.py`](../../agents/src/mra_agents/world.py) (backend validation and the attester), [`contracts/src/AdvanceBook.sol` L405-L496](../../contracts/src/AdvanceBook.sol#L405-L496) (`registerMandate`, `drawByMandate`, `revokeMandate`, `setAgentPassAttester`).
 
@@ -10,10 +12,13 @@ Code: [`agents/src/mra_agents/world.py`](../../agents/src/mra_agents/world.py) (
 
 Credit is fully automatic: agents underwrite, code clamps, and the contract decides. World is used only where the question really is about a human:
 
-1. **Agent Pass:** a human delegates to their managed agent, **once**.
-2. **IDKit:** only the same human can recover their credentials on a new phone.
+1. **World ID first (IDKit):** before any business step, the merchant proves they are a unique human. A banned human, or one with an open advance on another shop, gets a stop screen. Otherwise they get a sealed eligibility ticket, and the shop they create is bound to that human with it.
+2. **Agent Pass:** a human delegates to their managed agent, **once**.
+3. **IDKit:** only the same human can recover their credentials on a new phone.
 
-World plays no part in business verification or in credit decisions.
+**The ban.** If an advance is written off, the human behind the shop is banned. The ban is enforced by our offer signer from a private HMAC list (we keep `HMAC(server key, nullifier, action)`, never the raw nullifier). Nothing about the person goes onchain. The roadmap is a ZK "not in the banned set" proof, so even we can't link a human's shops.
+
+World plays no part in business verification or in the credit decision itself; it only gates *who* may ask for credit.
 
 ## 1. Agent Pass: delegating once to the managed cash-flow agent
 
@@ -73,20 +78,19 @@ So Proof of Human is the least we can ask for that still works.
 
 | Item | Notes |
 |---|---|
-| Time to first success (mock) | Backend Agent Pass and IDKit paths, with tests, were built during the hackathon. **TODO: hours from start to the first passing mock flow.** |
-| Time to first success (real) | **TODO: not yet run against World. Record the date and time and the elapsed time.** |
-| Agent Pass test identities | Test-mode proofs use fake identities ([`docs/research.md`](../../docs/research.md), open questions). **TODO: confirm what judges see in the live flow.** |
-| Friction | **TODO after the real run.** Known so far: the design changed mid-build from "approve every draw" to "delegate once", and we had to decide where the approval binds (we chose the OIDC `nonce`). |
-| Missing docs | **TODO after the real run.** Open so far: whether the OIDC flow is the intended Agent Pass integration for a hosted agent, and how to bind an approval to an agent key and limits. |
-| Most impactful improvement | **TODO.** Our candidate: a first-class "bind this approval to this payload hash" parameter for Agent Pass, so teams don't have to overload `nonce`. |
-| One project, both World tracks? | **TODO: ask World on site** ([`docs/hackathon.md`](../../docs/hackathon.md)). |
+| Time to first success (mock) | Backend Agent Pass and IDKit paths, with tests, were built during the hackathon. `TODO(team): hours from start to the first passing mock flow.` |
+| Time to first success (real) | `TODO(team): paste time-to-first-success and result of the first real run` |
+| Agent Pass test identities | Test mode uses fake identities ([`docs/research.md`](../../docs/research.md), open questions). The hosted app now runs real mode; the simulator keeps test mode so judges can run it unattended. |
+| Friction | `TODO(team): update after the real run.` Known so far: the design changed mid-build from "approve every draw" to "delegate once", and we had to decide where the approval binds (we chose the OIDC `nonce`). |
+| Missing docs | `TODO(team): update after the real run.` Open so far: whether the OIDC flow is the intended Agent Pass integration for a hosted agent, and how to bind an approval to an agent key and limits. |
+| Most impactful improvement | `TODO(team): confirm.` Our candidate: a first-class "bind this approval to this payload hash" parameter for Agent Pass, so teams don't have to overload `nonce`. |
+| One project, both World tracks? | `TODO(team): ask World on site` ([`docs/hackathon.md`](../../docs/hackathon.md)). |
 
 ## Checklist (from docs/hackathon.md, adjusted for the current design)
 
-- [ ] Full journey from request to protected action (the mandate registered onchain). **TODO: run it in real mode.**
-- [x] Denied path that leads to no mandate and no draws (the mock covers deny and expire). **TODO: show it in real mode.**
-- [x] Server-side validation (the `id_token` JWKS check, and the IDKit verify call). Implemented. 11 tests in `agents/tests/test_world.py` run the real code paths against fake HTTP. **TODO: validate against live World.**
+- [ ] Full journey from request to protected action (the mandate registered onchain) in real mode. `TODO(team): tick after the first real run.`
+- [x] Denied path that leads to no mandate and no draws (test mode covers deny and expire).
+- [x] Server-side validation (the `id_token` JWKS check, and the IDKit verify call). Implemented. 11 tests in `agents/tests/test_world.py` run the real code paths against fake HTTP, and the hosted app now calls live World.
 - [ ] Integration debrief: this file, with the TODOs filled in
 - [x] Minimum-sufficient-credential reasoning (above)
 
-Note: `docs/hackathon.md` and the root README still say "Agent Pass approval of each draw". The current design is "delegate once". **TODO: update them before submission.**

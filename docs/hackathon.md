@@ -74,6 +74,6 @@ ETHGlobal allows three partners, and all of a partner's tracks count as one.
 | 1:15–2:00 | **Live sale.** A judge scans the QR and pays in a test token. The phone announces *"You received 10 dollars, 1 went to your advance"*. The balance falls. |
 | 2:00–2:40 | **Attack.** A second merchant applies with wash-traded sales and an injection string. The Critic rejects it, and a forced oversized draw reverts at the contract. |
 | 2:40–3:20 | **Standing Pass.** The repaid merchant opens a fresh wallet, proves "1 repaid" in ZK and unlocks a higher limit. Public metadata may correlate activity. |
-| 3:20–4:00 | **Default.** A merchant stops selling. The junior token absorbs the loss, a separate scripted sell moves the seeded Uniswap pool price, and the Risk agent cuts limits live. |
+| 3:20–4:00 | **Default.** A merchant stops selling. DripCoin (DRIP) absorbs the loss, a separate scripted sell moves the seeded Uniswap pool price, and the Risk agent cuts limits live. |
 
 Judges allow 4 minutes for the demo and 3 for questions.

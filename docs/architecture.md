@@ -10,7 +10,7 @@ flowchart LR
   PR -->|merchant share| MW[Merchant payout address]
   PR -->|repayment share| AM[AdvanceBook advances]
   AM --> SV[Senior vault ERC-4626]
-  AM --> JT[Junior token]
+  AM --> JT[DripCoin DRIP]
   AM --> RS[Reserve]
   AM -->|on full repayment| SP[Standing Pass tree]
 
@@ -23,7 +23,7 @@ flowchart LR
   PG -->|draw| AM
   SV -->|USDC| FA[Fresh payout address]
 
-  POOL[Uniswap v4 pool junior/USDC + hook] -->|hook fee| RS
+  POOL[Uniswap v4 pool DRIP/USDC + hook] -->|hook fee| RS
   POOL -->|price| RA[Risk agent]
   RA -->|tighten within bounds| PG
 
@@ -39,11 +39,11 @@ Following the ethskills `ship` guideline (at most 3 custom contracts for an MVP)
 | Contract | Kind | Responsibility |
 |---|---|---|
 | `AdvanceBook` | custom | Everything about advances, in one contract, assembled from three modules: |
-| ↳ `Policy` | module | EIP-712 agent offers, tier caps, fixed sizes, exposure cap, World ID nullifier, risk limits (the Risk agent can only lower them) |
+| ↳ `Policy` | module | EIP-712 agent offers, tier caps ($50/$100/$200/$300), exposure cap, risk limits (the Risk agent can only lower them, never below the floors) |
 | ↳ `StandingPassTree` | module | Depth-16 Poseidon2 Merkle tree of credentials, every historical root accepted |
-| ↳ core | | `pay` splits every sale; `drawFirst` and `drawWithPass` open advances; fee and loss waterfalls; permissionless `writeOff` with bounty; `claimStandingPass` |
-| `TrancheVault` ×2 | OpenZeppelin ERC-4626 | **Senior:** lends principal, earns 60% of fees, loses last. **Junior:** first-loss buffer, earns 30% of fees. **Its share token is the junior token** that trades on Uniswap. Withdrawals are constrained by 10% of senior outstanding; draws do not enforce coverage. |
-| `RiskHook` | custom | Uniswap v4 hook on junior/USDC. Takes a USDC-only fee for the reserve (`flush()`), and records a 64-slot TWAP that the Risk agent reads instead of the spot price. |
+| ↳ core | | `pay` splits every sale (8% holdback while an advance is active); `drawFirst` (Business Pass proof), `drawWithPass` (Standing Pass proof) and `drawByMandate` (managed agent, after a one-time Agent Pass delegation) open advances; the 1%-per-7-days minimum repayment and late fee; fee and loss waterfalls; permissionless `repay` and `writeOff` (with bounty); `claimStandingPass` |
+| `TrancheVault` ×2 | OpenZeppelin ERC-4626 | **Senior:** lends principal, earns 40% of fees, loses last. **Junior:** first-loss buffer, earns 30% of fees. **Its share token is DripCoin (DRIP)**, which trades on Uniswap. Junior must cover 20% of senior outstanding: draws revert below it, and junior withdrawals are limited by it. The reserve takes 20% of fees (plus all late fees) and the protocol 10%. |
+| `RiskHook` | custom | Uniswap v4 hook on DRIP/USDC. Takes a 0.3% fee only when the swap's unspecified currency is USDC; `flush()` sends 75% to the reserve and 25% to the treasury. Records a 64-slot TWAP that the Risk agent reads instead of the spot price. |
 | `HonkVerifier` | generated | `circuits/standing_pass/build.sh`, then `src/verifier/HonkVerifier.sol` (18KB, under the 24KB limit). Compiles as its own unit (solc ≥0.8.27). Never import it; use `IVerifier`. |
 | Poseidon2 | existing | `0xB2542195Ad96AcfBC962C48A97D7640A9F5386D2` on Sepolia (zemse/poseidon2-evm). Verified against Noir. |
 
@@ -54,7 +54,8 @@ Following the ethskills `ship` guideline (at most 3 custom contracts for an MVP)
 | `pay(shopId, amount)` | Customer | Buying something | No sales, no repayment (by design) |
 | `drawFirst` / `drawWithPass` | Merchant, **through a relayer or a fresh paymaster account** | Wants the cash | Nothing happens |
 | `claimStandingPass(id)` | Merchant, through a relayer | Wants a higher limit next time | Credential waits, nothing lost |
-| `writeOff(id)` | Anyone, 30 days after the last repaying sale | Bounty (5 USDC) from the reserve | Junior token stays overpriced. This is a risk; our keeper calls it as a backstop. |
+| `writeOff(id)` | Anyone, 30 days after the last on-time repayment (the clock restarts each time the 1%-per-7-days minimum is met) | Bounty (5 USDC) from the reserve | DRIP stays overpriced. This is a risk; our keeper calls it as a backstop. |
+| `repay(id, amount)` | Anyone | Pays down an advance directly (fee, then late fee, then principal) | — |
 | `lowerLimits` | Risk agent key | Our job | Limits stay at the last value (safe) |
 | `flush()` on `RiskHook` | Anyone (our keeper) | Tops up the reserve that pays bounties | Fees wait in the hook |
 | Vault deposit / withdraw | Lenders | Their own money | — |
@@ -91,10 +92,11 @@ sequenceDiagram
   participant R as Relayer
   participant AB as AdvanceBook
 
-  M->>App: Request advance
+  M->>App: Start onboarding
+  App->>W: World ID first: prove unique human (IDKit)
+  W-->>App: Proof (backend keeps only an HMAC; banned or open advance → stop screen)
   alt First advance
-    App->>W: Prove unique human (action "first-advance")
-    W-->>App: ZK proof + nullifier
+    App->>App: zkTLS → Business Pass; prove it in the browser
   else Returning merchant
     App->>App: Prove in browser: own credential in tree with count k
     Note over App: Outputs nullifier, tier k, new commitment for k+1
@@ -102,13 +104,13 @@ sequenceDiagram
   App->>A: Shop ID + proven tier (no personal data)
   A->>A: Underwriter drafts offer, Critic reviews
   A-->>App: Signed offer, or rejection with reason
-  M->>App: Approve (World Agent Pass)
-  App->>R: Signed offer + proof (never sent from the merchant's wallet)
-  R->>AB: drawFirst / drawWithPass
+  M->>App: Delegate once (World Agent Pass) → registerMandate
+  App->>R: Signed offer (later draws: the agent requests offers itself)
+  R->>AB: drawFirst / drawWithPass / drawByMandate
   AB->>AB: Check offer, caps, root, nullifier, proof, risk limits
   AB-->>M: Senior vault lends USDC to the fresh payout address
   loop Every sale (customer calls pay)
-    AB->>AB: Holdback → senior principal + fee split 60/30/10
+    AB->>AB: 8% holdback → fee split 40/30/20/10, late fee → reserve, then principal → senior
   end
   AB->>AB: Fully repaid: split back to 0%
   R->>AB: claimStandingPass: insert new commitment into the tree
@@ -116,12 +118,14 @@ sequenceDiagram
 
 ### Default path
 
-If no repaying sale happens for the default window (30 days, a parameter), **anyone** can call `writeOff` and earn a bounty from the reserve. Losses hit junior first, then the reserve, then senior. The pending commitment is never inserted, so the merchant has no credential to spend. Their `first-advance` nullifier is already used, so they can't start over with World ID either.
+A merchant must repay at least 1% of owed per 7 days. While behind, a late fee accrues (an extra 0.5% per week, capped at 3%, 100% to the reserve). If the minimum isn't met for the default window (30 days, a parameter), **anyone** can call `writeOff` and earn a bounty from the reserve. Losses hit junior (DRIP) first, then the reserve, then senior. The pending commitment is never inserted, so the merchant has no credential to spend. The human behind the shop is banned by our offer signer (a private HMAC list), so their next attempt stops at the World ID step. Nothing about the person goes onchain.
 
 ## Enforcement and its limits
 
 Repayment is enforced only for sales that go through `AdvanceBook.pay`. A merchant could hand customers a different address. To limit the damage:
 - small first advances, with limits that grow only through repayment
+- the 1%-per-7-days minimum repayment, the late fee and the 30-day write-off, whatever the QR sales
+- the World ID ban after a write-off
 - the Critic and Risk agents flag sudden sales drops
 - (optional, not a prize track) an ENS shop name that stays locked to the router during an advance, so customers paying by name always trigger repayment
 

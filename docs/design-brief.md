@@ -4,7 +4,7 @@
 
 Small shop owners in places like Buenos Aires, Lagos and Nairobi often need cash before their sales come in, for stock, rent or repairs. Today their choices are informal lenders, or loan apps that copy their phone contacts and shame them when they're late.
 
-Our app gives a merchant a cash advance in digital dollars. They repay it automatically with a small slice of QR sales while an advance is active. No sales, no repayment, so there are no missed installments and no late fees.
+Our app gives a merchant a cash advance in digital dollars. They repay it automatically with a small slice of QR sales while an advance is active. There are no fixed instalments: a slow day just repays less. The only rule is a small minimum (1% of what's owed per week); falling behind it adds a late fee until they catch up.
 
 Borrowing is private by design. The demo uses a mock business attestor and World test mode; neither establishes a real unique business. Each advance they repay builds a private record that unlocks bigger amounts, and the proof hides the selected credential leaf.
 

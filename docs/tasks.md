@@ -78,7 +78,7 @@ Details of each task follow.
 |---|---|---|---|---|
 | U1 | App shell, palette (navy, cream, coral), local currency toggle (ARS, NGN, KES) | P0 | 2 | design |
 | U2 | Onboarding: World ID, with "we never ask for your phone or contacts" | P0 | 2 | W1 |
-| U3 | Offer screen: flat fee, slow, normal and busy days to repay, reasons, next limit | P0 | 2 | A4 |
+| U3 | Offer screen: weekly fee (max 3%), slow, normal and busy days to repay, reasons, next limit | P0 | 2 | A4 |
 | U4 | Approve (Agent Pass) and receive. Denied screen with the next step. | P0 | 2 | W2 |
 | U5 | Live sales: balance falling, sale-by-sale split, **voice announcement** | P0 | 2 | C2 |
 | U6 | Checkout page: QR → pay. No mention of the advance. | P0 | 2 | C2 |
@@ -93,7 +93,7 @@ Details of each task follow.
 | ID | Task | P | Est | Depends on |
 |---|---|---|---|---|
 | W1 | World ID with IDKit, server-side proof validation | P0 | 2 | setup |
-| W2 | World Agent Pass: merchant approves each draw, plus a denied path | P0 | 3 | W1, A4 |
+| W2 | World Agent Pass: merchant delegates once (a mandate), plus a denied path | P0 | 3 | W1, A4 |
 | R1 | Anon-RPC as the default transport for every read in the app and checkout | P0 | 2 | — |
 | G1 | Gas sponsorship for the merchant and the judge's phone | P0 | 2 | C11 |
 | G2 | Pre-funded judge wallet on a demo phone, "received" shown as soon as the payment is sent | P0 | 1 | G1 |
