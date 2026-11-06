@@ -276,7 +276,16 @@ export function agentPassBodyFromRedirect(query: URLSearchParams | string, codeV
   return { code, code_verifier: codeVerifier, redirect_uri: redirectUri };
 }
 
-export type DevicePrompt = { verificationUri: string; userCode: string | null; expiresAt: number };
+export type DevicePrompt = {
+  verificationUri: string;
+  /** World's QR-ready URL; falls back to verificationUri when the provider omits it. */
+  verificationUriComplete: string;
+  userCode: string | null;
+  expiresIn: number;
+  interval: number;
+  /** Unix seconds, retained for callers that render a clock deadline. */
+  expiresAt: number;
+};
 
 /**
  * Real World Agent Pass via the OIDC device flow (auth.world.org advertises it). Nothing to register but the client;
@@ -299,10 +308,17 @@ export function worldDeviceAgentPass(opts: {
       const token = r.manageToken ?? (await opts.manageToken?.(r.agentId));
       if (!token) throw new MRAError("adapter_not_configured", "worldDeviceAgentPass needs the agent manage token");
       const path = `/agents/${encodeURIComponent(r.agentId)}/agent-pass/device`;
-      const d = await opts.api.http.request<{ device_session: string; verification_uri: string; user_code: string | null; expires_at: number; interval: number }>(
+      const d = await opts.api.http.request<{ device_session: string; verification_uri: string; verification_uri_complete?: string; user_code: string | null; expires_in?: number; expires_at: number; interval: number }>(
         "POST", path, { token },
       );
-      opts.show({ verificationUri: d.verification_uri, userCode: d.user_code, expiresAt: d.expires_at });
+      opts.show({
+        verificationUri: d.verification_uri,
+        verificationUriComplete: d.verification_uri_complete ?? d.verification_uri,
+        userCode: d.user_code,
+        expiresIn: d.expires_in ?? Math.max(0, d.expires_at - Math.floor(Date.now() / 1000)),
+        interval: d.interval,
+        expiresAt: d.expires_at,
+      });
       for (;;) {
         await sleep(Math.max(opts.pollMs ?? 0, d.interval * 1000), opts.signal);
         const st = await opts.api.http.request<{ status: "pending" | "ready" }>("GET", `${path}/${encodeURIComponent(d.device_session)}`, {
