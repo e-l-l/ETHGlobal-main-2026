@@ -1,0 +1,592 @@
+/*
+ * App frame for the phone screens: top bar, body, action bar, tab bar, sheet, keypad.
+ * Colours come from the role tokens in jar.css only. No hex values here.
+ *
+ * Touch rules (skills-anay/mobile-native): 100dvh shell, safe-area padding on the chrome,
+ * :active feedback on press, hover gated to fine pointers, 44px minimum targets,
+ * user-select off on controls only.
+ */
+
+/* ------------------------------------------------------------------ screen */
+
+.app {
+  --gutter: 16px;
+  --bar-h: 56px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--bg);
+}
+/* Wider than a phone: the column reads as the app, the ground around it stays quiet. */
+@media (min-width: 600px) {
+  .app { border-inline: 1px solid var(--edge); }
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px var(--gutter) 24px;
+  min-width: 0;
+}
+.app-main--center { justify-content: center; }
+.app-main--tight { gap: 14px; }
+
+/* Screen entrance. Onboarding is first-time, so it gets a short stagger; tabs only fade. */
+.app-enter > * { animation: app-in 280ms var(--ease-out) both; }
+.app-enter > *:nth-child(2) { animation-delay: 40ms; }
+.app-enter > *:nth-child(3) { animation-delay: 80ms; }
+.app-enter > *:nth-child(4) { animation-delay: 120ms; }
+.app-enter > *:nth-child(n + 5) { animation-delay: 160ms; }
+.app-fade { animation: app-fade 180ms ease both; }
+@keyframes app-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes app-fade { from { opacity: 0; } }
+
+/* ----------------------------------------------------------------- top bar */
+
+.app-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: calc(var(--bar-h) + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 8px 0;
+  background: color-mix(in oklab, var(--bg) 84%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+/* Scroll edge: a soft fade under the bar instead of a hard 1px rule. */
+.app-top::after {
+  content: "";
+  position: absolute;
+  inset: 100% 0 auto;
+  height: 12px;
+  background: linear-gradient(var(--bg), transparent);
+  opacity: 0.8;
+  pointer-events: none;
+}
+.app-top__start, .app-top__end { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.app-top__end { justify-content: flex-end; }
+.app-top__title {
+  font: 700 17px/1.2 var(--f-display);
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+.app-top--brand { grid-template-columns: 1fr auto; padding-inline: var(--gutter) 8px; }
+@media (prefers-reduced-transparency: reduce) {
+  .app-top { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* Round icon button: 44px target, the visible disc can be smaller. */
+.app-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  transition: background-color 120ms ease, transform 120ms var(--ease-out);
+}
+.app-icon:active { transform: scale(0.92); background: color-mix(in oklab, var(--text) 12%, transparent); }
+.app-icon[aria-pressed="true"] { background: var(--btn); color: var(--btn-fg); }
+@media (hover: hover) and (pointer: fine) {
+  .app-icon:hover { background: color-mix(in oklab, var(--text) 8%, transparent); }
+  .app-icon[aria-pressed="true"]:hover { background: var(--btn); }
+}
+
+/* Small pill button in the bar (language, wallet). */
+.app-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font: 600 12px/1 var(--f-mono);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  position: relative;
+  transition: transform 120ms var(--ease-out);
+}
+.app-chip::after { content: ""; position: absolute; inset: -6px -2px; } /* 44px tall target */
+.app-chip:active { transform: scale(0.95); }
+
+/* Onboarding progress: segments, not a numbered rail. */
+.app-steps { display: flex; gap: 6px; width: 120px; }
+.app-steps > span { flex: 1; height: 4px; border-radius: 2px; background: var(--track); }
+.app-steps > span[data-on="true"] { background: var(--accent); }
+
+/* World view legend, shown under the bar while the overlay is on. */
+.app-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0 var(--gutter);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  font: 500 12px/1.4 var(--f-mono);
+  color: var(--text-2);
+  animation: app-fade 180ms ease both;
+}
+.app-legend i { display: inline-block; width: 14px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; }
+.app-legend__pub { border: 1.5px dashed var(--accent); }
+.app-legend__priv { background: repeating-linear-gradient(-45deg, var(--card-2) 0 3px, var(--bg) 3px 6px); border: 1px solid var(--edge); }
+.app-legend p { flex-basis: 100%; margin: 0; color: var(--text-3); }
+
+/* -------------------------------------------------------------- action bar */
+
+.app-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg);
+}
+/* Scroll edge above the bar: content fades out under the thumb zone. */
+.app-actions::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 100%;
+  height: 20px;
+  background: linear-gradient(transparent, var(--bg));
+  pointer-events: none;
+}
+.app-actions .dj-btn { width: 100%; }
+.app-actions__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.app-actions__hint { margin: 0; text-align: center; font: 400 12px/1.4 var(--f-mono); color: var(--text-3); }
+
+/* Text button: secondary actions that should not compete with the primary. */
+.app-text-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: 600 15px/1.2 var(--f-body);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--text) 35%, transparent);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: opacity 120ms ease;
+}
+.app-text-btn:active { opacity: 0.6; }
+
+/* ----------------------------------------------------------------- tab bar */
+
+.app-tabs {
+  position: sticky;
+  bottom: 0;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: color-mix(in oklab, var(--nav-bg) 86%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-top: 1px solid var(--edge);
+}
+.app-tabs a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  border-radius: 12px;
+  color: var(--nav-off);
+  font: 600 12px/1.2 var(--f-body);
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  transition: transform 120ms var(--ease-out);
+}
+.app-tabs a:active { transform: scale(0.94); }
+.app-tabs a[aria-current="page"] { color: var(--text); }
+.app-tabs a[aria-current="page"] svg { color: var(--accent); }
+@media (prefers-reduced-transparency: reduce) {
+  .app-tabs { background: var(--nav-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* -------------------------------------------------------------------- rows */
+
+.app-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: 16px;
+  border: 1px solid var(--edge);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.app-rows > li + li { border-top: 1px solid var(--divider); }
+.app-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 12px 14px 12px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  transition: background-color 120ms ease;
+}
+.app-row:active { background: color-mix(in oklab, var(--text) 8%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  .app-row:hover { background: color-mix(in oklab, var(--text) 5%, transparent); }
+}
+.app-row__body { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.app-row__title { font-weight: 600; overflow-wrap: anywhere; }
+.app-row__sub { font-size: 14px; line-height: 1.4; color: var(--text-2); overflow-wrap: anywhere; }
+.app-row__end { display: flex; align-items: center; gap: 6px; flex: none; color: var(--text-2); font-weight: 600; }
+.app-row__lead {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--card-2);
+  color: var(--text);
+}
+
+/* Selectable card (portal accounts, demo outcomes). Native radio underneath. */
+.app-pick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--edge);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: border-color 150ms ease, transform 140ms var(--ease-out);
+}
+.app-pick:active { transform: scale(0.98); }
+.app-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.app-pick:has(input:checked) { border-color: var(--text); box-shadow: inset 0 0 0 1px var(--text), var(--shadow); }
+.app-pick:has(input:focus-visible) { outline: 2px solid var(--text); outline-offset: 2px; }
+.app-pick__radio {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 999px;
+  border: 2px solid var(--strong);
+  display: grid;
+  place-items: center;
+}
+.app-pick:has(input:checked) .app-pick__radio { border-color: var(--text); }
+.app-pick:has(input:checked) .app-pick__radio::after { content: ""; width: 10px; height: 10px; border-radius: 999px; background: var(--text); }
+
+/* ------------------------------------------------------------ stats, money */
+
+.app-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.app-stats--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.app-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--edge);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.app-stat strong { font: 700 22px/1.15 var(--f-display); letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.app-stat .dj-small { font-size: 13px; }
+
+.app-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  min-width: 0;
+}
+.app-amount__value {
+  font: 700 56px/1 var(--f-display);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.app-amount__value[data-empty="true"] { color: var(--text-3); }
+.app-amount__value--md { font-size: 44px; }
+
+.app-display { font: 700 32px/1.08 var(--f-display); letter-spacing: -0.025em; text-wrap: balance; margin: 0; }
+
+/* ------------------------------------------------------------------ keypad */
+
+/* margin-top:auto: the keypad sits at the bottom of the screen, in thumb reach, right above its button. */
+.app-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: auto; }
+.app-keypad button {
+  display: grid;
+  place-items: center;
+  min-height: 52px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font: 600 24px/1 var(--f-display);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  transition: background-color 100ms ease, transform 100ms var(--ease-out);
+}
+.app-keypad button:active { background: color-mix(in oklab, var(--text) 12%, transparent); transform: scale(0.94); }
+@media (max-height: 700px) { .app-keypad button { min-height: 46px; } }
+
+/* -------------------------------------------------------------- notes */
+
+.app-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.app-note svg { flex: none; margin-top: 2px; color: var(--accent); }
+.app-note--warn { background: color-mix(in oklab, var(--warn) 14%, transparent); }
+.app-note--warn svg { color: var(--warn); }
+.app-note--risk { background: color-mix(in oklab, var(--risk) 12%, transparent); }
+.app-note--risk svg { color: var(--risk); }
+
+/* Icon list: promise lines, facts. */
+.app-facts { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.app-facts li { display: flex; gap: 12px; align-items: flex-start; line-height: 1.4; }
+.app-facts svg { flex: none; margin-top: 1px; color: var(--accent); }
+.app-facts--muted svg { color: var(--text-3); }
+
+/* ------------------------------------------------------------------ sheet */
+
+.app-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: color-mix(in oklab, var(--deep, #000) 55%, transparent);
+}
+.app-scrim[data-state="open"] { animation: app-fade 250ms var(--ease-out) both; }
+.app-scrim[data-state="closed"] { animation: app-fade-out 200ms var(--ease-out) both; }
+
+.app-sheet {
+  position: fixed;
+  z-index: 41;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 480px;
+  max-height: min(86dvh, 720px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 28px 28px 0 0;
+  border: 1px solid var(--edge);
+  border-bottom: 0;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
+  outline: none;
+}
+.app-sheet[data-state="open"] { animation: app-sheet-in 420ms var(--ease-drawer) both; }
+.app-sheet[data-state="closed"] { animation: app-sheet-out 240ms var(--ease-out) both; }
+.app-sheet__grab {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  flex: none;
+  cursor: grab;
+  touch-action: none; /* the handle owns vertical drag */
+}
+.app-sheet__grab::before { content: ""; width: 40px; height: 5px; border-radius: 3px; background: var(--strong); opacity: 0.6; }
+.app-sheet__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 8px 4px 20px; touch-action: none; }
+.app-sheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@keyframes app-sheet-in { from { transform: translateY(100%); } }
+@keyframes app-sheet-out { to { transform: translateY(100%); } }
+@keyframes app-fade-out { to { opacity: 0; } }
+
+/* ---------------------------------------------------------------- charts */
+
+.app-spark { display: block; width: 100%; height: auto; overflow: visible; }
+.app-spark__line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.app-spark__area { fill: color-mix(in oklab, var(--accent) 16%, transparent); stroke: none; }
+.app-spark__mark { fill: var(--risk); }
+
+.app-bars { display: flex; align-items: flex-end; gap: 4px; height: 72px; }
+.app-bars > span { flex: 1; border-radius: 3px 3px 1px 1px; background: var(--track); transform-origin: bottom; }
+.app-bars > span:last-child { background: var(--accent); }
+
+/* Loss order: four boxes in a row so the whole waterfall fits without scrolling. */
+.app-loss { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.app-loss li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--edge);
+  background: var(--card);
+}
+.app-loss li[data-you="true"] { background: var(--btn); border-color: var(--btn); color: var(--btn-fg); }
+.app-loss li[data-you="true"] .dj-label { color: inherit; opacity: 0.85; }
+.app-loss strong { font: 700 14px/1.2 var(--f-display); overflow-wrap: anywhere; }
+.app-loss span:last-child { font: 400 12px/1.3 var(--f-mono); overflow-wrap: anywhere; }
+
+/* --------------------------------------------------------- success mark */
+
+.app-done { display: block; flex: none; }
+.app-done circle { fill: color-mix(in oklab, var(--accent) 16%, transparent); stroke: var(--accent); stroke-width: 3; }
+.app-done path { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 48; stroke-dashoffset: 48; animation: app-draw 360ms 160ms var(--ease-out) forwards; }
+.app-done circle { animation: app-pop 320ms var(--ease-out) both; transform-origin: center; transform-box: fill-box; }
+@keyframes app-draw { to { stroke-dashoffset: 0; } }
+@keyframes app-pop { from { opacity: 0; transform: scale(0.9); } }
+
+/* Shop avatar on the pay screen. */
+.app-avatar {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border-radius: 14px;
+  background: var(--lime);
+  color: var(--charcoal);
+  font: 800 18px/1 var(--f-display);
+}
+
+/* Hero block on Welcome: the gradient sits in its own block, text below on solid ground. */
+.app-hero {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: clamp(150px, 24dvh, 220px);
+  border-radius: 28px;
+  background: var(--grad-hero);
+  color: var(--charcoal);
+  overflow: hidden;
+}
+
+/* Mono ids that people copy: content, so selectable. */
+.app-hash { font: 400 13px/1.45 var(--f-mono); color: var(--text-2); overflow-wrap: anywhere; user-select: all; }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-enter > *, .app-sheet[data-state="open"], .app-sheet[data-state="closed"] { animation-name: app-fade; }
+  .app-sheet[data-state="closed"] { animation-name: app-fade-out; }
+  .app-done path { stroke-dashoffset: 0; animation: none; }
+  .app-done circle { animation: none; }
+}
+
+/* Sheets portal out of the screen; this wrapper carries the tokens without drawing a page. */
+.dj.app-portal { min-height: 0; background: transparent; }
+.dj a.dj-btn { text-decoration: none; }
+
+/* Token badge: the drop in a Hunter coin. Lime on Hunter is an allowed pair in both modes. */
+.app-coin {
+  --accent: var(--lime);
+  --unlit: color-mix(in oklab, var(--lime-pale) 28%, var(--hunter));
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 999px;
+  background: var(--hunter);
+  color: var(--lime-pale);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--lime) 30%, transparent), 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+/* Welcome: the lit band fills once, the first time the app opens (delight tier, rare). */
+.app-coin--intro .dj-mark__band:first-child { animation: app-band-lit 700ms 350ms var(--ease-out) both; }
+@keyframes app-band-lit { from { fill: var(--unlit); } }
+
+/* Expandable row: native <details>, so it works without JS and with the keyboard. */
+.app-details > summary { list-style: none; }
+.app-details > summary::-webkit-details-marker { display: none; }
+.app-details > summary .app-row__end svg { transition: transform 200ms var(--ease-out); }
+.app-details[open] > summary .app-row__end svg { transform: rotate(90deg); }
+
+/* Quick amount chips above a keypad. */
+.app-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.app-quick .dj-chip { min-height: 40px; min-width: 0; padding: 0 8px; font-size: 14px; }
+
+/* Wallet steps under the amount: 1 Approve · 2 Deposit. */
+.app-txsteps { display: flex; justify-content: center; gap: 16px; margin: 0; padding: 0; list-style: none; font: 500 12px/1.3 var(--f-mono); color: var(--text-3); }
+.app-txsteps li { display: flex; align-items: center; gap: 6px; }
+.app-txsteps li > span { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 999px; background: var(--track); color: var(--text); font-size: 11px; }
+.app-txsteps li[data-s="current"] { color: var(--text); }
+.app-txsteps li[data-s="current"] > span { background: var(--btn); color: var(--btn-fg); }
+.app-txsteps li[data-s="done"] > span { background: var(--accent); color: var(--bg); }

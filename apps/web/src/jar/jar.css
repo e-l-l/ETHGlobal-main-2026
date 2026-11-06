@@ -1,0 +1,700 @@
+/*
+ * Dollar Jar kit (v2). Tokens match anay-design.md section 3 one to one.
+ * Every hex value in the v2 kit lives in this block. Components use the role tokens below.
+ * Scoped under .dj so it never leaks into the v1 kit.
+ */
+
+.dj {
+  /* core + support palette (section 2) */
+  --charcoal: #262e24;
+  --hunter: #2c5a3a;
+  --lime: #c6f28c;
+  --mist: #d6f0a8;
+  --honeydew: #ddf7e6;
+  --lime-pale: #f1fadf;
+  --deep: #151a13;
+  --leaf: #6fa65a;
+
+  /* role tokens: dark is the default mode (section 3) */
+  --bg: var(--charcoal);
+  --card: #2f392c;
+  --card-2: #384435;
+  --text: var(--honeydew);
+  --text-2: #b9d1be;
+  --text-3: #8fae94;
+  --accent: var(--lime);
+  --btn: var(--lime);
+  --btn-fg: var(--charcoal);
+  --edge: rgba(221, 247, 230, 0.12);
+  --divider: rgba(221, 247, 230, 0.1);
+  --strong: #7a9a80;
+  --track: #384435;
+  --unlit: #4a5947;
+  --split-you: #7a9a80; /* the 90%: muted, so the lime 10% is the thing you see */
+  --shadow: none;
+  --jar-bg: var(--honeydew);
+  --jar-num: var(--hunter);
+  --jar-fg: var(--charcoal);
+  --nav-bg: var(--deep);
+  --nav-off: #7a9a80;
+  --warn: #f2c46b;
+  --risk: #f0907c;
+  --wave-bg: var(--hunter);
+  --wave-fg: var(--lime);
+
+  --grad-hero: linear-gradient(180deg, var(--deep) 0%, var(--hunter) 22%, var(--leaf) 38%, var(--lime) 50%, var(--leaf) 62%, var(--hunter) 80%, var(--charcoal) 100%);
+
+  /* motion: the three curves from skills-anay/animate. No other curves in this kit. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* type (section 4) */
+  --f-display: var(--font-urbanist), "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: var(--font-figtree), "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-mono: var(--font-jetbrains), ui-monospace, Menlo, monospace;
+
+  color-scheme: dark;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--f-body);
+  font-size: 16px; /* 16 on phones too: anay-design.md said 13–14, too small for this audience */
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+  -webkit-text-size-adjust: 100%;
+}
+
+.dj[data-app="light"] {
+  --bg: var(--mist);
+  --card: var(--lime-pale);
+  --card-2: #bcdd8e;
+  --text: var(--charcoal);
+  --text-2: #3b4a38;
+  --text-3: #4a6448;
+  --accent: var(--hunter);
+  --btn: var(--hunter);
+  --btn-fg: var(--lime-pale);
+  --edge: #9dc46e;
+  --divider: #cfe6ae;
+  --strong: #5e7f4e;
+  --track: #a6cb78;
+  --unlit: #9fbf7a;
+  --split-you: #9fbf7a;
+  --shadow: 0 1px 0 rgba(38, 46, 36, 0.1), 0 4px 14px rgba(38, 46, 36, 0.08);
+  --jar-bg: var(--hunter);
+  --jar-num: var(--lime);
+  --jar-fg: var(--lime-pale);
+  --nav-bg: var(--lime-pale);
+  --nav-off: #4a6448;
+  --warn: #7a4f00;
+  --risk: #a3341d;
+  --grad-hero: linear-gradient(180deg, var(--hunter) 0%, var(--leaf) 40%, var(--lime) 78%, var(--mist) 100%);
+  color-scheme: light;
+}
+
+/*
+ * Demo seller portal (anay-design.md section 8, X01–X02). Deliberately unbranded neutral greys,
+ * so it never imitates Mercado Pago and never looks like part of dollarjar.
+ */
+.dj[data-app="portal"] {
+  --bg: #f2f3f4;
+  --card: #ffffff;
+  --card-2: #e6e8ea;
+  --text: #1f2328;
+  --text-2: #42484e;
+  --text-3: #5b6168;
+  --accent: #1f2328;
+  --btn: #1f2328;
+  --btn-fg: #ffffff;
+  --edge: #d5d8db;
+  --divider: #e6e8ea;
+  --strong: #7d848b;
+  --track: #e1e4e7;
+  --unlit: #c9cdd1;
+  --shadow: 0 1px 0 rgba(31, 35, 40, 0.06), 0 4px 14px rgba(31, 35, 40, 0.06);
+  --nav-bg: #ffffff;
+  --nav-off: #5b6168;
+  --warn: #7a4f00;
+  --risk: #a3341d;
+  color-scheme: light;
+}
+
+/* Overscroll shows the app ground, not the v1 porcelain. */
+html:has(.dj) { background: var(--charcoal, #262e24); }
+html:has(.dj[data-app="light"]) { background: #d6f0a8; }
+html:has(.dj[data-app="portal"]) { background: #f2f3f4; }
+
+.dj *, .dj *::before, .dj *::after { box-sizing: border-box; }
+.dj :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.dj ::selection { background: var(--accent); color: var(--btn-fg); }
+
+/* ------------------------------------------------------------------ type */
+
+.dj-display-xl { font: 700 40px/1 var(--f-display); letter-spacing: -0.03em; text-wrap: balance; margin: 0; }
+.dj-balance { font: 700 40px/1.05 var(--f-display); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
+.dj-h1 { font: 700 24px/1.15 var(--f-display); letter-spacing: -0.02em; text-wrap: balance; margin: 0; }
+.dj-h2 { font: 650 20px/1.25 var(--f-display); letter-spacing: -0.01em; margin: 0; }
+.dj-body { font-size: 16px; line-height: 1.55; color: var(--text-2); margin: 0; }
+.dj-small { font-size: 14px; line-height: 1.45; color: var(--text-2); margin: 0; }
+.dj-label { font: 500 11px/1.3 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.dj-mono { font: 400 13px/1.45 var(--f-mono); color: var(--text-2); }
+.dj-local { font: 400 13px/1.45 var(--f-mono); color: var(--text-3); }
+@media (min-width: 768px) {
+  .dj-display-xl { font-size: 56px; }
+  .dj-h1 { font-size: 28px; }
+}
+
+/* Long content never pushes the page sideways. */
+.dj-wrap { min-width: 0; overflow-wrap: anywhere; }
+
+.sr-only-dj { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ----------------------------------------------------------------- cards */
+
+.dj-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--edge);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+.dj-divider { height: 1px; background: var(--divider); border: 0; margin: 0; }
+
+/* ---------------------------------------------------------------- button */
+
+.dj-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--btn);
+  color: var(--btn-fg);
+  font: 600 16px/1.2 var(--f-body);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: transform 160ms var(--ease-out), background-color 150ms ease, border-color 150ms ease;
+}
+@media (min-width: 768px) { .dj-btn { width: auto; } }
+.dj-btn:active { transform: scale(0.97); }
+.dj-btn--ghost { background: transparent; color: var(--text); border-color: var(--strong); }
+.dj-btn--danger { background: transparent; color: var(--risk); border-color: var(--risk); }
+.dj-btn--block { width: 100%; }
+.dj-btn:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+@media (hover: hover) and (pointer: fine) {
+  .dj-btn:hover { background: color-mix(in oklab, var(--btn) 88%, var(--text)); }
+  .dj-btn--ghost:hover, .dj-btn--danger:hover { background: color-mix(in oklab, currentColor 8%, transparent); }
+}
+
+/* Loading: label blurs out while the spinner fades in, so the swap reads as one change. */
+.dj-btn__label, .dj-btn__busy { transition: opacity 200ms ease, filter 200ms ease; }
+.dj-btn__busy { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; filter: blur(2px); }
+.dj-btn[aria-busy="true"] .dj-btn__label { opacity: 0; filter: blur(2px); }
+.dj-btn[aria-busy="true"] .dj-btn__busy { opacity: 1; filter: none; }
+
+/* ----------------------------------------------------------------- pills */
+
+.dj-pill {
+  --c: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px 9px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--c) 15%, transparent);
+  /* Pulled 25% toward the text colour: on its own tint, raw risk/warn at 11px fell under 4.5:1 (axe). */
+  color: color-mix(in oklab, var(--c) 75%, var(--text));
+  font: 600 11px/1.3 var(--f-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.dj-pill--saving { --c: var(--accent); }
+.dj-pill--locked { --c: var(--text-2); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 45%, transparent); }
+.dj-pill--repaying { --c: var(--text); }
+.dj-pill--slow { --c: var(--warn); }
+.dj-pill--risk { --c: var(--risk); }
+
+/* ------------------------------------------------------------- jar card */
+
+.dj-jar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--jar-bg);
+  color: var(--jar-fg);
+  min-width: 0;
+}
+.dj-jar .dj-label, .dj-jar .dj-local, .dj-jar .dj-small { color: color-mix(in oklab, var(--jar-fg) 78%, var(--jar-bg)); }
+.dj-jar__figure { color: var(--jar-num); }
+/* Solid inside the jar: a tint of lime on Hunter failed contrast in light mode. */
+.dj-jar .dj-pill { background: var(--jar-num); color: var(--jar-bg); box-shadow: none; }
+.dj-jar__track { height: 8px; border-radius: 4px; background: color-mix(in oklab, var(--jar-num) 22%, transparent); overflow: hidden; }
+.dj-jar__fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 4px;
+  background: var(--jar-num);
+  transform-origin: left center;
+  transition: transform 300ms var(--ease-out);
+}
+
+/* -------------------------------------------------------------- progress */
+
+.dj-progress { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; }
+.dj-progress > span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform 300ms var(--ease-out);
+}
+
+/* ------------------------------------------------------------- split bar */
+
+.dj-split { display: flex; gap: 3px; height: 8px; }
+.dj-split > span { border-radius: 2px; }
+.dj-split__you { flex: 9; background: var(--split-you); }
+.dj-split__jar { flex: 1; background: var(--accent); }
+.dj-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font: 400 12px/1.4 var(--f-mono); color: var(--text-2); }
+.dj-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+
+/* Live sales: enter with a transition, not keyframes, so rapid sales retarget instead of restarting. */
+.dj-sale {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 0;
+  border-top: 1px solid var(--divider);
+  transition: opacity 250ms var(--ease-out), transform 250ms var(--ease-out);
+}
+.dj-sale:first-child { border-top: 0; }
+.dj-list .dj-sale { align-items: stretch; } /* .dj-list li sets flex-start, which collapsed the split bar to 0 width */
+@starting-style {
+  .dj-sale { opacity: 0; transform: translateY(-6px); }
+}
+
+/* ------------------------------------------------------------------ ring */
+
+.dj-ring { display: block; }
+.dj-ring__track { stroke: var(--track); }
+.dj-ring__arc { stroke: var(--accent); transition: stroke-dashoffset 300ms var(--ease-out); }
+
+/* --------------------------------------------------- segmented, chips, toggle */
+
+.dj-seg {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--track);
+  width: 100%;
+}
+.dj-seg__thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  box-shadow: var(--shadow);
+  transition: transform 200ms var(--ease-in-out);
+}
+.dj-seg label {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.dj-seg label:has(input:checked) { color: var(--text); }
+.dj-seg label:has(input:focus-visible) { outline: 2px solid var(--text); outline-offset: -2px; border-radius: 8px; }
+
+.dj-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.dj-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 64px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid var(--strong);
+  color: var(--text);
+  font: 600 15px/1 var(--f-body);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: background-color 150ms ease, color 150ms ease, transform 160ms var(--ease-out);
+}
+.dj-chip:active { transform: scale(0.97); }
+.dj-chip:has(input:checked) { background: var(--btn); color: var(--btn-fg); border-color: var(--btn); }
+.dj-chip:has(input:focus-visible) { outline: 2px solid var(--text); outline-offset: 2px; }
+.dj-chip input, .dj-seg input, .dj-pace input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+
+.dj-toggle {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--track);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 150ms ease;
+}
+.dj-toggle::after { content: ""; position: absolute; inset: -11px -3px; } /* 44px hit area */
+.dj-toggle__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--text);
+  transition: transform 150ms var(--ease-out), background-color 150ms ease;
+}
+.dj-toggle[aria-checked="true"] { background: var(--btn); }
+.dj-toggle[aria-checked="true"] .dj-toggle__knob { transform: translateX(16px); background: var(--btn-fg); }
+.dj-setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; }
+
+.dj-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--strong);
+  background: var(--card);
+  color: var(--text);
+  font: 600 16px/1 var(--f-body); /* 16px: no zoom on focus */
+}
+
+/* ----------------------------------------------------------------- pace */
+
+.dj-pace { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.dj-pace label {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 72px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--edge);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: background-color 150ms ease, color 150ms ease, transform 160ms var(--ease-out);
+}
+.dj-pace label:active { transform: scale(0.97); }
+.dj-pace strong { font: 700 20px/1.2 var(--f-display); }
+.dj-pace label:has(input:checked) { background: var(--btn); color: var(--btn-fg); border-color: var(--btn); }
+.dj-pace label:has(input:checked) .dj-label { color: inherit; }
+.dj-pace label:has(input:focus-visible) { outline: 2px solid var(--text); outline-offset: 2px; }
+
+/* -------------------------------------------------------- slide to approve */
+
+.dj-slide {
+  position: relative;
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid var(--strong);
+  background: var(--card);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.dj-slide__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in oklab, var(--btn) 28%, transparent);
+  transform: translateX(-100%);
+}
+.dj-slide__text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-left: 52px;
+  font-weight: 600;
+  color: var(--text-2);
+  pointer-events: none;
+}
+.dj-slide__knob {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--btn);
+  color: var(--btn-fg);
+  cursor: grab;
+  touch-action: none; /* the knob owns horizontal drag; the page still scrolls around it */
+}
+.dj-slide__knob::after { content: ""; position: absolute; inset: -1px; } /* 44px */
+.dj-slide__knob:active { cursor: grabbing; }
+.dj-slide[data-done="true"] { border-color: var(--btn); }
+
+/* ------------------------------------------------------- hold to confirm */
+
+.dj-hold { overflow: hidden; }
+.dj-hold__overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--risk);
+  color: var(--bg);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 200ms var(--ease-out); /* release: snappy */
+  pointer-events: none;
+}
+.dj-hold[data-holding="true"] .dj-hold__overlay {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 2s linear; /* press: slow and deliberate, linear because it is progress */
+}
+
+/* ------------------------------------------------------------ steps list */
+
+.dj-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.dj-steps li { display: flex; gap: 12px; align-items: flex-start; }
+.dj-steps__dot { flex: none; width: 22px; height: 22px; margin-top: 1px; display: grid; place-items: center; }
+.dj-steps__dot > span { display: block; border-radius: 999px; }
+.dj-steps [data-s="done"] .dj-steps__dot > span { width: 22px; height: 22px; background: var(--btn); color: var(--btn-fg); display: grid; place-items: center; }
+.dj-steps [data-s="current"] .dj-steps__dot > span { width: 10px; height: 10px; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 25%, transparent); }
+.dj-steps [data-s="next"] .dj-steps__dot > span { width: 8px; height: 8px; background: var(--track); }
+.dj-steps [data-s="next"] { color: var(--text-3); }
+
+/* ------------------------------------------------------------- waterfall */
+
+.dj-fall { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.dj-fall li { display: flex; flex-direction: column; align-items: stretch; }
+.dj-fall__tier {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--edge);
+  background: var(--card);
+}
+.dj-fall__tier[data-you="true"] { background: var(--btn); color: var(--btn-fg); border-color: var(--btn); }
+.dj-fall__tier[data-you="true"] .dj-small, .dj-fall__tier[data-you="true"] .dj-label { color: inherit; }
+.dj-fall__arrow { display: grid; place-items: center; height: 22px; color: var(--text-3); }
+
+/* --------------------------------------------------------------- pixel dune */
+
+.dj-dune { display: block; width: 100%; height: auto; shape-rendering: crispEdges; }
+.dj-dune .on { fill: var(--accent); }
+.dj-dune .off { fill: var(--track); }
+.dj-dune .today { fill: var(--text); }
+
+/* ------------------------------------------------------------- wave band */
+
+.dj-wave { position: relative; overflow: hidden; border-radius: 16px; background: var(--wave-bg); color: var(--lime-pale); }
+.dj-wave__pattern { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--wave-fg); opacity: 0.35; }
+.dj-wave__content { position: relative; padding: 20px; display: flex; flex-direction: column; gap: 4px; }
+
+.dj-hero-grad { height: 120px; border-radius: 16px 16px 0 0; background: var(--grad-hero); }
+
+/* ------------------------------------------------------------------- QR */
+
+.dj-qr { display: inline-flex; padding: 16px; border-radius: 12px; background: var(--lime-pale); color: var(--charcoal); border: 1px solid var(--edge); }
+
+/* -------------------------------------------------------------- logo / mark */
+
+.dj-mark { display: block; flex: none; }
+.dj-mark__band { transition: fill 300ms ease; }
+.dj-mark[data-loading="true"] .dj-mark__band { animation: dj-band 8s linear infinite; }
+.dj-mark[data-loading="true"] .dj-mark__band:nth-child(2) { animation-delay: 2s; }
+.dj-mark[data-loading="true"] .dj-mark__band:nth-child(3) { animation-delay: 4s; }
+.dj-mark[data-loading="true"] .dj-mark__band:nth-child(4) { animation-delay: 6s; }
+@keyframes dj-band {
+  0%, 100% { fill: var(--unlit); }
+  6%, 70% { fill: var(--accent); }
+}
+.dj-wordmark { font: 800 20px/1 var(--f-display); letter-spacing: -0.02em; color: var(--text); }
+
+/* -------------------------------------------------------------- bottom nav */
+
+.dj-nav {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: color-mix(in oklab, var(--nav-bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-top: 1px solid var(--edge);
+}
+.dj-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  border-radius: 10px;
+  color: var(--nav-off);
+  font: 600 12px/1.2 var(--f-body);
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.dj-nav a[aria-current="page"] { color: var(--text); }
+.dj-nav a[aria-current="page"] svg { color: var(--accent); }
+@media (prefers-reduced-transparency: reduce) {
+  .dj-nav { background: var(--nav-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* ------------------------------------------------------------- world view */
+
+/* Section 9: CSS-only overlay. Add .pub or .priv to an element; flip .wv on any ancestor. */
+.dj .pub, .dj .priv { position: relative; }
+.dj .pub::before, .dj .priv::before, .dj .priv::after, .dj .pub::after {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+.dj .wv .pub::after, .dj.wv .pub::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1.5px dashed var(--accent);
+  border-radius: 10px;
+  opacity: 1;
+}
+.dj .wv .pub::before, .dj.wv .pub::before {
+  content: "ONCHAIN";
+  position: absolute;
+  z-index: 2;
+  top: -12px;
+  right: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--btn);
+  color: var(--btn-fg);
+  font: 600 10px/1.3 var(--f-mono);
+  letter-spacing: 0.1em;
+  opacity: 1;
+}
+/* Inside the jar card the ground is Hunter (light) or Honeydew (dark): mark in the jar's own figure colour. */
+.dj.wv .dj-jar .pub::after { border-color: var(--jar-num); }
+.dj.wv .dj-jar .pub::before { background: var(--jar-num); color: var(--jar-bg); }
+.dj .wv .priv::after, .dj.wv .priv::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: 1;
+  border-radius: 10px;
+  background: repeating-linear-gradient(-45deg, var(--card-2) 0 6px, var(--bg) 6px 12px);
+  opacity: 0.97;
+}
+.dj .wv .priv::before, .dj.wv .priv::before {
+  content: "ON DEVICE · PRIVATE";
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--text);
+  color: var(--bg);
+  font: 600 10px/1.3 var(--f-mono);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------ gallery chrome */
+
+.dj-gallery { max-width: 1120px; margin: 0 auto; padding: 0 16px 96px; display: flex; flex-direction: column; gap: 48px; }
+.dj-topbar {
+  position: relative; /* sticky only from md: on a phone it ate a third of the screen */
+  top: 0;
+  z-index: 10;
+  background: color-mix(in oklab, var(--bg) 86%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--edge);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .dj-topbar { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (min-width: 768px) { .dj-topbar { position: sticky; } }
+.dj-topbar__in { max-width: 1120px; margin: 0 auto; padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.dj-section { display: flex; flex-direction: column; gap: 20px; scroll-margin-top: 120px; }
+.dj-section > header { display: flex; flex-direction: column; gap: 4px; padding-top: 24px; border-top: 1px solid var(--divider); }
+.dj-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px; align-items: start; }
+.dj-spec { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.dj-spec__box { display: flex; flex-direction: column; gap: 16px; padding: 16px; border-radius: 16px; border: 1px dashed var(--strong); min-width: 0; }
+.dj-swatch { display: flex; flex-direction: column; gap: 6px; }
+.dj-swatch > span:first-child { height: 48px; border-radius: 8px; border: 1px solid var(--edge); }
+.dj-phone { max-width: 390px; width: 100%; border-radius: 28px; border: 1px solid var(--edge); background: var(--bg); overflow: hidden; display: flex; flex-direction: column; }
+.dj-phone__body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.dj-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.dj-between { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
+.dj-stack { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.dj-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.dj-list li { display: flex; gap: 10px; align-items: flex-start; }
+.dj-kv { display: flex; flex-direction: column; margin: 0; }
+.dj-kv > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--divider); }
+.dj-kv > div:first-child { border-top: 0; }
+.dj-kv dt { color: var(--text-2); }
+.dj-kv dd { margin: 0; font-weight: 600; text-align: right; }
+
+/* -------------------------------------------------------------- reduced motion */
+
+/* Fewer and gentler, not zero: keep opacity and colour, drop movement. */
+@media (prefers-reduced-motion: reduce) {
+  .dj-btn:active, .dj-chip:active, .dj-pace label:active { transform: none; }
+  .dj-sale { transition: opacity 200ms ease; }
+  @starting-style { .dj-sale { transform: none; } }
+  .dj-seg__thumb, .dj-toggle__knob { transition: none; }
+  .dj-mark[data-loading="true"] .dj-mark__band { animation: none; }
+  .dj-hold[data-holding="true"] .dj-hold__overlay { transition: clip-path 2s linear; } /* progress still shows, it is information */
+}

@@ -10,8 +10,8 @@ import { Spinner } from "./status";
 
 export const buttonVariants = cva(
   [
-    "inline-flex shrink-0 items-center justify-center gap-2 rounded-md border font-semibold whitespace-nowrap select-none",
-    "transition-colors duration-150",
+    "inline-flex shrink-0 items-center justify-center gap-2 rounded-md border font-semibold whitespace-nowrap select-none touch-manipulation",
+    "transition-colors duration-150 active:scale-[0.97] motion-reduce:active:scale-100",
     "disabled:pointer-events-none disabled:border-line disabled:bg-subtle disabled:text-muted",
     "aria-disabled:pointer-events-none aria-disabled:border-line aria-disabled:bg-subtle aria-disabled:text-muted",
   ],
