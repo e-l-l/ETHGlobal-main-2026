@@ -185,7 +185,7 @@ What each step does:
 - **risk**: `RiskAgent.tick()` sees `junior_twap_drop`, plus `write_offs_7d` if there were 2 or more write-offs in 7 days. It calls `lowerLimits` (down only), and the cap change is printed.
 - **summary**: Prints a before/after table.
 
-Without `--llm`, the Risk agent applies its documented deterministic −25% cut on tiers 2–3 and maxExposure: caps go from 250/500 to 187.5/375 and maxExposure from 100k to 75k.
+Without `--llm`, the Risk agent applies its documented deterministic −25% cut on tiers 2–3 and maxExposure: caps go from 200/300 to 150/225 and maxExposure from 100k to 75k.
 
 The scene is **idempotent and resumable**. Each step checks the chain and `scene-state.json` (on the devnet volume), so re-running the same command continues from where it stopped. A finished step only prints its result.
 
@@ -252,6 +252,35 @@ Never delete the `caddy-data` volume. It holds the certificates, and re-issuing 
 5. Optional: set `email you@example.com` in the Caddyfile's global block to get certificate-expiry mail.
 
 Don't add `includeSubDomains` or `preload` to HSTS while you're on sslip.io. It's a shared domain.
+
+## Simulator
+
+Judges run real merchant stories on the devnet from the web app. `agents-api-devnet` (profile `devnet`) mounts
+`/sim` when `CHAIN_ID=31337` and `SIMULATOR_ENABLED=1`; the Sepolia `agents-api` never has these routes.
+
+| Endpoint | |
+|---|---|
+| `GET /sim/archetypes` | `honest_kiosk`, `slow_week`, `wash_ring`, `defaulter`, `repeat_borrower` |
+| `POST /sim/runs {archetype}` | `{run_id}`; 429 past 6 runs/hour per IP or 50/hour in total |
+| `GET /sim/runs/{id}` | status (`queued`/`running`/`done`/`failed`, `ahead` = runs before yours), steps, ledger |
+| `GET /sim/state` | global ledger (cached 3 s) + the 10 latest runs |
+
+- **Real work only:** devnet txs, the production pipeline (red lines, Underwriter and Critic LLMs, signer),
+  real UltraHonk proofs (about 7.6 KB, 0.2 s), the Keeper and the Risk agent. Only customers are simulated.
+- **Fee model:** offers read "0.5%/week, max 3%"; sales repay fee first until `owedOf` is zero. `slow_week`
+  checks the accrued fee against the published schedule (no late fee). Tier caps are $50/$100/$200/$300.
+- **Keys:** public anvil keys only. Signer, relayer and risk keys come from the anvil mnemonic, whatever
+  `agents-devnet.env` says. That file only needs the LLM provider and key (`LLM_PROVIDER`, `BEDROCK_API_KEY`).
+- **One run at a time:** a worker thread runs each one in a spawned child process. It has a 210 s budget and is killed at 240 s.
+  Runs take 30–60 s. A run that was going when the server restarted is marked failed.
+- **Shared chain:** every run moves anvil's clock forward 30–60 days. `defaulter` restores the tier caps and the
+  junior pool price at the end, even when it fails.
+- **Wiring:** `devnet-deployer` copies the runtime artifacts into the `devnet-data` volume (read-only in the
+  API): `circuits/<c>/{<c>.json,vk}`, `tools/{noir-execute,bb}` and the PoolSwapTest ABI. The API image stays
+  the stock agents image. Run history lives in `agents-devnet-data` (`sim.sqlite`).
+- **CORS** (only on `/sim`): `https://app.<HOST_SUFFIX>` and `http://localhost:*`.
+- **Check:** `curl https://api-devnet.<suffix>/sim/archetypes`. On a failed run, `done_reason` names the stage
+  (`Failed during proving (FileNotFoundError)` = the tools are missing from the volume: rebuild `mra-devnet-tools`).
 
 ## Demo-day checklist
 

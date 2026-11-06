@@ -193,7 +193,7 @@ def cors_origins() -> list[str]:
     return [x.strip().rstrip("/") for x in raw.split(",") if x.strip() and x.strip() != "*"]
 
 
-def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=None, faucet=None):
+def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=None, faucet=None, sim=None):
     app = FastAPI(debug=False)
     app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["GET", "POST", "PUT"],
                        allow_headers=["Content-Type", "Authorization"], max_age=600)
@@ -330,6 +330,10 @@ def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=N
         from .agents_api import build_router
         app.include_router(build_router(merchant, recovery))
 
+    if sim is not None:  # devnet only: the judge simulator (sim_api.SimMount)
+        from .sim_api import mount
+        mount(app, sim)
+
     return app
 
 
@@ -359,6 +363,22 @@ class _LazyServices:
         from .underwriter import ClaudeJudge
 
         settings = get_settings()
+        # The public simulator must never use whatever signing keys happen to be in
+        # agents/.env. Derive its transaction roles from the public Anvil mnemonic.
+        # This branch is devnet-only; the Sepolia API keeps its configured signers.
+        if settings.chain_id == 31337 and os.getenv("SIMULATOR_ENABLED", "1") == "1":
+            import sys
+            from pathlib import Path
+            scripts = Path(__file__).resolve().parents[2] / "scripts"
+            if str(scripts) not in sys.path:
+                sys.path.insert(0, str(scripts))
+            from devnet_lib import role
+            from pydantic import SecretStr
+            settings = settings.model_copy(update={
+                "offer_signer_private_key": SecretStr(role("offer_signer").key),
+                "relayer_private_key": SecretStr(role("relayer").key),
+                "risk_manager_private_key": SecretStr(role("risk_manager").key),
+            })
         reader = Web3ChainReader(settings)
         writer = Web3ChainWriter(settings)
         settings.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -397,5 +417,25 @@ def _merchant_proxies():
     return LazyProxy(lazy, "merchant"), LazyProxy(lazy, "recovery")
 
 
+def _devnet_simulator():
+    """The scenario runner is mounted only on the devnet API (CHAIN_ID=31337). The Sepolia agents-api has no
+    /sim routes and no access to anvil's admin RPC."""
+    if os.getenv("CHAIN_ID") != "31337" or os.getenv("SIMULATOR_ENABLED", "1") != "1":
+        return None
+    from .config import ROOT
+    from .sim import SimStore
+    from .sim_api import SimMount, origin_regex
+    from .sim_runner import Simulator
+    store = SimStore(os.getenv("SIM_DB_PATH", str(ROOT / "data" / "sim.sqlite")),
+                     per_hour=int(os.getenv("SIM_RATE_PER_HOUR", "6")),
+                     global_cap=int(os.getenv("SIM_GLOBAL_CAP", "50")),
+                     recover_running=os.getenv("SIM_CHILD_PROCESS") != "1")
+    runner = Simulator(_services)
+    # Each run executes in a spawned child process (killable at the hard limit), driven by a worker thread,
+    # so neither the event loop nor a stuck RPC/LLM call can wedge the API.
+    return SimMount(store, runner.run, runner.state_ledger, origin_regex(),
+                    timeout_seconds=runner.timeout + runner.hard_grace, isolate=True)
+
+
 app = create_app(*(_LazyProxy(_services, name) for name in ("pipeline", "relayer", "reader", "store", "risk")),
-                 *_merchant_proxies(), faucet=_LazyProxy(_services, "faucet"))
+                 *_merchant_proxies(), faucet=_LazyProxy(_services, "faucet"), sim=_devnet_simulator())

@@ -215,6 +215,32 @@ def test_critique_prompt_contains_features_json_and_draft_numbers():
     assert data["red_lines"]["spike_ratio"] == "<= 4.0"
 
 
+def test_critic_sees_allowed_advance_sizes_and_minimum():
+    # $50 is the smallest advance there is: the Critic must know that, or it sends honest $50 drafts back
+    # asking for "a smaller advance" the Underwriter can never produce.
+    sizes = block(build_critic_user(honest(), DRAFT))["advance_sizes"]
+    assert DRAFT.amount == 50_000_000
+    assert sizes == {"allowed_amounts": list(ALLOWED_AMOUNTS), "allowed_amounts_usd": [50, 100, 200, 300],
+                     "minimum_amount": 50_000_000, "minimum_amount_usd": 50, "draft_amount_usd": 50.0,
+                     "draft_is_minimum": True, "smaller_allowed_amounts": []}
+    bigger = block(build_critic_user(honest(), DRAFT.model_copy(update={"amount": 200_000_000})))["advance_sizes"]
+    assert bigger["draft_is_minimum"] is False
+    assert bigger["smaller_allowed_amounts"] == [50_000_000, 100_000_000]
+    assert "smaller_allowed_amounts" in CRITIC_SYSTEM and "max_days_to_repay" in CRITIC_SYSTEM
+    # The code's own affordability yardstick goes with it (holdback is a share of each sale, horizon in days).
+    aff = block(build_critic_user(honest(), DRAFT, max_days=40))["affordability"]
+    assert aff == {"max_days_to_repay": 40, "holdback_share_of_each_sale": 0.1, "normal_estimate_fits": False,
+                   "slow_pace_only_takes_longer": True}
+    # DRAFT: normal 45 days fits the default 60 even though slow (60) sits at the edge
+    assert block(build_critic_user(honest(), DRAFT))["affordability"]["normal_estimate_fits"] is True
+
+
+def test_judge_passes_configured_horizon_to_critic():
+    llm = FakeLLM([VERDICT])
+    ClaudeJudge(llm, cfg(max_days_to_repay=75)).critique(honest(), DRAFT)
+    assert block(llm.calls[0].user)["affordability"]["max_days_to_repay"] == 75
+
+
 def test_critic_never_sees_underwriter_reasons():
     user = build_critic_user(honest(), DRAFT)
     for text in (UNDERWRITER_REASON, UNDERWRITER_REASON_ES, "UNIQUE-REASON-MARKER", "MARCA-UNICA",

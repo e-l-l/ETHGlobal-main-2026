@@ -278,9 +278,17 @@ services:
         required: true
     environment:
       RPC_URL: http://anvil:8545
+      ADMIN_RPC_URL: http://anvil:8545
       CHAIN_ID: "31337"
+      SIMULATOR_ENABLED: "1"
+      HOST_SUFFIX: ${HOST_SUFFIX:-localhost}
       DB_PATH: /srv/agents/data/agents.sqlite
       DEPLOYMENTS_FILE: /srv/agents/deployments-devnet/devnet.json
+      # Judge simulator (/sim). Runtime artifacts come from the devnet volume, written by devnet-deployer.
+      SIM_DB_PATH: /srv/agents/data/sim.sqlite
+      CONTRACTS_OUT: /srv/agents/deployments-devnet/contracts-out
+      SIM_CIRCUITS_DIR: /srv/agents/deployments-devnet/circuits
+      SIM_TOOLS_DIR: /srv/agents/deployments-devnet/tools
     volumes:
       - agents-devnet-data:/srv/agents/data
       - devnet-data:/srv/agents/deployments-devnet:ro
@@ -295,7 +303,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-    mem_limit: 384m
+    mem_limit: 1g # API + one spawned simulator run (web3, LLM client) + bb prove
 
   caddy:
     <<: [*restart, *logging]

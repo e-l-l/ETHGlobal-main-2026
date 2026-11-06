@@ -190,7 +190,8 @@ class ClaudeJudge:
                               effort=self.settings.underwriter_effort)
 
     def critique(self, features: ShopFeatures, draft: OfferDraft) -> CriticVerdict:
-        return critic.critique(self.llm, features, draft, effort=self.settings.critic_effort)
+        return critic.critique(self.llm, features, draft, effort=self.settings.critic_effort,
+                               max_days=self.settings.max_days_to_repay)
 
     def propose_risk(self, signals: dict, limits: ChainLimits) -> RiskProposal:
         return self.llm.parse(system=RISK_SYSTEM, user=build_risk_user(signals, limits), schema=RiskProposal,

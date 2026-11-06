@@ -12,10 +12,12 @@ from typing import Any
 from . import redlines
 from .interfaces import LLM
 from .llm import data_block, load_prompt
-from .models import CriticVerdict, OfferDraft, ShopFeatures
+from .models import ALLOWED_AMOUNTS, CriticVerdict, OfferDraft, ShopFeatures
 
 CRITIC_SYSTEM = load_prompt("critic")
 MAX_LABEL_CHARS = 120
+USDC_UNIT = 1_000_000  # amounts are USDC base units (6 decimals)
+DEFAULT_MAX_DAYS = 60  # config.Settings.max_days_to_repay default; ClaudeJudge passes the configured value
 
 # The only draft fields the Critic may see. reasons_en / reasons_es are deliberately excluded.
 DRAFT_NUMBER_FIELDS = frozenset(
@@ -60,10 +62,36 @@ def red_lines_payload(features: ShopFeatures | None = None) -> dict[str, str]:
     return lines
 
 
-def build_critic_user(features: ShopFeatures, draft: OfferDraft) -> str:
+def advance_sizes_payload(draft: OfferDraft) -> dict[str, Any]:
+    """The only advance sizes that exist (same units as draft.amount). Without this the Critic asked for "a
+    smaller advance" on drafts already at the minimum, a send-back the Underwriter can never satisfy."""
+    smaller = [a for a in ALLOWED_AMOUNTS if a < draft.amount]
+    return {
+        "allowed_amounts": list(ALLOWED_AMOUNTS),
+        "allowed_amounts_usd": [a // USDC_UNIT for a in ALLOWED_AMOUNTS],
+        "minimum_amount": min(ALLOWED_AMOUNTS),
+        "minimum_amount_usd": min(ALLOWED_AMOUNTS) // USDC_UNIT,
+        "draft_amount_usd": draft.amount / USDC_UNIT,
+        "draft_is_minimum": draft.amount <= min(ALLOWED_AMOUNTS),
+        "smaller_allowed_amounts": smaller,
+    }
+
+
+def affordability_payload(draft: OfferDraft, max_days: int) -> dict[str, Any]:
+    """The affordability yardstick the code itself uses (clamp.py): at the normal pace (30-day average, floored by
+    a proven revenue band) the holdback repays the amount plus the maximum fee within `max_days`. A slow stretch
+    only takes longer; the fee stops at its cap and there is no due date."""
+    return {"max_days_to_repay": max_days, "holdback_share_of_each_sale": draft.holdback_bps / 10_000,
+            "normal_estimate_fits": draft.est_days_normal <= max_days,
+            "slow_pace_only_takes_longer": True}
+
+
+def build_critic_user(features: ShopFeatures, draft: OfferDraft, max_days: int = DEFAULT_MAX_DAYS) -> str:
     payload = {
         "features": features_payload(features),
         "draft": draft.model_dump(include=set(DRAFT_NUMBER_FIELDS)),
+        "advance_sizes": advance_sizes_payload(draft),
+        "affordability": affordability_payload(draft, max_days),
         "red_lines": red_lines_payload(features),
         "skipped_checks": (["few_payers", "few_active_days", "sales_spike"]
                            + (["payer_concentration"] if features.sales_count_30d
@@ -78,8 +106,9 @@ def build_critic_user(features: ShopFeatures, draft: OfferDraft) -> str:
     )
 
 
-def critique(llm: LLM, features: ShopFeatures, draft: OfferDraft, *, effort: str) -> CriticVerdict:
-    verdict = llm.parse(system=CRITIC_SYSTEM, user=build_critic_user(features, draft), schema=CriticVerdict,
+def critique(llm: LLM, features: ShopFeatures, draft: OfferDraft, *, effort: str,
+             max_days: int = DEFAULT_MAX_DAYS) -> CriticVerdict:
+    verdict = llm.parse(system=CRITIC_SYSTEM, user=build_critic_user(features, draft, max_days), schema=CriticVerdict,
                         effort=effort)
     # Fail closed on an inconsistent verdict: a blocking flag can't sit under an approval.
     if verdict.verdict == "approve" and any(f.severity == "block" for f in verdict.flags):
