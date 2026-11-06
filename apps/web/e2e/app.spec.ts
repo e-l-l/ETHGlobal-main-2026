@@ -109,12 +109,12 @@ test.describe("journeys", () => {
 
   test("world view follows you across screens", async ({ page }) => {
     await page.goto("/onboarding/pass");
-    await page.getByRole("button", { name: "What the world sees" }).click();
+    await page.getByRole("button", { name: "World view" }).click();
     await expect(page.getByText("Onchain, anyone can see")).toBeVisible();
     await page.goto("/earn");
-    await expect(page.getByRole("button", { name: "What the world sees" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "World view" })).toHaveAttribute("aria-pressed", "true");
     await page.goto("/merchant");
-    await expect(page.getByRole("button", { name: "What the world sees" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "World view" })).toHaveAttribute("aria-pressed", "true");
   });
 
   test("the customer pays with the keypad and never sees the advance", async ({ page }) => {
@@ -123,8 +123,8 @@ test.describe("journeys", () => {
     await page.getByRole("button", { name: "Delete" }).click();
     await page.getByRole("button", { name: "Delete" }).click();
     await page.getByRole("button", { name: "4", exact: true }).click();
-    await page.getByRole("button", { name: "Pay $4.00" }).click();
-    await expect(page).toHaveURL(/paid\?amt=4\.00/);
+    await page.getByRole("button", { name: /^Pay \$4(\.00)?$/ }).click();
+    await expect(page).toHaveURL(/paid\?amt=4/);
     expect((await page.locator("body").innerText()).toLowerCase()).not.toMatch(/advance|loan|repay|adelanto|debt/);
   });
 

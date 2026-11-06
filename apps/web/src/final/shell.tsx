@@ -145,8 +145,7 @@ export function WorldToggle() {
     <button
       type="button"
       aria-pressed={wv}
-      aria-label="What the world sees"
-      title="What the world sees"
+      title="What the world sees: public onchain vs private on this device"
       onClick={() => setWorldView(!wv)}
       className={cn(
         "inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md px-3 font-body text-note font-semibold transition-colors duration-150",
@@ -155,7 +154,7 @@ export function WorldToggle() {
       )}
     >
       <EyeIcon size={18} />
-      <span className="hidden sm:inline">World view</span>
+      <span className="sr-only sm:not-sr-only">World view</span>
     </button>
   );
 }
