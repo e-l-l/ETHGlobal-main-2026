@@ -665,6 +665,23 @@ def make_recovery_verifier(settings) -> RecoveryVerifier:
                          rp_ttl=settings.world_rp_signature_ttl_seconds)
 
 
+def make_borrower_verifier(settings) -> RecoveryVerifier:
+    """World ID for borrowers (humans.py): the same IDKit 4 verification path as recovery, for
+    WORLD_BORROWER_ACTION (default: the recovery action, so it works without new Developer Portal config; the same
+    human then yields the same nullifier, which humans.py keys under a different HMAC label). Its own instance, so
+    rp_context nonces issued by POST /world/borrower/rp-context are consumed only here."""
+    action = settings.world_borrower_action
+    if settings.world_mock:
+        return MockIDKit(action)
+    if not settings.world_app_id:
+        raise ValueError("WORLD_APP_ID is not configured")
+    key = settings.world_rp_signing_key
+    return IDKitVerifier(app_id=settings.world_app_id, action=action,
+                         environment=settings.world_environment, base_url=settings.world_verify_base_url,
+                         rp_id=settings.world_rp_id, signing_key=key.get_secret_value() if key else None,
+                         rp_ttl=settings.world_rp_signature_ttl_seconds)
+
+
 MAX_BACKUP_BYTES = 64 * 1024
 
 _BACKUP_SCHEMA = """

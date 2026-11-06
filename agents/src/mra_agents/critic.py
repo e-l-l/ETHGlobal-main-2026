@@ -40,6 +40,9 @@ def features_payload(features: ShopFeatures) -> dict[str, Any]:
         else:
             data[key] = _round(value, 4)
     data.pop("shop_label", None)  # Never send merchant-controlled free text to either model.
+    for key in ("approved_limit", "available_now"):  # gradual unlock: only when applied (unlock.py)
+        if data.get(key) is None:
+            data.pop(key, None)
     return data
 
 
@@ -62,11 +65,17 @@ def red_lines_payload(features: ShopFeatures | None = None) -> dict[str, str]:
     return lines
 
 
-def advance_sizes_payload(draft: OfferDraft) -> dict[str, Any]:
+def advance_sizes_payload(draft: OfferDraft, features: ShopFeatures | None = None) -> dict[str, Any]:
     """The only advance sizes that exist (same units as draft.amount). Without this the Critic asked for "a
-    smaller advance" on drafts already at the minimum, a send-back the Underwriter can never satisfy."""
+    smaller advance" on drafts already at the minimum, a send-back the Underwriter can never satisfy.
+    With the gradual unlock (unlock.py) it also carries the approved limit and what is available now."""
     smaller = [a for a in ALLOWED_AMOUNTS if a < draft.amount]
-    return {
+    unlock = {}
+    if features is not None and features.available_now is not None:
+        unlock = {"approved_limit": features.approved_limit, "available_now_gradual_unlock": features.available_now,
+                  "gradual_unlock_rule": "first advance at a level is 50% of the limit, +25% per full week of "
+                                         "on-time minimum repayments; code caps the amount at available_now"}
+    return {**unlock,
         "allowed_amounts": list(ALLOWED_AMOUNTS),
         "allowed_amounts_usd": [a // USDC_UNIT for a in ALLOWED_AMOUNTS],
         "minimum_amount": min(ALLOWED_AMOUNTS),
@@ -90,7 +99,7 @@ def build_critic_user(features: ShopFeatures, draft: OfferDraft, max_days: int =
     payload = {
         "features": features_payload(features),
         "draft": draft.model_dump(include=set(DRAFT_NUMBER_FIELDS)),
-        "advance_sizes": advance_sizes_payload(draft),
+        "advance_sizes": advance_sizes_payload(draft, features),
         "affordability": affordability_payload(draft, max_days),
         "red_lines": red_lines_payload(features),
         "skipped_checks": (["few_payers", "few_active_days", "sales_spike"]

@@ -32,6 +32,22 @@ Exact merchant copy: **"Fee 0.5% per week while you owe, never more than 3%."**
 - Tier caps shown anywhere are now **$50 / $100 / $200 / $300**.
 - **Naming:** say **DripCoin (DRIP)** everywhere. "Junior token" is still in `landing/Lenders.tsx`, `landing/UnderTheHood.tsx` and `app/page.tsx` (user-facing copy only; leave code identifiers).
 
+## P0: World ID before the first advance (backend refuses unverified shops)
+
+Backend: every offer now needs a World ID bound to the shop (`WORLD_BINDING_REQUIRED=1`, the default). **Until the
+step below ships, live offers from the web app come back `rejected` with `human_not_verified`.** If the frontend
+can't ship it before the demo, set `WORLD_BINDING_REQUIRED=0` on the agents API (bans and the unlock still apply to
+verified shops). Details and copy: [FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md#world-id-for-borrowers-bind-before-the-first-advance-ban-on-default-gradual-unlock).
+
+| Where (apps/web/src/…) | Change |
+|---|---|
+| Onboarding, after `createShop` and before the first offer | Add a "Verify you're a unique human" step: `mra.onboarding.verifyHuman()`. Configure `idkitV4` as for recovery; the SDK passes `purpose: "borrower"`. |
+| Offer / "ask for an advance" result | Handle `redline_hits` `human_not_verified` (go to the verify step), `human_banned` (banned screen), `human_has_open_advance` ("repay your open advance first"). Use `reasonMessage(code)`. |
+| New banned screen | When `home().banned` is true: "This World ID can't take new advances, on any shop, because an earlier advance was not repaid." Hide the advance CTA. |
+| `app/merchant/(app)/screen.tsx` (home) and `advance/screen.tsx` | Show "Available now $`availableNow` of $`limit`", the `unlockSteps` bar (50/75/100%) and `nextUnlockAt`. The first advance at a new level is 50% of the limit. |
+| `(focus)/agent/approve/screen.tsx` | Cap the per-advance limit suggestion at `availableNow`; show the same unlock line. |
+| Simulator page | Two new step kinds: `world_id` (verify / ban) and `unlock`. Render them like `info` if there is no special style. `defaulter` now ends with "World ID banned: this person can't borrow again, on any shop" and a refused new shop. |
+
 ## P1: World is real on the backend; the screens aren't wired
 
 The backend and SDK are done and were tested against live World (OIDC device flow plus IDKit v4 proof verification). The live box runs `WORLD_MOCK=1` until these screens ship. After that, we flip it to `0`.

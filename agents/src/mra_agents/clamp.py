@@ -1,7 +1,7 @@
 """Deterministic offer policy, using USDC base units throughout."""
 from decimal import Decimal, InvalidOperation
 
-from .models import ALLOWED_AMOUNTS, FEE_RATE_BPS_PER_WEEK, FEE_CAP_BPS, MAX_TIER, band_floor_daily_usd
+from .models import ALLOWED_AMOUNTS, FEE_CAP_BPS, FEE_RATE_BPS_PER_WEEK, MAX_TIER, band_floor_daily_usd
 
 
 def clamp_offer(draft, features, tier, limits, max_days):
@@ -26,13 +26,19 @@ def clamp_offer(draft, features, tier, limits, max_days):
             raise ValueError
     except (InvalidOperation, ValueError):
         return None, changes + ["No positive finite revenue or repayment window"]
+    unlock_cap = getattr(features, "available_now", None)  # gradual unlock (unlock.py); None = not applied
     eligible = [amount for amount in ALLOWED_AMOUNTS if amount <= draft.amount
                 and amount <= limits.tier_cap[tier]
+                and (unlock_cap is None or amount <= unlock_cap)
                 and amount + limits.exposure <= limits.max_exposure
                 and Decimal(amount * 10_300) <= revenue * 1_000_000 * holdback * max_days]
     if not eligible:
         return None, changes + ["No allowed amount fits the tier cap, exposure and repayment window"]
     amount = max(eligible)
+    if unlock_cap is not None and draft.amount > unlock_cap >= amount:
+        limit = getattr(features, "approved_limit", None) or limits.tier_cap[tier]
+        changes.append(f"Gradual unlock: capped at ${unlock_cap / 1_000_000:,.0f} of the ${limit / 1_000_000:,.0f} "
+                       "limit (50% at a new level, +25% per on-time week)")
     if amount != draft.amount:
         changes.append(f"Amount changed from {draft.amount} to {amount} base units (size, caps or repayment window)")
     return draft.model_copy(update={"amount": amount, "fee_rate_bps_per_week": rate,

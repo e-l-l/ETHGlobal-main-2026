@@ -39,6 +39,7 @@ class KeeperResult(list[str]):
         super().__init__()
         self.errors: list[str] = []
         self.skipped: list[str] = []
+        self.banned = 0  # World IDs newly banned this tick (humans.py)
 
 
 class Keeper:
@@ -52,6 +53,7 @@ class Keeper:
         hook_usdc_balance: Callable[[], int] | None = None,
         default_window: int = DEFAULT_WINDOW_SECONDS,
         inflight_ttl: int = DEFAULT_INFLIGHT_TTL,
+        humans=None,
     ):
         self.reader = reader
         self.writer = writer
@@ -60,6 +62,7 @@ class Keeper:
         self.hook_usdc_balance = hook_usdc_balance
         self.default_window = default_window
         self.inflight_ttl = inflight_ttl
+        self.humans = humans  # humans.HumanRegistry: ban the World ID behind any written-off advance
         self._inflight: dict[int, int] = {}  # advance id -> time we sent writeOff
         self._flush_sent_at: int | None = None
 
@@ -81,8 +84,19 @@ class Keeper:
             result.errors.append(f"time: {type(e).__name__}")
             return result
         self._write_offs(now, result)
+        self._ban_defaulters(result)
         self._flush(now, result)
         return result
+
+    def _ban_defaulters(self, result: KeeperResult) -> None:
+        """writeOff is permissionless, so bans come from chain state: every WrittenOff advance on a World-bound
+        shop bans that human (humans.py). Never raises."""
+        if self.humans is None:
+            return
+        try:
+            result.banned = self.humans.sync_write_offs(self.reader.advances())
+        except Exception as e:  # noqa: BLE001
+            result.errors.append(f"ban: {type(e).__name__}")
 
     def _write_offs(self, now: int, result: KeeperResult) -> None:
         try:

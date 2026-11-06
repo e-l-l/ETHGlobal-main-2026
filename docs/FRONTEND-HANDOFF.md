@@ -79,6 +79,51 @@ const idkit = idkitV4({
 
 The config includes `app_id`, `action`, `environment`, and the short-lived `rp_context` (`rp_id`, `nonce`, `created_at`, `expires_at`, `signature`). Do not cache it; request a new one for each verification. `recovery.backup(passphrase)` runs IDKit verification if needed, encrypts the current vault export with the passphrase, and uploads only ciphertext through `PUT /recovery/backup`. Require at least 8 passphrase characters and tell the user it cannot be reset. On a new device, `recovery.restore(passphrase)` verifies with IDKit, fetches the same human's ciphertext, decrypts locally, and imports the vault. The recovery token stays in SDK memory and is sent only as an authorization header.
 
+### World ID for borrowers (bind before the first advance; ban on default; gradual unlock)
+
+Before a shop's first offer, its owner proves "unique human" with World ID. The backend keeps only an HMAC of the
+nullifier and never returns it. With `WORLD_BINDING_REQUIRED=1` (the default) an unverified shop gets no offer.
+
+**SDK**
+
+| Call | Returns |
+|---|---|
+| `mra.onboarding.verifyHuman({ onStep })` | `{ verified: true }` or `{ verified: false, reason }`. Steps: `signing_owner` → `verifying_human` → `verified`. Mock: always verified, no network. |
+| `mra.onboarding.humanStatus({ tier? })` | `{ humanVerified, banned, unlock, source }`. `unlock`: `{ tier, limit, availableNow, unlockedPct, goodWeeks, frozen, nextUnlockAt, steps, reasons }` |
+| `mra.merchant.home()`, `mra.merchant.advance()`, `mra.agent.approveView()` | now also carry `humanVerified`, `banned`, `limit`, `availableNow`, `nextUnlockAt` (unix s or null), `unlockSteps: {pct, amount, unlocked}[]`. Mock: verified, not banned, limit 100, available 50, next unlock in 7 days, steps 50%=$50 ✓ / 75%=$50 / 100%=$100. |
+| `reasonMessage(code)` | merchant copy for every red-line code, including the three below |
+
+`verifyHuman` signs an owner message with the shop's wallet (EIP-191, the wallet that registered the shop), then
+runs IDKit with `idkitV4` for the purpose `"borrower"` (it fetches `POST /world/borrower/rp-context` instead of the
+recovery one; same `run` callback as recovery). The signature is cached for 5 minutes, so an injected wallet prompts
+once.
+
+**HTTP** (for reference; the SDK does this)
+
+- `POST /world/borrower/rp-context`: IDKit 4 config for `WORLD_BORROWER_ACTION` (mock: `{"mock": true, "action"}`).
+- `POST /shops/{shopId}/human`, header `Authorization: Owner <issuedAt>:<sig>`, body `{"idkit": <IDKit result>}`
+  → `{"verified": true}`. Errors: 401 `unauthorized`, 404 `not_found`, 400 `verification_failed` /
+  `wrong_action` / `unknown_or_used_nonce`, 409 `shop_bound_to_other_human`.
+- `GET /shops/{shopId}/human?tier=` → `{"verified"}`; with the owner header also `{"banned", "unlock"}`.
+- Owner message: `"DripMoni shop owner\nshop: <shopId lowercase>\nchain: <chainId>\nissued: <unix s>"`, valid ±10 min.
+
+**New red-line codes on `POST /offers`** (`result: "rejected"`, no model was called):
+`human_not_verified` → send to the verify step; `human_banned` → banned screen; `human_has_open_advance` → "repay
+your open advance first". A clamp change can read "Gradual unlock: capped at $50 of the $100 limit".
+
+**Screen states**
+
+1. **Onboarding, after "Create shop" (M06), before the first offer:** a "Verify you're a unique human" step with a
+   World button → `verifyHuman()`. Copy: "World ID proves you're a real, unique person. We never learn who you are
+   and nothing goes onchain." On `{verified: false, reason: "verification_failed"}` offer a retry;
+   `shop_bound_to_other_human` → "This shop is already verified by someone else."
+2. **Banned screen** (`banned === true`, or an offer rejected with `human_banned`): "This World ID can't take new
+   advances, on any shop, because an earlier advance was not repaid." No retry button; the shop can still sell.
+3. **Unlock progress on home and advance:** "Available now $`availableNow` of $`limit`". A 3-step bar from
+   `unlockSteps` (50% / 75% / 100%, ticked when `unlocked`). If `nextUnlockAt`: "Next unlock on `<date>` if you keep
+   up the weekly minimum (1% plus fee every 7 days)." If frozen (`unlock.frozen` from `humanStatus`): "Unlock paused:
+   the weekly minimum was missed."
+
 ### Environment and testing
 
 For the app build, set:
@@ -87,7 +132,7 @@ For the app build, set:
 - `NEXT_PUBLIC_MRA_MODE=sepolia` (or `local`) and `NEXT_PUBLIC_API_URL=https://<agents-api-origin>`.
 - `NEXT_PUBLIC_ISSUER_URL` for live onboarding; World flows themselves use the agents API.
 
-On the agents service, set `WORLD_MOCK=0`, `WORLD_AGENT_PASS_CLIENT_ID`, `WORLD_AGENT_PASS_CLIENT_SECRET`, `WORLD_AGENT_PASS_CLIENT_AUTH=client_secret_basic`, `WORLD_APP_ID`, `WORLD_RP_ID`, `WORLD_RP_SIGNING_KEY`, and `WORLD_RECOVERY_ACTION=credential-recovery-v1`. `WORLD_AGENT_PASS_ISSUER` defaults to `https://auth.world.org`; `WORLD_AGENT_PASS_REDIRECT_URI` remains available for the alternate redirect flow. Set `CORS_ALLOW_ORIGINS` to the deployed app origin. These values are server environment variables; only public `NEXT_PUBLIC_*` values belong in the app build.
+On the agents service, set `WORLD_MOCK=0`, `WORLD_AGENT_PASS_CLIENT_ID`, `WORLD_AGENT_PASS_CLIENT_SECRET`, `WORLD_AGENT_PASS_CLIENT_AUTH=client_secret_basic`, `WORLD_APP_ID`, `WORLD_RP_ID`, `WORLD_RP_SIGNING_KEY`, and `WORLD_RECOVERY_ACTION=credential-recovery-v1`. Borrower binding: `WORLD_BORROWER_ACTION` (defaults to the recovery action) and `WORLD_BINDING_REQUIRED` (default 1). `WORLD_AGENT_PASS_ISSUER` defaults to `https://auth.world.org`; `WORLD_AGENT_PASS_REDIRECT_URI` remains available for the alternate redirect flow. Set `CORS_ALLOW_ORIGINS` to the deployed app origin. These values are server environment variables; only public `NEXT_PUBLIC_*` values belong in the app build.
 
 For production, set `WORLD_ENVIRONMENT=production` and use the production recovery action; complete verification in World App. For simulator testing, set `WORLD_ENVIRONMENT=staging`, create/select the matching staging action for the configured app, rebuild with `NEXT_PUBLIC_WORLD_MODE=real`, and scan the recovery QR using [World's simulator](https://simulator.worldcoin.org). The agents API pins the expected environment, so staging and production proofs cannot be mixed. Agent Pass still uses the configured OIDC issuer.
 
