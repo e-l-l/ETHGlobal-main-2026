@@ -26,6 +26,7 @@ import {
   type Prover,
   type RpcConfig,
   injectedWallet,
+  mockIdkit,
 } from "@repo/sdk";
 import { MRA_ENV, MRA_MODE } from "./mra";
 import { routes } from "./routes";
@@ -278,8 +279,25 @@ let usingInjected = false;
  *   idkit:     World ID 4 (IDKit) with a fresh backend-signed rp_context per verification, for recovery backup/restore.
  *              `@worldcoin/idkit` is imported on first use only. The connector URL goes to ./world-prompt as a QR.
  */
+/** A random, stable-per-browser label for the World test-mode identity. */
+function mockHumanLabel(): string {
+  const KEY = "mra.mockHuman";
+  try {
+    let v = window.localStorage.getItem(KEY);
+    if (!v) {
+      v = `device-${crypto.randomUUID()}`;
+      window.localStorage.setItem(KEY, v);
+    }
+    return v;
+  } catch {
+    return `device-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
 function worldAdapters(vault: CredentialVault): Pick<MRAConfig, "agentPass" | "idkit"> {
-  if (WORLD_MODE !== "real") return {};
+  // World test mode: one test "human" per browser profile (a new incognito window is a new person; the same window
+  // stays the same person, so the ban / one-open-advance rules still demo). The SDK default label is shared by all.
+  if (WORLD_MODE !== "real") return { idkit: mockIdkit({ human: mockHumanLabel() }) };
   const apiUrl = MRA_ENV.apiUrl ?? (MRA_MODE === "local" ? DEFAULTS.local.apiUrl : undefined);
   if (!apiUrl) return {};
   const api = new AgentsApi({ baseUrl: apiUrl });

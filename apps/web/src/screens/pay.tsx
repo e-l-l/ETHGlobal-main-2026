@@ -7,6 +7,7 @@ import {
   Banner,
   BrandPanel,
   Button,
+  buttonVariants,
   Card,
   CheckIcon,
   CopyHash,
@@ -51,7 +52,8 @@ function ScanToPay() {
       <p className="m-0 font-body text-read text-charcoal-muted">
         This page opens from the QR code at the counter, which tells it which shop you are paying.
       </p>
-      <Button href={DEMO_SHOP_HREF}>Try the demo shop</Button>
+      {/* A plain link, not client navigation: the pay screen reads ?shop= on load, so arrive with a full page load. */}
+      <a href={DEMO_SHOP_HREF} className={buttonVariants()}>Try the demo shop</a>
     </div>
   );
 }
