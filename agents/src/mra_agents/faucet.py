@@ -356,7 +356,7 @@ class Web3FaucetChain:
         self.w3 = writer.w3
         self.usdc = self.w3.eth.contract(address=writer.dep["USDC"], abi=_MINT_ABI)
         self.book = writer.dep["AdvanceBook"]
-        jv = writer.dep.get("JuniorVault")
+        jv = getattr(writer.dep, "addresses", {}).get("JuniorVault")  # Deployments is name-indexed, not a dict
         self.vault = self.w3.eth.contract(address=to_checksum_address(jv), abi=_VAULT_ABI) if jv else None
 
     def __repr__(self) -> str:
