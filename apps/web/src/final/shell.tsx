@@ -67,7 +67,7 @@ export function AppHeader({
           <Link href={home} aria-label={`${APP_NAME} home`} className="inline-flex min-h-11 shrink-0 items-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal">
             <Lockup size={28} />
           </Link>
-          <div className="flex min-w-0 flex-1 justify-center">
+          <div className="flex min-w-0 flex-1 justify-center-safe overflow-x-auto [scrollbar-width:none]">
             {center ??
               (nav ? (
                 <nav aria-label="Sections" className="hidden items-center gap-1 md:flex">

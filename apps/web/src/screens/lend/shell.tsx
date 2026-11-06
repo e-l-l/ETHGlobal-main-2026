@@ -153,7 +153,7 @@ export function PrivateReadsChip() {
 export function LendShell({ width = "wide", children }: { width?: "wide" | "narrow"; children: ReactNode }) {
   return (
     <>
-      <AppHeader home={routes.home} nav={LEND_NAV} end={<><PrivateReadsChip />{isMock ? <WalletChip /> : <ConnectWallet />}</>} />
+      <AppHeader home={routes.home} nav={LEND_NAV} end={isMock ? <WalletChip /> : <ConnectWallet compact />} />
       <Page width={width} tabs>
         {children}
       </Page>
