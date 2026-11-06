@@ -28,7 +28,7 @@ function Nav() {
       <nav
         aria-label="Main"
         className={cn(
-          "mx-auto box-content flex max-w-210 flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-lg py-2 pr-2 pl-5",
+          "mx-auto box-content flex max-w-210 items-center justify-between gap-x-3 gap-y-3 rounded-lg py-2 pr-2 pl-4 md:flex-wrap md:gap-x-4 md:pl-5",
           FROST,
         )}
       >
@@ -38,12 +38,13 @@ function Nav() {
         >
           <Lockup size={32} />
         </a>
+        {/* Phones: logo + app button on one row; section links return from md up. */}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-note font-semibold">
           {NAV.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="inline-flex min-h-11 items-center rounded-chip text-charcoal-soft no-underline hover:text-charcoal"
+              className="hidden min-h-11 items-center rounded-chip text-charcoal-soft no-underline hover:text-charcoal md:inline-flex"
             >
               {l.label}
             </a>
@@ -52,7 +53,7 @@ function Nav() {
             href="/home"
             size="sm"
             width="auto"
-            className="px-5 leading-[1.45]"
+            className="px-5"
           >
             Open the app
           </Button>
