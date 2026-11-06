@@ -126,7 +126,7 @@ function SiteFooter() {
       "For lenders",
       [
         ["Senior vault", routes.earn],
-        ["Junior token", routes.junior],
+        ["DripCoin", routes.dripcoin],
         ["Risk", routes.risk],
       ],
     ],
@@ -387,7 +387,7 @@ const SPONSORS: Sponsor[] = [
     h: 317,
     title: "The market prices default risk.",
     points: [
-      ["coin", "Junior token, first loss, listed", "The junior tranche is an ERC-4626 vault. Its shares trade against USDC on a v4 pool."],
+      ["coin", "DripCoin, first loss, listed", "DripCoin is the junior tranche, an ERC-4626 vault. Its shares trade against USDC on a v4 pool."],
       ["swap", "RiskHook fee funds the reserve", "A USDC-only fee on swaps, flushed to the reserve that covers losses after junior."],
       ["chart", "TWAP oracle: price drops, limits drop", "The risk agent compares the 1h and 24h TWAP. A fall of over 10% lowers lending limits."],
     ],

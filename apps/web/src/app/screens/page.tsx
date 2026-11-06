@@ -54,11 +54,11 @@ const GROUPS: { group: string; screens: Item[] }[] = [
   {
     group: "Lenders",
     screens: [
-      { id: "L01", title: "Earn", href: routes.earn },
+      { id: "L01", title: "Vault", href: routes.earn },
       { id: "L02", title: "Deposit or withdraw", href: routes.deposit },
       { id: "L03", title: "My position", href: routes.position },
-      { id: "J01", title: "Junior vault", href: routes.junior },
-      { id: "J02", title: "Mint or redeem", href: routes.mint },
+      { id: "J01", title: "DripCoin", href: routes.dripcoin },
+      { id: "J02", title: "Mint or redeem DRIP", href: routes.mint },
       { id: "J03", title: "Trade DRIP", href: routes.trade },
     ],
   },

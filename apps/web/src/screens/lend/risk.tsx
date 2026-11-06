@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * "Risk, in public" (L01) and the market's view of DRIP (J01): the lender's "why should I trust this with my
+ * "Risk, in public" (L01) and the market's view of DripCoin (J01): the lender's "why should I trust this with my
  * dollars?" answered with numbers anyone can check onchain. Aggregate only: no shop is named anywhere.
  * Data: `lender.riskPanel()` / `lender.waterfall()` (live: public chain reads; mock: the SDK's RISK_PANEL / WATERFALL).
  */
-import { BarChart, Card, Divider, KeyValue, Label, LossWaterfall, Pill, Spinner, StatGrid, Text, TextLink } from "@/final";
+import { BarChart, Card, Divider, KeyValue, Label, LossWaterfall, Pill, Spinner, StatGrid, Text, TextLink, type LossViewer } from "@/final";
 import type { RiskPanelView, RiskTone, WaterfallView } from "@repo/sdk";
 import { routes } from "@/lib/routes";
 import { Pub } from "./shell";
@@ -62,7 +62,7 @@ function Provenance({ panel }: { panel: RiskPanelView }) {
 }
 
 /** The loss waterfall with live amounts, and the one-line headline. */
-export function LiveWaterfall({ waterfall, you }: { waterfall: WaterfallView; you: "senior" | "junior" }) {
+export function LiveWaterfall({ waterfall, you }: { waterfall: WaterfallView; you: LossViewer }) {
   return (
     <Card>
       <Label>Who takes a loss first</Label>

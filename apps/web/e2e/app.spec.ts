@@ -32,9 +32,9 @@ const routes = [
   "/earn",
   "/earn/deposit",
   "/earn/position",
-  "/junior",
-  "/junior/mint",
-  "/junior/trade",
+  "/dripcoin",
+  "/dripcoin/mint",
+  "/dripcoin/trade",
   "/protocol",
   "/risk",
   "/explorer",
@@ -69,19 +69,19 @@ test.describe("every screen", () => {
 test.describe("journeys", () => {
   test("the hub opens each role", async ({ page }) => {
     await page.goto("/home");
-    await page.getByRole("link", { name: "Get started" }).click();
+    await page.getByRole("link", { name: /I run a shop/ }).click();
     await expect(page).toHaveURL(/\/onboarding$/);
     await page.goto("/home");
-    await page.getByRole("link", { name: "Open the demo shop" }).click();
-    await expect(page).toHaveURL(/\/merchant$/);
-    await page.goto("/home");
-    await page.getByRole("link", { name: "Start earning" }).click();
+    await page.getByRole("link", { name: /I want to lend/ }).click();
     await expect(page).toHaveURL(/\/earn$/);
+    await page.goto("/home");
+    await page.getByRole("link", { name: /Show me the numbers/ }).click();
+    await expect(page).toHaveURL(/\/protocol$/);
   });
 
   test("a merchant signs up, sets up the agent and lands on the shop", async ({ page }) => {
     await page.goto("/onboarding/prove");
-    await page.getByRole("link", { name: "Log in to seller portal" }).click();
+    await page.getByRole("link", { name: "Open seller login" }).click();
     await page.getByRole("button", { name: "Log in as Luna" }).click();
     await page.getByRole("link", { name: "Share 4 facts privately" }).click();
     await expect(page).toHaveURL(/\/onboarding\/pass/, { timeout: 10000 });
@@ -106,7 +106,7 @@ test.describe("journeys", () => {
     await page.getByRole("button", { name: "EN, cambiar a español" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Dólares para el stock, hoy.");
     await page.goto("/onboarding/prove");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Demostrá");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Tus ventas");
   });
 
   test("world view follows you across screens", async ({ page }) => {
@@ -134,7 +134,7 @@ test.describe("journeys", () => {
     await page.goto("/earn/deposit");
     await page.getByRole("button", { name: "Max" }).click();
     await page.getByRole("button", { name: "Approve USDC" }).click();
-    await page.getByRole("button", { name: "Deposit", exact: true }).click({ timeout: 5000 });
+    await page.getByRole("button", { name: /^Deposit \$/ }).click({ timeout: 5000 });
     await expect(page.getByRole("link", { name: "See my position" })).toBeVisible({ timeout: 5000 });
   });
 

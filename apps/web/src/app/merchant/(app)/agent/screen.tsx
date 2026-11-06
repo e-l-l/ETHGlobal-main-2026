@@ -3,13 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentLogView, AgentStatusView } from "@repo/sdk";
-import { ActionBar, AgentStop, Banner, Button, Card, Heading, Page, PageHead, Pill, StatGrid, Text } from "@/final";
-import { formatMoney } from "@/lib/format";
+import { AgentStop, Banner, Button, Card, Columns, Heading, KeyValue, Label, Page, PageHead, Pill, Stack, StatGrid, Text, TextLink } from "@/final";
+import { capitalize, formatMoney } from "@/lib/format";
 import { isMock } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA, useMRAAction } from "@/lib/use-mra";
+import { BigFigure, CardTitle, HeroBlock, HeroLabel, PlainWords } from "../../_ui";
+import { PrivateMark } from "./_parts";
 import { DecisionLog } from "./decision-log";
 import { decisions as demoDecisions, decisionsFrom } from "./_data";
 
@@ -31,12 +33,23 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
 
   if (!log) {
     return (
-      <Page width="narrow" tabs>
-        <PageHead label="Agent activity" title="No agent yet." />
-        <Text>Your agent draws small advances for stock, only inside limits you set. Set it up once, approve it with World.</Text>
-        <ActionBar>
-          <Button href={routes.agent.setup}>Set up your agent</Button>
-        </ActionBar>
+      <Page tabs>
+        <HeroBlock>
+          <HeroLabel>Cash-flow agent</HeroLabel>
+          <BigFigure as="h1">No agent yet.</BigFigure>
+          <Text className="max-w-[56ch] text-honeydew md:text-[17px]">
+            Your agent draws small advances for stock, only inside limits you set. Set it up once, approve it with World.
+          </Text>
+          <div>
+            <Button href={routes.agent.setup} variant="lime">
+              Set up your agent
+            </Button>
+          </div>
+        </HeroBlock>
+        <PlainWords>
+          A flat fee, no interest. Each advance is paid back from a small share of your payments, so a slow week just
+          takes longer.
+        </PlainWords>
       </Page>
     );
   }
@@ -50,7 +63,7 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
   return (
     <Page tabs>
       <PageHead
-        label="Agent activity"
+        label="Cash-flow agent"
         title="Every decision, with its reason."
         actions={
           <>
@@ -61,7 +74,7 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
             ) : (
               <Pill tone="locked">{STATUS_PILL[status.status] ?? status.status}</Pill>
             )}
-            <Button href={routes.agent.manage} variant="secondary">
+            <Button href={routes.agent.manage} variant="secondary" size="sm" width="auto">
               Manage
             </Button>
           </>
@@ -70,23 +83,48 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
       <StatGrid
         items={[
           { label: "Limit per month", value: formatMoney(agentLimits.perMonth), sub: `${formatMoney(agentLimits.perAdvance)} per advance` },
-          { label: "Drew", value: drew, sub: "advances" },
+          { label: "Drew", value: drew, sub: drew === 1 ? "advance" : "advances" },
           { label: "Held back", value: skipped, sub: "declined, waited or paused" },
         ]}
       />
-      <Text>Remaining allowance: {status.remainingAllowance === undefined ? "Unavailable" : formatMoney(status.remainingAllowance)} · Expiry: {status.expiry ? new Date(status.expiry * 1000).toLocaleDateString() : "unavailable"}</Text>
-      {status.active ? <AgentStop onDone={reload} /> : null}
-      {!isMock && status.active ? <RunAgentNow onDone={reload} /> : null}
-      <Heading level={2} size="h2" className="mt-2">
-        Decisions
-      </Heading>
-      {decisions.length > 0 ? (
-        <DecisionLog decisions={decisions} />
-      ) : (
-        <Text size="note" tone="muted">
-          No decisions yet. The agent checks your sales on a schedule.
-        </Text>
-      )}
+      <Columns ratio="3:2">
+        <Stack>
+          <Heading level={2} size="h2">
+            Decisions
+          </Heading>
+          {decisions.length > 0 ? (
+            <DecisionLog decisions={decisions} />
+          ) : (
+            <Card>
+              <Text size="note" tone="muted">
+                No decisions yet. The agent checks your sales on a schedule.
+              </Text>
+            </Card>
+          )}
+        </Stack>
+        <Stack gap="lg">
+          {status.active ? <AgentStop onDone={reload} /> : null}
+          {!isMock && status.active ? <RunAgentNow onDone={reload} /> : null}
+          <PrivateMark>
+            <Card padding="lg">
+              <CardTitle end={<TextLink href={routes.agent.setup}>Edit</TextLink>}>Your limits</CardTitle>
+              <KeyValue
+                rows={[
+                  ["Per advance", formatMoney(agentLimits.perAdvance)],
+                  ["Per month", formatMoney(agentLimits.perMonth)],
+                  ["For", capitalize(agentLimits.purpose)],
+                  ["Remaining allowance", status.remainingAllowance === undefined ? "Unavailable" : formatMoney(status.remainingAllowance)],
+                  ["Mandate expiry", status.expiry ? new Date(status.expiry * 1000).toLocaleDateString() : "Unavailable"],
+                ]}
+              />
+            </Card>
+          </PrivateMark>
+          <PlainWords>
+            Your agent only draws when your payments can pay it back, and never past these limits. The contract blocks
+            anything else.
+          </PlainWords>
+        </Stack>
+      </Columns>
     </Page>
   );
 }
@@ -101,8 +139,9 @@ function RunAgentNow({ onDone }: { onDone: () => void }) {
   const [summary, setSummary] = useState<string | undefined>();
   const run = useMRAAction((m) => m.agent.trigger({ runNow: true }));
   return (
-    <Card tone="well" gap="sm">
-      <Text className="font-semibold text-charcoal">Demo: run the agent now</Text>
+    <Card tone="well" gap="sm" padding="lg">
+      <Label>Demo</Label>
+      <CardTitle>Run the agent now</CardTitle>
       <Text size="note">It normally checks on a schedule. This asks it to decide right away, inside the same limits.</Text>
       <div>
         <Button

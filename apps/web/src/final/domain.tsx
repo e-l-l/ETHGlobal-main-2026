@@ -7,14 +7,14 @@ import { SplitBar } from "./patterns";
 
 /* ---------------------------------------------------------------- JarCard */
 
-/** The drip card: Hunter ground, lime figure. The one place lime carries a number. */
+/** Repaid so far: Hunter ground, lime figure. The one place lime carries a number. */
 export function JarCard({ usd, rate, goal, children }: { usd: number; rate?: number; goal?: number; children?: ReactNode }) {
   const v = goal ? Math.min(1, usd / goal) : 0;
   return (
     <div className="relative flex min-w-0 flex-col gap-3.5 rounded-lg bg-hunter p-5 text-canvas">
       <div className="flex items-center justify-between gap-3">
-        <Label className="text-honeydew/80">Your drip balance</Label>
-        <Pill tone="saving" className="bg-lime text-charcoal">Saving</Pill>
+        <Label className="text-honeydew/80">Repaid so far</Label>
+        <Pill tone="saving" className="bg-lime text-charcoal">Repaying</Pill>
       </div>
       <Money usd={usd} rate={rate} figureClassName="text-lime" localClassName="text-honeydew/80" />
       {goal ? (
@@ -41,7 +41,7 @@ export function SaleRow({ amount, time, item }: { amount: number; time: string; 
       </div>
       <div className="flex items-center justify-between gap-3">
         <Ledger className="text-charcoal-muted">{time}</Ledger>
-        <Ledger className="text-hunter">+${(amount / 10).toFixed(2)} dripped back</Ledger>
+        <Ledger className="text-hunter">+${(amount / 10).toFixed(2)} to your advance</Ledger>
       </div>
       <SplitBar legend={false} />
     </li>
@@ -50,28 +50,36 @@ export function SaleRow({ amount, time, item }: { amount: number; time: string; 
 
 /* -------------------------------------------------------------- Waterfall */
 
+/**
+ * Layer keys as the SDK's `lender.waterfall()` sends them (contract names: the first-loss tranche is "junior",
+ * the vault is "senior"). Screens can pass `you="dripcoin"` / `you="vault"` instead. The SDK's "jar" layer (the
+ * shops' fee holdback, an estimate) is accepted and not drawn: losses run DripCoin, then the reserve, then the vault.
+ */
 export type LossLayerKey = "jar" | "junior" | "reserve" | "senior";
+export type LossViewer = LossLayerKey | "dripcoin" | "vault";
 
 /** Live numbers for one layer (from the SDK's `lender.waterfall()`). Title / description override the defaults. */
 export type LossLayerAmount = { key: LossLayerKey; amount: string; title?: string; description?: string; estimated?: boolean; yours?: string };
 
+const viewerKey = (v: LossViewer): LossLayerKey => (v === "dripcoin" ? "junior" : v === "vault" ? "senior" : v);
+
 /**
- * Who absorbs a loss, top first. The viewer's layer fills Hunter. Pass `layers` to show live amounts per layer
- * (an estimated one is tagged "est."); without it, the static version renders exactly as before.
+ * Who absorbs a loss, top first: DripCoin, the reserve, the vault. The viewer's layer fills Hunter. Pass `layers`
+ * to show live amounts per layer (an estimated one is tagged "est.").
  */
-export function LossWaterfall({ you, layers }: { you: LossLayerKey; layers?: readonly LossLayerAmount[] }) {
+export function LossWaterfall({ you, layers }: { you: LossViewer; layers?: readonly LossLayerAmount[] }) {
   const tiers = [
-    { k: "jar", t: "Shop's drip", d: "First 10% of every sale" },
-    { k: "junior", t: "Junior (DRIP)", d: "First loss for a 30% fee share" },
-    { k: "reserve", t: "Reserve", d: "Protocol buffer" },
-    { k: "senior", t: "Senior vault", d: "Lenders, paid last to lose" },
+    { k: "junior", t: "DripCoin (DRIP)", d: "First loss, for 30% of every fee" },
+    { k: "reserve", t: "Reserve", d: "Fees and hook fees held back" },
+    { k: "senior", t: "Vault", d: "Lenders, last to lose" },
   ] as const;
   const live = new Map(layers?.map((l) => [l.key, l]));
+  const mineKey = viewerKey(you);
   return (
     <ol className="m-0 flex list-none flex-col p-0">
       {tiers.map((t, i) => {
         const l = live.get(t.k);
-        const mine = t.k === you;
+        const mine = t.k === mineKey;
         return (
           <li key={t.k} className="flex flex-col">
             {i > 0 ? <span aria-hidden className="grid h-5.5 place-items-center text-charcoal-muted"><ChevronRightIcon size={16} className="rotate-90" /></span> : null}

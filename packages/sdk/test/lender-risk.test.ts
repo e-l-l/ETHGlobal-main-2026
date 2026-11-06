@@ -160,7 +160,7 @@ describe("waterfallFrom (pure)", () => {
     expect(w.layers[0]!.estimated).toBe(true);
     expect(w.layers.slice(1).every((l) => !l.estimated)).toBe(true);
     expect(w.layers[3]!.yours).toBe("Yours $500");
-    expect(w.headline).toBe("$65 of protection ahead of every senior dollar");
+    expect(w.headline).toBe("$65 of protection ahead of every vault dollar");
     expect(w.sub).toContain("26.0% of the $250 lent out");
   });
 });
