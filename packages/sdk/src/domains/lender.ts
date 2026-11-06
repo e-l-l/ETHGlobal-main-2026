@@ -1,8 +1,9 @@
-import { encodeAbiParameters, keccak256, parseAbiItem, type Hex } from "viem";
-import { trancheVaultAbi } from "../abi/index.js";
-import type { Addr, PositionSnapshot, ProtocolSnapshot } from "../chain/chain.js";
+import { encodeAbiParameters, keccak256, maxUint256, parseAbiItem, type Hex } from "viem";
+import { erc20Abi, riskHookAbi, trancheVaultAbi } from "../abi/index.js";
+import type { Addr, PositionSnapshot, ProtocolSnapshot, Receipt } from "../chain/chain.js";
 import type { Ctx } from "../context.js";
-import { MRAError } from "../errors.js";
+import { ChainError, ConfigError, MRAError } from "../errors.js";
+import { decodeBalanceDelta, decodeSlot0, parseSwapReceipt, poolIdOf, poolKeyOf, poolManagerAbi, poolSlots, poolSwapTestAbi, priceLimit, priceOf } from "../chain/swap.js";
 import * as L from "../mock/lend.js";
 import type {
   DepositView,
@@ -12,6 +13,8 @@ import type {
   LossTier,
   PositionRowVM,
   PositionView,
+  SwapResult,
+  SwapSide,
   TradeRowVM,
   TradeView,
   TxResult,
@@ -186,6 +189,194 @@ async function tradeRows(ctx: Ctx): Promise<TradeRowVM[]> {
   return rows;
 }
 
+export type JuniorSwapOptions = {
+  /** "buy": spend `amount` USDC on JAR-J. "sell": sell `amount` JAR-J for USDC. */
+  side: SwapSide;
+  amount: number;
+  /** Price tolerance on top of the quoted price move. Default 100 (1%). */
+  slippageBps?: number;
+  onStep?: (s: TxStep) => void;
+  /** Base delay before re-sending a swap that failed before broadcast (stale RPC node). Default 3000 ms. */
+  retryDelayMs?: number;
+};
+
+const FEE_DENOMINATOR = 1_000_000n;
+
+/**
+ * One real Uniswap v4 swap through Uniswap's PoolSwapTest router on the RiskHook pool, from the connected wallet.
+ * Both directions are sized so the unspecified side is USDC, so the RiskHook takes its USDC fee on each:
+ *  - sell: exact-in `amount` JAR-J -> USDC (hook fee comes out of the USDC received)
+ *  - buy: exact-out of the JAR-J that `amount` USDC buys (quoted by simulating), so the USDC paid ≈ `amount`,
+ *    fee included (an exact-in buy would leave JAR-J unspecified and the hook would take nothing)
+ * Slippage: the swap carries a v4 sqrtPriceLimit; past it the swap fills partially, never at a worse price.
+ */
+async function juniorSwap(ctx: Ctx, o: JuniorSwapOptions): Promise<SwapResult> {
+  const chain = ctx.chain();
+  const d = chain.deployment;
+  const router = d.PoolSwapTest as Addr | undefined;
+  if (!router) throw new ConfigError("config_invalid", "this deployment has no PoolSwapTest router for the junior swap");
+  const buy = o.side === "buy";
+  const slippageBps = o.slippageBps ?? 100;
+  const steps: TxStep[] = [];
+  const step = (s: TxStep) => {
+    const i = steps.findIndex((x) => x.label === s.label);
+    if (i >= 0) steps[i] = s;
+    else steps.push(s);
+    o.onStep?.(s);
+  };
+
+  try {
+    await ctx.ensureFunded(buy ? { usdc: o.amount } : {});
+  } catch (e) {
+    // The demo faucet waits for its own receipts, so its answer can outlast the API timeout while the funds still
+    // land. Wait for them (bounded) instead of failing the first tap.
+    if (!(e instanceof MRAError && e.code === "timeout")) throw e;
+    const addr = chain.walletAddress()!;
+    const ok = async () => {
+      const [eth, u] = await Promise.all([chain.client.getBalance({ address: addr }), chain.usdcBalance(addr)]);
+      return eth > 0n && (!buy || u >= toBase(o.amount));
+    };
+    let funded = false;
+    for (let i = 0; i < 15 && !(funded = await ok().catch(() => false)); i++) await new Promise((r) => setTimeout(r, o.retryDelayMs ?? 3_000));
+    if (!funded) throw e;
+  }
+  const account = chain.walletAddress()!;
+  const key = poolKeyOf(d);
+  const poolId = poolIdOf(key);
+  const slots = poolSlots(poolId);
+  const pm = d.PoolManager as Addr;
+  const junior = chain.addresses.junior;
+  const usdc = chain.addresses.usdc;
+  const [tokenIn, tokenOut] = buy ? [usdc, junior] : [junior, usdc];
+  const base = toBase(o.amount);
+
+  const readPool = async () => {
+    const [w0, wl] = await Promise.all([
+      chain.client.readContract({ address: pm, abi: poolManagerAbi, functionName: "extsload", args: [slots.slot0] }),
+      chain.client.readContract({ address: pm, abi: poolManagerAbi, functionName: "extsload", args: [slots.liquidity] }),
+    ]);
+    return decodeSlot0(w0 as Hex, wl as Hex);
+  };
+  const [pool, balIn, feePips] = await Promise.all([
+    readPool(),
+    chain.client.readContract({ address: tokenIn, abi: erc20Abi, functionName: "balanceOf", args: [account] }) as Promise<bigint>,
+    chain.client.readContract({ address: chain.addresses.hook, abi: riskHookAbi, functionName: "feePips" }).then((v) => BigInt(v as number)),
+  ]);
+  if (pool.sqrtPriceX96 === 0n || pool.liquidity === 0n) throw new MRAError("bad_state", "the JAR-J/USDC pool has no liquidity yet");
+  if (balIn < base) throw new MRAError("insufficient_balance", `not enough ${buy ? "USDC" : "JAR-J"} in this wallet`);
+  const priceBefore = priceOf(pool.sqrtPriceX96);
+
+  // 1. Approve the router once (max allowance), skipped when it already covers this swap.
+  const approveLabel = buy ? "Approve USDC" : "Approve JAR-J";
+  step({ label: approveLabel, status: "pending" });
+  const a = await chain.approveToken(tokenIn, router, base, maxUint256);
+  step({ label: approveLabel, status: a ? "done" : "skipped", ...(a ? { hash: a.transactionHash } : {}) });
+
+  // 2. Quote by simulating through the router (the approval is in place now), then set the price limit.
+  const settings = { takeClaims: false, settleUsingBurn: false } as const;
+  const sim = async (zeroForOne: boolean, amountSpecified: bigint, limit: bigint) => {
+    const r = await chain.client.simulateContract({
+      account,
+      address: router,
+      abi: poolSwapTestAbi,
+      functionName: "swap",
+      args: [key, { zeroForOne, amountSpecified, sqrtPriceLimitX96: limit }, settings, "0x"],
+    });
+    return decodeBalanceDelta(r.result as bigint);
+  };
+  const open = (zeroForOne: boolean) => (zeroForOne ? 4295128740n : 1461446703485210103287273052203988822378723970341n);
+  const zeroForOne = !buy; // currency0 = JAR-J, so selling JAR-J is zeroForOne
+  let amountSpecified: bigint;
+  if (buy) {
+    // Pool input such that input + hook fee ≈ the USDC budget (2 units of rounding headroom).
+    const poolIn = (base * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feePips) - 2n;
+    const q = await sim(false, -poolIn, open(false));
+    if (q.amount0 <= 0n) throw new MRAError("bad_state", "the pool quoted zero JAR-J for this amount");
+    amountSpecified = q.amount0; // exact output of JAR-J
+  } else {
+    amountSpecified = -base; // exact input of JAR-J
+  }
+  const quote = await sim(zeroForOne, amountSpecified, open(zeroForOne));
+  const qJ = Number(quote.amount0 < 0n ? -quote.amount0 : quote.amount0);
+  const qU = Number(quote.amount1 < 0n ? -quote.amount1 : quote.amount1);
+  const limit = priceLimit(zeroForOne, priceBefore, qJ > 0 ? qU / qJ : priceBefore, slippageBps);
+
+  // 3. Swap.
+  step({ label: "Swap on Uniswap v4", status: "pending" });
+  // A load-balanced RPC can estimate gas on a node that hasn't seen the approve (or the faucet's USDC) yet, which looks
+  // like a revert. Those fail before broadcast (nothing was sent), so retry them a couple of times; a mined revert is final.
+  let receipt: Receipt | undefined;
+  for (let attempt = 0; !receipt; attempt++) {
+    try {
+      receipt = await chain.send("swap", {
+        address: router,
+        abi: poolSwapTestAbi,
+        functionName: "swap",
+        args: [key, { zeroForOne, amountSpecified, sqrtPriceLimitX96: limit }, settings, "0x"],
+      });
+    } catch (e) {
+      const preBroadcast = e instanceof ChainError && e.message.startsWith("transaction rejected or failed");
+      if (!preBroadcast || attempt >= 2) throw e;
+      await new Promise((r) => setTimeout(r, (o.retryDelayMs ?? 3_000) * (attempt + 1)));
+    }
+  }
+  step({ label: "Swap on Uniswap v4", status: "done", hash: receipt.transactionHash });
+
+  const fill = parseSwapReceipt(receipt, { account, tokenIn, tokenOut, hook: chain.addresses.hook, poolManager: pm, poolId });
+  const [after, oracle] = await Promise.all([
+    fill.sqrtPriceAfter === undefined ? readPool().catch(() => undefined) : Promise.resolve(undefined),
+    chain.client.readContract({ address: chain.addresses.hook, abi: riskHookAbi, functionName: "oracleState", args: [poolId] }).catch(() => undefined),
+  ]);
+  const sqrtAfter = fill.sqrtPriceAfter ?? after?.sqrtPriceX96 ?? pool.sqrtPriceX96;
+  const count = Array.isArray(oracle) ? Number(oracle[1]) : undefined;
+  ctx.emit("lender.junior.swap", o.side);
+  return {
+    hash: receipt.transactionHash,
+    txHash: receipt.transactionHash,
+    steps,
+    simulated: false,
+    side: o.side,
+    tokenIn: buy ? "USDC" : "JAR-J",
+    tokenOut: buy ? "JAR-J" : "USDC",
+    amountIn: usd(fill.amountIn),
+    amountOut: usd(fill.amountOut),
+    hookFeeUsdc: usd(fill.hookFee),
+    priceBefore,
+    priceAfter: priceOf(sqrtAfter),
+    ...(count !== undefined ? { observationCount: count } : {}),
+  };
+}
+
+/** Mock swap: same shape, priced off the mock JAR-J price with the 0.3% LP fee and 0.3% hook fee. */
+function mockSwap(o: JuniorSwapOptions): SwapResult {
+  const p = Number(L.VAULT.juniorPrice.replace(/[^0-9.]/g, "")) || 1;
+  const buy = o.side === "buy";
+  const fee = 0.003;
+  const hookFeeUsdc = buy ? o.amount * (fee / (1 + fee)) : o.amount * p * (1 - fee) * fee;
+  const amountOut = buy ? ((o.amount - hookFeeUsdc) * (1 - fee)) / p : o.amount * p * (1 - fee) - hookFeeUsdc;
+  const steps: TxStep[] = [
+    { label: buy ? "Approve USDC" : "Approve JAR-J", status: "done" },
+    { label: "Swap on Uniswap v4", status: "done" },
+  ];
+  steps.forEach((s) => o.onStep?.(s));
+  const hash = L.explorerEvents[0]!.hash;
+  const move = buy ? 1.004 : 0.996;
+  return {
+    hash,
+    txHash: hash,
+    steps,
+    simulated: true,
+    side: o.side,
+    tokenIn: buy ? "USDC" : "JAR-J",
+    tokenOut: buy ? "JAR-J" : "USDC",
+    amountIn: o.amount,
+    amountOut: Math.round(amountOut * 1e6) / 1e6,
+    hookFeeUsdc: Math.round(hookFeeUsdc * 1e6) / 1e6,
+    priceBefore: p,
+    priceAfter: Math.round(p * move * 1e6) / 1e6,
+  };
+}
+
 export function lenderDomain(ctx: Ctx) {
   const isMock = ctx.mode === "mock";
   const mockVault = (): VaultVM => ({ ...L.VAULT });
@@ -240,6 +431,18 @@ export function lenderDomain(ctx: Ctx) {
       const s = await lenderSnapshot(ctx);
       const [{ series, writeOffIndex }, rows] = await Promise.all([shareSeries(ctx, "junior", s.vault.juniorBook, s.writeOffBlocks), tradeRows(ctx).catch(() => [])]);
       return { vault: s.vault, juniorSeries: series, writeOffIndex, tradeRows: rows, source: "chain" };
+    },
+    /**
+     * J03 Swap JAR-J ⇄ USDC for real: Uniswap v4 PoolSwapTest → PoolManager → RiskHook (fee + TWAP), from the
+     * connected (burner) wallet. Approves the router once, waits for the receipt. Mock mode simulates.
+     */
+    async swap(opts: JuniorSwapOptions): Promise<SwapResult> {
+      if (opts.side !== "buy" && opts.side !== "sell") throw new MRAError("invalid_request", "side must be buy or sell");
+      if (!(opts.amount > 0)) throw new MRAError("invalid_request", "amount must be positive");
+      const bps = opts.slippageBps ?? 100;
+      if (!Number.isInteger(bps) || bps < 0 || bps > 5_000) throw new MRAError("invalid_request", "slippageBps must be an integer in 0..5000");
+      if (isMock) return ctx.mocked(mockSwap(opts));
+      return juniorSwap(ctx, opts);
     },
   };
 

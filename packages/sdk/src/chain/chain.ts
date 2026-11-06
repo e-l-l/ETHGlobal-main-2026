@@ -96,7 +96,7 @@ function chainFor(chainId: number): ViemChain {
   return { ...foundry, id: chainId, name: `chain-${chainId}` };
 }
 
-type Receipt = { status: "success" | "reverted"; transactionHash: Hex; logs: readonly unknown[] };
+export type Receipt = { status: "success" | "reverted"; transactionHash: Hex; logs: readonly unknown[]; blockNumber?: bigint };
 export type LogEntry = { args: any; blockNumber: bigint; transactionHash: Hex; logIndex: number };
 export type ShopOnchain = { owner: Addr; payout: Addr; activeAdvanceId: bigint; registered: boolean };
 
@@ -126,6 +126,10 @@ export interface Chain {
   vaultLogs(tranche: "senior" | "junior", eventName: string, args?: Record<string, unknown>): Promise<LogEntry[]>;
   /** Approve `allowance` (default `amount`) unless the current allowance already covers `amount`. */
   approveUsdc(spender: Addr, amount: bigint, allowance?: bigint): Promise<Receipt | null>;
+  /** Same as approveUsdc, for any ERC-20 (e.g. the JAR-J share token). */
+  approveToken(token: Addr, spender: Addr, amount: bigint, allowance?: bigint): Promise<Receipt | null>;
+  /** Any contract write through the same path as the others: retries transient pre-broadcast errors, waits, throws on revert. */
+  send(label: string, params: { address: Addr; abi: readonly unknown[]; functionName: string; args: readonly unknown[] }): Promise<Receipt>;
   deposit(tranche: "senior" | "junior", assets: bigint): Promise<Receipt>;
   withdraw(tranche: "senior" | "junior", assets: bigint): Promise<Receipt>;
   pay(shopId: Hex, amount: bigint): Promise<Receipt>;
@@ -211,6 +215,16 @@ export function createChain(opts: ChainOptions): Chain {
     const receipt = await read(`receipt ${label}`, () => client.waitForTransactionReceipt({ hash }));
     if (receipt.status !== "success") throw new ChainError("chain_write_failed", `transaction reverted: ${label}`);
     return receipt as Receipt;
+  }
+
+  async function approveToken(token: Addr, spender: Addr, amount: bigint, allowanceTarget?: bigint): Promise<Receipt | null> {
+    const { account } = requireWallet();
+    const allowance = (await read("allowance", () =>
+      client.readContract({ address: token, abi: erc20Abi, functionName: "allowance", args: [account.address, spender] }),
+    )) as bigint;
+    if (allowance >= amount) return null;
+    const target = allowanceTarget !== undefined && allowanceTarget > amount ? allowanceTarget : amount;
+    return write("approve", { address: token, abi: erc20Abi, functionName: "approve", args: [spender, target] });
   }
 
   async function logs(address: Addr, abi: readonly unknown[], eventName: string, args?: Record<string, unknown>, fromBlock?: bigint, toBlock?: bigint) {
@@ -370,15 +384,9 @@ export function createChain(opts: ChainOptions): Chain {
 
     /* ------------------------------------------------------------- writes */
 
-    async approveUsdc(spender: Addr, amount: bigint, allowanceTarget?: bigint) {
-      const { account } = requireWallet();
-      const allowance = (await read("allowance", () =>
-        client.readContract({ address: A.usdc, abi: erc20Abi, functionName: "allowance", args: [account.address, spender] }),
-      )) as bigint;
-      if (allowance >= amount) return null;
-      const target = allowanceTarget !== undefined && allowanceTarget > amount ? allowanceTarget : amount;
-      return write("approve", { address: A.usdc, abi: erc20Abi, functionName: "approve", args: [spender, target] });
-    },
+    approveUsdc: (spender: Addr, amount: bigint, allowanceTarget?: bigint) => approveToken(A.usdc, spender, amount, allowanceTarget),
+    approveToken: (token: Addr, spender: Addr, amount: bigint, allowanceTarget?: bigint) => approveToken(token, spender, amount, allowanceTarget),
+    send: (label, params) => write(label, params),
     async deposit(tranche: "senior" | "junior", assets: bigint) {
       const { account } = requireWallet();
       return write("deposit", { address: tranche === "senior" ? A.senior : A.junior, abi: trancheVaultAbi, functionName: "deposit", args: [assets, account.address] });

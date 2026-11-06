@@ -313,6 +313,26 @@ export type TradeView = { vault: VaultVM; juniorSeries: number[]; writeOffIndex:
 export type TxStep = { label: string; status: "pending" | "done" | "skipped"; hash?: string };
 export type TxResult = { hash: string; steps: TxStep[]; simulated: boolean };
 
+export type SwapSide = "buy" | "sell";
+/**
+ * J03 junior swap (Uniswap v4, JAR-J/USDC pool with RiskHook). Amounts are token units (both 6 decimals);
+ * prices are USDC per JAR-J from the pool's slot0 before and after the swap.
+ */
+export type SwapResult = TxResult & {
+  txHash: string;
+  side: SwapSide;
+  tokenIn: "USDC" | "JAR-J";
+  tokenOut: "USDC" | "JAR-J";
+  amountIn: number;
+  amountOut: number;
+  /** USDC the RiskHook took for the protocol reserve on this swap. */
+  hookFeeUsdc: number;
+  priceBefore: number;
+  priceAfter: number;
+  /** RiskHook TWAP ring-buffer size after the swap (it grows by one per block with a swap, up to 64). */
+  observationCount?: number;
+};
+
 /* ------------------------------------------------------- protocol (P02–P04) */
 
 export type TierCapVM = { tier: number; cap: string; was?: string };

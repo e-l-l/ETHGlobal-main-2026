@@ -26,7 +26,7 @@ import {
   typedUsd,
   CheckIcon,
 } from "@/final";
-import type { DepositView, ExplorerEventVM, ExplorerView, TradeView, TxResult, TxStep } from "@repo/sdk";
+import type { DepositView, ExplorerEventVM, ExplorerView, SwapResult, TradeView, TxResult, TxStep } from "@repo/sdk";
 import { errorCode, explorerTxUrl, isMock, withMRA, type MRA } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -305,23 +305,82 @@ export function MintScreen({ initial }: { initial: DepositView | null }) {
 }
 
 /* ------------------------------------------------------------- J03 Trade */
-/** J03: `lender.junior.trade()` for the price, TWAP, book and history. The swap itself is simulated in every mode. */
+/**
+ * J03: `lender.junior.trade()` for the price, TWAP, book and history. Live modes swap for real with
+ * `lender.junior.swap()` (Uniswap v4 PoolSwapTest → the RiskHook pool, from the burner wallet); mock simulates.
+ */
 export function TradeScreen({ initial }: { initial: TradeView | null }) {
-  const { data, error } = useMRA(q.trade, { initial });
+  const { data, error, reload } = useMRA(q.trade, { initial });
   if (!data) return <MRAState error={error} />;
-  return <TradeForm view={data} />;
+  return <TradeForm view={data} reload={reload} />;
 }
 
-function TradeForm({ view }: { view: TradeView }) {
+const SWAP_STEPS = (side: "buy" | "sell") => [side === "buy" ? "Approve USDC" : "Approve JAR-J", "Swap on Uniswap v4"];
+const swapFailText = (code: string) =>
+  code === "insufficient_balance"
+    ? "Not enough in this wallet for that amount."
+    : code === "bad_state"
+      ? "The pool can't fill that right now."
+      : `Didn’t go through (${code}). Nothing moved.`;
+
+function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
   const { juniorSeries, writeOffIndex } = view;
   const VAULT = vaultNumbers(view.vault);
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [value, setValue] = useState("100");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [steps, setSteps] = useState<TxStep[]>([]);
+  const [result, setResult] = useState<SwapResult | null>(null);
+  const [failed, setFailed] = useState<string | undefined>();
   const n = Number(value || 0);
   const out = side === "buy" ? n / (VAULT.juniorPrice || 1) : n * VAULT.juniorPrice;
   const discount = VAULT.juniorBook > 0 ? (((VAULT.juniorBook - VAULT.juniorPrice) / VAULT.juniorBook) * 100).toFixed(1) : "0.0";
+  const clear = () => {
+    setDone(null);
+    setResult(null);
+    setFailed(undefined);
+    setSteps([]);
+  };
+
+  const trade = () => {
+    if (isMock) {
+      setBusy(true);
+      window.setTimeout(() => {
+        setBusy(false);
+        setDone(side === "buy" ? `Bought ${fmt(out, 2)} JAR-J (simulated).` : `Sold for ${usdText(out, 2)} (simulated).`);
+      }, 1100);
+      return;
+    }
+    // Live: approve (once) + swap from the burner wallet; the faucet tops it up first. Then refresh price and TWAP.
+    clear();
+    setBusy(true);
+    void withMRA((m) =>
+      m.lender.junior.swap({
+        side,
+        amount: n,
+        slippageBps: 100,
+        onStep: (st) => setSteps((prev) => [...prev.filter((x) => x.label !== st.label), st]),
+      }),
+    ).then(
+      (r) => {
+        setResult(r);
+        setBusy(false);
+        reload?.();
+        window.setTimeout(() => reload?.(), 6_000); // a load-balanced RPC can lag the receipt by a block
+      },
+      (e) => {
+        setFailed(errorCode(e));
+        setBusy(false);
+      },
+    );
+  };
+
+  const stepItems = SWAP_STEPS(side).map((label) => {
+    const st = steps.find((x) => x.label === label);
+    const state: "done" | "current" | "next" = st && st.status !== "pending" ? "done" : st ? "current" : "next";
+    return { label: st?.status === "skipped" ? `${label} (already approved)` : label, state };
+  });
 
   return (
     <LendShell note="The pool, its price and every swap are public.">
@@ -359,8 +418,9 @@ function TradeForm({ view }: { view: TradeView }) {
             label="Buy or sell"
             value={side}
             onChange={(s) => {
+              if (busy) return;
               setSide(s);
-              setDone(null);
+              clear();
             }}
             options={[
               { value: "buy", label: "Buy JAR-J" },
@@ -378,25 +438,41 @@ function TradeForm({ view }: { view: TradeView }) {
           <Keypad
             value={value}
             onChange={(v) => {
-              setDone(null);
+              if (busy) return;
+              clear();
               setValue(v);
             }}
           />
           {done ? <Banner>{done}</Banner> : null}
+          {result ? (
+            <Card gap="sm">
+              <Text>
+                {result.side === "buy"
+                  ? `Bought ${fmt(result.amountOut, 2)} JAR-J for ${usdText(result.amountIn, 2)}.`
+                  : `Sold ${fmt(result.amountIn, 2)} JAR-J for ${usdText(result.amountOut, 2)}.`}
+              </Text>
+              <Text size="note">
+                RiskHook fee to the reserve: ${result.hookFeeUsdc.toFixed(4)} USDC · price {price(result.priceBefore)} → {price(result.priceAfter)}
+                {result.observationCount !== undefined ? ` · TWAP observation #${result.observationCount}` : ""}
+              </Text>
+              <CopyHash value={result.txHash} short />
+              {explorerTxUrl(result.txHash) ? (
+                <TextLink href={explorerTxUrl(result.txHash)!} target="_blank" rel="noreferrer" arrow>
+                  See the swap on Etherscan
+                </TextLink>
+              ) : null}
+            </Card>
+          ) : null}
+          {failed ? <Banner tone="caution">{swapFailText(failed)}</Banner> : null}
         </Stack>
       </Columns>
       <ActionBar>
-        <Button
-          loading={busy}
-          disabled={n <= 0 || busy}
-          onClick={() => {
-            setBusy(true);
-            window.setTimeout(() => {
-              setBusy(false);
-              setDone(side === "buy" ? `Bought ${fmt(out, 2)} JAR-J (simulated).` : `Sold for ${usdText(out, 2)} (simulated).`);
-            }, 1100);
-          }}
-        >
+        {!isMock && (busy || steps.length > 0) ? (
+          <div className="md:mr-auto">
+            <Steps items={stepItems} />
+          </div>
+        ) : null}
+        <Button loading={busy} disabled={n <= 0 || busy} onClick={trade}>
           {side === "buy" ? "Buy JAR-J" : "Sell JAR-J"}
         </Button>
       </ActionBar>

@@ -91,7 +91,7 @@ Machine-readable as `SCREENS` (`src/screens.ts`). View-model types are in `src/v
 | L03 | Position | `/earn/position` | `lender.position()` | `PositionView` |
 | J01 | Junior | `/junior` | `lender.junior.overview()` | `JuniorView` |
 | J02 | Mint | `/junior/mint` | `lender.junior.mintView(), lender.junior.deposit / withdraw` | `DepositView, TxResult` |
-| J03 | Trade | `/junior/trade` | `lender.junior.trade()` | `TradeView` |
+| J03 | Trade | `/junior/trade` | `lender.junior.trade()`, `lender.junior.swap({ side, amount, slippageBps })` (real Uniswap v4 swap via PoolSwapTest; mock simulates) | `TradeView, SwapResult` |
 | P02 | Protocol | `/protocol` | `protocol.stats()` | `ProtocolView` |
 | P03 | Risk | `/risk` | `protocol.risk()` | `RiskView` |
 | P04 | Explorer | `/explorer` | `protocol.explorer()` | `ExplorerView` |
