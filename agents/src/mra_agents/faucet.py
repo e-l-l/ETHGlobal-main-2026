@@ -17,6 +17,14 @@ the faucet's own gas at the fee cap.
 The relayer key sends these two txs directly (an ETH transfer and MockUSDC.mint): they are not AdvanceBook /
 registry calls, so they deliberately do not go through chain.py's allow-listed `send`. They share the relayer
 writer's lock so nonces never collide with relayed draws. Logs carry addresses and tx hashes only.
+
+DRIP (optional, `{"address", "drip": true}`): the relayer tops ITSELF up with DEMO_FAUCET_DRIP_USDC test USDC
+(only what it lacks), approves the JuniorVault (only if the allowance is short), estimates
+`deposit(amount, receiver=address)` and, if the vault accepts, sends it, so DRIP shares land straight in the
+address. A separate once-per-address claim (`faucet_drip_claims`), so a wallet that already got gas + USDC may
+come back once for DRIP. If the vault refuses (the estimate reverts: junior cover / delinquency rules), the
+response carries `drip_error: "drip_unavailable"` and the gas + USDC part still goes out; a refused DRIP claim is
+not recorded, so it may be retried later. The DRIP part is budgeted at DEMO_FAUCET_DRIP_GAS * fee cap.
 """
 
 from __future__ import annotations
@@ -54,6 +62,15 @@ _MINT_ABI = [
      "outputs": [{"name": "", "type": "bool"}]},
     {"type": "function", "name": "balanceOf", "stateMutability": "view",
      "inputs": [{"name": "a", "type": "address"}], "outputs": [{"name": "", "type": "uint256"}]},
+    {"type": "function", "name": "allowance", "stateMutability": "view",
+     "inputs": [{"name": "o", "type": "address"}, {"name": "s", "type": "address"}],
+     "outputs": [{"name": "", "type": "uint256"}]},
+]
+
+_VAULT_ABI = [
+    {"type": "function", "name": "deposit", "stateMutability": "nonpayable",
+     "inputs": [{"name": "assets", "type": "uint256"}, {"name": "receiver", "type": "address"}],
+     "outputs": [{"name": "", "type": "uint256"}]},
 ]
 
 
@@ -70,6 +87,8 @@ class FaucetSettings(BaseSettings):
     demo_faucet_fee_cap_gwei: float = 0.1
     demo_faucet_per_ip_per_day: int = 3
     demo_faucet_relayer_min_eth: float = 0.001
+    demo_faucet_drip_usdc: float = 20.0
+    demo_faucet_drip_gas: int = 500_000  # budgeted for mint-to-self + approve + deposit
 
 
 class FaucetError(RuntimeError):
@@ -97,6 +116,13 @@ class FaucetChain(Protocol):
     def send_eth(self, to: str, value: int, gas: int, max_fee: int, tip: int) -> str: ...
     def send_mint(self, to: str, amount: int, gas: int, max_fee: int, tip: int) -> str: ...
     def wait(self, tx_hash: str) -> bool: ...
+    # DRIP (JuniorVault deposit on behalf of the address)
+    def relayer_usdc(self) -> int: ...
+    def relayer_allowance(self) -> int: ...
+    def send_self_mint(self, amount: int, max_fee: int, tip: int) -> str: ...
+    def send_vault_approve(self, amount: int, max_fee: int, tip: int) -> str: ...
+    def estimate_deposit(self, amount: int, receiver: str) -> int: ...
+    def send_deposit(self, amount: int, receiver: str, gas: int, max_fee: int, tip: int) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -121,6 +147,8 @@ class DemoFaucet:
             db.execute("CREATE TABLE IF NOT EXISTS faucet_claims (address TEXT PRIMARY KEY, ts INTEGER NOT NULL, "
                        "cost_wei TEXT NOT NULL, eth_wei TEXT NOT NULL, usdc INTEGER NOT NULL, eth_tx TEXT, "
                        "usdc_tx TEXT, status TEXT NOT NULL)")
+            db.execute("CREATE TABLE IF NOT EXISTS faucet_drip_claims (address TEXT PRIMARY KEY, ts INTEGER NOT NULL, "
+                       "cost_wei TEXT NOT NULL, usdc INTEGER NOT NULL, tx TEXT, status TEXT NOT NULL)")
 
     def __repr__(self) -> str:
         return f"DemoFaucet(chain_id={self.settings_chain_id}, enabled={self.cfg.demo_faucet})"
@@ -148,13 +176,15 @@ class DemoFaucet:
 
     def _spent_24h(self, now: int) -> int:
         with self._db() as db:
-            rows = db.execute("SELECT cost_wei FROM faucet_claims WHERE ts > ? AND status != 'failed'",
-                              (now - DAY,)).fetchall()
+            rows = db.execute("SELECT cost_wei FROM faucet_claims WHERE ts > ? AND status != 'failed' UNION ALL "
+                              "SELECT cost_wei FROM faucet_drip_claims WHERE ts > ? AND status != 'failed'",
+                              (now - DAY, now - DAY)).fetchall()
         return sum(int(r[0]) for r in rows)
 
-    def _claimed(self, addr: str) -> bool:
+    def _claimed(self, addr: str, table: str = "faucet_claims") -> bool:
+        assert table in ("faucet_claims", "faucet_drip_claims")
         with self._db() as db:
-            row = db.execute("SELECT status FROM faucet_claims WHERE address = ?", (addr.lower(),)).fetchone()
+            row = db.execute(f"SELECT status FROM {table} WHERE address = ?", (addr.lower(),)).fetchone()  # noqa: S608
         return row is not None and row[0] != "failed"
 
     def _ip_allow(self, ip: str, now: float) -> bool:
@@ -191,13 +221,15 @@ class DemoFaucet:
 
     # ------------------------------------------------------------ fund
 
-    def fund(self, address: object, ip: str) -> dict:
+    def fund(self, address: object, ip: str, drip: bool = False) -> dict:
         if not self.enabled():
             raise FaucetDisabled()
         addr = self._address(address)
         now = self.now()
         with self._lock:  # reserve under the lock; send outside it
-            if self._claimed(addr):
+            base = not self._claimed(addr)
+            drip = bool(drip) and not self._claimed(addr, "faucet_drip_claims")
+            if not base and not drip:
                 raise FaucetError("already_funded", 409)
             if not self._ip_allow(ip, now):
                 raise FaucetError("ip_limit", 429)
@@ -207,7 +239,11 @@ class DemoFaucet:
                 raise
             except Exception:  # noqa: BLE001 - RPC trouble: never leak details
                 raise FaucetError("chain_unavailable", 502) from None
-            cost = p.eth_wei + p.own_cost_wei
+            if not base:
+                p = Plan(0, 0, p.gas_per_tx, p.fee_cap, p.tip, 0)
+            drip_usdc = round(self.cfg.demo_faucet_drip_usdc * 1_000_000) if drip else 0
+            drip_cost = self.cfg.demo_faucet_drip_gas * p.fee_cap if drip else 0
+            cost = p.eth_wei + p.own_cost_wei + drip_cost
             try:
                 if self.chain.relayer_balance() - cost < int(self.cfg.demo_faucet_relayer_min_eth * ETHER):
                     raise FaucetError("relayer_balance_low", 503)
@@ -220,9 +256,57 @@ class DemoFaucet:
                 raise FaucetError("daily_budget", 429)
             self._ips[ip].append(now)
             with self._db() as db:
-                db.execute("INSERT OR REPLACE INTO faucet_claims VALUES (?, ?, ?, ?, ?, NULL, NULL, 'pending')",
-                           (addr.lower(), int(now), str(cost), str(p.eth_wei), p.usdc))
+                if base:
+                    db.execute("INSERT OR REPLACE INTO faucet_claims VALUES (?, ?, ?, ?, ?, NULL, NULL, 'pending')",
+                               (addr.lower(), int(now), str(p.eth_wei + p.own_cost_wei), str(p.eth_wei), p.usdc))
+                if drip:
+                    db.execute("INSERT OR REPLACE INTO faucet_drip_claims VALUES (?, ?, ?, ?, NULL, 'pending')",
+                               (addr.lower(), int(now), str(drip_cost), drip_usdc))
 
+        out: dict = {"address": addr, "eth_wei": "0", "usdc": 0, "eth_tx": None, "usdc_tx": None,
+                     "gas_per_tx": p.gas_per_tx, "fee_cap_wei": str(p.fee_cap), "txs": self.cfg.demo_faucet_txs}
+        if base:
+            try:
+                out.update(self._send_base(addr, p))
+            except FaucetError:
+                if drip:  # release the DRIP reservation: nothing was sent for it
+                    with self._db() as db:
+                        db.execute("UPDATE faucet_drip_claims SET status = 'failed' WHERE address = ?", (addr.lower(),))
+                raise
+        if drip:
+            out.update(self._send_drip(addr, drip_usdc, p, raise_on_refusal=not base))
+        return out
+
+    def _send_drip(self, addr: str, amount: int, p: Plan, raise_on_refusal: bool) -> dict:
+        """Relayer: mint itself what it lacks, approve the vault if short, then deposit(amount, receiver=addr)."""
+        c, tx, status, err = self.chain, None, "failed", None
+        try:
+            if c.relayer_usdc() < amount and not c.wait(c.send_self_mint(amount, p.fee_cap, p.tip)):
+                raise RuntimeError("mint")
+            if c.relayer_allowance() < amount and not c.wait(c.send_vault_approve(2**255, p.fee_cap, p.tip)):
+                raise RuntimeError("approve")
+            try:
+                gas = c.estimate_deposit(amount, addr)
+            except Exception:  # noqa: BLE001 - the vault refuses deposits right now (cover / delinquency rule)
+                err = "drip_unavailable"
+            else:
+                tx = c.send_deposit(amount, addr, _limit(gas), p.fee_cap, p.tip)
+                ok = c.wait(tx)
+                status, err = ("done", None) if ok else ("uncertain", "drip_unavailable")
+        except Exception:  # noqa: BLE001 - never leak RPC / key errors
+            err = "drip_unavailable"
+            status = "uncertain" if tx else "failed"
+        with self._db() as db:
+            db.execute("UPDATE faucet_drip_claims SET status = ?, tx = ? WHERE address = ?", (status, tx, addr.lower()))
+        if err:
+            log.warning("faucet drip failed address=%s tx=%s", addr, tx)
+            if raise_on_refusal:
+                raise FaucetError(err, 503)
+            return {"drip": 0, "drip_tx": None, "drip_error": err}
+        log.info("faucet drip address=%s usdc=%d tx=%s", addr, amount, tx)
+        return {"drip": amount, "drip_tx": tx, "drip_error": None}
+
+    def _send_base(self, addr: str, p: Plan) -> dict:
         eth_tx = usdc_tx = None
         try:
             if p.eth_wei:
@@ -242,8 +326,7 @@ class DemoFaucet:
             raise FaucetError("send_failed", 502)
         log.info("faucet funded address=%s eth_wei=%d usdc=%d eth_tx=%s usdc_tx=%s", addr, p.eth_wei, p.usdc,
                  eth_tx, usdc_tx)
-        return {"address": addr, "eth_wei": str(p.eth_wei), "usdc": p.usdc, "eth_tx": eth_tx, "usdc_tx": usdc_tx,
-                "gas_per_tx": p.gas_per_tx, "fee_cap_wei": str(p.fee_cap), "txs": self.cfg.demo_faucet_txs}
+        return {"eth_wei": str(p.eth_wei), "usdc": p.usdc, "eth_tx": eth_tx, "usdc_tx": usdc_tx}
 
 
 def _limit(estimate: int) -> int:
@@ -273,6 +356,8 @@ class Web3FaucetChain:
         self.w3 = writer.w3
         self.usdc = self.w3.eth.contract(address=writer.dep["USDC"], abi=_MINT_ABI)
         self.book = writer.dep["AdvanceBook"]
+        jv = writer.dep.get("JuniorVault")
+        self.vault = self.w3.eth.contract(address=to_checksum_address(jv), abi=_VAULT_ABI) if jv else None
 
     def __repr__(self) -> str:
         return "Web3FaucetChain(<relayer key hidden>)"
@@ -324,6 +409,39 @@ class Web3FaucetChain:
 
     def wait(self, tx_hash: str) -> bool:
         return int(self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)["status"]) == 1
+
+    # ---- DRIP: the relayer deposits into the JuniorVault for the address
+    def _vault(self):
+        if self.vault is None:
+            raise RuntimeError("no JuniorVault in the deployment")
+        return self.vault
+
+    def relayer_usdc(self) -> int:
+        return self.usdc_balance(self._acct().address)
+
+    def relayer_allowance(self) -> int:
+        return int(self.usdc.functions.allowance(self._acct().address, self._vault().address).call())
+
+    def _call(self, to: str, data: str, gas: int, max_fee: int, tip: int) -> str:
+        return self._send({"to": to, "data": data, "value": 0, "gas": gas, "maxFeePerGas": max_fee,
+                           "maxPriorityFeePerGas": tip})
+
+    def send_self_mint(self, amount: int, max_fee: int, tip: int) -> str:
+        me = self._acct().address
+        gas = _limit(self.estimate_mint(me, amount))
+        return self._call(self.usdc.address, self.usdc.encode_abi("mint", [me, amount]), gas, max_fee, tip)
+
+    def send_vault_approve(self, amount: int, max_fee: int, tip: int) -> str:
+        v = self._vault().address
+        gas = _limit(int(self.usdc.functions.approve(v, amount).estimate_gas({"from": self._acct().address})))
+        return self._call(self.usdc.address, self.usdc.encode_abi("approve", [v, amount]), gas, max_fee, tip)
+
+    def estimate_deposit(self, amount: int, receiver: str) -> int:
+        return int(self._vault().functions.deposit(amount, receiver).estimate_gas({"from": self._acct().address}))
+
+    def send_deposit(self, amount: int, receiver: str, gas: int, max_fee: int, tip: int) -> str:
+        v = self._vault()
+        return self._call(v.address, v.encode_abi("deposit", [amount, receiver]), gas, max_fee, tip)
 
 
 def build_faucet(writer, settings) -> DemoFaucet:

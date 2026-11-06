@@ -139,6 +139,7 @@ class HealthResponse(BaseModel):
 
 class FaucetRequest(Input):
     address: Address
+    drip: bool = False  # also deposit DEMO_FAUCET_DRIP_USDC into the JuniorVault for the address (DRIP shares)
 
 class RiskResponse(BaseModel):
     signals: dict
@@ -321,7 +322,8 @@ def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=N
             raise HTTPException(404, "Not found") from None
         limit(request)
         try:
-            return faucet.fund(body.address, client_ip(request.headers, request.client.host if request.client else None))
+            return faucet.fund(body.address, client_ip(request.headers, request.client.host if request.client else None),
+                               drip=body.drip)
         except FaucetError as e:
             raise HTTPException(e.status, e.code) from None
         except Exception:  # noqa: BLE001 - never leak upstream errors

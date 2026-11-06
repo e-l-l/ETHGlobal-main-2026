@@ -188,3 +188,94 @@ def test_relayer_floor_and_budget_alarm(tmp_path):
     f.fund(A, "1.1.1.1")
     f.cfg.demo_faucet_max_eth_per_day = int(f.status()["spent_wei"]) / ETHER
     assert f.status()["budget_alarm"]
+
+
+# ------------------------------------------------------------------ DRIP (JuniorVault deposit for the address)
+
+class DripChain(FakeChain):
+    def __init__(self, refuse=False, **kw):
+        super().__init__(**kw)
+        self.refuse = refuse
+        self.r_usdc = 0
+        self.r_allow = 0
+        self.drip: dict[str, int] = {}
+
+    def relayer_usdc(self):
+        return self.r_usdc
+
+    def relayer_allowance(self):
+        return self.r_allow
+
+    def send_self_mint(self, amount, max_fee, tip):
+        self.sent.append(("self_mint", amount))
+        self.r_usdc += amount
+        return "0x" + f"{len(self.sent):064x}"
+
+    def send_vault_approve(self, amount, max_fee, tip):
+        self.sent.append(("approve", amount))
+        self.r_allow = amount
+        return "0x" + f"{len(self.sent):064x}"
+
+    def estimate_deposit(self, amount, receiver):
+        if self.refuse:
+            raise RuntimeError("execution reverted: junior cover")
+        return 180_000
+
+    def send_deposit(self, amount, receiver, gas, max_fee, tip):
+        self.sent.append(("deposit", amount, receiver, gas))
+        self.r_usdc -= amount
+        self.r_allow -= amount
+        self.drip[receiver.lower()] = self.drip.get(receiver.lower(), 0) + amount
+        return "0x" + f"{len(self.sent):064x}"
+
+
+def test_drip_deposits_for_the_address(tmp_path):
+    f, chain, _ = make(tmp_path, chain=DripChain())
+    r = f.fund(A, "1.1.1.1", drip=True)
+    assert r["drip"] == 20_000_000 and r["drip_error"] is None and r["drip_tx"]
+    assert r["eth_tx"] and r["usdc_tx"]
+    assert [s[0] for s in chain.sent] == ["eth", "mint", "self_mint", "approve", "deposit"]
+    assert chain.drip[A.lower()] == 20_000_000
+    assert chain.sent[-1][3] == int(180_000 * 1.2) + 10_000
+    # once per address for DRIP too
+    with pytest.raises(FaucetError, match="already_funded"):
+        f.fund(A, "1.1.1.2", drip=True)
+    # a second address: the relayer's leftover allowance is reused, only the mint is redone
+    chain.sent.clear()
+    f.fund(B, "1.1.1.3", drip=True)
+    assert [s[0] for s in chain.sent] == ["eth", "mint", "self_mint", "deposit"]
+
+
+def test_drip_after_base_claim_and_budget(tmp_path):
+    f, chain, _ = make(tmp_path, chain=DripChain())
+    f.fund(A, "1.1.1.1")
+    chain.sent.clear()
+    r = f.fund(A, "1.1.1.2", drip=True)  # came back for DRIP only
+    assert r["eth_tx"] is None and r["usdc"] == 0 and r["drip"] == 20_000_000
+    assert "eth" not in [s[0] for s in chain.sent]
+    # the DRIP gas counts against the daily budget
+    g, _, _ = make(sub(tmp_path, "b"), chain=DripChain(), demo_faucet_max_eth_per_day=0.0003)
+    g.fund(A, "1.0.0.1")
+    with pytest.raises(FaucetError, match="daily_budget"):
+        g.fund(A, "1.0.0.2", drip=True)
+
+
+def test_drip_refused_still_gives_gas_and_usdc(tmp_path):
+    f, chain, _ = make(tmp_path, chain=DripChain(refuse=True))
+    r = f.fund(A, "1.1.1.1", drip=True)
+    assert r["eth_tx"] and r["usdc_tx"] and r["drip"] == 0 and r["drip_error"] == "drip_unavailable"
+    assert "deposit" not in [s[0] for s in chain.sent]
+    # DRIP alone, still refused: a clear error; once the vault accepts again, the address may retry
+    with pytest.raises(FaucetError) as e:
+        f.fund(A, "1.1.1.2", drip=True)
+    assert (e.value.code, e.value.status) == ("drip_unavailable", 503)
+    chain.refuse = False
+    assert f.fund(A, "1.1.1.3", drip=True)["drip"] == 20_000_000
+
+
+def test_drip_route(tmp_path):
+    stub = object()
+    f, _, _ = make(tmp_path, chain=DripChain())
+    client = TestClient(create_app(stub, stub, stub, stub, stub, faucet=f))
+    r = client.post("/demo/faucet", json={"address": A, "drip": True})
+    assert r.status_code == 200 and r.json()["drip"] == 20_000_000

@@ -72,6 +72,7 @@ export const LEND_NAV: NavItem[] = [
   { key: "explorer", label: "Explorer", href: routes.explorer, icon: <ExplorerTabIcon /> },
   { key: "simulator", label: "Simulator", href: routes.simulator, icon: <SimulatorTabIcon /> },
   { key: "proof", label: "Verify", href: routes.proof, icon: <VerifyTabIcon /> },
+  { key: "faucet", label: "Faucet", href: routes.faucet, icon: <DripTabIcon /> },
 ];
 
 const burnerAddress = async (m: { wallet: { address(): string | undefined } }) => m.wallet.address() ?? null;
