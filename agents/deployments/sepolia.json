@@ -7,6 +7,8 @@
   "RiskHook": "0x216ec669911e5e042c73de8f593397a51e00d044",
   "USDC": "0x6603ac3f0a1ea33f232c97655a1b4f91280e55bb",
   "PoolManager": "0xE03A1074c86CFeDd5C142C4F04F1a1536e203543",
+  "PoolSwapTest": "0x9b6b46e2c869aa39918db7f52f5557fe577b6eee",
+  "PoolModifyLiquidityTest": "0x0c478023803a644c94c4ce1c1e7b9a087e411b0a",
   "HonkVerifier": "0x7764690108c612fafde5eeb1cbe2f20d80e42017",
   "BusinessPassVerifier": "0xb79d40dcda63d941a31d866028d5d6852550136a",
   "poolKey": {

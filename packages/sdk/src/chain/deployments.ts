@@ -11,6 +11,10 @@ export type Deployment = {
   RiskHook: string;
   USDC: string;
   PoolManager: string;
+  /** Uniswap v4 PoolSwapTest router for the junior/USDC swap (Uniswap's official Sepolia deployment). Optional. */
+  PoolSwapTest?: string;
+  /** Uniswap v4 PoolModifyLiquidityTest (used by agents/scripts/seed_junior_pool.py). Optional. */
+  PoolModifyLiquidityTest?: string;
   HonkVerifier: string;
   BusinessPassVerifier: string;
   poolKey: { currency0: string; currency1: string; fee: number; tickSpacing: number; hooks: string };
@@ -37,6 +41,9 @@ export function parseDeployment(value: unknown): Deployment {
   if (!Number.isInteger(d.chainId)) throw new ConfigError("config_invalid", "deployment.chainId missing");
   for (const k of ADDRESS_KEYS) {
     if (typeof d[k] !== "string" || !ADDRESS.test(d[k] as string)) throw new ConfigError("config_invalid", `deployment.${k} is not an address`);
+  }
+  for (const k of ["PoolSwapTest", "PoolModifyLiquidityTest"] as const) {
+    if (d[k] !== undefined && (typeof d[k] !== "string" || !ADDRESS.test(d[k] as string))) throw new ConfigError("config_invalid", `deployment.${k} is not an address`);
   }
   const pk = d.poolKey;
   if (!pk || !ADDRESS.test(pk.currency0) || !ADDRESS.test(pk.currency1) || !ADDRESS.test(pk.hooks)) {

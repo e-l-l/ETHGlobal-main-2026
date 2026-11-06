@@ -17,6 +17,8 @@ export { createHttp, toJson, type FetchFn, type Http } from "./http.js";
 // Chain
 export { createChain, isTransientWriteError, advanceStatusName, type Chain, type ChainOptions, type ProtocolSnapshot, type PositionSnapshot } from "./chain/chain.js";
 export { DEPLOYMENTS, deploymentFor, parseDeployment, type Deployment } from "./chain/deployments.js";
+export { poolSwapTestAbi, poolIdOf, poolKeyOf, poolSlots, decodeSlot0, decodeBalanceDelta, priceOf, priceLimit, parseSwapReceipt, type PoolKey, type Slot0 } from "./chain/swap.js";
+export type { JuniorSwapOptions } from "./domains/lender.js";
 export * as abi from "./abi/index.js";
 
 // Injectable adapters
