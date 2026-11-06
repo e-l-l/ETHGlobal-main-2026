@@ -369,3 +369,147 @@ def test_bind_errors_and_owner_sees_ban(client):
     assert mine == {"verified": True, "banned": True, "unlock": None}
     assert c.get(f"/shops/{SHOP_A}/human").json() == {"verified": True}
     assert c.post("/world/borrower/rp-context").json() == {"mock": True, "action": ACTION}
+
+
+# ------------------------------------------------------------------ World ID FIRST: pre-shop check + ticket bind
+
+ALICE = {"mock": "approve", "mock_human": "alice"}
+
+
+def check(c, idkit=ALICE, owner=OWNER.address):
+    return c.post("/world/borrower/check", json={"idkit": idkit, "owner": owner})
+
+
+def test_check_eligible_returns_ticket_only(client):
+    c, reg, _ = client
+    r = check(c)
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body) == {"eligible", "ticket", "expires_at"} and body["eligible"] is True
+    assert body["expires_at"] - int(time.time()) in range(1795, 1801)
+    n = nullifier("alice")
+    assert n[2:] not in r.text and str(int(n, 16)) not in r.text and reg.human_key(n) not in r.text
+    # nothing is stored by a check: no shop, no human row
+    assert reg._db.execute("SELECT COUNT(*) FROM world_humans").fetchone()[0] == 0
+
+
+def test_check_banned_and_open_advance(client):
+    c, reg, reader = client
+    reg.bind(SHOP_A, nullifier("alice"))
+    reader._advances = [adv(1, SHOP_A, AdvanceStatus.ACTIVE)]
+    assert check(c).json() == {"eligible": False, "reason": HUMAN_HAS_OPEN_ADVANCE}
+    reader._advances = [adv(1, SHOP_A, AdvanceStatus.REPAID)]
+    assert check(c).json()["eligible"] is True  # repaid: welcome back
+    reader._advances = [adv(1, SHOP_A, AdvanceStatus.WRITTEN_OFF)]  # check syncs the ban from chain state
+    assert check(c).json() == {"eligible": False, "reason": HUMAN_BANNED}
+    assert check(c, {"mock": "approve", "mock_human": "bob"}).json()["eligible"] is True  # someone else is fine
+
+
+def test_check_rejects_bad_proof_and_owner(client):
+    c, _, _ = client
+    deny = check(c, {"mock": "deny"})
+    assert deny.status_code == 400 and deny.json() == {"detail": "verification_failed"}
+    assert check(c, owner="0x1234").status_code in (400, 422)
+    assert c.post("/world/borrower/check", json={"idkit": ALICE}).status_code in (400, 422)
+
+
+def test_ticket_never_contains_a_recoverable_nullifier():
+    import base64
+    box = SecretBox(b"k" * 32)
+    reg = HumanRegistry(box, ":memory:", action=ACTION)
+    svc = HumanBindingService(MockIDKit(ACTION), reg, Reader())
+    n = nullifier("alice")
+    ticket = svc.check(ALICE, OWNER.address)["ticket"]
+    raw = base64.b64decode(ticket.removeprefix("v1:"))
+    human = reg.human_key(n)
+    for needle in (bytes.fromhex(n[2:]), n[2:].encode(), str(int(n, 16)).encode(), human.encode(),
+                   bytes.fromhex(human), OWNER.address.lower().encode()):
+        assert needle not in raw and needle.decode("latin-1") not in ticket
+    # Even the server-side plaintext holds only the HMAC human key, never the nullifier.
+    plain = box.decrypt(ticket, aad=b"world-ticket:v1").decode()
+    assert n[2:] not in plain and str(int(n, 16)) not in plain and human in plain
+    # Two checks by the same human give unlinkable tickets (random nonce + id).
+    assert svc.check(ALICE, OWNER.address)["ticket"] != ticket
+    # A ticket is sealed to its purpose: another AAD (e.g. a stored row) can't open it.
+    from mra_agents.secretbox import DecryptError
+    with pytest.raises(DecryptError):
+        box.decrypt(ticket, aad=b"world-human:" + human.encode())
+
+
+def test_bind_via_ticket_then_double_use(client):
+    c, reg, _ = client
+    ticket = check(c).json()["ticket"]
+    r = c.post(f"/shops/{SHOP_A}/human", json={"ticket": ticket}, headers={"Authorization": auth(SHOP_A)})
+    assert r.status_code == 200 and r.json() == {"verified": True}
+    assert reg.human_for_shop(SHOP_A) == reg.human_key(nullifier("alice"))
+    # Retrying the same bind (lost response) is a no-op success; a second shop with the same ticket is refused.
+    again = c.post(f"/shops/{SHOP_A}/human", json={"ticket": ticket}, headers={"Authorization": auth(SHOP_A)})
+    assert again.status_code == 200
+    other = c.post(f"/shops/{SHOP_B}/human", json={"ticket": ticket}, headers={"Authorization": auth(SHOP_B)})
+    assert other.status_code == 409 and other.json() == {"detail": "ticket_used"}
+    assert reg.human_for_shop(SHOP_B) is None
+    # A fresh check binds the second shop to the same human.
+    fresh = check(c).json()["ticket"]
+    assert c.post(f"/shops/{SHOP_B}/human", json={"ticket": fresh},
+                  headers={"Authorization": auth(SHOP_B)}).status_code == 200
+    assert reg.shops_of_shop(SHOP_A) == [SHOP_A, SHOP_B]
+
+
+def test_ticket_owner_mismatch_rejected(client):
+    c, reg, _ = client
+    ticket = check(c, owner=OTHER.address).json()["ticket"]  # declared a different wallet than the shop's owner
+    r = c.post(f"/shops/{SHOP_A}/human", json={"ticket": ticket}, headers={"Authorization": auth(SHOP_A)})
+    assert r.status_code == 403 and r.json() == {"detail": "ticket_owner_mismatch"}
+    assert reg.human_for_shop(SHOP_A) is None
+    # And the ticket bind is still owner-authenticated.
+    good = check(c).json()["ticket"]
+    for h in (None, auth(SHOP_A, OTHER)):
+        r = c.post(f"/shops/{SHOP_A}/human", json={"ticket": good}, headers={"Authorization": h} if h else {})
+        assert r.status_code == 401
+    assert c.post(f"/shops/{SHOP_C}/human", json={"ticket": good},
+                  headers={"Authorization": auth(SHOP_C)}).status_code == 404
+
+
+def test_ticket_expiry_and_tampering():
+    clock = [float(time.time())]
+    reg = HumanRegistry(SecretBox(b"k" * 32), ":memory:", action=ACTION, now=lambda: clock[0])
+    svc = HumanBindingService(MockIDKit(ACTION), reg, Reader(), now=lambda: clock[0])
+    app = FastAPI()
+    app.include_router(build_human_router(svc))
+    c = TestClient(app)
+    ticket = check(c).json()["ticket"]
+    clock[0] += 30 * 60 + 1
+    h = {"Authorization": auth(SHOP_A, issued=int(clock[0]))}
+    r = c.post(f"/shops/{SHOP_A}/human", json={"ticket": ticket}, headers=h)
+    assert r.status_code == 400 and r.json() == {"detail": "ticket_expired"}
+    tampered = ticket[:-6] + ("A" if ticket[-6] != "A" else "B") + ticket[-5:]
+    for bad in (tampered, "v1:AAAA", "garbage"):
+        r = c.post(f"/shops/{SHOP_A}/human", json={"ticket": bad}, headers=h)
+        assert r.status_code == 400 and r.json() == {"detail": "ticket_invalid"}
+    # a ticket from another server key is invalid here
+    foreign = HumanRegistry(SecretBox(b"z" * 32), ":memory:", action=ACTION).issue_ticket(
+        "00" * 32, OWNER.address, int(clock[0]) + 600)
+    assert c.post(f"/shops/{SHOP_A}/human", json={"ticket": foreign}, headers=h).json() == {"detail": "ticket_invalid"}
+    assert reg.human_for_shop(SHOP_A) is None
+
+
+def test_bind_body_needs_exactly_one_of_idkit_or_ticket(client):
+    c, _, _ = client
+    h = {"Authorization": auth(SHOP_A)}
+    assert c.post(f"/shops/{SHOP_A}/human", json={}, headers=h).status_code in (400, 422)
+    both = {"idkit": ALICE, "ticket": "v1:x"}
+    assert c.post(f"/shops/{SHOP_A}/human", json=both, headers=h).status_code in (400, 422)
+    # idkit still works (legacy path)
+    assert c.post(f"/shops/{SHOP_A}/human", json={"idkit": ALICE}, headers=h).status_code == 200
+
+
+def test_used_ticket_rows_are_purged_after_expiry():
+    clock = [1_000_000.0]
+    reg = HumanRegistry(SecretBox(b"k" * 32), ":memory:", action=ACTION, now=lambda: clock[0])
+    t1 = reg.open_ticket(reg.issue_ticket("aa" * 32, OWNER.address, int(clock[0]) + 60))
+    reg.bind_key(SHOP_A, t1.human, ticket=t1)
+    assert reg._db.execute("SELECT COUNT(*) FROM world_tickets_used").fetchone()[0] == 1
+    clock[0] += 120
+    t2 = reg.open_ticket(reg.issue_ticket("aa" * 32, OWNER.address, int(clock[0]) + 60))
+    reg.bind_key(SHOP_B, t2.human, ticket=t2)
+    assert reg._db.execute("SELECT COUNT(*) FROM world_tickets_used").fetchone()[0] == 1

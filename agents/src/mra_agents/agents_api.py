@@ -19,7 +19,7 @@ from collections import defaultdict, deque
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, model_validator
 
 from .merchant_agents import AgentError
 from .models import Address, Hex32
@@ -350,7 +350,21 @@ class LazyProxy:
 
 
 class HumanBindIn(_In):
-    idkit: dict  # IDKit 4 result forwarded as-is (WORLD_MOCK=1: {"mock": "approve", "mock_human": "<label>"})
+    # Exactly one of: the IDKit 4 result forwarded as-is (WORLD_MOCK=1: {"mock": "approve", "mock_human": "<label>"}),
+    # or the ticket from POST /world/borrower/check (no second World ID scan).
+    idkit: dict | None = None
+    ticket: str | None = Field(default=None, min_length=1, max_length=1024)
+
+    @model_validator(mode="after")
+    def _one(self):
+        if (self.idkit is None) == (self.ticket is None):
+            raise ValueError("send exactly one of idkit or ticket")
+        return self
+
+
+class HumanCheckIn(_In):
+    idkit: dict
+    owner: str = Field(pattern=r"^0x[0-9a-fA-F]{40}$")  # the wallet that will own the shop (the burner)
 
 
 def build_human_router(humans) -> APIRouter:
@@ -358,7 +372,10 @@ def build_human_router(humans) -> APIRouter:
     signature by the shop's onchain owner over humans.owner_auth_message (valid +-10 min).
 
       POST /world/borrower/rp-context  signed IDKit 4 context for WORLD_BORROWER_ACTION (mock: {"mock": true})
-      POST /shops/{shop_id}/human      owner auth + {"idkit"} -> {"verified": true}. NEVER returns the nullifier.
+      POST /world/borrower/check       {"idkit", "owner"} BEFORE any shop -> {"eligible": true, "ticket", "expires_at"}
+                                       | {"eligible": false, "reason": "human_banned" | "human_has_open_advance"}
+      POST /shops/{shop_id}/human      owner auth + {"idkit"} | {"ticket"} -> {"verified": true}. NEVER returns the
+                                       nullifier (nor the human key).
       GET  /shops/{shop_id}/human      {"verified"}; with owner auth also {"banned", "unlock"} (owner only).
     """
     from .humans import HumanError
@@ -379,7 +396,8 @@ def build_human_router(humans) -> APIRouter:
         except PermissionError:
             raise HTTPException(401, "unauthorized") from None
         except HumanError as e:
-            raise HTTPException(409 if e.code == "shop_bound_to_other_human" else 400, e.code) from None
+            status = {"shop_bound_to_other_human": 409, "ticket_used": 409, "ticket_owner_mismatch": 403}
+            raise HTTPException(status.get(e.code, 400), e.code) from None
         except WorldError as e:
             raise HTTPException(400, e.code) from None
         except LookupError:
@@ -395,10 +413,23 @@ def build_human_router(humans) -> APIRouter:
         limit(request, "w")
         return call(humans.rp_context)
 
+    @r.post("/world/borrower/check")
+    def borrower_check(body: HumanCheckIn, request: Request):
+        limit(request, "w", body.owner)
+        if len(json.dumps(body.idkit)) > MAX_IDKIT_PAYLOAD:
+            raise HTTPException(400, "invalid_request")
+        out = call(humans.check, body.idkit, body.owner)
+        if out.get("eligible") is True:  # fixed shapes: the nullifier and human key can never reach the response
+            return {"eligible": True, "ticket": out["ticket"], "expires_at": out["expires_at"]}
+        return {"eligible": False, "reason": out["reason"]}
+
     @r.post("/shops/{shop_id}/human")
     def bind_human(shop_id: ShopId, body: HumanBindIn, request: Request,
                    authorization: Annotated[str | None, Header()] = None):
         limit(request, "w", shop_id)
+        if body.ticket is not None:
+            call(humans.bind_ticket, shop_id, body.ticket, authorization)
+            return {"verified": True}
         if len(json.dumps(body.idkit)) > MAX_IDKIT_PAYLOAD:
             raise HTTPException(400, "invalid_request")
         call(humans.bind, shop_id, body.idkit, authorization)
