@@ -152,12 +152,12 @@ export function PositionScreen() {
 /* ---------------------------------------------------------------- J01 Junior */
 export function JuniorScreen() {
   return (
-    <LendShell note="The JAR-J price, pool and coverage are public. So is every mint and trade.">
+    <LendShell note="The DRIP-J price, pool and coverage are public. So is every mint and trade.">
       <PageHead
         label="First loss"
         title={
           <span className="inline-flex items-center gap-3">
-            <TokenBadge size={44} label="JAR-J" />
+            <TokenBadge size={44} label="DRIP-J" />
             Junior
           </span>
         }
@@ -170,7 +170,7 @@ export function JuniorScreen() {
           </>
         }
       >
-        JAR-J takes losses before anyone else, and earns {VAULT.feeShareJunior} of every fee for it.
+        DRIP-J takes losses before anyone else, and earns {VAULT.feeShareJunior} of every fee for it.
       </PageHead>
       <Columns ratio="3:2">
         <Stack gap="lg">
@@ -178,7 +178,7 @@ export function JuniorScreen() {
             <Card gap="lg">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="flex flex-col gap-1">
-                  <Label>JAR-J price</Label>
+                  <Label>DRIP-J price</Label>
                   <span className="font-display text-amount tabular-nums text-charcoal">{price(VAULT.juniorPrice)}</span>
                 </div>
                 <span className="text-right font-ledger text-ledger text-charcoal-soft">
@@ -190,7 +190,7 @@ export function JuniorScreen() {
               <LineChart
                 points={juniorSeries}
                 height={180}
-                label="JAR-J price over 12 weeks. It dips at the write-off, then recovers to 0.982."
+                label="DRIP-J price over 12 weeks. It dips at the write-off, then recovers to 0.982."
                 markers={[{ index: JUNIOR_WRITE_OFF_INDEX, label: "The $100 write-off" }]}
                 xLabels={["12 weeks ago", "Now"]}
                 format={price}

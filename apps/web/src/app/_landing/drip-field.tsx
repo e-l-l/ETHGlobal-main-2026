@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 
 /*
- * The drip: lime pixels fall and settle into a dune, the dollar jar filling one sale at a time.
+ * The drip: lime pixels fall and settle into a dune, the pool filling one sale at a time.
  * Pixel grammar from the kit (4px squares on a 6px pitch). Colours come from tokens via hidden
  * swatches, so no hex lives here. Static (a settled dune) when `running` is false.
  */
@@ -131,7 +131,7 @@ export function DripField({
         }
         return true;
       });
-      /* Spending: the jar drains as advances pay for stock, so the dune breathes instead of filling up. */
+      /* Spending: the pool drains as advances pay for stock, so the dune breathes instead of filling up. */
       s.erodeAcc += dt;
       while (s.erodeAcc > 0.06) {
         s.erodeAcc -= 0.06;

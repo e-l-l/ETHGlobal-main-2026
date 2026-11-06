@@ -5,7 +5,7 @@
 <h1 align="center">DripMoni</h1>
 
 <p align="center">
-  <b>Every sale puts 10% in your dollar jar. Your jar and your record unlock stock on credit, and nobody can tell who owes.</b>
+  <b>Every sale sends 10% toward your advance. That record unlocks stock on credit, and nobody can tell who owes.</b>
 </p>
 
 <p align="center">
@@ -19,10 +19,10 @@
 DripMoni is a private **merchant cash advance** for small shops in dollar-short economies, such as a kiosco in Buenos Aires, a phone-accessory stall in Lagos or a duka in Nairobi.
 
 1. **Prove the business, not the person.** The merchant proves with zkTLS that their seller dashboard shows a country, a revenue band and 6+ months of activity. That becomes a **Business Pass**. We never ask for a name, phone number or contacts.
-2. **Get paid in stablecoins.** Customers scan the shop's QR and pay in any token. It swaps through Uniswap to USDC, and 10% of every sale goes to the shop's **dollar jar**.
+2. **Get paid in stablecoins.** Customers scan the shop's QR and pay in any token. It swaps through Uniswap to USDC, and 10% of every sale drips back toward the shop's advance.
 3. **An agent draws stock on credit.** The merchant sets limits (max per advance, max per month, purpose) and approves them once with a **World Agent Pass**. The cash-flow agent draws small advances to pay suppliers, and `PolicyGuard` enforces the limits onchain.
 4. **Repay through sales, build a private record.** Repayment comes out of the 10% split automatically. There's one flat fee, and no interest, late fees or penalties. A fully repaid advance mints a **Standing Pass**, a Noir zero-knowledge credential that raises the merchant's limit without revealing their history.
-5. **Lenders fund it.** A senior ERC-4626 USDC vault earns most of the fee. A junior first-loss token (JAR-J) earns more for taking losses first, and trades on a Uniswap v4 pool with a `RiskHook`.
+5. **Lenders fund it.** A senior ERC-4626 USDC vault earns most of the fee. A junior first-loss token (DRIP-J) earns more for taking losses first, and trades on a Uniswap v4 pool with a `RiskHook`.
 
 The **World view** toggle on every screen shows exactly which data is onchain and which stays on the device.
 
@@ -108,7 +108,7 @@ The light-only, green-focused system lives in [`packages/tailwind-config/final.c
 - **Greens:** Charcoal `#262E24` (text), Hunter `#2C5A3A` (primary action, links), Fern, Sage, Leaf, Honeydew. **Lime `#C6F28C` is a fill on Hunter only, never on white** (1.2:1).
 - **Type:** Urbanist (display, money) · Figtree (body) · JetBrains Mono (labels, IDs, local amounts).
 - **Logo:** the ribbon drop. Its four bands double as the tier meter (lit bands = tier + 1).
-- **Patterns:** wave band, jar gradient, ledger grid, pixel dune (real sales only), 9:1 split bar.
+- **Patterns:** wave band, drip gradient, ledger grid, pixel dune (real sales only), 9:1 split bar.
 
 Rules for contributors:
 

@@ -7,13 +7,13 @@ import { SplitBar } from "./patterns";
 
 /* ---------------------------------------------------------------- JarCard */
 
-/** The jar: Hunter ground, lime figure. The one place lime carries a number. */
+/** The drip card: Hunter ground, lime figure. The one place lime carries a number. */
 export function JarCard({ usd, rate, goal, children }: { usd: number; rate?: number; goal?: number; children?: ReactNode }) {
   const v = goal ? Math.min(1, usd / goal) : 0;
   return (
     <div className="relative flex min-w-0 flex-col gap-3.5 rounded-lg bg-hunter p-5 text-canvas">
       <div className="flex items-center justify-between gap-3">
-        <Label className="text-honeydew/80">Your dollar jar</Label>
+        <Label className="text-honeydew/80">Your drip balance</Label>
         <Pill tone="saving" className="bg-lime text-charcoal">Saving</Pill>
       </div>
       <Money usd={usd} rate={rate} figureClassName="text-lime" localClassName="text-honeydew/80" />
@@ -41,7 +41,7 @@ export function SaleRow({ amount, time, item }: { amount: number; time: string; 
       </div>
       <div className="flex items-center justify-between gap-3">
         <Ledger className="text-charcoal-muted">{time}</Ledger>
-        <Ledger className="text-hunter">+${(amount / 10).toFixed(2)} to jar</Ledger>
+        <Ledger className="text-hunter">+${(amount / 10).toFixed(2)} dripped back</Ledger>
       </div>
       <SplitBar legend={false} />
     </li>
@@ -53,8 +53,8 @@ export function SaleRow({ amount, time, item }: { amount: number; time: string; 
 /** Who absorbs a loss, top first. The viewer's layer fills Hunter. */
 export function LossWaterfall({ you }: { you: "jar" | "junior" | "reserve" | "senior" }) {
   const tiers = [
-    { k: "jar", t: "Shop's jar", d: "First 10% of every sale" },
-    { k: "junior", t: "Junior (JAR-J)", d: "First loss for a 30% fee share" },
+    { k: "jar", t: "Shop's drip", d: "First 10% of every sale" },
+    { k: "junior", t: "Junior (DRIP-J)", d: "First loss for a 30% fee share" },
     { k: "reserve", t: "Reserve", d: "Protocol buffer" },
     { k: "senior", t: "Senior vault", d: "Lenders, paid last to lose" },
   ] as const;

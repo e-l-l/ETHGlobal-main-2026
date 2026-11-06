@@ -5,7 +5,7 @@ import { jarFonts } from "@/final/fonts";
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
-  description: "Every sale puts 10% in your dollar jar. Your jar and your record unlock stock on credit, and nobody can tell who owes.",
+  description: "Every sale sends 10% toward your advance. That record unlocks stock on credit, and nobody can tell who owes.",
 };
 
 /* Light only. Status bar matches the canvas token in packages/tailwind-config/final.css. */

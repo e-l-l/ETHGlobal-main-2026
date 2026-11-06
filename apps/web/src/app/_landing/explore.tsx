@@ -1,21 +1,25 @@
 import type { ReactNode } from "react";
 import { BlockWall, type Theme } from "@/blocks";
-import { CheckIcon, JarMark } from "@/final";
+import { JarMark } from "@/final";
 import { cn } from "@/lib/cn";
-import { advance, agentLimits, shop } from "@/lib/mock/shop";
+import { advance, agentLimits, limitsLadder, shop } from "@/lib/mock/shop";
 import { BLOCKY, PixelBar } from "./blocky";
+import { IconTile, PixelIcon, type PixelIconName } from "./pixel-icons";
 
 /*
  * Product overview: three parts of the app, each a text card beside a block-pattern panel
- * with a tilted product card on it. Rows alternate sides. Hovering a row levels its card.
+ * (dimmed under a dark overlay) with a gently tilted product card on it. Each card shows the
+ * one outcome of its step. Rows alternate sides. Hovering a row levels its card.
  */
 
 type Part = {
   id: string;
+  n: string;
+  icon: PixelIconName;
   label: string;
   title: string;
   body: string;
-  points: string[];
+  points: [PixelIconName, string][];
   theme: Theme;
   seed: number;
   card: ReactNode;
@@ -23,107 +27,132 @@ type Part = {
 
 /* ------------------------------------------------------------ The cards */
 
-function CardShell({ title, meta, children }: { title: string; meta: string; children: ReactNode }) {
+function CardShell({ icon, title, meta, children }: { icon: PixelIconName; title: string; meta: string; children: ReactNode }) {
   return (
-    <div className="flex w-full flex-col gap-4 rounded-xl border border-hairline bg-surface p-5 text-charcoal shadow-lift">
+    <div className="flex w-full flex-col gap-5 rounded-2xl border border-hairline bg-surface p-5 text-charcoal shadow-lift md:p-7">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-display text-h2">{title}</span>
-        <span className="rounded-[4px] bg-well px-2 py-1 font-ledger text-[11px] text-charcoal-muted uppercase">{meta}</span>
+        <span className="inline-flex items-center gap-2.5">
+          <IconTile name={icon} size={32} />
+          <span className="font-display text-h2">{title}</span>
+        </span>
+        <span className="rounded-[4px] bg-well px-2 py-1 font-ledger text-[13px] text-charcoal-muted uppercase">{meta}</span>
       </div>
       {children}
     </div>
   );
 }
 
+function Label({ children }: { children: ReactNode }) {
+  return <span className="font-ledger text-[12px] text-charcoal-muted uppercase">{children}</span>;
+}
+
+/* 01: what was proved, what stayed private, and the limit it unlocked. */
 function PassCard() {
-  const rows: [string, string, boolean][] = [
-    ["Seller dashboard", "Connected", true],
-    ["Country", shop.country, true],
-    ["Sales band", `Band ${shop.band}`, true],
-    ["Months active", shop.months, true],
-    ["Name, phone, books", "Not shared", false],
+  const proved: [string, string][] = [
+    ["Selling for", shop.months],
+    ["Sales band", shop.bandRange],
+    ["Country", shop.country],
   ];
   return (
-    <CardShell title="Business Pass" meta="4 of 4 checks">
-      <ul className="m-0 flex list-none flex-col p-0">
-        {rows.map(([k, v, ok]) => (
-          <li key={k} className="flex items-center justify-between gap-3 border-t border-hairline py-2.5 first:border-t-0">
-            <span className="font-body text-note font-semibold">{k}</span>
-            <span className={cn("inline-flex items-center gap-1.5 rounded-[4px] px-2 py-0.5 font-ledger text-[11px] uppercase", ok ? "bg-honeydew text-hunter" : "bg-well text-charcoal-muted")}>
-              {ok ? <CheckIcon size={11} strokeWidth={3} /> : null}
-              {v}
+    <CardShell icon="shield" title="Business Pass" meta="Verified">
+      <div className="flex flex-col gap-1.5">
+        <Label>Proved</Label>
+        <ul className="m-0 flex list-none flex-col p-0">
+          {proved.map(([k, v]) => (
+            <li key={k} className="flex items-center justify-between gap-3 border-t border-hairline py-2 first:border-t-0">
+              <span className="inline-flex items-center gap-2 font-body text-note text-charcoal-soft">
+                <PixelIcon name="check" size={12} className="text-hunter" />
+                {k}
+              </span>
+              <span className="font-body text-note font-semibold">{v}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>Never leaves your phone</Label>
+        <span className="flex flex-wrap gap-1.5">
+          {["Name", "Phone", "Books"].map((k) => (
+            <span key={k} className="inline-flex items-center gap-1.5 rounded-[4px] bg-well px-2 py-1 font-ledger text-[13px] text-charcoal-muted uppercase">
+              <PixelIcon name="lock" size={11} />
+              {k}
             </span>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </span>
+      </div>
+      <div className="flex items-center gap-3 rounded-lg bg-hunter p-3 text-canvas">
+        <JarMark size={32} on="dark" lit={1} />
+        <span className="flex flex-col">
+          <span className="font-ledger text-[12px] text-honeydew uppercase">Unlocked</span>
+          <span className="font-body text-note font-semibold">First advance up to ${limitsLadder[0].cap}</span>
+        </span>
+      </div>
     </CardShell>
   );
 }
 
-function SalesCard() {
-  const week = [31, 29, 12, 9, 27, 34, 30];
-  const max = Math.max(...week);
-  const total = week.reduce((a, b) => a + b, 0);
+/* 02: one sale, split as it lands, and what it does to the advance. */
+function SaleCard() {
   return (
-    <CardShell title="Sales" meta="This week">
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          ["Sales", `$${total}`],
-          ["Drips back", `$${(total / 10).toFixed(2)}`],
-          ["Repaid", `${advance.pct}%`],
-        ].map(([k, v]) => (
-          <div key={k} className="flex flex-col gap-0.5 rounded-md bg-well p-2.5">
-            <span className="font-ledger text-[10px] text-charcoal-muted uppercase">{k}</span>
-            <span className="font-display text-h2 tabular-nums">{v}</span>
-          </div>
-        ))}
+    <CardShell icon="qr" title="Sale received" meta="10:14 · USDT">
+      <div className="flex items-end justify-between gap-3">
+        <span className="font-display text-[44px] leading-none font-bold tracking-[-0.03em] tabular-nums">$10.00</span>
+        <span className="pb-1 font-ledger text-[13px] text-charcoal-muted">≈ ARS {(10 * shop.usdToLocal).toLocaleString("es-AR")}</span>
       </div>
-      {/* Pixel columns: one per day, 4px blocks. */}
-      <div className="flex h-28 items-end gap-2" aria-hidden>
-        {week.map((d, i) => {
-          const blocks = Math.max(1, Math.round((d / max) * 10));
-          return (
-            <div key={i} className="flex flex-1 flex-col-reverse gap-[3px]">
-              {Array.from({ length: blocks }, (_, b) => (
-                <span key={b} className={cn("h-2 rounded-[1px]", b === blocks - 1 ? "bg-lime" : i === 6 ? "bg-hunter" : "bg-leaf")} />
-              ))}
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <span className="flex justify-between font-ledger text-[11px] text-charcoal-muted uppercase">
-          <span>Advance repaid</span>
+      <div className="flex flex-col gap-2">
+        <div aria-hidden className="flex h-7 gap-[3px]">
+          {Array.from({ length: 10 }, (_, i) => (
+            <span key={i} className={cn("flex-1 rounded-[2px]", i < 9 ? "bg-leaf" : "bg-hunter")} />
+          ))}
+        </div>
+        <div className="flex justify-between gap-3 font-body text-note">
           <span>
-            ${advance.repaid} / ${advance.total}
+            <strong className="font-semibold">$9.00</strong> <span className="text-charcoal-soft">to you, now</span>
+          </span>
+          <span>
+            <strong className="font-semibold">$1.00</strong> <span className="text-charcoal-soft">to the advance</span>
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1.5 border-t border-hairline pt-3">
+        <span className="flex justify-between">
+          <Label>Advance repaid</Label>
+          <span className="font-ledger text-[13px] text-charcoal tabular-nums">
+            ${advance.repaid} of ${advance.total}
           </span>
         </span>
         <PixelBar value={advance.pct / 100} cells={24} className="h-2.5" />
+        <span className="font-body text-note text-charcoal-soft">About {advance.etaDays} days to go at this pace. No due date.</span>
       </div>
     </CardShell>
   );
 }
 
+/* 03: the agent's proposal, the checks it passed, and the one tap left. */
 function AgentCard() {
-  const steps = [
-    ["Cash is low before Thursday's restock", "Agent"],
-    [`Offer of $${advance.drawn}, checked for fake sales`, "Critic"],
-    [`Inside your $${agentLimits.perAdvance} limit`, "Contract"],
-    ["Supplier paid, reason sent to you", "Done"],
+  const checks: [PixelIconName, string][] = [
+    ["shield", "Sales look real, checked by a second agent"],
+    ["lock", `Inside your $${agentLimits.perAdvance} limit`],
+    ["coin", `$${advance.fee} fee, repaid from sales`],
   ];
   return (
-    <CardShell title="Your agent" meta="Runs daily">
-      <ol className="m-0 flex list-none flex-col gap-2 p-0">
-        {steps.map(([t, who], i) => (
-          <li key={t} className="flex items-center gap-3 rounded-md border border-hairline bg-canvas px-3 py-2.5">
-            <span className={cn("grid size-6 shrink-0 place-items-center rounded-[4px] font-ledger text-[11px] font-semibold", i === 3 ? "bg-lime text-charcoal" : "bg-hunter text-canvas")}>
-              {i + 1}
-            </span>
-            <span className="min-w-0 flex-1 font-body text-note font-semibold">{t}</span>
-            <span className="font-ledger text-[10px] text-charcoal-muted uppercase">{who}</span>
+    <CardShell icon="agent" title="Agent proposal" meta="Today 9:12">
+      <div className="flex flex-col gap-1.5">
+        <span className="font-display text-[30px] leading-none font-bold tracking-[-0.03em]">Draw ${advance.drawn} for stock</span>
+        <span className="font-body text-note text-charcoal-soft">Why: cash runs low before Thursday&apos;s restock.</span>
+      </div>
+      <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+        {checks.map(([icon, t]) => (
+          <li key={t} className="flex items-center gap-2.5 rounded-md bg-well px-3 py-2 font-body text-note">
+            <PixelIcon name={icon} size={14} className="text-hunter" />
+            {t}
           </li>
         ))}
-      </ol>
+      </ul>
+      <div aria-hidden className="grid grid-cols-[1fr_auto] gap-2">
+        <span className="grid min-h-10 place-items-center rounded-md bg-charcoal font-body text-note font-semibold text-canvas">Approve with World</span>
+        <span className="grid min-h-10 place-items-center rounded-md border border-hairline px-4 font-body text-note font-semibold text-charcoal-soft">Not now</span>
+      </div>
     </CardShell>
   );
 }
@@ -131,30 +160,48 @@ function AgentCard() {
 const PARTS: Part[] = [
   {
     id: "pass",
-    label: "01 · Get in",
-    title: "Prove the business, not the person",
+    n: "01",
+    icon: "shield",
+    label: "Get in",
+    title: "Prove your shop, privately",
     body: "Log into the seller dashboard you already use. We check your months of sales and keep nothing else, and your first limit is ready.",
-    points: ["Country, sales band and 6+ months", "We never ask for your name, phone or contacts", "We learned nothing else"],
+    points: [
+      ["calendar", "Country, sales band and 6+ months"],
+      ["lock", "We never ask for your name, phone or contacts"],
+      ["eye", "We learned nothing else"],
+    ],
     theme: "night",
     seed: 11,
     card: <PassCard />,
   },
   {
     id: "sales",
-    label: "02 · Get paid",
-    title: "Watch every sale split",
+    n: "02",
+    icon: "qr",
+    label: "Sell",
+    title: "Sell like you always do",
     body: "Customers scan your QR and pay in the dollars they hold. Nine parts land with you, one part drips back until the advance is paid off.",
-    points: ["Any token in, dollars out", "Customers never see your advance", "Every sale read out loud"],
+    points: [
+      ["swap", "Any token in, dollars out"],
+      ["eye", "Customers never see your advance"],
+      ["sound", "Every sale read out loud"],
+    ],
     theme: "brand",
     seed: 23,
-    card: <SalesCard />,
+    card: <SaleCard />,
   },
   {
     id: "agent",
-    label: "03 · Restock",
+    n: "03",
+    icon: "agent",
+    label: "Restock",
     title: "Let your agent buy the stock",
     body: "Your agent draws a small advance for stock inside the limits you set. Approve once with World. Nothing is drawn until you do.",
-    points: ["Why it drew this, every time", "Your agent, your limits", "Pause or revoke anytime"],
+    points: [
+      ["agent", "Why it drew this, every time"],
+      ["shield", "Your agent, your limits"],
+      ["pause", "Pause or revoke anytime"],
+    ],
     theme: "night",
     seed: 37,
     card: <AgentCard />,
@@ -169,36 +216,41 @@ export function Explore() {
         return (
           <article key={p.id} className="group grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             <div className={cn("flex flex-col justify-between gap-12 rounded-[20px] border border-hairline bg-surface p-7 md:p-10", flip && "md:order-2")}>
-              <div className="flex flex-col gap-4">
-                <span className="font-ledger text-tag font-medium text-hunter uppercase">{p.label}</span>
+              <div className="flex flex-col gap-5">
+                <span className="flex items-center gap-3">
+                  <IconTile name={p.icon} tone="lime" size={44} />
+                  <span className="font-ledger text-tag font-medium text-hunter uppercase">
+                    {p.n} · {p.label}
+                  </span>
+                </span>
                 <h3 className="m-0 max-w-[18ch] font-display text-[30px] leading-[1.08] font-bold tracking-[-0.03em] text-charcoal md:text-[36px]">{p.title}</h3>
                 <p className="m-0 max-w-[44ch] font-body text-read text-charcoal-soft">{p.body}</p>
               </div>
               <ul className="m-0 flex list-none flex-col gap-3 p-0">
-                {p.points.map((pt) => (
+                {p.points.map(([icon, pt]) => (
                   <li key={pt} className="flex items-center gap-3 font-body text-read text-charcoal">
-                    <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-[6px] border border-hairline bg-well text-hunter">
-                      <CheckIcon size={14} strokeWidth={3} />
-                    </span>
+                    <IconTile name={icon} size={32} />
                     {pt}
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div className={cn("relative min-h-[380px] overflow-hidden rounded-[20px] bg-deep md:min-h-[460px]", flip && "md:order-1")}>
-              <div aria-hidden className="absolute inset-0 opacity-45">
+            <div className={cn("relative min-h-125 overflow-hidden rounded-[20px] bg-deep md:min-h-150", flip && "md:order-1")}>
+              <div aria-hidden className="absolute inset-0">
                 <BlockWall cols={8} rows={8} fade="none" theme={p.theme} shapes={BLOCKY} seed={p.seed} density={0.6} grain />
               </div>
-              <span aria-hidden className="absolute top-5 left-5 grid size-11 place-items-center rounded-md bg-deep">
-                <JarMark size={24} on="dark" lit={(i + 2) as 2 | 3 | 4} />
+              {/* Dark overlay: the pattern stays as texture and the card reads first. */}
+              <div aria-hidden className="absolute inset-0 bg-deep/80" />
+              <span aria-hidden className="absolute top-5 left-5 z-10">
+                <IconTile name={p.icon} tone="dark" size={44} />
               </span>
               <div
                 className={cn(
-                  "absolute top-[18%] w-[min(440px,82%)] transition-transform duration-500 ease-snappy",
+                  "absolute top-[13%] z-10 mx-auto max-w-[580px] transition-transform duration-500 ease-snappy",
                   "[transform:perspective(1400px)_rotateX(22deg)_rotateZ(-9deg)] group-hover:[transform:perspective(1400px)_rotateX(8deg)_rotateZ(-3deg)_translateY(-6px)]",
                   "motion-reduce:transition-none",
-                  flip ? "left-[8%]" : "right-[-4%] md:right-[-2%]",
+                  flip ? "inset-x-[6%] md:right-[9%] md:left-[5%]" : "inset-x-[6%] md:right-[5%] md:left-[9%]",
                 )}
               >
                 {p.card}

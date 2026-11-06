@@ -204,7 +204,7 @@ export function DepositScreen({ side }: { side?: string }) {
 export function MintScreen() {
   return (
     <VaultAction
-      title="JAR-J"
+      title="DRIP-J"
       label="Junior"
       back={routes.junior}
       backLabel="Junior"
@@ -216,19 +216,19 @@ export function MintScreen() {
           label: "Mint",
           max: VAULT.walletUsdc,
           maxLabel: `Wallet: ${usdText(VAULT.walletUsdc)} USDC`,
-          quote: (n) => `${fmt(n / VAULT.juniorBook, 2)} JAR-J at book ${price(VAULT.juniorBook)}`,
+          quote: (n) => `${fmt(n / VAULT.juniorBook, 2)} DRIP-J at book ${price(VAULT.juniorBook)}`,
           steps: ["Approve USDC", "Mint"],
-          done: (n) => `Minted ${fmt(n / VAULT.juniorBook, 2)} JAR-J`,
+          done: (n) => `Minted ${fmt(n / VAULT.juniorBook, 2)} DRIP-J`,
           doneSub: "First loss: you take losses before senior, for 30% of every fee.",
         },
         {
           key: "redeem",
           label: "Redeem",
           max: VAULT.walletJarJ,
-          maxLabel: `You hold ${VAULT.walletJarJ} JAR-J`,
+          maxLabel: `You hold ${VAULT.walletJarJ} DRIP-J`,
           quote: (n) => `${usdText(n * VAULT.juniorBook, 2)} USDC at book`,
           steps: ["Redeem"],
-          done: (n) => `Redeemed ${fmt(n, 2)} JAR-J`,
+          done: (n) => `Redeemed ${fmt(n, 2)} DRIP-J`,
           doneSub: "USDC is back in your wallet.",
         },
       ]}
@@ -248,19 +248,19 @@ export function TradeScreen() {
 
   return (
     <LendShell note="The pool, its price and every swap are public.">
-      <PageHead back={routes.junior} backLabel="Junior" label="Uniswap v4 · JAR-J / USDC" title="Trade JAR-J" />
+      <PageHead back={routes.junior} backLabel="Junior" label="Uniswap v4 · DRIP-J / USDC" title="Trade DRIP-J" />
       <Columns ratio="3:2">
         <Stack gap="lg">
           <Pub>
             <Card>
               <div className="flex items-center justify-between gap-3">
-                <Label>JAR-J price, 12 weeks</Label>
+                <Label>DRIP-J price, 12 weeks</Label>
                 <Pill tone="slow">{discount}% under book</Pill>
               </div>
               <LineChart
                 points={juniorSeries}
                 height={180}
-                label="JAR-J price over 12 weeks, dipping at the write-off"
+                label="DRIP-J price over 12 weeks, dipping at the write-off"
                 markers={[{ index: JUNIOR_WRITE_OFF_INDEX, label: "The $100 write-off" }]}
                 xLabels={["12 weeks ago", "Now"]}
                 format={price}
@@ -286,8 +286,8 @@ export function TradeScreen() {
               setDone(null);
             }}
             options={[
-              { value: "buy", label: "Buy JAR-J" },
-              { value: "sell", label: "Sell JAR-J" },
+              { value: "buy", label: "Buy DRIP-J" },
+              { value: "sell", label: "Sell DRIP-J" },
             ]}
           />
           <div className="flex flex-col items-center gap-1 text-center">
@@ -295,7 +295,7 @@ export function TradeScreen() {
               {side === "buy" ? typedUsd(value) : `${value || "0"} J`}
             </span>
             <span className="font-ledger text-ledger text-charcoal-muted">
-              {n > 0 ? (side === "buy" ? `≈ ${fmt(out, 2)} JAR-J` : `≈ ${usdText(out, 2)} USDC`) : "Enter an amount"} · hook fee to reserve
+              {n > 0 ? (side === "buy" ? `≈ ${fmt(out, 2)} DRIP-J` : `≈ ${usdText(out, 2)} USDC`) : "Enter an amount"} · hook fee to reserve
             </span>
           </div>
           <Keypad
@@ -316,11 +316,11 @@ export function TradeScreen() {
             setBusy(true);
             window.setTimeout(() => {
               setBusy(false);
-              setDone(side === "buy" ? `Bought ${fmt(out, 2)} JAR-J (simulated).` : `Sold for ${usdText(out, 2)} (simulated).`);
+              setDone(side === "buy" ? `Bought ${fmt(out, 2)} DRIP-J (simulated).` : `Sold for ${usdText(out, 2)} (simulated).`);
             }, 1100);
           }}
         >
-          {side === "buy" ? "Buy JAR-J" : "Sell JAR-J"}
+          {side === "buy" ? "Buy DRIP-J" : "Sell DRIP-J"}
         </Button>
       </ActionBar>
     </LendShell>

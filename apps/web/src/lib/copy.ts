@@ -14,7 +14,7 @@ const en = {
   welcome: {
     eyebrow: "For shops in Buenos Aires",
     title: "Dollars for stock, today.",
-    body: "Every sale puts 10% in your dollar jar. Your jar and your record unlock stock on credit.",
+    body: "Every sale sends 10% toward your advance. That record unlocks stock on credit.",
     promise1: "We never ask for your name, phone or contacts.",
     promise2: "Your agent only draws inside limits you set.",
     promise3: "A slow week slows repayment. No extra fee.",

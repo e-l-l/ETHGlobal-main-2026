@@ -6,8 +6,8 @@ import { generateTiles, type GenerateOptions, type TileSpec } from "./generate";
 import { BlockGrid } from "./grid";
 
 /* Literal class maps so Tailwind can see every grid we build. */
-type Cols = 2 | 3 | 4 | 6 | 8 | 12;
-const COLS: Record<Cols, string> = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4", 6: "grid-cols-6", 8: "grid-cols-8", 12: "grid-cols-12" };
+type Cols = 2 | 3 | 4 | 6 | 8 | 12 | 16 | 24;
+const COLS: Record<Cols, string> = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4", 6: "grid-cols-6", 8: "grid-cols-8", 12: "grid-cols-12", 16: "grid-cols-16", 24: "grid-cols-24" };
 const MD_COLS: Record<Cols, string> = {
   2: "md:grid-cols-2",
   3: "md:grid-cols-3",
@@ -15,6 +15,8 @@ const MD_COLS: Record<Cols, string> = {
   6: "md:grid-cols-6",
   8: "md:grid-cols-8",
   12: "md:grid-cols-12",
+  16: "md:grid-cols-16",
+  24: "md:grid-cols-24",
 };
 
 type Shared = Omit<GenerateOptions, "cols"> & {
@@ -79,7 +81,7 @@ export function BlockFrame({ layout = "center", children, panelClassName, grain 
 export type BlockBandProps = Shared & {
   rows?: 1 | 2;
   /** Columns on desktop. Phones show the left half. */
-  cols?: 8 | 12;
+  cols?: 8 | 12 | 16 | 24;
 };
 
 /** A strip of tiles. Section dividers, card headers, the top of a footer. */

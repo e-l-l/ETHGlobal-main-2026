@@ -78,19 +78,19 @@ export const riskLog = [
     time: "Mon",
     title: "Hook fee added to the reserve",
     kind: "ok" as const,
-    reasons: ["The Uniswap v4 hook on JAR-J/USDC skimmed a small fee into the reserve."],
+    reasons: ["The Uniswap v4 hook on DRIP-J/USDC skimmed a small fee into the reserve."],
   },
   {
     time: "Sep 3",
     title: "Wrote off an advance",
     kind: "down" as const,
-    reasons: ["No sales for 30 days.", "The shop's jar and junior took the loss. Senior was not touched."],
+    reasons: ["No sales for 30 days.", "The shop's drip and junior took the loss. Senior was not touched."],
   },
 ];
 
 export type ExplorerKind = "Sale" | "Draw" | "Pass" | "Proof" | "Shop";
 export const explorerEvents: { kind: ExplorerKind; title: string; detail: string; hash: string; when: string }[] = [
-  { kind: "Sale", title: "$10.00 to shop_7f3a", detail: "$9.00 to the shop · $1.00 to its jar", hash: "0x3b91c2e07d4a55f8a1c0e922b7d4416f0ae3c9d2", when: "2m ago" },
+  { kind: "Sale", title: "$10.00 to shop_7f3a", detail: "$9.00 to the shop · $1.00 dripped back", hash: "0x3b91c2e07d4a55f8a1c0e922b7d4416f0ae3c9d2", when: "2m ago" },
   { kind: "Draw", title: "Vault → supplier, $100", detail: "For stock. Paid to the supplier, not to cash", hash: "0x91c27a3e0b5f4c88d21e7a9f30c64b1d2e8f7a3e", when: "1h ago" },
   { kind: "Pass", title: "Business Pass on shop_7f3a", detail: "Commitment only. No name, no sales figures", hash: "0x4c1e9a88b2d04f17c6aa0912e77b33d0a15f8c21", when: "Today" },
   { kind: "Proof", title: "Standing Pass used by shop_b19c", detail: "Nullifier spent. No onchain link to any earlier shop", hash: "0x11de90aa47c2b8193044ee12aa90817263bc4410", when: "Today" },

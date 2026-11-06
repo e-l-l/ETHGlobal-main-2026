@@ -11,3 +11,5 @@ export * from "./shell";
 export * from "./data";
 export * from "./interactive";
 export * from "./icons";
+export * from "./reveal";
+export * from "./layout";

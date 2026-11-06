@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { DripField } from "./drip-field";
 import { useLive } from "./use-live";
 
-/** The lenders' view of the jar: fees dripping into a dune of pooled dollars. */
+/** The lenders' view of the pool: fees dripping into a dune of pooled dollars. */
 export function LendDune({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const live = useLive(ref);

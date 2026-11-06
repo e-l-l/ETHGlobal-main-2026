@@ -126,7 +126,7 @@ export function Fog() {
   const p = PINS[pin]!;
 
   return (
-    <div className="relative overflow-hidden rounded-[20px] border border-hairline bg-canvas">
+    <div className="relative overflow-hidden rounded-[20px] border-2 border-hunter/25 bg-canvas shadow-lift">
       <PixelFog />
       <div className="relative grid min-h-[600px] grid-cols-1 gap-12 p-7 md:grid-cols-[1.3fr_1fr] md:p-14">
         <div className="flex flex-col justify-between gap-10">
@@ -161,7 +161,7 @@ export function Fog() {
                 aria-pressed={i === pin}
                 onClick={() => setPin(i)}
                 className={cn(
-                  "inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 font-ledger text-[12px] uppercase",
+                  "inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 font-ledger text-[14px] uppercase",
                   "transition-[background-color,border-color,color,transform] duration-200 ease-snappy hover:-translate-y-0.5 active:scale-[0.97]",
                   i === pin ? "border-charcoal bg-charcoal text-canvas" : "border-hairline bg-surface text-charcoal hover:border-hunter",
                 )}

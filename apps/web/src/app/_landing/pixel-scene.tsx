@@ -12,7 +12,7 @@ import { useLive } from "./use-live";
  *   1. a customer walks up to the counter
  *   2. they tap their phone: it lights lime and a ring pulses out      -> "Sale" chip
  *   3. a coin arcs onto the counter and the counter flashes
- *   4. 10% hops from the counter into the jar, the jar fills and sparks -> "Jar" chip
+ *   4. 10% hops from the counter into the pool, the pool fills and sparks -> "Drip" chip
  *   5. the customer turns and walks off
  *
  * Drawn at two canvas pixels per art unit (3px squares on desktop) and scaled up with
@@ -59,7 +59,7 @@ const SWATCH: Record<Tok, string> = {
   hairline: "text-hairline",
 };
 
-export type SceneEvent = { id: number; kind: "Sale" | "Jar" | "Agent"; text: string };
+export type SceneEvent = { id: number; kind: "Sale" | "Drip" | "Agent"; text: string; amount: string };
 
 const SALES = [
   ["Phone charger", 10],
@@ -96,6 +96,13 @@ const easeInOut = (t: number) => {
   const x = clamp01(t);
   return x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2;
 };
+
+type Palette = { shirt: Tok; hair: Tok };
+const SHOPPERS: Palette[] = [
+  { shirt: "leaf", hair: "charcoal" },
+  { shirt: "forest", hair: "deep" },
+];
+const PASSERBY: Palette = { shirt: "fern", hair: "charcoal" };
 
 type Layout = {
   cols: number;
@@ -140,7 +147,7 @@ function layout(w: number, h: number): Layout {
 
   const kw = phone ? 36 : 46;
   const kh = phone ? 28 : 32;
-  const kx = Math.round(phone ? cols / 2 - kw / 2 + 6 : Math.min(cols - kw - 10, cols * 0.66 - kw / 2));
+  const kx = Math.round(phone ? cols / 2 - kw / 2 - 4 : Math.min(cols - kw - 32, cols * 0.72 - kw / 2));
   const ky = gy + 5 - kh;
 
   return {
@@ -148,15 +155,16 @@ function layout(w: number, h: number): Layout {
     rows,
     cell,
     gy,
-    kerb: gy + Math.round((rows - gy) * 0.58),
+    /* The kiosk's base is at gy + 13; the pavement ends a little in front of it, then the road. */
+    kerb: gy + 17,
     sun: { x: Math.round(cols * (phone ? 0.84 : 0.5)), y: phone ? gy - 34 : Math.round(gy * 0.5), r: Math.round(Math.min(phone ? 8 : 15, rows * 0.13)) },
     buildings,
     obelisk: { x: Math.round(cols * (phone ? 0.16 : 0.37)), h: Math.round(gy * 0.5) },
     trees: phone ? [{ x: 3, r: 7 }] : [{ x: Math.round(cols * 0.05), r: 10 }, { x: Math.round(cols * 0.14), r: 8 }, { x: Math.round(cols * 0.93), r: 11 }],
-    clouds: [0.08, 0.3, 0.55, 0.8].map((f, i) => ({ x: cols * f, y: Math.round(gy * (0.12 + 0.1 * (i % 3))), w: 10 + ((i * 7) % 9), v: 0.6 + (i % 2) * 0.5 })),
+    clouds: [0.62, 0.74, 0.86, 0.97].map((f, i) => ({ x: cols * f, y: Math.round(gy * (0.1 + 0.11 * (i % 3))), w: 16 + ((i * 7) % 9), v: 0.5 + (i % 2) * 0.4 })),
     kiosk: { x: kx, y: ky, w: kw, h: kh },
-    lamp: Math.round(phone ? kx + kw + 4 : cols * 0.86),
-    customer: { x: kx - 8, y: gy + 5 },
+    lamp: Math.min(cols - 3, Math.round(Math.max(phone ? 0 : cols * 0.86, kx + kw + 24))),
+    customer: { x: kx - 9, y: gy + 13 },
   };
 }
 
@@ -186,13 +194,14 @@ export function PixelScene() {
     let jar = 3;
     let jarV = 3;
     let saleN = 0;
-    let evId = 100;
     let ct = live.running ? 0 : T.land + 0.2; // seconds into the current sale; a still frame when motion is off
     let clock = 0;
     let amt = 0;
     const done = { tap: false, land: false, drip: false };
     let counterFlash = 0;
     let jarGlow = 0;
+    let agentT = 99; // seconds since the agent last sent stock; 99 = idle
+    let passX = 40;
 
     const q = (v: number) => Math.round(v * S) / S;
     /** One fine pixel, in fine-pixel indices. */
@@ -244,7 +253,7 @@ export function PixelScene() {
         from = to;
       });
       const { x, y, r } = L.sun;
-      /* Retro striped sun: gaps widen toward the horizon, echoing the jar bands. */
+      /* Retro striped sun: gaps widen toward the horizon, echoing the drip bands. */
       disc(x, y, r, C.leaf, (_, py) => {
         const d = Math.floor(py - (y - r * 0.15));
         if (d <= 0) return true;
@@ -274,16 +283,16 @@ export function PixelScene() {
         for (let i = 0; i < 8; i++) rect(t.x - t.r + ((i * 5) % (t.r * 2)), base - t.r * 2 - 4 + ((i * 3) % t.r), 1, 1, C.lime);
       }
 
-      /* Pavement with staggered joints, a kerb, then a quiet road. No planting, nothing busy. */
+      /* Ground, read as a floor: a shallow pavement of flat slabs (no brick stagger, which reads as a wall),
+         a kerb just in front of the kiosk, then the road with lane dashes. */
       rect(0, gy, cols, kerb - gy, C.well);
       rect(0, gy, cols, 1, C.track);
-      for (let y = gy + 4, k = 0; y < kerb - 1; y += 4, k++) {
-        rect(0, y, cols, 0.5, C.hairline);
-        for (let x = (k % 2) * 5; x < cols; x += 10) rect(x, y, 0.5, 4, C.hairline);
-      }
-      rect(0, kerb, cols, 1.5, C.track);
-      rect(0, kerb + 1.5, cols, rows - kerb, C.unlit);
-      const roadMid = kerb + 1.5 + (rows - kerb - 1.5) / 2;
+      rect(0, gy + 8.5, cols, 0.5, C.hairline);
+      for (let x = 6; x < cols; x += 14) rect(x, gy + 1, 0.5, kerb - gy - 1, C.hairline);
+      rect(0, kerb, cols, 1, C.surface);
+      rect(0, kerb + 1, cols, 1.5, C.track);
+      rect(0, kerb + 2.5, cols, rows - kerb, C.unlit);
+      const roadMid = kerb + 2.5 + Math.min(10, (rows - kerb - 2.5) / 2);
       for (let x = 4; x < cols; x += 18) rect(x, roadMid, 9, 1, C.surface);
 
       /* Lamp post. */
@@ -317,7 +326,13 @@ export function PixelScene() {
         rect(x + i, y + 6, 1, 4, c);
         if ((i + 3) % 3 === 1) rect(x + i, y + 10, 1, 1, c);
       }
+      /* Awning shadow and a string of bulbs (the bulbs twinkle in the dynamic pass). */
+      g.save();
+      g.globalAlpha = 0.28;
+      rect(x, y + 10.5, w, 1, C.deep);
+      g.restore();
       rect(x, body + 1, w, h - 10, C.forest);
+      rect(x + 1, y + 10.5, w - 2, 0.5, C.forest);
       /* Window with shelves of goods. */
       rect(x + 3, body + 2, w - 6, 9, C.deep);
       const goods: Tok[] = ["lime", "honeydew", "leaf", "honeydew-line", "fern"];
@@ -325,6 +340,14 @@ export function PixelScene() {
         rect(x + 3, body + 6 + s * 4, w - 6, 1, C.sage);
         for (let gx = x + 4; gx < x + w - 4; gx += 3) rect(gx, body + 4 + s * 4, 2, 2, C[goods[(gx + s) % goods.length]!]);
       }
+      /* Glass glare. */
+      g.save();
+      g.globalAlpha = 0.16;
+      for (let r = 0; r < 8; r++) {
+        rect(x + w - 16 - r * 0.5, body + 2.5 + r, 1.5, 1, C.surface);
+        rect(x + w - 12 - r * 0.5, body + 2.5 + r, 0.5, 1, C.surface);
+      }
+      g.restore();
       /* Counter and QR stand. */
       rect(x - 2, body + 11, w + 4, 2, C.honeydew);
       rect(x, body + 13, w, h - 14, C.hunter);
@@ -332,46 +355,170 @@ export function PixelScene() {
       const qx = x + 4;
       rect(qx, body + 5, 6, 6, C.honeydew);
       for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) if (hash(i, j + 3) > 0.45) rect(qx + 0.5 + i * 0.5, body + 5.5 + j * 0.5, 0.5, 0.5, C.deep);
+      rect(x, body + 13, w, 0.5, C.deep);
+      /* Ground shadow and a stack of produce crates beside the kiosk. */
+      g.save();
+      g.globalAlpha = 0.14;
+      rect(x - 2, y + h, w + 24, 1.5, C.deep);
+      g.restore();
+      const cx = x + w + 1;
+      const base = y + h;
+      rect(cx, base - 4, 6, 4, C.hunter);
+      rect(cx, base - 4, 6, 0.5, C.forest);
+      rect(cx + 7, base - 3, 5, 3, C.hunter);
+      rect(cx + 7, base - 3, 5, 0.5, C.forest);
+      const fruit: Tok[] = ["lime", "leaf", "honeydew", "lime"];
+      for (let i = 0; i < 3; i++) rect(cx + 0.5 + i * 1.8, base - 5.5, 1.5, 1.5, C[fruit[i]!]);
+      for (let i = 0; i < 2; i++) rect(cx + 7.5 + i * 2, base - 4.5, 1.5, 1.5, C[fruit[i + 1]!]);
+      rect(cx + 1, base - 9, 4, 3.5, C.hunter);
+      rect(cx + 1, base - 9, 4, 0.5, C.forest);
+      for (let i = 0; i < 2; i++) rect(cx + 1.5 + i * 1.8, base - 10.5, 1.5, 1.5, C[fruit[i + 2]!]);
+      /* Shadow where the kiosk meets the pavement. */
+      rect(x - 2, y + h + 8, w + 4, 1, C.track);
     }
 
     /* ---- dynamic drawing ---- */
+
+    function bulbs() {
+      const { x, y, w } = geom();
+      for (let i = 2, n = 0; i < w - 1; i += 3, n++) {
+        const lit = (Math.floor(clock * 2) + n) % 2 === 0;
+        rect(x + i, y + 11, 1, 1, lit ? C.lime : C.honeydew);
+      }
+    }
+
+    /** The shopkeeper behind the counter: nods at the tap, holds out a hand for the coin. */
+    function keeper() {
+      const k = geom();
+      const sx = k.x + Math.floor(k.w / 2) - 2;
+      const nod = ct >= T.land && ct < T.land + 0.35 ? 0.5 : 0;
+      const hand = ct >= T.tap && ct < T.land;
+      const by = k.body + nod;
+      rect(sx - 1, by + 6.5, 6, 4.5 - nod, C.hunter);
+      rect(sx + 0.5, by + 7, 3, 4 - nod, C.lime);
+      rect(sx, by + 2.5, 4, 4, C["honeydew-line"]);
+      rect(sx - 0.5, by + 2, 5, 1.5, C.charcoal);
+      rect(sx + 0.5, by + 4, 0.5, 1, C.charcoal);
+      rect(sx + 2.5, by + 4, 0.5, 1, C.charcoal);
+      rect(sx + 1, by + 5.5, 2, 0.5, C.forest);
+      if (hand) {
+        rect(sx - 2.5, by + 6.5, 1.5, 3, C["honeydew-line"]);
+        rect(sx + 5, by + 6.5, 1.5, 3, C["honeydew-line"]);
+      }
+    }
+
+    /** A passer-by with a shopping bag, crossing the pavement in front of the kiosk. */
+    function passerby() {
+      person(passX, L.kerb - 2, 1, live.running, false, 1, PASSERBY, true);
+    }
+
+    /** The cash-flow agent. It watches every sale; when it draws an advance it throws a crate of stock to the counter. */
+    function agent() {
+      const k = geom();
+      const ax = k.x + k.w + 15;
+      const y = L.gy + 5;
+      const working = agentT < 1.6;
+      const b = live.running ? Math.sin(clock * 3) * 0.25 : 0;
+      const blink = Math.floor(clock * 4) % 14 === 0;
+      rect(ax - 0.5, y - 2, 9, 2, C.charcoal);
+      rect(ax + 0.5, y - 1.5, 1.5, 1.5, C["honeydew-line"]);
+      rect(ax + 5.5, y - 1.5, 1.5, 1.5, C["honeydew-line"]);
+      rect(ax, y - 9 + b, 8, 7, C.hunter);
+      rect(ax, y - 9 + b, 8, 0.5, C.fern);
+      rect(ax + 1.5, y - 8.5 + b, 5, 3.5, C.deep);
+      const A = ["010", "101", "111", "101", "101"];
+      const I = ["111", "010", "010", "010", "111"];
+      [A, I].forEach((gl, gi) =>
+        gl.forEach((row, r) => [...row].forEach((ch, c) => ch === "1" && rect(ax + 2.25 + gi * 2 + c * 0.5, y - 8 + b + r * 0.5, 0.5, 0.5, working ? C.lime : C.honeydew))),
+      );
+      rect(ax - 1.5, y - 8.5 + b, 1.5, 4, C.forest);
+      rect(ax + 8, y - 8.5 + b - (working ? 2 : 0), 1.5, 4, C.forest);
+      rect(ax + 0.5, y - 15 + b, 7, 6, C.forest);
+      rect(ax + 1.5, y - 14 + b, 5, 3.5, C.deep);
+      rect(ax + 2.5, y - 13 + b, 1, blink ? 0.5 : 1.5, C.lime);
+      rect(ax + 4.5, y - 13 + b, 1, blink ? 0.5 : 1.5, C.lime);
+      rect(ax + 3.75, y - 17.5 + b, 0.5, 2.5, C.forest);
+      rect(ax + 3.25, y - 18.5 + b, 1.5, 1.5, working && Math.floor(clock * 6) % 2 === 0 ? C.lime : C.honeydew);
+
+      if (agentT < 1.4) {
+        const p = easeInOut(agentT / 1.4);
+        const sx = ax + 4;
+        const sy = y - 12;
+        const ex = k.x + k.w - 3;
+        const ey = k.body + 9;
+        const cxp = sx + (ex - sx) * p;
+        const cyp = sy + (ey - sy) * p - Math.sin(Math.PI * p) * 12;
+        rect(cxp - 2, cyp - 2, 4, 4, C.forest);
+        rect(cxp - 1.5, cyp - 1.5, 3, 3, C.sage);
+        rect(cxp - 1.5, cyp - 0.5, 3, 1, C.lime);
+      }
+    }
 
     function windows() {
       for (const b of L.buildings) for (const [wx, wy, on] of b.windows) if (on) rect(wx, wy, 1, 1, b.tone === "track" ? C.well : C.honeydew);
     }
 
+    /**
+     * Light-green clouds drifting through the right-hand sky, clear of the sun, looping inside their own lane.
+     * One colour, no shading. Every 9 seconds or so each cloud (staggered) lets a few lime drops fall, then goes quiet.
+     */
     function clouds() {
-      for (const c of L.clouds) {
-        const x = (((c.x % (L.cols + 30)) + L.cols + 30) % (L.cols + 30)) - 20;
-        rect(x, c.y, c.w, 3, C.surface);
-        rect(x + 3, c.y - 2, c.w * 0.5, 2, C.surface);
-        rect(x + c.w * 0.45, c.y - 3, c.w * 0.35, 3, C.surface);
-        for (let i = 0; i < c.w; i += 2) rect(x + i, c.y + 3, 1, 0.5, C.track);
-      }
+      const phone = L.cols < 110;
+      const lo = phone ? -24 : L.cols * 0.62;
+      const span = phone ? L.cols * 0.7 + 24 : L.cols * 0.38 + 28;
+      L.clouds.forEach((c, i) => {
+        const x = lo + ((((c.x - lo) % span) + span) % span) - 12;
+        const w = c.w;
+        rect(x, c.y, w, 3.5, C["honeydew-line"]);
+        rect(x + 3, c.y - 2, w * 0.5, 2.5, C["honeydew-line"]);
+        rect(x + w * 0.45, c.y - 3.5, w * 0.35, 3.5, C["honeydew-line"]);
+
+        if (!live.running) return;
+        const phase = (clock + i * 2.7) % 9;
+        if (phase > 1.8) return;
+        const t = phase / 1.8;
+        for (let d = 0; d < 4; d++) {
+          const u = clamp01((t - d * 0.12) / 0.55);
+          if (u <= 0 || u >= 1) continue;
+          g.save();
+          g.globalAlpha = 1 - u * 0.85;
+          rect(x + 2 + ((d * 5 + i * 3) % Math.max(4, w - 4)), c.y + 4 + u * 13, 0.5, 1.5, C.lime);
+          g.restore();
+        }
+      });
     }
 
-    /** The shopper, drawn facing right at local x = 0; `f` flips them to face left when they leave. */
-    function person(x: number, y: number, f: 1 | -1, walking: boolean, phoneUp: boolean, alpha: number) {
+    /** A person, drawn facing right at local x = 0; `f` flips them to face left. */
+    function person(x: number, y: number, f: 1 | -1, walking: boolean, phoneUp: boolean, alpha: number, pal: Palette, bag = false) {
       const stepB = walking ? Math.floor(clock * 7) % 2 : 0;
       const yb = y - (walking && stepB ? 0.5 : 0);
       g.save();
       g.globalAlpha = alpha;
-      g.translate(x, 0);
-      g.scale(f, 1);
+      /* Scaled up around the feet so the shopper reads at counter height. */
+      g.translate(x, y);
+      g.scale(f * 1.25, 1.25);
+      g.translate(0, -y);
+      rect(-1.5, y, 9, 0.5, C.track);
       rect(0, y - 4, 2, 4 - (stepB ? 0.5 : 0), C.charcoal);
       rect(3, y - 4, 2, 4 - (stepB ? 0 : 0.5), C.charcoal);
-      rect(-1, yb - 11, 7, 7, C.leaf);
-      rect(-1, yb - 11, 7, 1, C.fern);
+      rect(-1, yb - 11, 7, 7, C[pal.shirt]);
+      rect(-1, yb - 11, 7, 1, C.deep);
       rect(5, yb - 10, 1, 6, C.hunter);
       rect(1, yb - 15, 4, 4, C["honeydew-line"]);
-      rect(0.5, yb - 16.5, 5, 2, C.charcoal);
+      rect(0.5, yb - 16.5, 5, 2, C[pal.hair]);
       rect(4, yb - 13.5, 0.5, 1, C.charcoal);
       if (phoneUp) {
         rect(5, yb - 9, 3, 1.5, C.leaf);
         rect(7.5, yb - 11, 2, 3.5, C.lime);
         rect(7.5, yb - 11, 2, 0.5, C.honeydew);
+      } else if (bag) {
+        rect(5, yb - 9.5, 1.5, 4, C[pal.shirt]);
+        rect(5, yb - 6, 3.5, 3.5, C.honeydew);
+        rect(5, yb - 6, 3.5, 0.5, C.hunter);
+        rect(5.5, yb - 7, 0.5, 1, C.hunter);
+        rect(7.5, yb - 7, 0.5, 1, C.hunter);
       } else {
-        rect(5, yb - 9.5, 1.5, 4, C.leaf);
+        rect(5, yb - 9.5, 1.5, 4, C[pal.shirt]);
         rect(5.5, yb - 6, 2, 3, C.charcoal);
       }
       g.restore();
@@ -396,9 +543,9 @@ export function PixelScene() {
       else if (leaving) cx = home - reach * easeInOut((ct - T.leave) / (T.gone - T.leave));
       const alpha = Math.min(clamp01(ct / 0.5), 1 - clamp01((ct - (T.gone - 0.7)) / 0.7));
       const paying = ct >= T.tap && ct < T.land + 0.2;
-      if (alpha > 0.01 && ct < T.gone) person(cx, L.customer.y, leaving ? -1 : 1, arriving || leaving, paying, alpha);
+      if (alpha > 0.01 && ct < T.gone) person(cx, L.customer.y, leaving ? -1 : 1, arriving || leaving, paying, alpha, SHOPPERS[saleN % SHOPPERS.length]!);
 
-      const phone = { x: home + 8.5, y: L.customer.y - 9.5 };
+      const phone = { x: home + 8.5 * 1.25, y: L.customer.y - 9.5 * 1.25 };
 
       /* 2. The tap: rings spread from the phone. */
       if (ct >= T.tap && ct < T.tap + 0.8) {
@@ -420,7 +567,7 @@ export function PixelScene() {
         coin(phone.x + (k.counter.x - phone.x) * p, phone.y + (k.counter.y - phone.y) * p - Math.sin(Math.PI * p) * 11, 3);
       }
 
-      /* 4. Ten percent hops from the counter into the jar. */
+      /* 4. Ten percent hops from the counter into the pool. */
       if (ct >= T.land && ct < T.drip) {
         const p = easeInOut((ct - T.land) / (T.drip - T.land));
         const tx = k.jx + 3;
@@ -467,7 +614,11 @@ export function PixelScene() {
       main!.setTransform(1, 0, 0, 1, 0, 0);
       main!.drawImage(front, 0, 0);
       main!.setTransform(S, 0, 0, S, 0, 0);
+      bulbs();
+      keeper();
       jarDraw();
+      agent();
+      passerby();
       sale();
     }
 
@@ -490,12 +641,15 @@ export function PixelScene() {
       setChipAt({ left: (L.kiosk.x + L.kiosk.w / 2) * L.cell, top: (L.kiosk.y - 3) * L.cell });
     }
 
-    function emit(kind: SceneEvent["kind"], text: string) {
-      postSceneEvent({ id: evId++, kind, text });
+    function emit(kind: SceneEvent["kind"], text: string, amount: string) {
+      postSceneEvent({ id: nextEventId++, kind, text, amount });
     }
 
     function step(dt: number) {
       clock += dt;
+      agentT += dt;
+      passX += dt * 8;
+      if (passX > L.cols + 14) passX = -14;
       for (const c of L.clouds) c.x += c.v * dt;
       /* Windows twinkle: a few flip each second. */
       if (Math.random() < dt * 4) {
@@ -516,7 +670,7 @@ export function PixelScene() {
         done.tap = true;
         const [item, a] = SALES[saleN % SALES.length]!;
         amt = a;
-        emit("Sale", `${item} · $${a.toFixed(2)}`);
+        emit("Sale", item, `$${a.toFixed(2)}`);
       }
       if (!done.land && ct >= T.land) {
         done.land = true;
@@ -526,9 +680,12 @@ export function PixelScene() {
         done.drip = true;
         jar = jar >= 6 ? 2 : jar + 1;
         jarGlow = 0.7;
-        emit("Jar", `$${(amt / 10).toFixed(2)} drips back`);
+        emit("Drip", "10% repays your advance", `+$${(amt / 10).toFixed(2)}`);
         saleN++;
-        if (saleN % 4 === 0) emit("Agent", "Drew $100 for stock");
+        if (saleN % 4 === 0) {
+          agentT = 0;
+          emit("Agent", "Agent drew for stock", "$100");
+        }
       }
     }
 
@@ -579,53 +736,80 @@ export function PixelScene() {
   );
 }
 
-/* ------------------------------------------------------------- Chip stack */
+/* ------------------------------------------------------------- Chip feed */
 
-const INITIAL: SceneEvent[] = [
-  { id: 3, kind: "Agent", text: "Drew $100 for stock" },
-  { id: 2, kind: "Jar", text: "$0.48 drips back" },
-  { id: 1, kind: "Sale", text: "Batteries, 4-pack · $4.80" },
-];
+type Chip = SceneEvent & { side: "left" | "right" };
 
+const CHIP_LIFE_MS = 4300;
 const chipBus = new EventTarget();
+/** Module-level so ids stay unique when the scene effect restarts (scroll away and back, strict mode). */
+let nextEventId = 100;
 
-/** The scene posts events here; the chip stack listens. Keeps the canvas loop free of React state. */
+/** The scene posts events here; the chip feed listens. Keeps the canvas loop free of React state. */
 export function postSceneEvent(e: SceneEvent) {
   chipBus.dispatchEvent(new CustomEvent("e", { detail: e }));
 }
 
-const DOT: Record<SceneEvent["kind"], string> = { Sale: "bg-hunter", Jar: "bg-lime ring-1 ring-hunter/40", Agent: "bg-leaf" };
+const TILE: Record<SceneEvent["kind"], { glyph: string; cls: string }> = {
+  Sale: { glyph: "$", cls: "bg-hunter text-canvas" },
+  Drip: { glyph: "%", cls: "bg-lime text-deep" },
+  Agent: { glyph: "AI", cls: "bg-deep text-lime" },
+};
 
-/** Newest chip sits at the bottom, nearest the kiosk where it happened; older ones lift away and fade. */
+/**
+ * Each event slides out of the kiosk sideways, alternating left and right, holds long enough to read,
+ * then drifts up and fades. Nothing stacks, so nothing shifts under the reader.
+ */
 function ChipStack({ anchor }: { anchor: { left: number; top: number } }) {
-  const [items, setItems] = useState(INITIAL);
+  const [chips, setChips] = useState<Chip[]>([]);
+  const side = useRef<Chip["side"]>("left");
   useEffect(() => {
-    const on = (ev: Event) => setItems((s) => [(ev as CustomEvent<SceneEvent>).detail, ...s].slice(0, 3));
+    const timers = new Set<number>();
+    const on = (ev: Event) => {
+      const e = (ev as CustomEvent<SceneEvent>).detail;
+      side.current = side.current === "left" ? "right" : "left";
+      const chip: Chip = { ...e, side: side.current };
+      setChips((s) => [...s, chip]);
+      const t = window.setTimeout(() => {
+        timers.delete(t);
+        setChips((s) => s.filter((c) => c.id !== chip.id));
+      }, CHIP_LIFE_MS);
+      timers.add(t);
+    };
     chipBus.addEventListener("e", on);
-    return () => chipBus.removeEventListener("e", on);
+    return () => {
+      chipBus.removeEventListener("e", on);
+      timers.forEach((t) => window.clearTimeout(t));
+    };
   }, []);
   return (
-    <ol
-      aria-label="What just happened at the kiosk"
-      className="absolute m-0 hidden w-64 -translate-x-1/2 sm:flex -translate-y-full list-none flex-col-reverse gap-1.5 p-0"
-      style={{ left: anchor.left, top: anchor.top }}
-    >
-      {items.map((e, i) => (
-        <li
-          key={e.id}
-          className={cn(
-            "flex items-center gap-2 rounded-md border bg-surface/90 px-2.5 py-1.5 font-ledger text-[12px] text-charcoal backdrop-blur-md",
-            "transition-[opacity,transform,filter] duration-300 ease-snappy starting:translate-y-1.5 starting:opacity-0 starting:blur-[2px]",
-            i === 0 ? "border-hunter/40 shadow-lift" : "border-hairline",
-            i === 1 && "opacity-75",
-            i === 2 && "opacity-45",
-          )}
-        >
-          <span aria-hidden className={cn("size-1.5 shrink-0 rounded-[1px]", DOT[e.kind])} />
-          <span className="text-charcoal-muted">{e.kind}</span>
-          <span className="truncate">{e.text}</span>
-        </li>
-      ))}
+    <ol aria-label="What just happened at the kiosk" aria-live="off" className="absolute m-0 hidden size-0 list-none p-0 2xl:block" style={{ left: anchor.left, top: anchor.top }}>
+      {chips.map((c) => {
+        const tile = TILE[c.kind];
+        return (
+          <li
+            key={c.id}
+            style={{ bottom: c.kind === "Agent" ? 62 : 0 }}
+            className={cn(
+              "absolute flex w-60 items-center gap-3 rounded-lg border bg-surface py-2 pr-3.5 pl-2 shadow-lift",
+              "after:absolute after:top-1/2 after:h-0.5 after:w-4 after:bg-hunter/50",
+              c.side === "left"
+                ? "right-4 after:-right-4 motion-safe:animate-[chip-left_4300ms_var(--ease-snappy)_both]"
+                : "left-4 after:-left-4 motion-safe:animate-[chip-right_4300ms_var(--ease-snappy)_both]",
+              c.kind === "Drip" ? "border-hunter/50" : "border-hairline",
+            )}
+          >
+            <span aria-hidden className={cn("grid size-9 shrink-0 place-items-center rounded-[6px] font-ledger text-[14px] font-bold", tile.cls)}>
+              {tile.glyph}
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="font-ledger text-[11px] leading-none text-charcoal-muted uppercase">{c.kind}</span>
+              <span className="truncate font-body text-[13px] font-semibold text-charcoal">{c.text}</span>
+            </span>
+            <span className="font-display text-[16px] leading-none font-bold text-hunter tabular-nums">{c.amount}</span>
+          </li>
+        );
+      })}
     </ol>
   );
 }
