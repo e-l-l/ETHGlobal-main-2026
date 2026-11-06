@@ -480,7 +480,10 @@ export function ProofScreen({ initial }: { initial: ProofCenterView | null }) {
   if (!data) {
     return (
       <LendShell>
-        <PageHead label="Proof center" title="Verify it yourself" />
+        <PageHead label="Proof center" title="Verify it yourself">
+          Every check on this page is read live from the contracts: the checks, contract addresses, ZK proofs, transactions,
+          AI decisions and privacy settings, each with a link you can open yourself.
+        </PageHead>
         <MRAState error={error} />
       </LendShell>
     );

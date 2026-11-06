@@ -37,6 +37,26 @@ import { litTiles } from "./lit-tiles";
 /** Checkout pays in USDC only; no token swap exists. */
 const TOKEN = "USDC";
 
+/**
+ * The seeded Sepolia demo shop: `keccak256(toBytes("chai-stall"))`, the id `agents/scripts/seed_sepolia.py` registers
+ * (`registerShop(keccak(label), payout)`). Checked with `cast keccak "chai-stall"`.
+ */
+const DEMO_SHOP_ID = "0xd2ad3e1920c292f23975ba7355ac9c6e2cfa409b3e12ff1537d187e9fd77ffa4";
+const DEMO_SHOP_HREF = `${routes.pay}?shop=${DEMO_SHOP_ID}&name=Chai+Stall`;
+
+/** Live mode, opened without a QR: no shop id to pay. Point at the demo shop instead of an error. */
+function ScanToPay() {
+  return (
+    <div role="alert" className="flex max-w-xl flex-col gap-3 p-6">
+      <h1 className="m-0 font-display text-h2 font-bold text-charcoal">Scan a shop&apos;s QR code to pay</h1>
+      <p className="m-0 font-body text-read text-charcoal-muted">
+        This page opens from the QR code at the counter, which tells it which shop you are paying.
+      </p>
+      <Button href={DEMO_SHOP_HREF}>Try the demo shop</Button>
+    </div>
+  );
+}
+
 /** Which shop the QR points at. Live modes need the bytes32 shop id (`?shop=0x…&name=…`); mock uses the demo shop. */
 export type PayTarget = { shopId?: string; name?: string };
 
@@ -96,6 +116,7 @@ export function PayScreen({ initial, target }: { initial: PayShopView | null; ta
     router.prefetch(routes.paid);
   }, [router]);
 
+  if (!isMock && !target.shopId) return <ScanToPay />;
   if (!shop) return <MRAState error={error} />;
 
   const pay = async () => {
