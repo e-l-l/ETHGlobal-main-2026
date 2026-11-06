@@ -5,7 +5,8 @@ import { JuniorScreen } from "@/screens/lend/screens";
 
 export const metadata: Metadata = { title: "Junior" };
 
-/** J01 Junior: `lender.junior.overview()`. */
+/** J01 Junior: `lender.junior.overview()` + the market's view from `lender.riskPanel()`. */
 export default async function Page() {
-  return <JuniorScreen initial={await serverView(q.junior)} />;
+  const [initial, initialPanel] = await Promise.all([serverView(q.junior), serverView(q.riskPanel)]);
+  return <JuniorScreen initial={initial} initialPanel={initialPanel} />;
 }

@@ -5,7 +5,8 @@ import { EarnScreen } from "@/screens/lend/screens";
 
 export const metadata: Metadata = { title: "Earn" };
 
-/** L01 Earn: `lender.overview()`. */
+/** L01 Earn: `lender.overview()` + `lender.riskPanel()` + `lender.waterfall()`. */
 export default async function Page() {
-  return <EarnScreen initial={await serverView(q.earn)} />;
+  const [initial, initialRisk] = await Promise.all([serverView(q.earn), serverView(q.earnRisk)]);
+  return <EarnScreen initial={initial} initialRisk={initialRisk} />;
 }
