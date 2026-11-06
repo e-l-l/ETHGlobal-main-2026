@@ -76,6 +76,8 @@ export const routes = {
   simulator: "/simulator",
   /** Verify it yourself: proofs, txs and AI decisions with a link for each. */
   proof: "/proof",
+  /** Testnet faucet: gas + test USDC + DRIP to any address, and "Add to MetaMask". */
+  faucet: "/faucet",
 
   /* Dev */
   screens: "/screens",
