@@ -16,6 +16,22 @@
       "types": "./dist/mock/index.d.ts",
       "default": "./dist/mock/index.js"
     },
+    "./browser/anon": {
+      "types": "./dist/browser/anon.d.ts",
+      "default": "./dist/browser/anon.js"
+    },
+    "./browser/prover": {
+      "types": "./dist/browser/prover.d.ts",
+      "default": "./dist/browser/prover.js"
+    },
+    "./browser/prover-core": {
+      "types": "./dist/browser/prover-core.d.ts",
+      "default": "./dist/browser/prover-core.js"
+    },
+    "./browser/prover.worker": {
+      "types": "./dist/browser/prover.worker.d.ts",
+      "default": "./dist/browser/prover.worker.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -28,9 +44,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "openapi": "node scripts/openapi.mjs",
-    "sync-backend": "node scripts/sync-backend.mjs"
+    "sync-backend": "node scripts/sync-backend.mjs",
+    "test:prover": "MRA_PROVER_E2E=1 vitest run test/browser-prover.test.ts",
+    "sync-circuits": "node scripts/sync-circuits.mjs"
   },
   "dependencies": {
+    "@anon-rpc/browser-harness": "0.4.0",
+    "@aztec-foundation/bb.js": "6.0.0",
+    "@noir-lang/noir_js": "1.0.0-rc.3",
     "viem": "^2.57.16"
   },
   "devDependencies": {

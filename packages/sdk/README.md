@@ -141,35 +141,63 @@ Notes:
 
 | Adapter | Mock (default) | Real | Needs |
 |---|---|---|---|
-| `Prover` | `mockProver()`: keccak stand-in, zero proofs (mock mode only) | `workerProver(new Worker(...))` | A Web Worker running `@noir-lang/noir_js` + `@aztec-foundation/bb.js@6.0.0` (`UltraHonkBackend`, `{ verifierTarget: "evm" }`) with the compiled `business_pass` / `standing_pass` circuits (nargo 1.0.0-rc.3). Protocol: `ProverRequest` / `ProverResponse` in `src/adapters/prover.ts`. It must also answer `poseidon2` (bb.js Poseidon2, BN254). |
+| `Prover` | `mockProver()`: keccak stand-in, zero proofs (mock mode only) | `createWorkerProver()` from `@repo/sdk/browser/prover` | Nothing else: noir_js 1.0.0-rc.3 + bb.js 6.0.0 (`UltraHonkBackend`, `{ verifierTarget: "evm" }`) + both compiled circuits ship in the subpath. See "Browser prover" below. (`workerProver(worker)` still works for a hand-rolled worker.) |
 | `CredentialVault` | `MemoryVault` (mock / SSR / tests) | `IndexedDbVault` (browser default) | Nothing. Stores the Business Pass, Standing Pass and session (shop id, agent `manage_token`) on the device only. `export(passphrase)` / `import()` use PBKDF2 + AES-GCM. |
 | `ReclaimAdapter` | `mockReclaim()` offline; `issuerMockReclaim` in local / sepolia | `reclaimJsSdk({ createRequest })` | `@reclaimprotocol/js-sdk` in the app. Also a small server route that runs `ReclaimProofRequest.init(RECLAIM_APP_ID, RECLAIM_APP_SECRET, RECLAIM_PROVIDER_ID_BAND{n})` and returns `toJsonString()`; the client rebuilds it with `fromJsonString`. Keep the secret off the client. The SDK calls `setContext(addr, commitmentHex)`. The issuer needs `ISSUER_MOCK=0` and the `RECLAIM_*` env (issuer/README.md). |
 | `AgentPassAdapter` | `mockAgentPass("approve" \| "deny" \| "expire")` (works with the backend's `WORLD_MOCK=1`) | `worldOidcAgentPass({ authorize: (nonce) => ... })` | A World sign-in that sends **`agent_pass_nonce` as the OIDC nonce** and returns `{ code, code_verifier, redirect_uri }` or `{ id_token }`. The backend needs `WORLD_MOCK=0`, its World app config, and `ATTESTER_PRIVATE_KEY`. |
 | `IdkitAdapter` | `mockIdkit({ human })` (same label = same human) | `idkit({ request })` | `@worldcoin/idkit` with action = the backend's `WORLD_RECOVERY_ACTION` (Proof of Human). Resolve with the widget's success result; the backend forwards it to World unchanged. |
-| Anon-RPC | Direct RPC | `rpc: { anonRpc: true, anonWorker }` | Below. |
+| Anon-RPC | Direct RPC | `rpc: createAnonRpc().rpcConfig()` from `@repo/sdk/browser/anon` | Below. |
 
-### Anon-RPC
+### Anon-RPC (`@repo/sdk/browser/anon`)
 
-`@anon-rpc/browser-harness` (v0.4) is browser-only: it runs a null-origin iframe plus WebRTC. So the SDK takes the worker by injection, and doesn't depend on the package.
+Every chain read goes through [Anon-RPC](https://github.com/ethereum/anon-rpc) via the real `@anon-rpc/browser-harness` 0.4 (spec 0.4.0): the network's hash-pinned client runs in a Web Worker inside a null-origin iframe, and viem's `fetchFn` is its anonymized `fetch`. Writes go through the relayer or the wallet.
 
 ```ts
-import { AnonRpcWorker } from "@anon-rpc/browser-harness";
-import { ANON_SPECIFIERS, bootstrapProvider, createMRA } from "@repo/sdk";
+import { createAnonRpc } from "@repo/sdk/browser/anon";
 
-const worker = new AnonRpcWorker({
-  address: ANON_SPECIFIERS.nox.specifier,                       // Nox: specifier published on Sepolia
-  preExisting: { rpcProvider: bootstrapProvider("https://ethereum-sepolia-rpc.publicnode.com") }, // one bootstrap read
-});
-const mra = createMRA({ mode: "sepolia", apiUrl, issuerUrl, rpc: { anonRpc: true, anonWorker: worker } });
-mra.network(); // { rpc: "anon", chainId: 11155111, ... }
+const anon = createAnonRpc({ network: "nox", rpc: { url: "https://ethereum-sepolia-rpc.publicnode.com" } }); // browser only
+anon.onStatus((s) => setBadge(s.label));   // "Connecting privately…" → "Private connection ready" | "...unavailable. Nothing was sent."
+anon.onStats((s) => setShare(s.routedShare)); // { routed, routedOk, direct, refused, methods, bootstrap, routedShare }
+const mra = createMRA({ mode: "sepolia", apiUrl, issuerUrl, rpc: anon.rpcConfig(), timeoutMs: 60_000 });
 ```
 
-- **How reads are routed:** every viem read goes through `http(url, { fetchFn: worker.fetch })`.
-- **Fail closed:** if `anonRpc` is on but no worker or fetch was given, chain reads throw `anon_rpc_unavailable`. Set `allowDirectFallback: true` to read directly instead, for example as a demo fallback.
-- **Specifiers:** `ANON_SPECIFIERS` lists the adopters' specifiers (passthrough, tor-js, nym, nox).
-  - The tor-js and nym specifiers live on mainnet, so their bootstrap provider must be a mainnet RPC.
-  - `passthrough` is not anonymous; it's for wiring tests only.
-- **Merkle paths:** proofs download the **whole** leaf list (`LeafInserted`) through this transport and compute the path locally, so the RPC never learns which leaf belongs to the user.
+- **Networks** (`network`): `"nox"` (default; specifier on Sepolia), `"nym"`, `"tor-js"` (both mainnet specifiers; the bootstrap RPC is picked for you), `"passthrough"` (not anonymous, wiring only). `config` is passed to the worker as-is; tor-js defaults to the adopters' demo gateway.
+- **Any HTTPS RPC:** `rpc.url` is the destination *through* the network: Sepolia publicnode, our devnet `https://rpc.<host>`, Tenderly, anything absolute http(s).
+- **Fail closed:** if the network can't start (`ready` rejects, or `readyTimeoutMs`, default 90 s, passes), every read throws `anon_rpc_unavailable` and is counted in `refused`; nothing goes direct. A routed request that fails is never retried directly. `allowDirectFallback: true` is the demo escape hatch, and each direct request is then counted in `direct`.
+- **Counter:** `routedShare = routed / (routed + direct)`. `bootstrap` counts the harness's one unanonymized read of the specifier contract (`workerHash()`/`workerResolvers()`), which reveals only that Anon-RPC is starting; it is not app traffic.
+- **Isolation:** `isolationKey` (default for all calls) or `anon.isolated(key)` for `rpc.anonFetch`, e.g. one per shop pseudonym.
+- **Page requirements:** CSP must allow `'unsafe-inline'` script for the harness's srcdoc bootstrap (or pass `iframeUrl`, see the harness README) and `'wasm-unsafe-eval'` (Nox, Nym, Tor run WASM). Use `timeoutMs: 60_000` in createMRA: mixnet reads take 0.5-6 s each.
+- **Merkle paths:** proofs download the **whole** tree (`chain.leaves()` = every `LeafInserted`, unfiltered) through this transport and build the path locally (`credentials.merklePath`, `chain/tree.ts` `findLeafIndex` / `waitForLeafIndex` / `merkleWitness`), so the RPC never learns which leaf is yours. Never filter `LeafInserted` by `commitment` (it is an indexed topic).
+
+Measured live in Chrome on 2026-11-06 (SDK reads: blockNumber, countrySet, protocol, both whole trees = 26 requests):
+
+| Network | Target RPC | Ready | Routed / direct | Share |
+|---|---|---|---|---|
+| nox | Sepolia publicnode | 4.8 s | 26 / 0 | 100% |
+| nox | sepolia.gateway.tenderly.co (custom URL) | 2.4 s | 26 / 0 | 100% |
+| nym | Sepolia publicnode | 16 s | 26 / 0 | 100% |
+| tor-js | Sepolia publicnode | did not start: the demo gateway timed out | 0 / 0 (50 refused) | fail closed |
+
+The low-level glue (`ANON_SPECIFIERS`, `bootstrapProvider`, `anonFetchFrom`, `rpc: { anonRpc, anonWorker }`) is still exported from the core for hand-built workers.
+
+### Browser prover (`@repo/sdk/browser/prover`)
+
+```ts
+import { createWorkerProver } from "@repo/sdk/browser/prover";
+
+const prover = createWorkerProver({ circuit: "standing_pass", onProgress: (p) => setLine(p.label) });
+prover.warmup();                                   // optional: load WASM + circuit while the user reads the offer
+const mra = createMRA({ mode: "sepolia", prover, ... });
+```
+
+- Runs Noir witness generation (`@noir-lang/noir_js` **1.0.0-rc.3**, the exact match for nargo 1.0.0-rc.3) and UltraHonk proving (`@aztec-foundation/bb.js` **6.0.0**, `{ verifierTarget: "evm" }`) in a module Web Worker (`new Worker(new URL("./prover.worker.js", import.meta.url), { type: "module" })`, which Next/Turbopack, webpack 5 and Vite bundle). Pass `worker: () => new Worker(...)` if your bundler needs it spelled out.
+- Progress stages `init → witness → proving → done`, with labels "Getting the private checker ready…", "Checking your record privately…", "Sealing the proof on this device…", "Proof ready…" (override with `labels`).
+- A failing circuit assertion rejects with `prover_failed` and the assertion text (e.g. `witness_failed: revenue band below minimum`), never the inputs.
+- Proof = the 7,616-byte `bytes` AdvanceBook takes; `publicInputs` are 0x-32-byte fields in contract order: standing_pass `[root, nullifier, tier, commitment_next, context]`, business_pass `[root, nullifier, min_band, commitment_next, context, c0..c3]`.
+- Circuits: `pnpm --filter @repo/sdk sync-circuits` recompiles `circuits/*` with nargo 1.0.0-rc.3 and copies `target/*.json` into `src/browser/circuits/`. A changed circuit also needs `circuits/<name>/build.sh` and a verifier redeploy.
+- `@repo/sdk/browser/prover-core` exposes the same engine without a worker (`createProverCore()`), for Node scripts.
+
+Verified: proofs from this code path (Node WASM, the browser main thread, and the bundled Web Worker in Chrome) return `true` from `verify()` on the **deployed Sepolia** `HonkVerifier` (`0x7764…2017`) and `BusinessPassVerifier` (`0xb79d…136a`) via `eth_call`, and a tampered public input reverts. Cold worker proof in Chrome: about 5 s (about 1 s of it proving). `pnpm --filter @repo/sdk test:prover` re-runs the Node check.
 
 ## What's real vs mock
 
@@ -230,9 +258,11 @@ src/
   viewmodels.ts       every screen type     screens.ts  the 34-screen map
   domains/            onboarding agent merchant pay lender protocol world recovery
   api/                types.ts (hand-checked) clients.ts (AgentsApi, IssuerApi)
-  chain/              viem reads/writes, deployments
+  chain/              viem reads/writes, deployments, tree.ts (whole-tree leaf lookups)
   adapters/           prover, vault, Reclaim / Agent Pass / IDKit
-  transport/anon.ts   Anon-RPC glue
+  transport/anon.ts   Anon-RPC glue (core)
+  browser/            browser-only subpaths: anon.ts (createAnonRpc), prover.ts (createWorkerProver),
+                      prover.worker.ts, prover-core.ts (noir_js + bb.js), circuits/*.json
   credentials.ts      circuit tags, Merkle path, contexts
   abi/ deployments/   copied JSON + generated as-const TS (scripts/sync-backend.mjs)
   mock/               copied apps/web mocks

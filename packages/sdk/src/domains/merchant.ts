@@ -3,6 +3,7 @@ import { randomBytes32 } from "../credentials.js";
 import type { AdvanceOnchain, LogEntry } from "../chain/chain.js";
 import type { Ctx } from "../context.js";
 import { MRAError } from "../errors.js";
+import { waitForLeafIndex } from "../chain/tree.js";
 import * as M from "../mock/merchant.js";
 import * as S from "../mock/shop.js";
 import type {
@@ -319,7 +320,11 @@ export function merchantDomain(ctx: Ctx) {
       const { tx_hash } = await ctx.api().relayClaim(a.onchain.id);
       const sp = await ctx.vault.get("standing_pass");
       if (sp?.next) {
-        await ctx.vault.put("standing_pass", { kind: "standing_pass", ...sp.next, claimed: true, advanceId: a.onchain.id.toString() });
+        // Find our leaf by downloading the whole tree (never a filtered query, which would reveal which leaf is ours).
+        const leafIndex = await waitForLeafIndex(ctx.chain(), "standing", BigInt(sp.next.commitment));
+        await ctx.vault.put("standing_pass", {
+          kind: "standing_pass", ...sp.next, claimed: true, advanceId: a.onchain.id.toString(), leafIndex,
+        });
       }
       return { txHash: tx_hash };
     },
