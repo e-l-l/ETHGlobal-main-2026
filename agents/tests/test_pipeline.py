@@ -114,3 +114,25 @@ def test_active_advance_declines_before_any_model_call(tmp_path):
     # A repaid advance does not block a new one.
     reader.active[0] = reader.active[0].model_copy(update={"status": AdvanceStatus.REPAID})
     assert p.request_offer(SHOP, 0, RECIPIENT, 43).result == "offered"
+
+
+def test_decision_records_models_used_by_each_role():
+    events = []
+    judge = Judge(events, "offer")
+    judge.model = None
+    original_underwrite, original_critique = judge.underwrite, judge.critique
+
+    def underwrite(*args):
+        judge.model = "underwriter-id"
+        return original_underwrite(*args)
+
+    def critique(*args):
+        judge.model = "critic-id"
+        return original_critique(*args)
+
+    judge.underwrite, judge.critique = underwrite, critique
+    p = UnderwritingPipeline(reader=Reader(events), indexer=Indexer(events), judge=judge, signer=Signer(events),
+                             store=DecisionStore(":memory:"), settings=Settings(_env_file=None),
+                             build_features=build(events), redline_check=lambda _: [], now=lambda: 123456)
+    d = p.request_offer(SHOP, 1, RECIPIENT)
+    assert (d.model, d.underwriter_model, d.critic_model) == ("underwriter-id", "underwriter-id", "critic-id")

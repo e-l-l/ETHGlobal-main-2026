@@ -21,6 +21,8 @@ PAYER_CONCENTRATION = "payer_concentration"
 CIRCULAR_FUNDING = "circular_funding"
 FEW_ACTIVE_DAYS = "few_active_days"
 SALES_SPIKE = "sales_spike"
+PAYER_VELOCITY = "payer_velocity"
+MAX_FIRST_TIME_PAYERS_1H = 10
 
 REASON_CODES: tuple[str, ...] = (FEW_PAYERS, PAYER_CONCENTRATION, CIRCULAR_FUNDING, FEW_ACTIVE_DAYS, SALES_SPIKE)
 
@@ -87,6 +89,8 @@ def check(features: ShopFeatures) -> list[str]:
         hits.append(FEW_ACTIVE_DAYS)
     if not cold and _over(f.spike_ratio, MAX_SPIKE_RATIO):
         hits.append(SALES_SPIKE)
+    if f.first_time_payers_1h > MAX_FIRST_TIME_PAYERS_1H:
+        hits.append(PAYER_VELOCITY)
     return hits
 
 
