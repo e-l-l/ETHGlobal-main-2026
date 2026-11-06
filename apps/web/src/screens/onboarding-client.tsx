@@ -117,6 +117,10 @@ export function VerifyingScreen({ lang, outcome }: { lang: Lang; outcome?: strin
     const timers = TIMING.slice(0, 3).map((ms, i) => window.setTimeout(() => setTick(i + 1), ms));
     router.prefetch(routes.pass);
 
+    // Real modes: fetch gas for BusinessPassRegistry.issue from the demo faucet while the proof runs (once per
+    // device; the SDK does it again before the transaction if this hasn't finished). Mock: a no-op.
+    void withMRA((m) => m.wallet.ensureFunded()).catch(() => undefined);
+
     void (async () => {
       let dest: string = routes.failed;
       try {

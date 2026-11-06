@@ -32,6 +32,16 @@ export type MRAConfig = {
   deployment?: Deployment;
   /** viem WalletClient with an account: lender deposits, customer pay, registerShop, registry.issue, mandate signature. */
   wallet?: WalletClient;
+  /**
+   * Testnet demo: before a write, ask the agents API's /demo/faucet for gas + test USDC when the wallet has none.
+   * Default on (the endpoint 404s unless the backend enables it, and only on Sepolia / anvil).
+   */
+  faucet?: boolean;
+  /**
+   * The C01 pay page the merchant's QR opens, e.g. "https://app.example/pay/corner-kiosk". The SDK appends
+   * `?shop=<bytes32>&name=<display name>`. Default: `https://pay.<app>/<slug>` (display only, not routable).
+   */
+  payUrl?: string;
   /** Read-only account for lender screens when no wallet is connected. */
   account?: `0x${string}`;
   /** fetch for API calls (tests inject a mock). Chain reads use rpc.anonFetch when anonRpc is on. */
@@ -70,6 +80,7 @@ export function resolveConfig(cfg: MRAConfig): ResolvedConfig {
   for (const [k, v] of [
     ["apiUrl", cfg.apiUrl],
     ["issuerUrl", cfg.issuerUrl],
+    ["payUrl", cfg.payUrl],
     ["rpc.url", url],
   ] as const) {
     if (v !== undefined && !/^https?:\/\//.test(v)) throw new ConfigError("config_invalid", `${k} must be an http(s) URL`);

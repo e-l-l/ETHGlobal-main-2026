@@ -6,6 +6,11 @@ import type { PayReceipt, PayShopView, TxStep } from "../viewmodels.js";
 import { initials, pseudonymOf, round2, toBase, usd } from "./util.js";
 
 const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
+/**
+ * One approve covers several sales: a customer approves max(amount, $100) once, so the next payments are a single
+ * transaction each. Bounded on purpose (never an unlimited allowance to the book).
+ */
+export const PAY_ALLOWANCE_USD = 100;
 
 export function payDomain(ctx: Ctx) {
   const isMock = ctx.mode === "mock";
@@ -25,7 +30,11 @@ export function payDomain(ctx: Ctx) {
     },
 
     /** C01 → C02. The customer pays; the contract splits it (holdback to the advance). No mention of the advance. */
-    async pay(shopId: string, amount: number, opts: { onStep?: (s: TxStep) => void } = {}): Promise<PayReceipt> {
+    async pay(
+      shopId: string,
+      amount: number,
+      opts: { onStep?: (s: TxStep) => void; onFunding?: () => void; name?: string } = {},
+    ): Promise<PayReceipt> {
       if (!(amount > 0)) throw new MRAError("invalid_request", "amount must be positive");
       if (isMock) {
         const repay = round2((amount * S.advance.holdback) / 100);
@@ -44,14 +53,16 @@ export function payDomain(ctx: Ctx) {
       if (!BYTES32.test(shopId)) throw new MRAError("invalid_request", "shopId must be the bytes32 id from the QR");
       const chain = ctx.chain();
       const base = toBase(amount);
-      const approve = await chain.approveUsdc(chain.addresses.book, base);
+      // Judges' phones start empty: gas + test USDC from the demo faucet, once ("Getting your test dollars…").
+      await ctx.ensureFunded({ usdc: amount, ...(opts.onFunding ? { onFunding: opts.onFunding } : {}) });
+      const approve = await chain.approveUsdc(chain.addresses.book, base, toBase(Math.max(amount, PAY_ALLOWANCE_USD)));
       opts.onStep?.({ label: "Approve USDC", status: approve ? "done" : "skipped", ...(approve ? { hash: approve.transactionHash } : {}) });
       const receipt = await chain.pay(shopId as Hex, base);
       opts.onStep?.({ label: "Pay", status: "done", hash: receipt.transactionHash });
       const sale = chain.parseLogs(receipt).find((l) => l.eventName === "Sale");
       const repay = sale ? usd(sale.args.repayment as bigint) : 0;
       return {
-        shopName: pseudonymOf(shopId),
+        shopName: opts.name ?? pseudonymOf(shopId),
         shopId: pseudonymOf(shopId),
         amount,
         toShop: round2(amount - repay),

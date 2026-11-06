@@ -6,7 +6,7 @@ import type { Ctx } from "../context.js";
 import { ApiError, isMRAError, MRAError } from "../errors.js";
 import * as S from "../mock/shop.js";
 import type { BusinessPassView, ProveFailReason, ProveResult, ProveSession, ProveStep, ShopView } from "../viewmodels.js";
-import { initials, payLinkFor, pseudonymOf } from "./util.js";
+import { initials, payLinkFor, payUrlFor, pseudonymOf } from "./util.js";
 
 const COUNTRY_NAME: Record<number, string> = { 32: "Argentina", 566: "Nigeria", 404: "Kenya" };
 const BAND_RANGE: Record<number, string> = { 1: "$500–2,000 a month", 2: S.SHOP.bandRange, 3: "$10,000+ a month" };
@@ -111,6 +111,7 @@ export function onboardingDomain(ctx: Ctx) {
     await ctx.vault.put("business_pass", record);
     step("registering");
     const chain = ctx.chain();
+    await ctx.ensureFunded();
     const receipt = await chain.issueBusinessPass(att, att.signature);
     const ev = chain.parseLogs(receipt).find((l) => l.eventName === "BusinessPassIssued" || l.eventName === "LeafInserted");
     const leafIndex = ev ? Number(ev.args.leafIndex) : undefined;
@@ -165,12 +166,13 @@ export function onboardingDomain(ctx: Ctx) {
       const chain = ctx.chain();
       const payout = chain.walletAddress();
       if (!payout) throw new MRAError("wallet_required", "connect the shop's payout wallet (a fresh address) first");
+      await ctx.ensureFunded();
       // Random id: deriving it from the name would link the shop to its owner.
       const shopId = randomBytes32();
       const receipt = await chain.registerShop(shopId, payout);
       const pseudonym = pseudonymOf(shopId);
       await ctx.saveSession({ shopId, pseudonym, shopName: clean, payout });
-      return { ...base, id: pseudonym, shopId, payout, txHash: receipt.transactionHash, source: "chain" };
+      return { ...base, payLink: payUrlFor(ctx.cfg.payUrl, clean, shopId), id: pseudonym, shopId, payout, txHash: receipt.transactionHash, source: "chain" };
     },
   };
 }

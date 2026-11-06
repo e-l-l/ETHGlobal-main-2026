@@ -7,6 +7,7 @@ import { onboardingDomain } from "./domains/onboarding.js";
 import { payDomain } from "./domains/pay.js";
 import { protocolDomain } from "./domains/protocol.js";
 import { recoveryDomain } from "./domains/recovery.js";
+import { walletDomain } from "./domains/wallet.js";
 import { worldDomain } from "./domains/world.js";
 
 /**
@@ -30,6 +31,8 @@ export function createMRA(config: MRAConfig) {
     protocol: protocolDomain(ctx),
     world: worldDomain(ctx),
     recovery: recoveryDomain(ctx),
+    /** This device's wallet: address for the chip, and ensureFunded() (the testnet demo faucet). */
+    wallet: walletDomain(ctx),
     /** mode, chainId, and whether chain reads go through Anon-RPC: for a network badge. */
     network: () => ctx.network(),
     /** Escape hatches for advanced flows (relay draws, raw insights). Not needed by screens. */

@@ -132,6 +132,17 @@ export type RegisterMandateRequest = {
 export type TxResponse = { tx_hash: Hex32 };
 export type InsightsResponse = { features: ShopFeatures; decision: Decision | null };
 export type HealthResponse = { status: string };
+/** POST /demo/faucet. eth_wei / fee_cap_wei are decimal strings; usdc is base units (6 decimals). */
+export type FaucetResponse = {
+  address: Address;
+  eth_wei: string;
+  usdc: number;
+  eth_tx: Hex32 | null;
+  usdc_tx: Hex32 | null;
+  gas_per_tx: number;
+  fee_cap_wei: string;
+  txs: number;
+};
 
 export type RiskSignals = {
   as_of: number;
@@ -285,7 +296,8 @@ export type IssuerInfo = {
   mock: boolean;
 };
 export type IssuerHealth = { ok: boolean; mode: "mock" | (string & {}); chainId: number };
-export type MockProofRequest = { account: string; commitment: Hex; band: 1 | 2 | 3 };
+/** `fresh`: a new fictional business per proof (new business nullifier), so demo onboarding can repeat. */
+export type MockProofRequest = { account: string; commitment: Hex; band: 1 | 2 | 3; fresh?: boolean };
 
 export const ISSUER_ERROR_CODES = [
   "bad_body",

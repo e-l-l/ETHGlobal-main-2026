@@ -10,7 +10,7 @@ import { WaveHeader } from "@/jar/domain";
 import { arsText, usdText } from "@/jar/format";
 import type { PayShopView } from "@repo/sdk";
 import { payCopy, type Lang } from "@/lib/copy";
-import { errorCode, withMRA } from "@/lib/mra";
+import { errorCode, explorerTxUrl, withMRA } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
@@ -42,6 +42,7 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
   const [value, setValue] = useState("10");
   const [token, setToken] = useState<Token>("USDT");
   const [paying, setPaying] = useState(false);
+  const [funding, setFunding] = useState(false);
   const [failed, setFailed] = useState<string | undefined>();
   const amount = Number(value || 0);
 
@@ -57,7 +58,15 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
     // Demo: shown as received the moment it is sent (anay-docs/ux.md, judge-ready payment). Keep the beat.
     const beat = new Promise((r) => window.setTimeout(r, 900));
     try {
-      const [receipt] = await Promise.all([withMRA((m) => m.pay.pay(target.shopId ?? shop.id, amount)), beat]);
+      // Real modes: the first payment on a phone first gets gas + test USDC from the demo faucet (once).
+      const receipt = await withMRA((m) =>
+        m.pay.pay(target.shopId ?? shop.id, amount, {
+          onFunding: () => setFunding(true),
+          onStep: () => setFunding(false),
+          ...(target.name ? { name: target.name } : {}),
+        }),
+      );
+      await beat;
       // Same-browser merchant tab (mock demo): Home speaks the sale.
       if (typeof BroadcastChannel !== "undefined") {
         const ch = new BroadcastChannel(SALES_CHANNEL);
@@ -72,6 +81,7 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
     } catch (e) {
       setFailed(errorCode(e));
       setPaying(false);
+      setFunding(false);
     }
   };
 
@@ -116,7 +126,7 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
         ) : null}
       </Main>
       <ActionBar>
-        <Button block onClick={() => void pay()} loading={paying} loadingLabel={t.paying} disabled={amount <= 0 || paying}>
+        <Button block onClick={() => void pay()} loading={paying} loadingLabel={funding ? t.funding : t.paying} disabled={amount <= 0 || paying}>
           {amount > 0 ? t.pay(usdText(amount, 2)) : t.enter}
         </Button>
       </ActionBar>
@@ -178,7 +188,7 @@ export function PaidScreen({
             <div className="pub" style={{ alignItems: "center", paddingBlock: 2 }}>
               <dt>{t.ref}</dt>
               <dd>
-                <CopyHash value={tx ?? shop.wallet} short />
+                <CopyHash value={tx ?? shop.wallet} short href={explorerTxUrl(tx)} />
               </dd>
             </div>
           </dl>

@@ -1,6 +1,8 @@
 import { createHttp, type FetchFn, type Http } from "../http.js";
 import type {
   ActivateRequest,
+  Address,
+  FaucetResponse,
   AgentPassRequest,
   AgentPassResponse,
   AgentStatusResponse,
@@ -88,6 +90,12 @@ export class AgentsApi {
   }
   revokeAgent(agentId: string, token: string) {
     return this.http.request<AgentStatusResponse>("POST", agentPath(agentId, "/revoke"), { token });
+  }
+
+  // ---- api.py: testnet demo faucet (DEMO_FAUCET=1, Sepolia / anvil only; 404 otherwise)
+  /** POST /demo/faucet: gas ETH for ~10 txs + test USDC to a burner address. 409 already_funded, 429 limits. */
+  demoFaucet(address: Address) {
+    return this.http.request<FaucetResponse>("POST", "/demo/faucet", { body: { address } });
   }
 
   // ---- agents_api.py: World IDKit recovery

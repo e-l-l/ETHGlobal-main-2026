@@ -63,6 +63,14 @@ export const slug = (name: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || "shop";
 export const payLinkFor = (name: string) => `pay.${APP_NAME}/${slug(name)}`;
+/**
+ * The real pay link (what the merchant's QR encodes): the C01 page plus `?shop=<bytes32 id>&name=<display name>`.
+ * The name is not onchain (shops are pseudonymous), so the link carries it. `base` = MRAConfig.payUrl.
+ */
+export function payUrlFor(base: string | undefined, name: string, shopId: string) {
+  const root = base ?? `https://${payLinkFor(name)}`;
+  return `${root}${root.includes("?") ? "&" : "?"}${new URLSearchParams({ shop: shopId, name })}`;
+}
 
 /** Split a sale between the shop and the advance (holdback in percent). */
 export function splitSale(total: number, holdbackPct: number) {

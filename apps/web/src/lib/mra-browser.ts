@@ -10,14 +10,17 @@
  * `@repo/sdk/browser/anon` and `@repo/sdk/browser/prover` are SDK subpaths. Until the SDK ships them,
  * next.config.ts aliases them to ./mra-fallback/*, which throw, so the try/catch below falls back.
  */
-import type { AnonRpcWorkerLike, MRAConfig, Prover, RpcConfig } from "@repo/sdk";
+import { DEFAULTS, IndexedDbVault, deploymentFor, loadOrCreateBurner, type AnonRpcWorkerLike, type CredentialVault, type MRAConfig, type Prover, type RpcConfig } from "@repo/sdk";
 import { MRA_ENV, MRA_MODE } from "./mra";
+import { routes } from "./routes";
 
 /** What actually got wired, for a "live" / network badge. Read after `await getMRA()`. */
 export const MRA_BROWSER_STATUS: {
   anonRpc: "off" | "anon" | "direct-fallback" | "fail-closed";
   prover: "worker" | "none";
-  wallet: "connected" | "none";
+  wallet: "burner" | "none";
+  /** The wallet's address, for the wallet chip. Never the key. */
+  address?: `0x${string}`;
 } = { anonRpc: "off", prover: "none", wallet: "none" };
 
 /*
@@ -88,19 +91,27 @@ async function loadProver(): Promise<Prover | undefined> {
 /* --------------------------------------------------- INJECTION POINT: wallet (viem) */
 
 /**
- * Return a viem WalletClient with an account to enable writes (lender deposit / withdraw, customer pay,
- * createShop / freshShop, registry.issue, the mandate signature). Draws and Standing Pass claims are relayed
- * by the backend and never need it. For example, with `viem` added to apps/web:
+ * A burner wallet on this device: a viem local account created the first time the app loads in local / sepolia,
+ * its key kept in the same IndexedDB vault as the passes (and so inside `vault.export()` backups). The key never
+ * leaves the device and is never logged. Judges' phones hold no Sepolia ETH or USDC: the SDK asks the demo faucet
+ * for both before the first write (`mra.wallet.ensureFunded()`).
  *
- *   const { createWalletClient, custom } = await import("viem");
- *   const { sepolia } = await import("viem/chains");
- *   const eth = (window as { ethereum?: EIP1193Provider }).ethereum;
- *   if (!eth) return undefined;
- *   const [account] = await eth.request({ method: "eth_requestAccounts" });
- *   return createWalletClient({ account, chain: sepolia, transport: custom(eth) });
+ * Writes (customer pay, createShop, registry.issue, the mandate signature, lender deposits) go straight to the RPC
+ * URL from the wallet; chain READS still use Anon-RPC. To use a browser wallet instead, return a viem WalletClient
+ * over `window.ethereum` here (createWalletClient({ account, chain, transport: custom(eth) })).
  */
-async function loadWallet(): Promise<MRAConfig["wallet"]> {
-  return undefined;
+async function loadWallet(vault: CredentialVault): Promise<MRAConfig["wallet"]> {
+  if (!MRA_ENV.burnerWallet || MRA_MODE === "mock") return undefined;
+  try {
+    const chainId = deploymentFor(MRA_MODE).chainId;
+    const rpcUrl = MRA_ENV.rpcUrl ?? (MRA_MODE === "local" ? DEFAULTS.local.rpcUrl : DEFAULTS.sepolia.rpcUrl);
+    const { wallet, address } = await loadOrCreateBurner(vault, { chainId, rpcUrl });
+    MRA_BROWSER_STATUS.address = address;
+    return wallet;
+  } catch {
+    // No IndexedDB (private mode) or not a testnet: read-only, writes fail with `wallet_required`.
+    return undefined;
+  }
 }
 
 /* ------------------------------------- INJECTION POINTS: Reclaim, Agent Pass, IDKit */
@@ -122,21 +133,25 @@ function worldAdapters(): Pick<MRAConfig, "reclaim" | "agentPass" | "idkit"> {
 
 /** The browser config: the shared base plus whatever adapters loaded. Called once per tab by getMRA(). */
 export async function browserConfig(base: MRAConfig): Promise<MRAConfig> {
+  // One vault for the passes, the session and the burner key (IndexedDB, this device only).
+  const vault = base.vault ?? new IndexedDbVault();
   const [anon, prover, wallet] = await Promise.all([
     MRA_ENV.anonRpc ? loadAnonRpc() : Promise.resolve(undefined),
     loadProver(),
-    loadWallet(),
+    loadWallet(vault),
   ]);
   anonRpc = anon;
 
-  const cfg: MRAConfig = { ...base, ...worldAdapters() };
+  const cfg: MRAConfig = { ...base, ...worldAdapters(), vault };
+  // The merchant QR / pay link opens C01 on this deployment: ?shop=<bytes32>&name=… is added by the SDK.
+  if (!cfg.payUrl) cfg.payUrl = `${window.location.origin}${routes.pay}`;
   if (prover) {
     cfg.prover = prover;
     MRA_BROWSER_STATUS.prover = "worker";
   }
   if (wallet) {
     cfg.wallet = wallet;
-    MRA_BROWSER_STATUS.wallet = "connected";
+    MRA_BROWSER_STATUS.wallet = "burner";
   }
 
   let rpc: RpcConfig = { ...base.rpc };

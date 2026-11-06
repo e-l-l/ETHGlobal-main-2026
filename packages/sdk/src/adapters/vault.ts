@@ -38,6 +38,18 @@ export type StandingPassSecret = {
   next?: { secret: string; h: string; commitment: string; count: number };
 };
 
+/**
+ * This device's burner wallet (testnet demo): a viem local account created on first use. The private key never
+ * leaves the device except inside an encrypted `export()` backup. Never log it or put it in a URL.
+ */
+export type BurnerWalletSecret = {
+  kind: "burner_wallet";
+  privateKey: `0x${string}`;
+  address: `0x${string}`;
+  chainId: number;
+  createdAt: number;
+};
+
 export type Session = {
   shopId?: string;
   pseudonym?: string;
@@ -55,6 +67,7 @@ export type VaultRecords = {
   business_pass: BusinessPassSecret;
   standing_pass: StandingPassSecret;
   session: Session;
+  wallet: BurnerWalletSecret;
 };
 export type VaultKey = keyof VaultRecords;
 
@@ -134,7 +147,7 @@ export async function decryptRecords(blob: string, passphrase: string): Promise<
   return JSON.parse(new TextDecoder().decode(plain)) as Partial<VaultRecords>;
 }
 
-const KEYS: VaultKey[] = ["business_pass", "standing_pass", "session"];
+const KEYS: VaultKey[] = ["business_pass", "standing_pass", "session", "wallet"];
 
 abstract class BaseVault implements CredentialVault {
   abstract readonly kind: string;

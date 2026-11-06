@@ -71,7 +71,10 @@ export function issuerMockReclaim(issuer: IssuerApi, opts: { account?: string } 
       const s = sessions.get(sessionId);
       if (!s) throw new MRAError("not_found", "unknown Reclaim session");
       o?.onStatus?.("waiting");
-      const { proof } = await issuer.mockProof({ account: s.account ?? opts.account ?? "donpepe", commitment: s.commitment, band: s.band });
+      // No account named: a FRESH donpepe-like business each time (one Business Pass per business onchain, so
+      // the fixed demo account would only ever pass once). Named accounts (the M05 failure demos) stay fixed.
+      const account = s.account ?? opts.account;
+      const { proof } = await issuer.mockProof({ account: account ?? "donpepe", commitment: s.commitment, band: s.band, ...(account ? {} : { fresh: true }) });
       o?.onStatus?.("proof_received");
       return proof;
     },

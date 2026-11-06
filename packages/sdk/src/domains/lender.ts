@@ -203,6 +203,7 @@ export function lenderDomain(ctx: Ctx) {
     const chain = ctx.chain();
     const base = toBase(amount);
     const steps: TxStep[] = [];
+    await ctx.ensureFunded(kind === "deposit" ? { usdc: amount } : {});
     if (kind === "deposit") {
       const spender = tranche === "senior" ? chain.addresses.senior : chain.addresses.junior;
       const a = await chain.approveUsdc(spender, base);

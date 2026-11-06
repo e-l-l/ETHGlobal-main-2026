@@ -352,3 +352,24 @@ export type NetworkInfo = {
   apiUrl?: string;
   issuerUrl?: string;
 };
+
+/** `mra.wallet.ensureFunded()`: whether this device's wallet can pay for its next transactions. */
+export type FundStatus =
+  /** Already had gas (and the USDC asked for). Nothing was requested. */
+  | "ready"
+  /** The demo faucet just sent gas ETH and / or test USDC. */
+  | "funded"
+  /** The faucet had already funded this address before (once per address). */
+  | "already_funded"
+  /** No faucet here (mock mode, mainnet, DEMO_FAUCET off, or faucet disabled in the config). */
+  | "unavailable"
+  /** The faucet refused for now (per-IP or daily budget). */
+  | "limited";
+export type FundResult = {
+  status: FundStatus;
+  address?: string;
+  /** Balances after the call (wei / USDC dollars). */
+  ethWei?: string;
+  usdc?: number;
+  txHashes?: string[];
+};

@@ -359,12 +359,18 @@ export function Stat({ label, value, sub, className }: { label: string; value: R
 }
 
 /** Tap to copy. Content stays selectable for people who long-press instead. */
-export function CopyHash({ value, short }: { value: string; short?: boolean }) {
+export function CopyHash({ value, short, href }: { value: string; short?: boolean; href?: string | undefined }) {
   const [copied, setCopied] = useState(false);
   const text = short ? `${value.slice(0, 6)}…${value.slice(-4)}` : value;
   return (
     <span className="dj-row" style={{ gap: 4 }}>
-      <span className="app-hash">{text}</span>
+      {href ? (
+        <a className="app-hash" href={href} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>
+          {text}
+        </a>
+      ) : (
+        <span className="app-hash">{text}</span>
+      )}
       <button
         type="button"
         className="app-icon"

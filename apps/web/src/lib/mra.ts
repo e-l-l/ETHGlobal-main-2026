@@ -46,6 +46,15 @@ export const MRA_ENV = {
   anonRpcStrict: flag(process.env.NEXT_PUBLIC_ANON_RPC_STRICT, false),
   /** Anon-RPC network: nox (specifier on Sepolia, default) | tor-js | nym | passthrough (not anonymous). */
   anonNetwork: process.env.NEXT_PUBLIC_ANON_NETWORK || "nox",
+  /**
+   * Burner wallet on this device (testnet demo): a local key in the IndexedDB vault, so writes work with no
+   * browser wallet. Default: on in local / sepolia. Ignored in mock.
+   */
+  burnerWallet: flag(process.env.NEXT_PUBLIC_BURNER_WALLET, true),
+  /** Ask the agents API's /demo/faucet for gas + test USDC before the first write. Default on (it 404s if off). */
+  demoFaucet: flag(process.env.NEXT_PUBLIC_DEMO_FAUCET, true),
+  /** The C01 page the merchant QR opens. Default: this origin + /pay/corner-kiosk. */
+  payUrl: process.env.NEXT_PUBLIC_PAY_URL || undefined,
   /** Read-only lender account when no wallet is connected (L01–L03). */
   account: (process.env.NEXT_PUBLIC_LENDER_ACCOUNT || undefined) as `0x${string}` | undefined,
   /** Mock mode only: simulated latency per call, so spinners show. */
@@ -62,6 +71,8 @@ export function baseConfig(): MRAConfig {
   if (MRA_ENV.issuerUrl) cfg.issuerUrl = MRA_ENV.issuerUrl;
   if (MRA_ENV.account) cfg.account = MRA_ENV.account;
   if (MRA_ENV.rpcUrl) cfg.rpc = { url: MRA_ENV.rpcUrl };
+  if (!isMock && !MRA_ENV.demoFaucet) cfg.faucet = false;
+  if (MRA_ENV.payUrl) cfg.payUrl = MRA_ENV.payUrl;
   if (isMock && MRA_ENV.mockLatencyMs) cfg.mockLatencyMs = MRA_ENV.mockLatencyMs;
   return cfg;
 }
@@ -100,6 +111,12 @@ export function getMRA(): Promise<MRA> {
     const { browserConfig } = await import("./mra-browser");
     return createMRA(await browserConfig(baseConfig()));
   })());
+}
+
+/** Sepolia Etherscan (or nothing on anvil / mock) for a tx hash: the C02 receipt link. */
+export function explorerTxUrl(hash: string | undefined): string | undefined {
+  if (!hash || !/^0x[0-9a-fA-F]{64}$/.test(hash) || MRA_MODE !== "sepolia") return undefined;
+  return `https://sepolia.etherscan.io/tx/${hash}`;
 }
 
 /** Run one SDK call from an event handler: `await withMRA((m) => m.pay.pay(id, 10))`. */

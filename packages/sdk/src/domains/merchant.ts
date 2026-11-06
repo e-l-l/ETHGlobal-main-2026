@@ -25,7 +25,7 @@ import type {
   TodayVM,
   WeekView,
 } from "../viewmodels.js";
-import { clock, dayLabel, longDate, payLinkFor, pseudonymOf, round2, sameDay, shortDate, usd } from "./util.js";
+import { clock, dayLabel, longDate, payUrlFor, pseudonymOf, round2, sameDay, shortDate, usd } from "./util.js";
 
 const DAY = 86_400;
 const BLOCKS_PER_DAY = 7_200n; // ~12 s blocks
@@ -341,6 +341,7 @@ export function merchantDomain(ctx: Ctx) {
       const chain = ctx.chain();
       const payout = chain.walletAddress();
       if (!payout) throw new MRAError("wallet_required", "connect the new payout wallet first");
+      await ctx.ensureFunded();
       if (s.agentId && s.manageToken) await ctx.api().revokeAgent(s.agentId, s.manageToken).catch(() => undefined);
       const shopId = randomBytes32();
       const receipt = await chain.registerShop(shopId, payout);
@@ -385,7 +386,7 @@ export function merchantDomain(ctx: Ctx) {
       const now = ctx.now();
       const sales = await loadSales(ctx, s.shopId as Hex, 7);
       const name = s.shopName ?? S.shop.name;
-      return { shop: shopVM(ctx, name, s.pseudonym), today: todayVM(ctx, sales, now), payLink: payLinkFor(name), howToPay: [...M.myQr.howToPay], source: "chain" };
+      return { shop: shopVM(ctx, name, s.pseudonym), today: todayVM(ctx, sales, now), payLink: payUrlFor(ctx.cfg.payUrl, name, s.shopId), howToPay: [...M.myQr.howToPay], source: "chain" };
     },
 
     /** M19 Settings. */

@@ -15,7 +15,7 @@ export { AGENTS_API_ERROR_CODES, ISSUER_ERROR_CODES } from "./api/types.js";
 export { createHttp, toJson, type FetchFn, type Http } from "./http.js";
 
 // Chain
-export { createChain, advanceStatusName, type Chain, type ChainOptions, type ProtocolSnapshot, type PositionSnapshot } from "./chain/chain.js";
+export { createChain, isTransientWriteError, advanceStatusName, type Chain, type ChainOptions, type ProtocolSnapshot, type PositionSnapshot } from "./chain/chain.js";
 export { DEPLOYMENTS, deploymentFor, parseDeployment, type Deployment } from "./chain/deployments.js";
 export * as abi from "./abi/index.js";
 
@@ -30,9 +30,11 @@ export {
   type CredentialVault,
   type BusinessPassSecret,
   type StandingPassSecret,
+  type BurnerWalletSecret,
   type Session,
   type VaultKey,
 } from "./adapters/vault.js";
+export { loadOrCreateBurner, type BurnerWallet } from "./adapters/burner.js";
 export {
   mockReclaim,
   issuerMockReclaim,

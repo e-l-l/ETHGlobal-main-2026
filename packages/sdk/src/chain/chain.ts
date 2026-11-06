@@ -25,6 +25,8 @@ export type ChainOptions = {
   url: string;
   fetchFn?: FetchFn;
   wallet?: WalletClient;
+  /** Base delay between retries of a transient pre-broadcast write error. Default 2500 ms. */
+  retryDelayMs?: number;
   /** Max block span per eth_getLogs call (public RPCs cap it). */
   logChunk?: number;
   timeoutMs?: number;
@@ -120,7 +122,8 @@ export interface Chain {
   bookLogs(eventName: string, args?: Record<string, unknown>, fromBlock?: bigint, toBlock?: bigint): Promise<LogEntry[]>;
   registryLogs(eventName: string, fromBlock?: bigint): Promise<LogEntry[]>;
   vaultLogs(tranche: "senior" | "junior", eventName: string, args?: Record<string, unknown>): Promise<LogEntry[]>;
-  approveUsdc(spender: Addr, amount: bigint): Promise<Receipt | null>;
+  /** Approve `allowance` (default `amount`) unless the current allowance already covers `amount`. */
+  approveUsdc(spender: Addr, amount: bigint, allowance?: bigint): Promise<Receipt | null>;
   deposit(tranche: "senior" | "junior", assets: bigint): Promise<Receipt>;
   withdraw(tranche: "senior" | "junior", assets: bigint): Promise<Receipt>;
   pay(shopId: Hex, amount: bigint): Promise<Receipt>;
@@ -129,6 +132,18 @@ export interface Chain {
   signMandate(r: MandateRequestArgs): Promise<Hex>;
   parseLogs(receipt: { logs: readonly unknown[] }): { eventName: string; args: any }[];
   receipt(hash: Hex): Promise<Receipt>;
+}
+
+const TRANSIENT_WRITE = /insufficient funds|rate limit|exceeds defined limit|too many requests|\b429\b|timed? ?out|fetch failed|network/i;
+
+/** Pre-broadcast write errors worth retrying (viem nests the RPC error in `cause`). Never reverts. */
+export function isTransientWriteError(e: unknown): boolean {
+  for (let x: unknown = e, i = 0; x && i < 8; x = (x as { cause?: unknown }).cause, i++) {
+    const m = `${(x as { shortMessage?: string }).shortMessage ?? ""} ${(x as { details?: string }).details ?? ""} ${(x as Error).message ?? ""}`;
+    if (/revert/i.test(m)) return false;
+    if (TRANSIENT_WRITE.test(m)) return true;
+  }
+  return false;
 }
 
 export function createChain(opts: ChainOptions): Chain {
@@ -174,11 +189,19 @@ export function createChain(opts: ChainOptions): Chain {
 
   async function write(label: string, params: { address: Addr; abi: readonly unknown[]; functionName: string; args: readonly unknown[] }): Promise<Receipt> {
     const { wallet, account } = requireWallet();
-    let hash: Hex;
-    try {
-      hash = await wallet.writeContract({ ...params, account, chain } as never);
-    } catch (e) {
-      throw new ChainError("chain_write_failed", `transaction rejected or failed: ${label}`, e);
+    let hash: Hex | undefined;
+    // Transient errors from load-balanced public RPCs BEFORE broadcast (no hash came back, so nothing was sent):
+    // a node that hasn't seen the faucet's ETH yet ("insufficient funds") or a rate limit. Retry those only.
+    for (let attempt = 0; hash === undefined; attempt++) {
+      try {
+        hash = await wallet.writeContract({ ...params, account, chain } as never);
+      } catch (e) {
+        if (attempt < 3 && isTransientWriteError(e)) {
+          await new Promise((r) => setTimeout(r, (opts.retryDelayMs ?? 2_500) * (attempt + 1)));
+          continue;
+        }
+        throw new ChainError("chain_write_failed", `transaction rejected or failed: ${label}`, e);
+      }
     }
     const receipt = await read(`receipt ${label}`, () => client.waitForTransactionReceipt({ hash }));
     if (receipt.status !== "success") throw new ChainError("chain_write_failed", `transaction reverted: ${label}`);
@@ -192,9 +215,16 @@ export function createChain(opts: ChainOptions): Chain {
     const out: any[] = [];
     for (let start = from; start <= latest; start += chunk) {
       const end = start + chunk - 1n > latest ? latest : start + chunk - 1n;
-      const part = await read(`logs ${eventName}`, () =>
-        client.getContractEvents({ address, abi, eventName, args, fromBlock: start, toBlock: end } as never),
-      );
+      const get = (to: bigint) => client.getContractEvents({ address, abi, eventName, args, fromBlock: start, toBlock: to } as never);
+      let part: unknown;
+      try {
+        part = await get(end);
+      } catch (e) {
+        // Load-balanced public RPCs: eth_blockNumber came from a node a block or two ahead of the one serving
+        // eth_getLogs ("block range extends beyond current head"). Stop short of the head; the next poll gets it.
+        if (end !== latest || end - 2n < start) throw new ChainError("chain_read_failed", `chain read failed: logs ${eventName}`, e);
+        part = await read(`logs ${eventName}`, () => get(end - 2n));
+      }
       out.push(...(part as any[]));
     }
     return out as LogEntry[];
@@ -335,13 +365,14 @@ export function createChain(opts: ChainOptions): Chain {
 
     /* ------------------------------------------------------------- writes */
 
-    async approveUsdc(spender: Addr, amount: bigint) {
+    async approveUsdc(spender: Addr, amount: bigint, allowanceTarget?: bigint) {
       const { account } = requireWallet();
       const allowance = (await read("allowance", () =>
         client.readContract({ address: A.usdc, abi: erc20Abi, functionName: "allowance", args: [account.address, spender] }),
       )) as bigint;
       if (allowance >= amount) return null;
-      return write("approve", { address: A.usdc, abi: erc20Abi, functionName: "approve", args: [spender, amount] });
+      const target = allowanceTarget !== undefined && allowanceTarget > amount ? allowanceTarget : amount;
+      return write("approve", { address: A.usdc, abi: erc20Abi, functionName: "approve", args: [spender, target] });
     },
     async deposit(tranche: "senior" | "junior", assets: bigint) {
       const { account } = requireWallet();
