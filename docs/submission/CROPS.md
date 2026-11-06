@@ -19,7 +19,7 @@ For the EF Best CROPS App track. Every claim links to its source, and the gaps a
 
 ## R / O: Open source
 
-- **License: TODO** (MIT or GPL-3.0; there is no LICENSE file yet). The Solidity sources already carry `SPDX-License-Identifier: MIT`.
+- **License: MIT** ([LICENSE](../../LICENSE)). The Solidity sources already carry `SPDX-License-Identifier: MIT`.
 - Builds from the repo alone:
   - `forge build && FOUNDRY_OFFLINE=true forge test`: 152 tests
   - `uv run pytest -q` in `agents/`: 256 offline tests
@@ -81,5 +81,4 @@ Identity never touches the chain or our servers. Only ZK yes/no answers and pseu
 - **Anon-RPC is not wired yet.** The backend's Sepolia profile uses a Tenderly gateway. Support for Sepolia is unconfirmed.
 - **World and Reclaim have run in mock mode only.** The demo seller portal ("PagoSur") is a fictional stand-in, shown as such.
 - **Bedrock (AWS) is a third party that sees underwriting features.** These are numbers only, but AWS is still a party.
-- **No license file yet.**
 - Not private from the law: a production launch needs licensing and selective disclosure (roadmap).
