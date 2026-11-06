@@ -28,14 +28,14 @@ contract Eip712VectorsTest is Test {
         vm.etch(POSEIDON2_SEPOLIA, vm.parseBytes(vm.readFile("test/fixtures/poseidon2_yul.runtime.hex")));
         MockUSDC usdc = new MockUSDC();
         TrancheVault senior = new TrancheVault(IERC20(address(usdc)), "S", "S", address(this), TrancheVault(address(0)), 0);
-        TrancheVault junior = new TrancheVault(IERC20(address(usdc)), "J", "J", address(this), senior, 1000);
+        TrancheVault junior = new TrancheVault(IERC20(address(usdc)), "J", "J", address(this), senior, 2000);
         deployCodeTo("BusinessPassRegistry.sol:BusinessPassRegistry",
             abi.encode(IPoseidon2(POSEIDON2_SEPOLIA), address(this), address(0x155E), [uint16(32), 566, 404, 0]), REG_AT);
         reg = BusinessPassRegistry(REG_AT);
         MockVerifier mv = new MockVerifier();
         BookConfig memory c = BookConfig(
             IERC20(address(usdc)), senior, junior, IPoseidon2(POSEIDON2_SEPOLIA), IVerifier(address(mv)), address(this),
-            address(1), address(2), [uint256(50e6), 100e6, 250e6, 500e6], [uint256(50e6), 50e6, 50e6, 50e6], 100_000e6,
+            address(1), address(2), [uint256(50e6), 100e6, 200e6, 300e6], [uint256(50e6), 50e6, 50e6, 50e6], 100_000e6,
             1_000e6, 30 days, 5e6, IBusinessPass(REG_AT), IVerifier(address(mv)), address(3)
         );
         deployCodeTo("AdvanceBook.sol:AdvanceBook", abi.encode(c), BOOK_AT);
@@ -56,16 +56,16 @@ contract Eip712VectorsTest is Test {
     }
 
     function _offer(uint8 tier, uint256 passNullifier, uint8 band) internal pure returns (Offer memory) {
-        return Offer(bytes32(uint256(0xabc)), keccak256("chai-stall"), address(0xbEEF), 100e6, 11500, 1000, tier,
+        return Offer(bytes32(uint256(0xabc)), keccak256("chai-stall"), address(0xbEEF), 100e6, 50, 300, 1000, tier,
             passNullifier, band, 1_800_000_000);
     }
 
     function test_offerVectors() public view {
         assertEq(book.OFFER_TYPEHASH(), keccak256(
-            "Offer(bytes32 offerId,bytes32 shopId,address recipient,uint256 amount,uint16 factorBps,uint16 holdbackBps,uint8 tier,uint256 passNullifier,uint8 minRevenueBand,uint64 expiresAt)"
+            "Offer(bytes32 offerId,bytes32 shopId,address recipient,uint256 amount,uint16 feeRateBpsPerWeek,uint16 feeCapBps,uint16 holdbackBps,uint8 tier,uint256 passNullifier,uint8 minRevenueBand,uint64 expiresAt)"
         ));
-        assertEq(book.hashOffer(_offer(1, 0, 0)), 0xd20c279d2f60369b3c4fa4a5758158ed05624c8a8886e43eb3ef1b28bb7a74f2);
-        assertEq(book.hashOffer(_offer(0, 42, 2)), 0x33cd4172f8d0782a912874cb845a5b27c2620197f623b671ec1dcaf9c5692dcd);
+        assertEq(book.hashOffer(_offer(1, 0, 0)), 0xc4a22d69a87eaab1258d0b960527a060ce5ac8d09c9bc585b3d492752f3447b2);
+        assertEq(book.hashOffer(_offer(0, 42, 2)), 0x09e7930d1014a6927aa32426ec61587000e224fb12e00f3792537c510ef169a9);
     }
 
     /// The lead's managed-agents backend vectors (agents/src/mra_agents/world.py, merchant_agents.py).

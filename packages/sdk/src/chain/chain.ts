@@ -39,6 +39,12 @@ export type AdvanceOnchain = {
   shopId: Hex;
   principal: bigint;
   totalOwed: bigint;
+  owedNow?: bigint;
+  feeSoFar?: bigint;
+  feePaid?: bigint;
+  drawnAt?: bigint;
+  feeRateBpsPerWeek?: number;
+  feeCapBps?: number;
   repaid: bigint;
   /** Principal returned so far (the rest of `repaid` was fee). Optional so older fakes still type-check. */
   principalRepaid?: bigint;
@@ -68,6 +74,8 @@ export type ProtocolSnapshot = {
   nextAdvanceId: bigint;
   seniorFeeBps: number;
   juniorFeeBps: number;
+  reserveFeeBps: number;
+  protocolFeeBps: number;
 };
 
 export type PositionSnapshot = {
@@ -132,7 +140,7 @@ export interface Chain {
   vaultLogs(tranche: "senior" | "junior", eventName: string, args?: Record<string, unknown>): Promise<LogEntry[]>;
   /** Approve `allowance` (default `amount`) unless the current allowance already covers `amount`. */
   approveUsdc(spender: Addr, amount: bigint, allowance?: bigint): Promise<Receipt | null>;
-  /** Same as approveUsdc, for any ERC-20 (e.g. the JAR-J share token). */
+  /** Same as approveUsdc, for any ERC-20 (e.g. the DRIP share token). */
   approveToken(token: Addr, spender: Addr, amount: bigint, allowance?: bigint): Promise<Receipt | null>;
   /** Any contract write through the same path as the others: retries transient pre-broadcast errors, waits, throws on revert. */
   send(label: string, params: { address: Addr; abi: readonly unknown[]; functionName: string; args: readonly unknown[] }): Promise<Receipt>;
@@ -293,7 +301,7 @@ export function createChain(opts: ChainOptions): Chain {
 
     async protocol(): Promise<ProtocolSnapshot> {
       return read("protocol", async () => {
-        const [sa, ss, so, sp, ja, js, jp, reserve, exposure, maxExposure, next, sf, jf, ...caps] = await Promise.all([
+        const [sa, ss, so, sp, ja, js, jp, reserve, exposure, maxExposure, next, sf, jf, rf, pf, ...caps] = await Promise.all([
           vault(A.senior, "totalAssets"),
           vault(A.senior, "totalSupply"),
           vault(A.senior, "outstanding"),
@@ -305,8 +313,10 @@ export function createChain(opts: ChainOptions): Chain {
           book("exposure"),
           book("maxExposure"),
           book("nextAdvanceId"),
-          book("SENIOR_FEE_BPS"),
-          book("JUNIOR_FEE_BPS"),
+          book("seniorFeeBps"),
+          book("juniorFeeBps"),
+          book("reserveFeeBps"),
+          book("protocolFeeBps"),
           ...[0n, 1n, 2n, 3n].map((i) => book("tierCap", [i])),
           ...[0n, 1n, 2n, 3n].map((i) => book("tierCapFloor", [i])),
         ]);
@@ -324,6 +334,8 @@ export function createChain(opts: ChainOptions): Chain {
           nextAdvanceId: next,
           seniorFeeBps: Number(sf),
           juniorFeeBps: Number(jf),
+          reserveFeeBps: Number(rf),
+          protocolFeeBps: Number(pf),
           tierCaps: caps.slice(0, 4) as bigint[],
           tierCapFloors: caps.slice(4, 8) as bigint[],
         };
@@ -353,12 +365,25 @@ export function createChain(opts: ChainOptions): Chain {
     },
 
     async advance(id: bigint): Promise<AdvanceOnchain> {
-      const a = await read("advance", () => book("getAdvance", [id]));
+      const [a, owedNow, head] = await Promise.all([
+        read("advance", () => book("getAdvance", [id])),
+        read("advance owed", () => book("owedOf", [id])),
+        client.getBlock(),
+      ]);
+      const rawFee = a.principal * BigInt(a.feeRateBpsPerWeek) * (head.timestamp - a.drawnAt) / (10_000n * 604_800n);
+      const accrued = a.principalRepaid === a.principal ? a.feePaid :
+        (rawFee < a.principal * BigInt(a.feeCapBps) / 10_000n ? rawFee : a.principal * BigInt(a.feeCapBps) / 10_000n);
       return {
         id,
         shopId: a.shopId,
         principal: a.principal,
         totalOwed: a.totalOwed,
+        owedNow,
+        feeSoFar: accrued,
+        feePaid: a.feePaid,
+        drawnAt: a.drawnAt,
+        feeRateBpsPerWeek: Number(a.feeRateBpsPerWeek),
+        feeCapBps: Number(a.feeCapBps),
         repaid: a.repaid,
         principalRepaid: a.principalRepaid,
         holdbackBps: Number(a.holdbackBps),

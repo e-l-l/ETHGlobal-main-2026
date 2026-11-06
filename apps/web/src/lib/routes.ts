@@ -7,11 +7,14 @@
  *   /merchant    the merchant app after sign-up
  *   /pay         what a customer sees
  *   /portal      demo seller portal the private check reads from
- *   /earn …      lenders, junior, public dashboard
+ *   /earn …      lenders (the vault), /dripcoin (DRIP, first loss), public dashboard
  */
 export const routes = {
   landing: "/",
+  /** The first landing page (feat/landing-page), kept for reference. */
+  oldLanding: "/old-landing",
   home: "/home",
+  blockPattern: "/block-pattern",
 
   /* Merchant onboarding */
   welcome: "/onboarding",
@@ -52,9 +55,9 @@ export const routes = {
   earn: "/earn",
   deposit: "/earn/deposit",
   position: "/earn/position",
-  junior: "/junior",
-  mint: "/junior/mint",
-  trade: "/junior/trade",
+  dripcoin: "/dripcoin",
+  mint: "/dripcoin/mint",
+  trade: "/dripcoin/trade",
   protocol: "/protocol",
   risk: "/risk",
   explorer: "/explorer",

@@ -11,6 +11,13 @@ fs_permissions = [
   { access = "read-write", path = "../agents/deployments" }, # DeployLocal / DeployVerifier write here
 ]
 
+# AdvanceBook alone is compiled with via_ir to stay under EIP-170 (24,576 bytes). The bb-generated
+# verifier must stay on the legacy pipeline (stack too deep under via_ir), so via_ir is not global.
+# Files that import AdvanceBook (tests, scripts) compile in the same via_ir unit: tests must read the
+# time with vm.getBlockTimestamp(), not a cached block.timestamp, across vm.warp.
+additional_compiler_profiles = [{ name = "via-ir", via_ir = true }]
+compilation_restrictions = [{ paths = "src/AdvanceBook.sol", via_ir = true }]
+
 [fuzz]
 runs = 256
 
@@ -21,3 +28,4 @@ fail_on_revert = false
 
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
+

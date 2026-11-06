@@ -42,7 +42,14 @@ class Settings(BaseSettings):
     risk_effort: str = "low"
 
     # Business rules (ours, stricter than the contract)
+    cold_start_max_outstanding_usd: float = 1000
+    cold_start_max_count_per_period: int = 10
+    cold_start_period_seconds: int = 86400
+    risk_min_pool_liquidity: int = 1
     max_days_to_repay: int = 60
+    fee_rate_bps_per_week: int = 50
+    fee_cap_bps: int = 300
+    default_holdback_bps: int = 800
     offer_ttl_seconds: int = 15 * 60
     risk_loop_seconds: int = 300
 

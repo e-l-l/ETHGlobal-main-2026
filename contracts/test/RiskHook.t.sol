@@ -164,7 +164,7 @@ contract RiskHookTest is Test, Deployers {
     }
 
     function _next(uint256 dt) internal {
-        vm.warp(block.timestamp + dt);
+        vm.warp(vm.getBlockTimestamp() + dt);
         vm.roll(block.number + 1);
     }
 
@@ -306,12 +306,17 @@ contract RiskHookTest is Test, Deployers {
     // ------------------------------------------------------------------ flush
 
     function test_flush_movesAccruedUsdcToBook() public {
+        address protocolTreasury = makeAddr("hookTreasury");
+        hook.setTreasury(protocolTreasury);
         _swap(hookKey, !usdcIs0, -1e9); // exact-in junior -> USDC: fee on USDC out
         _swap(hookKey, usdcIs0, 5e8); // exact-out USDC -> junior: fee on USDC in
         uint256 accrued = usdc.balanceOf(address(hook));
         assertGt(accrued, 0);
 
         uint256 bookBefore = usdc.balanceOf(address(book));
+        uint256 treasuryBefore = usdc.balanceOf(hook.treasury());
+        uint256 reservePart = accrued * 7500 / 10_000;
+        uint256 protocolPart = accrued - reservePart;
         vm.prank(makeAddr("anyone"));
         vm.expectEmit(true, false, false, true, address(hook));
         emit RiskHook.Flushed(address(book), accrued);
@@ -319,10 +324,21 @@ contract RiskHookTest is Test, Deployers {
 
         assertEq(book.calls(), 1);
         assertEq(book.lastCaller(), address(hook));
-        assertEq(book.totalDeposited(), accrued);
-        assertEq(usdc.balanceOf(address(book)) - bookBefore, accrued);
+        assertEq(book.totalDeposited(), reservePart);
+        assertEq(usdc.balanceOf(address(book)) - bookBefore, reservePart);
+        assertEq(usdc.balanceOf(hook.treasury()) - treasuryBefore, protocolPart);
         assertEq(usdc.balanceOf(address(hook)), 0);
         assertEq(usdc.allowance(address(hook), address(book)), 0);
+    }
+
+    function test_hookTreasuryOwnerControl() public {
+        address next = makeAddr("newProtocolTreasury");
+        vm.expectRevert(); vm.prank(makeAddr("stranger")); hook.setTreasury(next);
+        vm.expectRevert(RiskHook.ZeroAddress.selector); hook.setTreasury(address(0));
+        vm.expectEmit(true, true, false, true, address(hook));
+        emit RiskHook.TreasurySet(hook.treasury(), next);
+        hook.setTreasury(next);
+        assertEq(hook.treasury(), next);
     }
 
     function test_flush_revertsWhenEmpty() public {
@@ -336,7 +352,7 @@ contract RiskHookTest is Test, Deployers {
         PoolKey memory key = _initPoolWithLiquidity(IHooks(address(h)));
         _swap(key, !usdcIs0, -1e9);
         uint256 bal = usdc.balanceOf(address(h));
-        vm.expectRevert(abi.encodeWithSelector(RiskHook.FlushIncomplete.selector, bal));
+        vm.expectRevert(abi.encodeWithSelector(RiskHook.FlushIncomplete.selector, bal * 7500 / 10_000));
         h.flush();
     }
 
@@ -420,7 +436,7 @@ contract RiskHookTest is Test, Deployers {
 
         _next(10);
         assertEq(hook.consult(hookKey, 10), 0);
-        vm.expectRevert(abi.encodeWithSelector(RiskHook.InsufficientHistory.selector, uint32(block.timestamp - 11), uint32(block.timestamp - 10)));
+        vm.expectRevert(abi.encodeWithSelector(RiskHook.InsufficientHistory.selector, uint32(vm.getBlockTimestamp() - 11), uint32(vm.getBlockTimestamp() - 10)));
         hook.consult(hookKey, 11);
 
         vm.expectRevert(RiskHook.ZeroWindow.selector);
@@ -432,7 +448,7 @@ contract RiskHookTest is Test, Deployers {
     }
 
     function test_consult_ringBufferEvictsOldHistory() public {
-        uint256 start = block.timestamp;
+        uint256 start = vm.getBlockTimestamp();
         for (uint256 i; i < 70; i++) {
             _next(10);
             _swap(hookKey, i % 2 == 0, -1e6);
@@ -444,7 +460,7 @@ contract RiskHookTest is Test, Deployers {
         vm.expectRevert();
         hook.consult(hookKey, 631);
         vm.expectRevert();
-        hook.consult(hookKey, uint32(block.timestamp - start));
+        hook.consult(hookKey, uint32(vm.getBlockTimestamp() - start));
     }
 
     function _floorDiv(int256 a, int256 b) internal pure returns (int24) {

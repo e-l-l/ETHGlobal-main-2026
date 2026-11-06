@@ -35,8 +35,8 @@ abstract contract BaseTest is Test {
         bizVerifier = new MockVerifier();
         registry = new BusinessPassRegistry(IPoseidon2(POSEIDON2_SEPOLIA), address(this), vm.addr(ISSUER_PK), [uint16(32), 566, 404, 0]);
         senior = new TrancheVault(IERC20(address(usdc)), "Senior", "SNR", address(this), TrancheVault(address(0)), 0);
-        junior = new TrancheVault(IERC20(address(usdc)), "Junior", "JNR", address(this), senior, 1000);
-        uint256[4] memory caps = [uint256(50e6), 100e6, 250e6, 500e6];
+        junior = new TrancheVault(IERC20(address(usdc)), "Junior", "JNR", address(this), senior, 2000);
+        uint256[4] memory caps = [uint256(50e6), 100e6, 200e6, 300e6];
         uint256[4] memory floors = [uint256(50e6), 50e6, 50e6, 50e6];
         book = new AdvanceBook(BookConfig(IERC20(address(usdc)), senior, junior, IPoseidon2(POSEIDON2_SEPOLIA), verifier, address(this), offerSigner, riskManager, caps, floors, 100_000e6, 1_000e6, 30 days, 5e6, IBusinessPass(address(registry)), bizVerifier, vm.addr(ATTESTER_PK)));
         senior.setBook(address(book));
@@ -49,7 +49,7 @@ abstract contract BaseTest is Test {
     }
 
     function _offer(bytes32 offerId, bytes32 shopId, address recipient, uint256 nullifier) internal view returns (Offer memory) {
-        return Offer(offerId, shopId, recipient, 50e6, 11000, 2000, 0, nullifier, 0, uint64(block.timestamp + 1 days));
+        return Offer(offerId, shopId, recipient, 50e6, 50, 300, 800, 0, nullifier, 0, uint64(vm.getBlockTimestamp() + 1 days));
     }
     function _signOffer(Offer memory offer, uint256 pk) internal view returns (bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, book.hashOffer(offer));

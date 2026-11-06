@@ -6,7 +6,7 @@ import { Spinner } from "./status";
 
 /*
  * Primary is Hunter, not lime: lime on white is 1.2:1, so a lime button has no edge.
- * The lime variant exists for Hunter and Charcoal panels only (the jar card, wave band).
+ * The lime variant exists for Hunter and Charcoal panels only (the drip card, wave band).
  */
 export const buttonVariants = cva(
   [

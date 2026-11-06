@@ -463,7 +463,8 @@ class MerchantAgent:
 
         # 8. why I drew
         summary = f"Drew ${offer.amount / 1e6:.0f} to restock. {check.reason}"
-        return self._log(res("drew", check.code, summary, amount=offer.amount, factor_bps=offer.factor_bps,
+        return self._log(res("drew", check.code, summary, amount=offer.amount,
+                             fee_rate_bps_per_week=offer.fee_rate_bps_per_week, fee_cap_bps=offer.fee_cap_bps,
                              holdback_bps=offer.holdback_bps, offer_id=offer.offer_id, tx_hash=tx,
                              decision_id=did, reasons=reasons, **why), dedupe=False)
 

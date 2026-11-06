@@ -96,7 +96,7 @@ def main() -> int:
 
     # 2. Chai stall: passes red lines; judge approves; clamp + sign; relayer draws onchain.
     if not live:
-        llm.push(OfferDraft(decision="offer", amount=100_000_000, factor_bps=11_500, holdback_bps=1_000,
+        llm.push(OfferDraft(decision="offer", amount=100_000_000, fee_rate_bps_per_week=50, fee_cap_bps=300, holdback_bps=800,
                             est_days_slow=40, est_days_normal=25, est_days_busy=15,
                             reasons_en=["Steady daily sales from many customers"],
                             reasons_es=["Ventas diarias estables de muchos clientes"]),
@@ -163,7 +163,7 @@ def mandate_flow(s, reader, relayer, w3, chain_now, issue_pass, prove_first, off
     print(f"[mandate] registered id={mandate_id} agent={m[1][:10]}… (real Business Pass proof, AgentPass attested)")
 
     offer = Offer(offer_id="0x" + secrets.token_hex(32), shop_id="0x" + bytes(shop_id).hex(), recipient=rcpt,
-                  amount=50_000_000, factor_bps=11500, holdback_bps=1000, tier=0, pass_nullifier=0,
+                  amount=50_000_000, fee_rate_bps_per_week=50, fee_cap_bps=300, holdback_bps=800, tier=0, pass_nullifier=0,
                   min_revenue_band=1, expires_at=now + 900)
     so = EIP712Signer(offer_signer).sign_offer(offer, chain_id=reader.chain_id, verifying_contract=book.address)
     agent_sig = sign_mandate_draw(agent.key.hex(), offer.offer_id, mandate_id, scheme="eip712",

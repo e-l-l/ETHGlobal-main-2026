@@ -24,7 +24,7 @@ export const VAULT = {
   reserve: "$8,400",
   coverage: "20.3%",
   feeShareJunior: "30%",
-  feeSplit: "60% senior · 30% junior · 10% reserve",
+  feeSplit: "40% senior · 30% junior/DRIP · 20% reserve · 10% protocol",
   receivedShares: "2,441.4 sUSD",
   juniorPrice: "$0.982",
   juniorTwap: "$0.986",
@@ -40,9 +40,10 @@ export const VAULT = {
 
 /** Of each fee. Senior earns most, junior earns more for its size, reserve keeps a slice. */
 export const FEE_SPLIT = [
-  { k: "Senior", v: "60%" },
-  { k: "Junior", v: "30%" },
-  { k: "Reserve", v: "10%" },
+  { k: "Senior", v: "40%" },
+  { k: "Junior / DRIP", v: "30%" },
+  { k: "Reserve", v: "20%" },
+  { k: "Protocol", v: "10%" },
 ] as const;
 
 /** Share value, calm, then a write-off that junior eats. Senior's line barely moves. */
@@ -53,7 +54,7 @@ export const juniorSeries = [1, 0.998, 1.002, 0.997, 0.994, 0.991, 0.988, 0.962,
 export const JUNIOR_WRITE_OFF_INDEX = 7;
 
 export const positionActivity = [
-  { when: "Today", what: "Write-off absorbed by junior", amount: "$0 to you" },
+  { when: "Today", what: "Advance written off · DRIP took the loss", amount: "$0 to you" },
   { when: "Nov 4", what: "Fees earned", amount: "+$18.20" },
   { when: "Nov 2", what: "Deposited", amount: "$2,500" },
 ];
@@ -61,24 +62,24 @@ export const positionActivity = [
 export const TIER_CAPS = [
   { tier: 0, cap: "$50" },
   { tier: 1, cap: "$100" },
-  { tier: 2, cap: "$250" },
-  { tier: 3, cap: "$250", was: "$500" },
+  { tier: 2, cap: "$200" },
+  { tier: 3, cap: "$300", was: "$300" },
 ] as const;
 
 export const signals = [
-  { name: "Junior price (TWAP)", value: "$0.986", state: "watch" as const, note: "Fell through $0.97 after the write-off, recovering" },
+  { name: "DRIP price (TWAP)", value: "$0.986", state: "watch" as const, note: "Fell through $0.97 after the write-off, recovering" },
   { name: "Repayment speed", value: "−40%", state: "watch" as const, note: "One shop is selling slower than its usual week" },
-  { name: "Junior coverage", value: "20.3%", state: "ok" as const, note: "Above the 15% floor" },
+  { name: "Coverage", value: "20.3%", state: "ok" as const, note: "DRIP cover vs advances out. Above the 20% cover rule" },
 ];
 
 export const riskLog = [
   {
     time: "14:41",
-    title: "Lowered the tier 3 cap, $500 → $250",
+    title: "Limits reviewed at the $300 tier cap",
     kind: "down" as const,
-    reason: "Junior TWAP fell through $0.97 after a $100 write-off. Tier 3 advances are the largest, so they move first. Limits only move down, inside the preset band. A person raises them back.",
+    reason: "DRIP TWAP fell through $0.97 after a $100 write-off. Tier 3 advances are the largest, so they move first. Limits only move down, inside the preset band. A person raises them back.",
     reasons: [
-      "Junior TWAP fell through $0.97 after a $100 write-off.",
+      "DRIP TWAP fell through $0.97 after a $100 write-off.",
       "Tier 3 advances are the largest, so they move first.",
       "Limits only move down, inside the preset band. A person raises them back.",
     ],
@@ -87,22 +88,22 @@ export const riskLog = [
     time: "11:05",
     title: "Watching one shop's repayment speed",
     kind: "warn" as const,
-    reason: "Sales on one shop ran 40% below its usual week. No limit change. Junior still covers it.",
-    reasons: ["Sales on one shop ran 40% below its usual week.", "No limit change. Junior still covers it."],
+    reason: "Sales on one shop ran 40% below its usual week. No limit change. DRIP still covers it.",
+    reasons: ["Sales on one shop ran 40% below its usual week.", "No limit change. DRIP still covers it."],
   },
   {
     time: "Mon",
     title: "Hook fee added to the reserve",
     kind: "accent" as const,
-    reason: "The Uniswap v4 hook on JAR-J/USDC skimmed a small fee into the reserve.",
-    reasons: ["The Uniswap v4 hook on JAR-J/USDC skimmed a small fee into the reserve."],
+    reason: "The Uniswap v4 hook on DRIP/USDC skimmed a small fee into the reserve.",
+    reasons: ["The Uniswap v4 hook on DRIP/USDC skimmed a small fee into the reserve."],
   },
   {
     time: "Sep 3",
     title: "Wrote off an advance",
     kind: "down" as const,
-    reason: "No sales for 30 days. The shop's jar and junior took the loss. Senior was not touched.",
-    reasons: ["No sales for 30 days.", "The shop's jar and junior took the loss. Senior was not touched."],
+    reason: "No sales for 30 days. DripCoin took the loss. The vault was not touched.",
+    reasons: ["No sales for 30 days.", "DripCoin took the loss. The vault was not touched."],
   },
 ];
 
@@ -110,7 +111,7 @@ export const explorerEvents = [
   {
     kind: "Sale",
     title: "$10.00 to shop_7f3a",
-    detail: "$9.00 to the shop · $1.00 to its jar",
+    detail: "$9.00 to the shop · $1.00 to its advance",
     hash: "0x3b91c2e07d4a55f8a1c0e922b7d4416f0ae3c9d2",
     when: "2m ago",
   },
@@ -152,7 +153,7 @@ export const waterfall: [LossTier, LossTier, LossTier] = [
 ];
 
 export const positionRows = [
-  { id: "writeoff", when: "Today", action: "Write-off absorbed by junior", amount: "$0 to you", shares: "2,441.4" },
+  { id: "writeoff", when: "Today", action: "Advance written off · DRIP took the loss", amount: "$0 to you", shares: "2,441.4" },
   { id: "fees", when: "Nov 4", action: "Fees earned", amount: "+$18.20", shares: "2,441.4" },
   { id: "deposit", when: "Nov 2", action: "Deposited", amount: "$2,500", shares: "2,441.4" },
 ];
@@ -198,7 +199,7 @@ export type LenderKey = (typeof lenderLinks)[number]["key"];
  * Lender risk panel + live loss waterfall (SDK-only mock: apps/web reads it through `lender.riskPanel()` /
  * `lender.waterfall()`). Every overlapping number matches VAULT / TIER_CAPS above (test/lender-risk.test.ts checks):
  * junior $42,000 + reserve $8,400 against $248,000 outstanding = 20.3% coverage; $1,100 written off; 23 write-offs
- * of 1,284 advances = the "1.8%" count rate on Earn; JAR-J $0.982 spot, $0.986 TWAP against a $1.000 book.
+ * of 1,284 advances = the "1.8%" count rate on Earn; DRIP $0.982 spot, $0.986 TWAP against a $1.000 book.
  * ---------------------------------------------------------------------------------------------------------------- */
 
 const SEPOLIA_SCAN = "https://sepolia.etherscan.io/address/";
@@ -239,7 +240,7 @@ export const RISK_PANEL: RiskPanelView = {
     pct: 20.3,
     cushion: "$50,400",
     outstanding: VAULT.outstanding,
-    note: "$50,400 of junior and reserve against $248,000 lent out.",
+    note: "$50,400 of DRIP and reserve against $248,000 lent out.",
     tone: "ok",
   },
   market: {
@@ -251,26 +252,26 @@ export const RISK_PANEL: RiskPanelView = {
     change1hVs24h: "−1.2%",
     ratio: 0.988,
     trigger: { threshold: 0.9, state: "armed", note: "Armed: it fires if the 1h price drops under 0.90× the 24h price." },
-    read: "Traders price JAR-J 1.4% under its book value: they expect losses beyond the $1,100 written off so far.",
+    read: "Traders price DRIP 1.4% under its book value: they expect losses beyond the $1,100 written off so far.",
     tone: "ok",
   },
   agent: {
     tierCaps: [
       { tier: 0, cap: "$50", floor: "$25", atFloor: false },
       { tier: 1, cap: "$100", floor: "$50", atFloor: false },
-      { tier: 2, cap: "$250", floor: "$100", atFloor: false },
-      { tier: 3, cap: "$250", floor: "$100", was: "$500", atFloor: false },
+  { tier: 2, cap: "$200", floor: "$100", atFloor: false },
+  { tier: 3, cap: "$300", floor: "$100", was: "$300", atFloor: false },
     ],
     recentlyLowered: true,
     lastChange: "Lowered today, 2:41 pm",
-    lastCheck: "today, 2:41 pm · junior twap drop",
+    lastCheck: "today, 2:41 pm · DRIP price drop",
     triggers: ["junior_twap_drop"],
     from: "api",
   },
   contracts: [
     contract("AdvanceBook", "0x873bb34ad35a66947dbd2f9482d15ba5d400d8db"),
-    contract("Senior vault", "0x51892eb237ae06e85b59007270dc28142a69ff95"),
-    contract("Junior vault (JAR-J)", "0x30911a69b90523fa53f2dd3e8096ac3096c61a90"),
+    contract("Vault", "0x51892eb237ae06e85b59007270dc28142a69ff95"),
+    contract("DripCoin (DRIP)", "0x30911a69b90523fa53f2dd3e8096ac3096c61a90"),
     contract("RiskHook", "0x216ec669911e5e042c73de8f593397a51e00d044"),
   ],
   approximations: [],
@@ -287,12 +288,12 @@ export const WATERFALL: WaterfallView = {
       usd: 37200,
       estimated: true,
     },
-    { key: "junior", title: "Junior (JAR-J)", description: "Cash in the junior vault. Takes the first write-off.", amount: VAULT.junior, usd: 42000, estimated: false },
-    { key: "reserve", title: "Reserve", description: "Fees and hook fees held back. Pays what junior can't.", amount: VAULT.reserve, usd: 8400, estimated: false },
+    { key: "junior", title: "DripCoin (DRIP)", description: "Cash backing DRIP. Takes the first write-off.", amount: VAULT.junior, usd: 42000, estimated: false },
+    { key: "reserve", title: "Reserve", description: "Fees and hook fees held back. Pays what DRIP can't.", amount: VAULT.reserve, usd: 8400, estimated: false },
     {
       key: "senior",
-      title: "Senior vault",
-      description: "Lenders. Loses only after junior and the reserve run out.",
+      title: "Vault",
+      description: "Lenders. Loses only after DRIP and the reserve run out.",
       amount: VAULT.senior,
       usd: 310000,
       estimated: false,
@@ -301,7 +302,7 @@ export const WATERFALL: WaterfallView = {
   ],
   protection: "$50,400",
   protectionUsd: 50400,
-  headline: "$50,400 of protection ahead of every senior dollar",
-  sub: "Junior $42,000 + reserve $8,400: 20.3% of the $248,000 lent out. The shops' holdback is not counted.",
+  headline: "$50,400 of protection ahead of every vault dollar",
+  sub: "DRIP $42,000 + reserve $8,400: 20.3% of the $248,000 lent out.",
   source: "mock",
 };

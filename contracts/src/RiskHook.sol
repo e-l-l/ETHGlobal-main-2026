@@ -13,6 +13,7 @@ import {SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IAdvanceBookReserve} from "./interfaces/IAdvanceBookReserve.sol";
 
 /// @title RiskHook
@@ -33,7 +34,7 @@ import {IAdvanceBookReserve} from "./interfaces/IAdvanceBookReserve.sol";
 ///     the tick is constant between observations) and extrapolates from the newest observation with `lastTick`.
 ///     Like any TWAP it is not proof against a manipulator who holds the price across blocks; callers should
 ///     use a window long enough for their risk.
-contract RiskHook is BaseHook, ReentrancyGuard {
+contract RiskHook is BaseHook, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
     using PoolIdLibrary for PoolKey;
     using StateLibrary for IPoolManager;
@@ -56,12 +57,14 @@ contract RiskHook is BaseHook, ReentrancyGuard {
     address public immutable usdc;
     address public immutable book;
     uint24 public immutable feePips;
+    address public treasury;
 
     mapping(PoolId => Observation[64]) internal _observations;
     mapping(PoolId => OracleState) public oracleState;
 
     event FeeTaken(PoolId indexed poolId, address indexed sender, uint256 amount);
     event Flushed(address indexed book, uint256 amount);
+    event TreasurySet(address indexed previousTreasury, address indexed treasury);
 
     error ZeroAddress();
     error FeeTooHigh(uint24 feePips);
@@ -71,12 +74,13 @@ contract RiskHook is BaseHook, ReentrancyGuard {
     error ZeroWindow();
     error InsufficientHistory(uint32 target, uint32 oldest);
 
-    constructor(IPoolManager pm, address usdc_, address book_, uint24 feePips_) BaseHook(pm) {
+    constructor(IPoolManager pm, address usdc_, address book_, uint24 feePips_) BaseHook(pm) Ownable(msg.sender) {
         if (usdc_ == address(0) || book_ == address(0)) revert ZeroAddress();
         if (feePips_ >= FEE_DENOMINATOR) revert FeeTooHigh(feePips_);
         usdc = usdc_;
         book = book_;
         feePips = feePips_;
+        treasury = msg.sender;
     }
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory p) {
@@ -126,12 +130,22 @@ contract RiskHook is BaseHook, ReentrancyGuard {
         IERC20 token = IERC20(usdc);
         uint256 amount = token.balanceOf(address(this));
         if (amount == 0) revert NothingToFlush();
-        token.forceApprove(book, amount);
-        IAdvanceBookReserve(book).depositReserve(amount);
+        uint256 reserveAmount = amount * 7500 / 10_000;
+        uint256 protocolAmount = amount - reserveAmount;
+        token.forceApprove(book, reserveAmount);
+        if (reserveAmount != 0) IAdvanceBookReserve(book).depositReserve(reserveAmount);
+        if (protocolAmount != 0) token.safeTransfer(treasury, protocolAmount);
         uint256 leftover = token.balanceOf(address(this));
         if (leftover != 0) revert FlushIncomplete(leftover);
         token.forceApprove(book, 0);
         emit Flushed(book, amount);
+    }
+
+    function setTreasury(address treasury_) external onlyOwner {
+        if (treasury_ == address(0)) revert ZeroAddress();
+        address previous = treasury;
+        treasury = treasury_;
+        emit TreasurySet(previous, treasury_);
     }
 
     // ------------------------------------------------------------------ oracle

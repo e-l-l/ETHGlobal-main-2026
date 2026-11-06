@@ -97,6 +97,13 @@ Read by **agents** (`/recovery/rp-context`, `/recovery/verify`).
 
 ## 7. What to do when the keys arrive (in order)
 
+### App build switch and World simulator
+
+- Build `apps/web` with `NEXT_PUBLIC_WORLD_MODE=real`, `NEXT_PUBLIC_MRA_MODE=sepolia` (or `local`), and `NEXT_PUBLIC_API_URL` set to the agents API origin. These are public build-time values; no World secret belongs in the web build. Keep `NEXT_PUBLIC_WORLD_MODE=mock` for the existing mock e2e/demo.
+- Set the agents service's `WORLD_MOCK=0`, `WORLD_AGENT_PASS_CLIENT_ID`, `WORLD_AGENT_PASS_CLIENT_SECRET`, `WORLD_AGENT_PASS_CLIENT_AUTH=client_secret_basic`, `WORLD_AGENT_PASS_REDIRECT_URI` (kept for redirect compatibility), `WORLD_APP_ID`, `WORLD_RP_ID`, `WORLD_RP_SIGNING_KEY`, and `WORLD_RECOVERY_ACTION=credential-recovery-v1`. Set `WORLD_ENVIRONMENT=production` for live World App use. Agent Pass uses `WORLD_AGENT_PASS_ISSUER=https://auth.world.org` by default.
+- To exercise IDKit recovery with World's simulator, create/select a staging IDKit action for the same app, set `WORLD_ENVIRONMENT=staging` on agents, and build the app with `NEXT_PUBLIC_WORLD_MODE=real`. Open https://simulator.worldcoin.org on a phone and scan the recovery screen QR. The server pins the accepted proof environment, so production proofs do not pass a staging configuration and vice versa. Agent Pass remains on the configured OIDC issuer.
+- Phone test: open `/merchant/agent/approve`, press **Continue with World**, scan the displayed QR or open its link in World App, enter the shown code if requested, and approve. The app then continues the existing private pass proof and mandate registration. On `/merchant/settings/recover`, choose a passphrase with at least 8 characters and back up; on a second device choose restore, verify the same World identity, and enter the same passphrase.
+
 1. **Reclaim**
    - Do RECLAIM_PROVIDER.md steps 1–3.
    - Copy `RECLAIM_APP_ID` and `RECLAIM_APP_SECRET` into `issuer/.env`.

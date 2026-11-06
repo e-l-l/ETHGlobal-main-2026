@@ -37,7 +37,7 @@ def setup():
 
 def signed(tier):
     return {"offer": {"offer_id": TX, "shop_id": SHOP, "recipient": ADDRESS, "amount": 50000000,
-        "factor_bps": 11000, "holdback_bps": 500, "tier": tier,
+        "fee_rate_bps_per_week": 50, "fee_cap_bps": 300, "holdback_bps": 500, "tier": tier,
         "pass_nullifier": 1 if tier == 0 else 0, "min_revenue_band": 0, "expires_at": 1800000000},
         "signature": "0x" + "aa" * 65, "digest": TX}
 

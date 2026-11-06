@@ -4,7 +4,7 @@ Who we're designing for: a kiosco owner in Buenos Aires, a phone-accessory selle
 
 ## Realities the design has to handle
 
-1. **Customers hold USDT, not USDC.** People mostly hold it on Tron or BSC, inside Lemon, Belo, Binance or Yellow Card. Checkout accepts any token and swaps through Uniswap. Pitch line: *customer pays in USDT, repayment settles in USDC.*
+1. **Customers hold USDT, not USDC.** People mostly hold it on Tron or BSC, inside Lemon, Belo, Binance or Yellow Card. Live checkout accepts test USDC only; any-token checkout swaps are planned.
 2. **Merchants need local money.** Show a "Withdraw to Mercado Pago / CVU / M-Pesa" step, mocked for the demo. Better still, **send the advance straight to the supplier**: it matches why the merchant asked, and lowers the risk of someone taking the money and disappearing.
 3. **No onchain history at the start.** Start tiny ($50 after about two weeks of sales through the link) and make the next limit visible. zkTLS proofs of offchain sales are the stretch fix.
 4. **Being visible is dangerous.** Neutral names, nothing about debt on the customer's screen, and the split shown only to the merchant. See [zk-privacy.md](zk-privacy.md).

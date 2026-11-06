@@ -42,8 +42,8 @@ contract DeployLocal is Script {
         registry = new BusinessPassRegistry(IPoseidon2(POSEIDON), owner, vm.addr(vm.deriveKey(MNEMONIC, 4)), [uint16(32), 566, 404, 0]);
         manager = IPoolManager(address(new PoolManager(owner)));
         senior = new TrancheVault(IERC20(address(usdc)), "Senior", "SNR", owner, TrancheVault(address(0)), 0);
-        junior = new TrancheVault(IERC20(address(usdc)), "Junior", "JNR", owner, senior, 1000);
-        uint256[4] memory caps = [uint256(50e6), 100e6, 250e6, 500e6];
+        junior = new TrancheVault(IERC20(address(usdc)), "DripCoin", "DRIP", owner, senior, 2000);
+        uint256[4] memory caps = [uint256(50e6), 100e6, 200e6, 300e6];
         uint256[4] memory floors = [uint256(50e6), 50e6, 50e6, 50e6];
         book = new AdvanceBook(BookConfig(IERC20(address(usdc)), senior, junior, IPoseidon2(POSEIDON), IVerifier(verifier), owner, vm.addr(vm.deriveKey(MNEMONIC, 1)), vm.addr(vm.deriveKey(MNEMONIC, 2)), caps, floors, 100_000e6, 1_000e6, 30 days, 5e6, IBusinessPass(address(registry)), IVerifier(bizVerifier), vm.addr(vm.deriveKey(MNEMONIC, 5))));
         senior.setBook(address(book));

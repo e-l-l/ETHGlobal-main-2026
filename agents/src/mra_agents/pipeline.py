@@ -71,13 +71,17 @@ class UnderwritingPipeline:
         sales = self.indexer.sales_for(shop_id, now - 90 * 86400)
         payers = list({sale.payer for sale in sales})
         funders = self.reader.usdc_funders(payers, now - 97 * 86400)
+        intermediaries = list({source for sources in funders.values() for source in sources
+                               if source.lower() != "0x" + "00" * 20})
+        for address, sources in self.reader.usdc_funders(intermediaries, now - 97 * 86400).items():
+            funders.setdefault(address, []).extend(sources)
         payout = self.reader.shop_payout(shop_id)
         features = self.build_features(shop_id, sales, funders, payout, now,
                                        self.settings.payer_hash_key.get_secret_value().encode())
         features = apply_cold_start(features, tier, min_revenue_band)
         decision = Decision(decision_id=str(uuid.uuid4()), created_at=now, shop_id=shop_id, tier=tier,
                             features_hash=features_hash(features), redline_hits=[], draft=None, verdict=None,
-                            clamp_changes=[], result="error", model=self.settings.anthropic_model)
+                            clamp_changes=[], result="error", model=None)
 
         def finish(result):
             decision.result = result
@@ -99,9 +103,12 @@ class UnderwritingPipeline:
             return finish("declined")
         try:
             decision.draft = self.judge.underwrite(features, tier, limits)
+            decision.underwriter_model = getattr(self.judge, "model", None)
+            decision.model = decision.underwriter_model
             if decision.draft.decision == "decline":
                 return finish("declined")
             decision.verdict = self.judge.critique(features, decision.draft)
+            decision.critic_model = getattr(self.judge, "model", None)
         except Exception:  # noqa: BLE001 - any judge failure must end as 'error' and never sign
             return finish("error")
         if decision.verdict.verdict != "approve":
@@ -110,8 +117,18 @@ class UnderwritingPipeline:
                                                     self.settings.max_days_to_repay)
         if draft is None:
             return finish("declined")
+        if features.cold_start:
+            active = [a for a in self.reader.advances() if a.status == AdvanceStatus.ACTIVE]
+            if not self.store.reserve_cold_start(
+                decision.decision_id, shop_id, now, now + self.settings.offer_ttl_seconds, draft.amount, active,
+                int(self.settings.cold_start_max_outstanding_usd * 1_000_000),
+                self.settings.cold_start_max_count_per_period, self.settings.cold_start_period_seconds,
+            ):
+                decision.redline_hits.append("cold_start_cap")
+                return finish("rejected")
         offer = Offer(offer_id="0x" + secrets.token_hex(32), shop_id=shop_id, recipient=recipient,
-                      amount=draft.amount, factor_bps=draft.factor_bps, holdback_bps=draft.holdback_bps,
+                      amount=draft.amount, fee_rate_bps_per_week=draft.fee_rate_bps_per_week,
+                      fee_cap_bps=draft.fee_cap_bps, holdback_bps=draft.holdback_bps,
                       tier=tier, pass_nullifier=pass_nullifier, min_revenue_band=min_revenue_band,
                       expires_at=now + self.settings.offer_ttl_seconds)
         decision.signed_offer = self.signer.sign_offer(offer, chain_id=self.reader.chain_id,

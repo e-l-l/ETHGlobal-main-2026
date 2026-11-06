@@ -1,6 +1,6 @@
 # The full picture: a private, ZK-based, trustworthy lending platform
 
-**One sentence:** a real, unique human proves they run a real business, borrows against it and repays from sales, and **nobody (us, the lenders, the AI, the RPC provider or the public) can link the borrower to who they are or what they do.** Lenders still get hard, verifiable guarantees.
+**Scope:** ZK proofs hide credential details, not public transaction history. The demo uses a mock business attestor and World test-mode stub; the real Reclaim and World OIDC/IDKit paths are built and tested, pending production credentials.
 
 This doc ties together the pieces we've built and the pieces we still need. Each layer has a status:
 - ✅ built and tested
@@ -9,19 +9,25 @@ This doc ties together the pieces we've built and the pieces we still need. Each
 
 ---
 
+## What is visible and trust boundaries
+
+Onchain, shop registration exposes owner and payout addresses; sales expose payer, amount and shop; advances expose amount, tier and shop. `claimStandingPass` publicly links the advance ID to the inserted commitment. A later proof hides which Standing Pass leaf is used, but timing, tier, wallet reuse and payment flows can narrow candidates. Identity, seller account and business facts beyond the proved predicates are not published by the credential proof. They are not guaranteed unlinkable from external data.
+
+The issuer sees the seller account ID transiently and holds the HMAC pepper. The relayer sees requests and can correlate or censor them. Anon-RPC protects configured reads, not transaction metadata or all service interactions. Today the effective anonymity set is small and unmeasured: it depends on eligible, indistinguishable real leaves, not tree capacity. The fictional seller portal and mock attestor do not establish a real business. World is in test mode; a unique human would not prove a unique business.
+
 ## 1. The five layers
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────┐
-│ 5. NETWORK PRIVACY    Anon-RPC for every read; relayer for every write. Nobody sees IP ↔ shop.  │
+│ 5. NETWORK PRIVACY    Anon-RPC for every read; relayer for every write. Reduces IP ↔ shop linkage for configured reads.  │
 ├──────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4. CREDIT PRIVACY     Standing Pass (ZK): "I repaid ≥ N advances". History never linkable.      │ ✅
+│ 4. CREDIT PRIVACY     Standing Pass (ZK): "I repaid ≥ N advances". Proof hides the selected leaf; metadata may correlate.      │ ✅
 ├──────────────────────────────────────────────────────────────────────────────────────────────┤
 │ 3. BUSINESS PRIVACY   Business Pass (zkTLS → ZK): "my business is real, active, earns ≥ band".   │ 🟡
 │                       Yes/no answers only. No name, no ID, no sector, no exact numbers.         │
 ├──────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 2. HUMAN CONSENT      World Agent Pass: a real human delegates to their managed agent, ONCE.  │ 🟡
-│                       World IDKit: only the same human can recover their credentials.         │
+│ 2. HUMAN CONSENT      World Agent Pass: test-mode stub for delegation.  │ 🟡
+│                       World IDKit: test-mode recovery.         │
 ├──────────────────────────────────────────────────────────────────────────────────────────────┤
 │ 1. MONEY              Vaults, waterfall, repayment-at-the-till, Uniswap risk market.            │ ✅
 │                       Public, auditable, enforced by contracts. Borrowers are pseudonyms.       │
@@ -54,7 +60,7 @@ Sector is **not** revealed by default. "We can't know what they do" is a design 
    - **Kenya:** M-Pesa business (Lipa na M-Pesa till) statements
    - **Anywhere:** Shopify or Stripe admin
 2. A zkTLS prover produces an **attestation** that the HTTPS response came from that site and satisfies our predicates (status active, revenue ≥ band, account age ≥ 6 months), **revealing only the predicate results**. Options to evaluate: Reclaim, vlayer Web Proofs, zkPass, Primus, TLSNotary.
-3. **No World ID here.** The platform (Mercado Pago, M-Pesa, Paystack…) already KYC'd the owner. A logged-in seller account already means "a real, verified person runs this real business", and requiring one pass per *human* would wrongly block owners of several businesses.
+3. **No World ID here.** The platform (Mercado Pago, M-Pesa, Paystack…) already KYC'd the owner. A seller account does not by itself establish a genuine business, and requiring one pass per *human* would wrongly block owners of several businesses.
 4. The **issuer** verifies the zkTLS proof, computes the **business nullifier**, discards the account ID, and signs an attestation. The registry checks the signature and inserts a **Business Pass commitment** into the onchain Business Pass tree:
 
 ```
@@ -82,7 +88,7 @@ uniqueness: businessNullifier = HMAC(issuerPepper, accountId) stored as "used": 
 
 ## 3. Where World fits: at human moments, never in the credit decision 🟡
 
-**Credit is fully automatic.** Agents underwrite, code clamps, the contract decides, and no human is in the loop on any draw. World sits only where a genuinely *human* question exists:
+**In the demo, credit can be automatic within a mandate.** Agents underwrite, code clamps, the contract decides, and no human is in the loop on any draw. World sits only where a genuinely *human* question exists:
 
 | Moment | World product | Why it's a human question | Prize track |
 |---|---|---|---|
@@ -94,7 +100,7 @@ uniqueness: businessNullifier = HMAC(issuerPepper, accountId) stored as "used": 
 
 ```
 Setup (once, on the merchant's phone):
-  limits (max per draw, per month, purpose) + World Agent Pass approval
+  limits (max per draw, per month, recipient, expiry) + World Agent Pass approval
   + ZK proof "I hold a valid Business Pass / Standing Pass", bound to our agent's key
   ─► AdvanceBook.registerMandate(agentKey, limits, expiry, proof, agentPassAttestation)
 
@@ -118,12 +124,12 @@ A ZK proof hides *which* credential you hold. But to **build** the proof, the ap
 |---|---|---|
 | All app reads: tree events, balances, advance status, shop sales | **Anon-RPC** (`@anon-rpc/browser-harness`, an anonymized `fetch`) | The RPC provider: IP ↔ shop ↔ credential |
 | Merkle path for a proof | **Download the whole tree** (all `LeafInserted` events) through Anon-RPC and compute the path locally | Asking for one leaf reveals the leaf |
-| Writes: draws, claims | **Our relayer** (Anon-RPC is reads only) | The merchant's wallet would link advances |
-| Our backend's reads (indexer, features) | Anon-RPC too | — |
+| Writes: draws, claims | **Our relayer** (Anon-RPC is reads only) | A merchant wallet can link advances |
+| Our backend's reads (indexer, features) | Configured RPC provider today | Provider sees backend reads |
 
-**Open:** Anon-RPC docs only mention mainnet. If Sepolia isn't supported, we either run a Sepolia worker (that's literally one of the track's suggested builds) or demo reads on a supported network. **Check this first thing.**
+**Status:** app reads are wired; 26/26 measured SDK reads were routed in Chrome on Sepolia. Backend reads use its configured RPC.
 
-**EF CROPS story:** "Private is the reason it exists." Credentials (ZK), network (Anon-RPC), writes (relayer), and no PII anywhere. The README CROPS section lists what each third party learns (section 6).
+**EF CROPS story:** "Private is the reason it exists." Credentials (ZK), network (Anon-RPC), writes (relayer), with issuer and relayer trust boundaries. The README CROPS section lists what each third party learns (section 6).
 
 ---
 
@@ -134,7 +140,7 @@ A ZK proof hides *which* credential you hold. But to **build** the proof, the ap
 | Piece | What it is | Token? |
 |---|---|---|
 | **Senior vault** | ERC-4626 over USDC. Lends principal; earns 60% of fees; loses last. | `sUSDC` vault shares (transferable ERC-20, not traded by us) |
-| **Junior vault** | ERC-4626 over USDC. First-loss buffer; earns 30% of fees; must hold ≥ 10% of senior's outstanding loans. | **Junior token** = its shares, **traded on Uniswap v4** |
+| **Junior vault** | ERC-4626 over USDC. First-loss buffer; earns 30% of fees; withdrawals are constrained by 10% of senior outstanding, but draws do not enforce that coverage. | **Junior token** = its shares, **traded on Uniswap v4** |
 | **Reserve** | USDC held in `AdvanceBook`. Earns 10% of fees + Uniswap hook fees. Covers losses after junior; pays write-off bounties. | none |
 | **Standing Pass / Business Pass** | ZK credentials (Merkle leaves) | **Not tokens.** Non-transferable, private, no market |
 | **Protocol token** | **None.** No governance token, no points | Trust: nothing to pump |
@@ -184,7 +190,7 @@ Uniswap swaps (junior/USDC) ─► hook fee → Reserve ; TWAP → Risk agent �
 | **Us (API + relayer)** | Shop ID, offer, payout address *at request time* (not stored beyond the decision log) | Name, tax ID, phone, contacts, the World identity, the credential secret |
 | **The issuer (Business Pass)** | That a zkTLS predicate passed; the HMAC of the account ID | The business name or account data; the revealed predicates are yes/no plus bands |
 | **AI models (Bedrock)** | Numbers and hashed payers only | Any identity; raw payer addresses |
-| **RPC providers** | Nothing linkable to an IP (Anon-RPC) | — |
+| **RPC providers** | Configured app reads are routed through Anon-RPC; bootstrap and other interactions have separate boundaries | — |
 | **World** | That a human delegated to an agent / recovered credentials in our app | Which business, what was borrowed |
 | **Regulators** | Only what the merchant chooses to disclose (selective disclosure, 🔭) | Everything else |
 
@@ -234,4 +240,4 @@ A customer who pays at the stall learns its **pseudonym**, and can then see that
 | 7 | Minimum-repayment-per-window rule | S | Closes the tiny-sales loophole |
 | — | Shielded settlement, OPRF nullifiers, association sets, selective disclosure | 🔭 | The pitch's north star |
 
-**What wins it:** the demo shows a merchant proving "real business, real human, real revenue" with **zero personal data**, getting an AI-underwritten advance, repaying at the till, and coming back under a **new pseudonym with their reputation intact**, while judges watch the explorer and **can't link any of it**.
+**What wins it:** the demo shows a merchant proving "real business, real human, real revenue" with **zero personal data**, getting an AI-underwritten advance, repaying at the till, and coming back under a **new pseudonym with their reputation intact**, while judges see public metadata and the limits of unlinkability.

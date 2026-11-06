@@ -62,7 +62,7 @@ contract MandateTest is BaseTest {
                 maxPerDraw: tier == 0 ? 50e6 : 100e6,
                 maxPerPeriod: tier == 0 ? 100e6 : 150e6,
                 period: 30 days,
-                expiry: uint64(block.timestamp + 90 days)
+                expiry: uint64(vm.getBlockTimestamp() + 90 days)
             }),
             tier: tier,
             band: band
@@ -122,14 +122,14 @@ contract MandateTest is BaseTest {
 
     function _register(MandateRequest memory r, uint256 nullifier) internal returns (uint256) {
         vm.prank(address(0x5E1A7)); // relayer
-        return book.registerMandate(r, _proof(nullifier), _att(r, ATTESTER_PK, uint64(block.timestamp + 1 hours)), _ownerSig(r, SHOP_OWNER_PK));
+        return book.registerMandate(r, _proof(nullifier), _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() + 1 hours)), _ownerSig(r, SHOP_OWNER_PK));
     }
 
     function _mOffer(uint8 tier, uint256 amount, uint256 passNullifier, uint8 minBand)
         internal
         returns (Offer memory o, bytes memory sig)
     {
-        o = Offer(bytes32(++offerSerial), SHOP, RCPT, amount, 11000, 1000, tier, passNullifier, minBand, uint64(block.timestamp + 1 hours));
+        o = Offer(bytes32(++offerSerial), SHOP, RCPT, amount, 50, 300, 1000, tier, passNullifier, minBand, uint64(vm.getBlockTimestamp() + 1 hours));
         sig = _signOffer(o, OFFER_SIGNER_PK);
     }
 
@@ -172,7 +172,7 @@ contract MandateTest is BaseTest {
         assertEq(m.limitsHash, _limitsHash(r.limits));
         assertEq(m.limitsHash, book.hashLimits(r.limits));
         assertEq(m.pendingCommitment, NEXT);
-        assertEq(m.periodStart, block.timestamp);
+        assertEq(m.periodStart, vm.getBlockTimestamp());
     }
 
     function test_register_tier1_standingPass_spendsNullifier() public {
@@ -189,7 +189,7 @@ contract MandateTest is BaseTest {
 
     function test_register_reverts_badOwnerSig_strangerCannotMandateMyShop() public {
         MandateRequest memory r = _req(0, 1);
-        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(block.timestamp + 1 hours));
+        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() + 1 hours));
         bytes memory stranger = _ownerSig(r, 0xBAD);
         vm.expectRevert(AdvanceBook.InvalidMandateSignature.selector);
         book.registerMandate(r, _proof(BIZ_NULL), a, stranger);
@@ -199,16 +199,16 @@ contract MandateTest is BaseTest {
     function test_register_reverts_agentPass_wrongKey_expired_otherLimits() public {
         MandateRequest memory r = _req(0, 1);
         bytes memory os = _ownerSig(r, SHOP_OWNER_PK);
-        AgentPassAttestation memory wrongKey = _att(r, 0xBAD, uint64(block.timestamp + 1 hours));
+        AgentPassAttestation memory wrongKey = _att(r, 0xBAD, uint64(vm.getBlockTimestamp() + 1 hours));
         vm.expectRevert(AdvanceBook.InvalidAgentPass.selector);
         book.registerMandate(r, _proof(BIZ_NULL), wrongKey, os);
 
-        AgentPassAttestation memory expired = _att(r, ATTESTER_PK, uint64(block.timestamp - 1));
+        AgentPassAttestation memory expired = _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() - 1));
         vm.expectRevert(AdvanceBook.InvalidAgentPass.selector);
         book.registerMandate(r, _proof(BIZ_NULL), expired, os);
 
         // the human approved 50/100; the request claims 50/200
-        AgentPassAttestation memory approved = _att(r, ATTESTER_PK, uint64(block.timestamp + 1 hours));
+        AgentPassAttestation memory approved = _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() + 1 hours));
         r.limits.maxPerPeriod = 200e6;
         os = _ownerSig(r, SHOP_OWNER_PK);
         vm.expectRevert(AdvanceBook.InvalidAgentPass.selector);
@@ -221,26 +221,26 @@ contract MandateTest is BaseTest {
             if (k == 0) r.limits.maxPerDraw = 0;
             else if (k == 1) r.limits.maxPerPeriod = r.limits.maxPerDraw - 1;
             else if (k == 2) r.limits.period = 0;
-            else if (k == 3) r.limits.expiry = uint64(block.timestamp);
-            else if (k == 4) r.limits.expiry = uint64(block.timestamp + 180 days + 1);
+            else if (k == 3) r.limits.expiry = uint64(vm.getBlockTimestamp());
+            else if (k == 4) r.limits.expiry = uint64(vm.getBlockTimestamp() + 180 days + 1);
             else if (k == 5) r.tier = 4;
             else if (k == 6) (r.tier, r.band) = (1, 1); // a Standing Pass proves no band
             else r.agentKey = address(0);
-            AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(block.timestamp + 1 hours));
+            AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() + 1 hours));
             bytes memory os = _ownerSig(r, SHOP_OWNER_PK);
             vm.expectRevert(AdvanceBook.InvalidMandate.selector);
             book.registerMandate(r, _proof(BIZ_NULL), a, os);
         }
         // boundary: exactly MAX_MANDATE_DURATION is fine
         MandateRequest memory ok = _req(0, 1);
-        ok.limits.expiry = uint64(block.timestamp + 180 days);
+        ok.limits.expiry = uint64(vm.getBlockTimestamp() + 180 days);
         _register(ok, BIZ_NULL);
     }
 
     function test_register_reverts_unregisteredShop() public {
         MandateRequest memory r = _req(0, 1);
         r.shopId = SHOP2;
-        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(block.timestamp + 1 hours));
+        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() + 1 hours));
         bytes memory os = _ownerSig(r, SHOP_OWNER_PK);
         vm.expectRevert(abi.encodeWithSelector(AdvanceBook.ShopNotRegistered.selector, SHOP2));
         book.registerMandate(r, _proof(BIZ_NULL), a, os);
@@ -248,7 +248,7 @@ contract MandateTest is BaseTest {
 
     function test_register_reverts_replays() public {
         MandateRequest memory r = _req(0, 1);
-        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(block.timestamp + 1 hours));
+        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() + 1 hours));
         bytes memory os = _ownerSig(r, SHOP_OWNER_PK);
         book.registerMandate(r, _proof(BIZ_NULL), a, os);
         assertTrue(book.agentPassNonceUsed(a.nonce));
@@ -257,7 +257,7 @@ contract MandateTest is BaseTest {
         book.registerMandate(r, _proof(BIZ_NULL + 1), a, os);
         // same Business Pass for another mandate: its first-advance nullifier is gone
         r.limits.maxPerPeriod = 50e6;
-        a = _att(r, ATTESTER_PK, uint64(block.timestamp + 1 hours));
+        a = _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() + 1 hours));
         os = _ownerSig(r, SHOP_OWNER_PK);
         vm.expectRevert(Policy.InvalidPassNullifier.selector);
         book.registerMandate(r, _proof(BIZ_NULL), a, os);
@@ -266,7 +266,7 @@ contract MandateTest is BaseTest {
     function test_register_reverts_proofFalse_noStateChange() public {
         bizVerifier.setResult(false);
         MandateRequest memory r = _req(0, 1);
-        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(block.timestamp + 1 hours));
+        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() + 1 hours));
         bytes memory os = _ownerSig(r, SHOP_OWNER_PK);
         vm.expectRevert(AdvanceBook.InvalidProof.selector);
         book.registerMandate(r, _proof(BIZ_NULL), a, os);
@@ -276,7 +276,7 @@ contract MandateTest is BaseTest {
 
     function test_register_reverts_unknownRoot() public {
         MandateRequest memory r = _req(1, 0);
-        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(block.timestamp + 1 hours));
+        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() + 1 hours));
         bytes memory os = _ownerSig(r, SHOP_OWNER_PK);
         CredentialProof memory p = _proof(777);
         p.root = 12345;
@@ -285,6 +285,16 @@ contract MandateTest is BaseTest {
     }
 
     // ------------------------------------------------------------------ draws
+
+    function test_drawByMandate_enforcesCover() public {
+        uint256 id = _register(_req(0, 1), BIZ_NULL);
+        junior.withdraw(junior.maxWithdraw(address(this)), address(this), address(this));
+        (Offer memory o, bytes memory sig) = _mOffer(0, 50e6, 0, 0);
+        bytes memory agentSig = _agentSig(id, o.offerId, AGENT_PK);
+        vm.expectRevert(abi.encodeWithSelector(AdvanceBook.InsufficientJuniorCover.selector, 0, 10e6));
+        book.drawByMandate(o, sig, id, agentSig);
+        assertEq(book.getMandate(id).drawnInPeriod, 0);
+    }
 
     function test_drawByMandate_happy_relayerSubmits_firstDrawCarriesCredential() public {
         uint256 id = _register(_req(0, 1), BIZ_NULL);
@@ -308,9 +318,9 @@ contract MandateTest is BaseTest {
 
     function test_drawByMandate_limits_perDraw_perPeriod_reset() public {
         uint256 id = _register(_req(1, 0), 777); // 100 per draw, 150 per 30 days
-        uint256 t0 = block.timestamp;
+        uint256 t0 = vm.getBlockTimestamp();
 
-        (Offer memory o, bytes memory sig) = _mOffer(1, 250e6, 0, 0); // over maxPerDraw
+        (Offer memory o, bytes memory sig) = _mOffer(1, 200e6, 0, 0); // over maxPerDraw
         bytes memory as_ = _agentSig(id, o.offerId, AGENT_PK);
         vm.expectRevert(AdvanceBook.MandateLimitExceeded.selector);
         book.drawByMandate(o, sig, id, as_);
@@ -449,7 +459,7 @@ contract MandateTest is BaseTest {
         assertEq(book.agentPassAttester(), address(1));
         // the old attester can no longer register mandates
         MandateRequest memory r = _req(0, 1);
-        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(block.timestamp + 1 hours));
+        AgentPassAttestation memory a = _att(r, ATTESTER_PK, uint64(vm.getBlockTimestamp() + 1 hours));
         bytes memory os = _ownerSig(r, SHOP_OWNER_PK);
         vm.expectRevert(AdvanceBook.InvalidAgentPass.selector);
         book.registerMandate(r, _proof(BIZ_NULL), a, os);
@@ -461,13 +471,13 @@ contract MandateTest is BaseTest {
     function testFuzz_drawByMandate_neverExceedsLimits(uint256 seed, address caller) public {
         if (caller == address(0)) caller = address(0x5E1A7);
         uint256 id = _register(_req(1, 0), 777); // 100 / 150 per 30 days
-        uint256[4] memory sizes = [uint256(50e6), 100e6, 250e6, 500e6];
-        uint256 periodStart = block.timestamp;
+        uint256[4] memory sizes = [uint256(50e6), 100e6, 200e6, 300e6];
+        uint256 periodStart = vm.getBlockTimestamp();
         uint256 drawn;
         for (uint256 i = 0; i < 12; ++i) {
             uint256 r = uint256(keccak256(abi.encode(seed, i)));
-            vm.warp(block.timestamp + bound(r, 0, 7 days)); // 12 x 7 days < 90-day expiry
-            if (block.timestamp >= periodStart + 30 days) (periodStart, drawn) = (block.timestamp, 0);
+            vm.warp(vm.getBlockTimestamp() + bound(r, 0, 7 days)); // 12 x 7 days < 90-day expiry
+            if (vm.getBlockTimestamp() >= periodStart + 30 days) (periodStart, drawn) = (vm.getBlockTimestamp(), 0);
             uint256 amount = sizes[(r >> 64) % 2]; // 50 or 100 (tier-1 cap is 100)
             (Offer memory o, bytes memory sig) = _mOffer(1, amount, 0, 0);
             bytes memory as_ = _agentSig(id, o.offerId, AGENT_PK);

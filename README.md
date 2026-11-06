@@ -5,7 +5,7 @@
 <h1 align="center">DripMoni</h1>
 
 <p align="center">
-  <b>Every sale puts 10% in your dollar jar. Your jar and your record unlock stock on credit, and nobody can tell who owes.</b>
+  <b>A shop gets an advance and repays a slice of sales while it is active. ZK proofs protect credential details; transactions remain public.</b>
 </p>
 
 <p align="center">
@@ -14,15 +14,23 @@
 
 ---
 
+## What is live vs simulated
+
+| Live | Simulated or planned |
+|---|---|
+| Sepolia contracts; browser-generated ZK proofs verified onchain; Bedrock AI underwriting; managed agents and Risk agent; test-USDC payments; v4 DripCoin swap via RiskHook; Anon-RPC app reads | Mock zkTLS attestor and fictional seller portal; World test-mode stub (real OIDC/IDKit built and tested, pending keys); cash-out; any-token checkout; testnet money |
+
+DripCoin (DRIP): junior, takes losses first. The deployed contract still uses Junior/JNR until redeploy. The demo pool is seeded; its price is not a validated credit oracle. See [privacy architecture](docs/privacy-architecture.md) for public data and trust boundaries and [economics](docs/economics.md) for fees and risks.
+
 ## What it is
 
 DripMoni is a private **merchant cash advance** for small shops in dollar-short economies, such as a kiosco in Buenos Aires, a phone-accessory stall in Lagos or a duka in Nairobi.
 
 1. **Prove the business, not the person.** The merchant proves with zkTLS that their seller dashboard shows a country, a revenue band and 6+ months of activity. That becomes a **Business Pass**. We never ask for a name, phone number or contacts.
-2. **Get paid in stablecoins.** Customers scan the shop's QR and pay in any token. It swaps through Uniswap to USDC, and 10% of every sale goes to the shop's **dollar jar**.
-3. **An agent draws stock on credit.** The merchant sets limits (max per advance, max per month, purpose) and approves them once with a **World Agent Pass**. The cash-flow agent draws small advances to pay suppliers, and `PolicyGuard` enforces the limits onchain.
-4. **Repay through sales, build a private record.** Repayment comes out of the 10% split automatically. There's one flat fee, and no interest, late fees or penalties. A fully repaid advance mints a **Standing Pass**, a Noir zero-knowledge credential that raises the merchant's limit without revealing their history.
-5. **Lenders fund it.** A senior ERC-4626 USDC vault earns most of the fee. A junior first-loss token (JAR-J) earns more for taking losses first, and trades on a Uniswap v4 pool with a `RiskHook`.
+2. **Get paid in stablecoins.** Customers scan the shop's QR and pay in test USDC. While an advance is active, 8% of each sale goes toward repayment; without an advance there is no holdback. Any-token checkout swaps are planned.
+3. **An agent draws stock on credit.** The merchant sets limits (max per advance, max per month, recipient and expiry) and approves them once with a **test-mode World Agent Pass**. The cash-flow agent draws small advances to pay suppliers, and `PolicyGuard` enforces the limits onchain.
+4. **Repay through sales, build a private record.** Repayment comes out of the 8% split automatically. The fee is 0.5% per week while principal remains, capped at 3%; early payoff saves fee. A fully repaid advance mints a **Standing Pass**, a Noir zero-knowledge credential that raises the merchant's limit without revealing their history.
+5. **Lenders fund it.** A senior ERC-4626 USDC vault earns most of the fee. A junior first-loss token (DripCoin (DRIP)) earns more for taking losses first, and trades on a Uniswap v4 pool with a `RiskHook`.
 
 The **World view** toggle on every screen shows exactly which data is onchain and which stays on the device.
 
@@ -30,14 +38,14 @@ The **World view** toggle on every screen shows exactly which data is onchain an
 
 | Part | State |
 |---|---|
-| Web app: every screen for merchant, customer, lender, junior and public users | ✅ Built, responsive (390px phone, 1440px desktop). Reads through `@repo/sdk`: mock by default, live on Sepolia with `NEXT_PUBLIC_MRA_MODE=sepolia` |
+| Web app: every screen for merchant, customer, lender, DripCoin holder and public users | ✅ Built, responsive (390px phone, 1440px desktop). Reads through `@repo/sdk`: mock by default, live on Sepolia with `NEXT_PUBLIC_MRA_MODE=sepolia` |
 | Design system (`/final/components`) | ✅ Built |
 | Demo seller portal | ✅ Built (inside the web app, deliberately unbranded) |
-| Contracts (Foundry): AdvanceBook, BusinessPassRegistry, senior/junior ERC-4626 vaults, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 152 tests |
+| Contracts (Foundry): AdvanceBook, BusinessPassRegistry, vault and DripCoin ERC-4626 tranches, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 152 tests |
 | Noir circuits: `standing_pass`, `business_pass` | ✅ Proofs made in the browser verify on the deployed verifiers |
 | Agents service (Python): Underwriter, Critic, managed cash-flow agents, Risk agent, keeper, relayer | ✅ Running on EC2, 406 tests |
-| Business Pass issuer (zkTLS → attestation) | ✅ Running; mock attestor until the Reclaim provider is live |
-| `@repo/sdk`: the one integration layer every screen uses | ✅ Anon-RPC transport, in-browser prover, burner wallet + demo faucet |
+| Business Pass issuer (zkTLS → attestation) | ✅ Running; demo uses a mock attestor; the real Reclaim path is built and tested |
+| `@repo/sdk`: the one integration layer every screen uses | ✅ Anon-RPC wired in the app (26/26 reads routed in a Chrome measurement), in-browser prover, burner wallet + demo faucet |
 | World Agent Pass + IDKit | 🟡 Built and tested; test mode until the World app keys are added |
 | Live demo | https://app.65-1-36-70.sslip.io (public devnet for the default scene: `rpc.` / `api-devnet.`) |
 
@@ -75,10 +83,10 @@ No other secrets are needed today. All data comes from `apps/web/src/lib/mock`.
 |---|---|---|
 | Merchant, new | `/onboarding` | Welcome → Prove business (zkTLS) → Verifying → Business Pass → Create shop |
 | Merchant, signed up | `/merchant` | Home and live sales · advance details · bad week · agent log, setup, approve and manage · repaid / Standing Pass · cash out · my QR · World view |
-| Customer | `/pay/corner-kiosk` | Pay with any token → receipt. The advance is never mentioned. |
+| Customer | `/pay/corner-kiosk` | Pay with test USDC → receipt. The advance is never mentioned. |
 | Demo seller portal | `/portal/login` | The page the zkTLS proof reads from (stand-in for Mercado Pago) |
-| Lender | `/earn` | Senior vault: overview, deposit / withdraw, position |
-| Risk taker | `/junior` | Junior token: overview, mint / redeem, trade on Uniswap v4 |
+| Lender | `/earn` | Vault: overview, deposit / withdraw, position |
+| Risk taker | `/dripcoin` | DripCoin (DRIP): overview, mint / redeem, trade on Uniswap v4 |
 | Public / judges | `/protocol` | Protocol dashboard, `/risk` status, `/explorer` |
 | Dev | `/screens`, `/final/components` | Every screen on one page; the component gallery |
 
@@ -90,7 +98,7 @@ Every route lives in [`apps/web/src/lib/routes.ts`](apps/web/src/lib/routes.ts).
 .
 ├── apps/
 │   └── web/                     Next.js 16 app (App Router, React 19, Tailwind v4)
-│       ├── src/app/             Routes: onboarding, merchant, pay, portal, earn, junior, protocol, risk, explorer
+│       ├── src/app/             Routes: onboarding, merchant, pay, portal, earn, dripcoin, protocol, risk, explorer
 │       ├── src/final/           Design-system components (Tailwind utilities only)
 │       ├── src/screens/         Larger screen compositions shared by routes
 │       ├── src/lib/             routes, brand name, copy (EN/ES), formatting, mock data
@@ -122,7 +130,7 @@ The light-only, green-focused system lives in [`packages/tailwind-config/final.c
 - **Greens:** Charcoal `#262E24` (text), Hunter `#2C5A3A` (primary action, links), Fern, Sage, Leaf, Honeydew. **Lime `#C6F28C` is a fill on Hunter only, never on white** (1.2:1).
 - **Type:** Urbanist (display, money) · Figtree (body) · JetBrains Mono (labels, IDs, local amounts).
 - **Logo:** the ribbon drop. Its four bands double as the tier meter (lit bands = tier + 1).
-- **Patterns:** wave band, jar gradient, ledger grid, pixel dune (real sales only), 9:1 split bar.
+- **Patterns:** wave band, gradient hero, ledger grid, pixel dune (real sales only), 9:1 split bar.
 
 Rules for contributors:
 
@@ -138,7 +146,7 @@ Full spec: [anay-design.md](anay-design.md).
 | Doc | Covers |
 |---|---|
 | [architecture.md](anay-docs/architecture.md) | System diagram, contracts, off-chain services, onboarding and advance lifecycle, chain and deployment |
-| [economics.md](anay-docs/economics.md) | Advance terms (factor, holdback, flat fee), tier caps, the senior / junior / reserve waterfall |
+| [economics.md](anay-docs/economics.md) | Time-based fee, 8% holdback, $50/$100/$200/$300 tier caps, and the 40/30/20/10 fee waterfall |
 | [zk-privacy.md](anay-docs/zk-privacy.md) | Threat model, Business Pass (zkTLS), Standing Pass (Noir), what is and isn't hidden |
 | [agents.md](anay-docs/agents.md) | Cash-flow, Underwriter, Critic and Risk agents; mandates; what agents can't do |
 | [ux.md](anay-docs/ux.md) | Users, every screen, copy rules |

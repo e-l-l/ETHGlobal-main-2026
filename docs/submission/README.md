@@ -2,7 +2,7 @@
 
 ETHGlobal Mumbai (Nov 5–7, 2026), From Scratch track. Partners: **Uniswap, World, Ethereum Foundation**.
 
-**Idea:** a merchant gets a revenue-based cash advance and repays it with a slice of every sale made through the checkout. Nobody learns who they are or what's in their books.
+**Idea:** a merchant gets a revenue-based cash advance and repays it with a slice of every sale made through the checkout. Credential details are private, while shop and transaction data are public; see [privacy architecture](../privacy-architecture.md).
 
 | Doc | For |
 |---|---|
@@ -53,14 +53,24 @@ The vaults are seeded with a MockUSDC we deploy, because Circle's Sepolia USDC c
 
 **TODO:** add Etherscan links once the contracts are verified on Etherscan. Contract source verification isn't recorded in the repo.
 
+## What is live vs simulated
+
+| Live | Simulated or planned |
+|---|---|
+| Sepolia contracts; browser-generated ZK proofs verified onchain; Bedrock AI underwriting; managed agents and Risk agent; test-USDC payments; v4 DripCoin swap via RiskHook; Anon-RPC app reads | Mock zkTLS attestor and fictional seller portal; World test-mode stub (real OIDC/IDKit built and tested, pending keys); cash-out; any-token checkout; testnet money |
+
+DripCoin (DRIP): junior, takes losses first. The deployed contract still uses Junior/JNR until redeploy. The demo pool is seeded; its price is not a validated credit oracle. See [privacy architecture](../privacy-architecture.md) for public data and trust boundaries and [economics](../economics.md) for fees and risks.
+
+Latest contract build terms (not the existing Sepolia deployment): 0.5% fee per week while principal remains, capped at 3%; 8% sales holdback; $50/$100/$200/$300 tier caps; and collected-fee waterfall of 40% senior, 30% junior, 20% reserve, 10% protocol. A $100 advance repaid in four weeks accrues a $2 fee; early payoff saves fee.
+
 ## Status at a glance
 
 | Piece | Status |
 |---|---|
 | Contracts and Uniswap v4 hook | Live on Sepolia; 152 Foundry tests |
 | Agents (Underwriter, Critic, Risk, keeper, relayer) | Built; 256 offline tests; read-only Sepolia smoke test passes 24/24 |
-| Business Pass issuer and demo seller portal | Built. Reclaim has run in **mock** mode only. **TODO: run a real proof.** |
-| World Agent Pass and IDKit | Backend built. **Mock** mode only. **TODO: run against live World.** |
-| Anon-RPC | Config hooks only. **TODO: wire it up.** |
-| Uniswap API checkout swaps | **TODO: status** |
+| Business Pass issuer and demo seller portal | Built. Demo attestor is **mock**; the real Reclaim path is built and tested. |
+| World Agent Pass and IDKit | Test-mode stub; real OIDC and IDKit paths built and tested, pending keys. |
+| Anon-RPC | Wired in the app; Chrome measurement routed 26/26 reads. |
+| Uniswap API checkout swaps | Planned; live checkout accepts test USDC only. |
 | License | **TODO** |

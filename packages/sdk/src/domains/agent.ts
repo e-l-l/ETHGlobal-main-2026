@@ -33,7 +33,7 @@ import { dayLabel, shortDate, toBase, usd } from "./util.js";
 
 const DAY = 86_400;
 /** Per-advance chip (USD) → the tier (repaid advances) it needs: the limits ladder. */
-const TIER_FOR_CAP: Record<number, number> = { 50: 0, 100: 1, 250: 2, 500: 3 };
+const TIER_FOR_CAP: Record<number, number> = { 50: 0, 100: 1, 200: 2, 300: 3 };
 const lockedReason = (usdCap: number, need: number) => `$${usdCap} unlocks after ${need} repaid ${need === 1 ? "advance" : "advances"}`;
 
 export type SetupLimits = {
@@ -158,9 +158,20 @@ export function agentDomain(ctx: Ctx) {
       agentLimits: limitsVM(a.limits, s.purpose ?? "stock"),
       agentId: a.id,
       mandateVerified: a.mandate_verified,
+      expiry: a.limits.expiry,
       source: "api",
     };
-    if (a.mandate_id) view.mandateId = a.mandate_id;
+    if (a.mandate_id) {
+      view.mandateId = a.mandate_id;
+      try {
+        const mandate = await ctx.chain().mandate(BigInt(a.mandate_id));
+        const used = ctx.now() >= Number(mandate.periodStart) + Number(mandate.period) ? 0n : BigInt(mandate.drawnInPeriod);
+        view.remainingAllowance = usd(Number(BigInt(mandate.maxPerPeriod) - used));
+        view.expiry = Number(mandate.expiry);
+      } catch {
+        // A chain read failure must not turn an estimate into a mandate balance.
+      }
+    }
     return view;
   }
 
@@ -177,7 +188,7 @@ export function agentDomain(ctx: Ctx) {
         source: isMock ? "mock" : "device",
       };
       if (!isMock) {
-        // The ladder: $100 needs 1 repaid advance (a claimed Standing Pass), $250 needs 2. Locked until this device
+        // The ladder: $100 needs 1 repaid advance, $200 needs 2, $300 needs 3. Locked until this device
         // can prove it (claimed, and not yet spent on a mandate or draw).
         view.currentTier = tier;
         view.perAdvanceOptions = view.perAdvanceOptions.map((o) => {
@@ -191,10 +202,14 @@ export function agentDomain(ctx: Ctx) {
 
     /** M08 Approve dialog content. */
     async approveView(limits?: SetupLimits): Promise<AgentApproveView> {
-      if (isMock || !limits) return ctx.mocked({ advance: { ...S.advance }, agentLimits: { ...S.agentLimits }, source: "mock" as const });
-      const fee = Math.round(limits.perAdvance * 0.15);
+      if (!limits) return ctx.mocked({ advance: { ...S.advance }, agentLimits: { ...S.agentLimits }, source: "mock" as const });
+      const fee = Math.round(limits.perAdvance * 2) / 100;
       return {
-        advance: { ...S.advance, purpose: limits.purpose ?? "stock", drawn: limits.perAdvance, fee, total: limits.perAdvance + fee, repaid: 0, left: limits.perAdvance + fee, pct: 0 },
+        advance: { ...S.advance, purpose: limits.purpose ?? "stock", drawn: limits.perAdvance, fee,
+          feeSoFar: 0, owedNow: limits.perAdvance, total: limits.perAdvance, left: limits.perAdvance,
+          feeIfRepaidIn1Week: limits.perAdvance * 0.005, feeIfRepaidIn2Weeks: limits.perAdvance * 0.01,
+          feeIfRepaidIn4Weeks: limits.perAdvance * 0.02, feeIfRepaidIn6Weeks: limits.perAdvance * 0.03,
+          maxFeeBps: 300, annualizedCostPercent: 26, repaid: 0, pct: 0 },
         agentLimits: { perAdvance: limits.perAdvance, perMonth: limits.perMonth, purpose: limits.purpose ?? "stock" },
         source: "device",
       };
@@ -209,8 +224,8 @@ export function agentDomain(ctx: Ctx) {
         opts.onStep?.(s);
         ctx.emit("agent.setup", s);
       };
-      if (!(limits.perAdvance >= 50 && limits.perAdvance <= 500 && limits.perMonth >= limits.perAdvance)) {
-        throw new MRAError("invalid_limits", "per advance must be $50–500 and per month at least that");
+      if (!(limits.perAdvance >= 50 && limits.perAdvance <= 300 && [50, 100, 200, 300].includes(limits.perAdvance) && limits.perMonth >= limits.perAdvance)) {
+        throw new MRAError("invalid_limits", "per advance must be $50, $100, $200 or $300 and per month at least that");
       }
       if (isMock) {
         step("creating_agent");

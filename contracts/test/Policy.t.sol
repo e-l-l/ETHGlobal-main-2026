@@ -22,7 +22,7 @@ contract PolicyTest is Test {
     PolicyHarness internal policy;
     uint256 internal constant KEY = 12345;
     address internal constant MANAGER = address(0x1234);
-    uint256[4] internal caps = [uint256(50e6), 100e6, 250e6, 500e6];
+    uint256[4] internal caps = [uint256(50e6), 100e6, 200e6, 300e6];
     uint256[4] internal floors = [uint256(10e6), 20e6, 30e6, 40e6];
 
     function setUp() public {
@@ -30,7 +30,7 @@ contract PolicyTest is Test {
     }
 
     function offer() internal view returns (Offer memory) {
-        return Offer(bytes32(uint256(1)), bytes32(uint256(2)), address(0x123), 50e6, 11000, 500, 0, 42, 2, uint64(block.timestamp + 100));
+        return Offer(bytes32(uint256(1)), bytes32(uint256(2)), address(0x123), 50e6, 50, 300, 500, 0, 42, 2, uint64(vm.getBlockTimestamp() + 100));
     }
 
     function sign(Offer memory item, uint256 key) internal view returns (bytes memory) {
@@ -39,8 +39,8 @@ contract PolicyTest is Test {
             keccak256("AdvanceBook"), keccak256("1"), block.chainid, address(policy)
         ));
         bytes32 structHash = keccak256(abi.encode(
-            keccak256("Offer(bytes32 offerId,bytes32 shopId,address recipient,uint256 amount,uint16 factorBps,uint16 holdbackBps,uint8 tier,uint256 passNullifier,uint8 minRevenueBand,uint64 expiresAt)"),
-            item.offerId, item.shopId, item.recipient, item.amount, item.factorBps, item.holdbackBps,
+            keccak256("Offer(bytes32 offerId,bytes32 shopId,address recipient,uint256 amount,uint16 feeRateBpsPerWeek,uint16 feeCapBps,uint16 holdbackBps,uint8 tier,uint256 passNullifier,uint8 minRevenueBand,uint64 expiresAt)"),
+            item.offerId, item.shopId, item.recipient, item.amount, item.feeRateBpsPerWeek, item.feeCapBps, item.holdbackBps,
             item.tier, item.passNullifier, item.minRevenueBand, item.expiresAt
         ));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, keccak256(abi.encodePacked("\x19\x01", domain, structHash)));
@@ -96,10 +96,10 @@ contract PolicyTest is Test {
         }
     }
 
-    function testFuzzFactor(uint16 value) public {
+    function testFuzzFeeRate(uint16 value) public {
         Offer memory item = offer();
-        item.factorBps = uint16(bound(value, 10999, 15001));
-        if (item.factorBps < 11000 || item.factorBps > 15000) vm.expectRevert(Policy.InvalidFactor.selector);
+        item.feeRateBpsPerWeek = uint16(bound(value, 0, 1001));
+        if (item.feeRateBpsPerWeek == 0 || item.feeRateBpsPerWeek > policy.maxFeeRateBpsPerWeek()) vm.expectRevert(Policy.InvalidFeeRate.selector);
         check(item, 0);
     }
 
@@ -111,7 +111,7 @@ contract PolicyTest is Test {
     }
 
     function testExactBoundaries() public {
-        uint16[6] memory factors = [uint16(10999), 11000, 11001, 14999, 15000, 15001];
+        uint16[6] memory factors = [uint16(0), 1, 49, 50, 51, 1000];
         uint16[6] memory holdbacks = [uint16(499), 500, 501, 1999, 2000, 2001];
         for (uint256 index = 0; index < 6; ++index) {
             Offer memory item = offer();
@@ -119,15 +119,26 @@ contract PolicyTest is Test {
             item.passNullifier = 0;
             item.minRevenueBand = 0;
             item.offerId = bytes32(index + 100);
-            item.factorBps = factors[index];
-            if (index == 0 || index == 5) vm.expectRevert(Policy.InvalidFactor.selector);
+            item.feeRateBpsPerWeek = factors[index];
+            if (index == 0 || index >= 4) vm.expectRevert(Policy.InvalidFeeRate.selector);
             check(item, 0);
             item.offerId = bytes32(index + 200);
-            item.factorBps = 11000;
+            item.feeRateBpsPerWeek = 50;
             item.holdbackBps = holdbacks[index];
             if (index == 0 || index == 5) vm.expectRevert(Policy.InvalidHoldback.selector);
             check(item, 0);
         }
+    }
+
+    function testFeeTermBoundsOwnerConfigurationAndEvents() public {
+        vm.expectEmit(false, false, false, true, address(policy));
+        emit Policy.FeeTermBoundsSet(75, 400);
+        policy.setFeeTermBounds(75, 400);
+        assertEq(policy.maxFeeRateBpsPerWeek(), 75);
+        assertEq(policy.maxFeeCapBps(), 400);
+        vm.prank(MANAGER); vm.expectRevert(); policy.setFeeTermBounds(50, 300);
+        vm.expectRevert(Policy.InvalidFeeRate.selector); policy.setFeeTermBounds(0, 300);
+        vm.expectRevert(Policy.InvalidFeeCap.selector); policy.setFeeTermBounds(50, 1001);
     }
 
     function testExposureAndNullifiers() public {
@@ -199,7 +210,7 @@ contract PolicyTest is Test {
         assertEq(policy.tierCap(2), 30e6);
         assertEq(policy.maxExposure(), 100e6);
         policy.setLimits(caps, 1_000e6);
-        assertEq(policy.tierCap(2), 250e6);
+        assertEq(policy.tierCap(2), 200e6);
         assertEq(policy.maxExposure(), 1_000e6);
         vm.prank(MANAGER);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, MANAGER));
@@ -233,7 +244,7 @@ contract PolicyTest is Test {
         else if (field == 1) item.shopId = bytes32(uint256(item.shopId) ^ 1);
         else if (field == 2) item.recipient = address(uint160(item.recipient) ^ 1);
         else if (field == 3) item.amount ^= 1;
-        else if (field == 4) item.factorBps ^= 1;
+        else if (field == 4) item.feeRateBpsPerWeek ^= 1;
         else if (field == 5) item.holdbackBps ^= 1;
         else if (field == 6) item.tier ^= 1;
         else if (field == 7) item.passNullifier ^= 1;

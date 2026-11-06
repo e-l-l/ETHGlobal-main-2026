@@ -2,7 +2,7 @@
 
 For the EF Best Use of Anon-RPC track.
 
-**Status: designed, config hooks in place, not wired end to end yet. TODO before submission.**
+**Status: wired in apps/web.** A Chrome measurement routed 26/26 SDK reads with zero direct reads on Nox and Nym; see [SDK measurement](../../packages/sdk/README.md#anon-rpc-reposdkbrowseranon). This is not a measurement of every service or every session.
 
 ## Why ZK needs network privacy
 
@@ -16,8 +16,8 @@ So:
 |---|---|---|
 | All app reads: tree events, balances, advance status, shop sales | Anon-RPC (`@anon-rpc/browser-harness`, an anonymised `fetch`) | The RPC provider: IP, shop, credential |
 | Merkle path for a proof | **Download the whole tree** (all `LeafInserted` events) through Anon-RPC and compute the path locally | Asking for one leaf reveals the leaf |
-| Writes (draws, claims) | Our relayer. Anon-RPC is reads only, so the merchant's wallet never appears. | The merchant's wallet would link their advances |
-| Backend reads (indexer, features) | Anon-RPC too | |
+| Writes (draws, claims) | Our relayer for configured draws and claims. Anon-RPC is reads only; the relayer and public transaction metadata remain trust boundaries. | The merchant's wallet would link their advances |
+| Backend reads (indexer, features) | Direct RPC in the current Sepolia profile | Backend provider sees those reads |
 
 Source: [`docs/privacy-architecture.md`](../../docs/privacy-architecture.md) section 4.
 
@@ -31,14 +31,9 @@ Source: [`docs/privacy-architecture.md`](../../docs/privacy-architecture.md) sec
 - **Backend:** a single `RPC_URL` setting. Its default comment says "use the Anon-RPC endpoint in production" (`agents/src/mra_agents/config.py`). **The current Sepolia profile uses a Tenderly gateway** (`agents/scripts/sepolia.env`), so backend reads do **not** go through Anon-RPC today.
 - The tree mirror must be fixed depth 16, zero-padded, using Poseidon2 from `@aztec/bb.js` ([`docs/architecture.md`](../../docs/architecture.md)).
 
-## Open questions and TODOs
+## Scope and remaining work
 
-- **TODO:** does Anon-RPC support Sepolia? The docs mention only mainnet. If not, we either run a Sepolia worker (a suggested build for this track) or demo the reads on a supported network.
-- **TODO:** wire `@anon-rpc/browser-harness` into the app (`apps/web`) as the default transport.
-- **TODO:** whole-tree download plus a local Merkle path in the app.
-- **TODO:** point the backend `RPC_URL` at Anon-RPC.
-- **TODO:** measure and report the **share of RPC traffic routed through Anon-RPC**. The target is 100%; we have no number yet.
-- **TODO:** demo moment. Show the network panel: every read goes to the Anon-RPC transport, and none to a plain provider.
+The app downloads whole trees and builds paths locally. The measured 26 reads do not include every service interaction; backend reads use the configured RPC provider. Check routed/direct counters in the exact demo session. Anon-RPC does not hide public transactions, issuer or relayer interactions.
 
 ## Fallback
 

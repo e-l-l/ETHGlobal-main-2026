@@ -48,7 +48,8 @@ class OfferInput(Input):
     shop_id: Hex32
     recipient: Address
     amount: UInt
-    factor_bps: Annotated[StrictInt, Field(ge=11000, le=15000)]
+    fee_rate_bps_per_week: Annotated[StrictInt, Field(ge=1, le=1000)]
+    fee_cap_bps: Annotated[StrictInt, Field(ge=1, le=1000)]
     holdback_bps: Annotated[StrictInt, Field(ge=500, le=2000)]
     tier: Annotated[StrictInt, Field(ge=0, le=3)]
     pass_nullifier: FieldElement
@@ -57,8 +58,10 @@ class OfferInput(Input):
 
     @model_validator(mode="after")
     def policy(self):
-        if self.amount not in (50_000_000, 100_000_000, 250_000_000, 500_000_000):
+        if self.amount not in (50_000_000, 100_000_000, 200_000_000, 300_000_000):
             raise ValueError("invalid amount")
+        if self.fee_rate_bps_per_week != 50 or self.fee_cap_bps != 300:
+            raise ValueError("invalid fee terms")
         if self.tier > 0 and (self.pass_nullifier != 0 or self.min_revenue_band != 0):
             raise ValueError("invalid pass nullifier")
         return self
@@ -132,6 +135,7 @@ class InsightsResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+    faucet: dict | None = None
 
 class FaucetRequest(Input):
     address: Address
@@ -293,9 +297,15 @@ def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=N
             return {"signals": sig, "triggers": sig.get("triggers", []), "last_tick": None}
         return invoke(status)
 
-    @app.get("/health", response_model=HealthResponse)
+    @app.get("/health", response_model=HealthResponse, response_model_exclude_none=True)
     def health():
-        return {"status": "ok"}
+        result = {"status": "ok"}
+        if faucet is not None:
+            try:
+                result["faucet"] = faucet.status()
+            except Exception:  # noqa: BLE001 - expose unavailable monitoring
+                result["faucet"] = {"error": "unavailable"}
+        return result
 
     @app.post("/demo/faucet")
     def demo_faucet(body: FaucetRequest, request: Request):

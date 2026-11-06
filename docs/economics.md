@@ -1,56 +1,33 @@
-# Economics
+# DripMoni contract economics
 
-## The advance
+Illustrative contract economics for the current pilot parameters. These are not forecasts or legal disclosures. The fee accrues at 50 bps per week on original principal while principal remains, caps at 300 bps, and is collected fee-first. Paying principal sooner reduces the fee. The merchant holdback is 8% of each sale while the advance is active; there is no checkout fee.
 
-A merchant cash advance, not a loan with interest. The merchant receives an amount, repays it times a fixed **factor** through a **holdback** share of each sale, and pays **one flat fee, shown upfront**. There are no rollovers and no late fees.
+## Merchant cost
 
-Published merchant cash advance ranges: holdback of about 5–20%, factor of 1.1–1.5.
+| Time outstanding | Fee on $100 | Total repaid if paid then | Simple annualized cost |
+|---:|---:|---:|---:|
+| 1 week | $0.50 | $100.50 | 26% |
+| 2 weeks | $1.00 | $101.00 | 26% |
+| 4 weeks | $2.00 | $102.00 | 26% |
+| 6 weeks | $3.00 | $103.00 | 26% (fee cap reached) |
 
-### Worked example (illustrative, larger than hackathon tier caps)
+Disclosure: “Fee 0.5% per week while you owe, never more than 3%.” This simple annualized figure is not an APR derived from actual sale cash flows. The 8% holdback controls payment pace; it is not an additional fee.
 
-| Input | Value |
-|---|---|
-| Advance | $1,000 |
-| Factor | 1.15 |
-| Merchant daily sales | $200 |
-| Holdback | 10% |
+## Fee waterfall and lender scenarios
 
-| Result | Value |
-|---|---|
-| Total repaid | $1,150 |
-| Flat fee | $150 |
-| Repaid per day | $20 |
-| Days to repay | about 58 |
-| Break-even default rate | 13.0% (fee ÷ total repaid) |
+For a $100 advance repaid after four weeks, the $2 fee is allocated 40/30/20/10: $0.80 senior, $0.60 junior/DRIP, $0.40 reserve, and $0.20 protocol. Fees are distributed only as collected. Junior cover is 20% of senior outstanding and absorbs losses first, then reserve, then senior. At 75% utilization, a 4-week cycle, and 12 cycles/year, the illustrative senior return is $0.80 × 12 = **9.6%** on the lending base in this simple model. Utilization changes capital efficiency and idle cash, not fee earned per dollar lent. Neither is guaranteed.
 
-Break-even assumes a default loses the whole advance and earns nothing. Partial repayments before a default raise it. These numbers are arithmetic and don't predict performance. We have no real loss data for stablecoin merchant advances.
+DRIP return illustration assumes $20 junior cover per $100 senior principal and deducts each stated loss from that cover before annualizing 12 cycles:
 
-**A bad week:** if sales halve, repayment halves and nothing else changes. That's why a sales share fits economies with sharp devaluations better than fixed installments.
+| Loss per 4-week cycle | DRIP annualized simple return |
+|---:|---:|
+| 0.25% | 21% |
+| 0.50% | 6% |
+| 1.00% | -24% |
+| 2.00% | -84% |
 
-**Fairness note:** a flat fee means a faster repayment costs more per day. Show the merchant the estimated days for a slow, normal and busy pace, and never present it as an interest rate.
+These simplified sensitivities do not model correlated defaults, recoveries, late repayments, provisioning, liquidity constraints, or market price. DRIP is the junior ERC-4626 share token, takes losses first, and can lose value. The protocol's 10% fee share yields **$2,000 per $1 million lent** at the four-week fee, before costs. RiskHook fees route 75% to reserve and 25% to treasury. Tier caps are $50/$100/$200/$300. No checkout processing fee is charged.
 
-## Capital stack
+## Limits and caveats
 
-| Piece | Held by | Earns | Takes losses |
-|---|---|---|---|
-| Senior vault (ERC-4626) | USDC lenders | Most of each fee, plus yield on idle funds | Only after junior and reserve run out |
-| Junior token | Risk takers | A larger share of fees for its size | First, on any default |
-| Reserve | Protocol | A slice of fees, plus the Uniswap hook fee | Tops up junior losses |
-| Uniswap v4 pool | LPs and traders | Pool trading fees | Market risk on the junior token |
-
-**Fee split (starting point, to tune):** of each fee, 60% to senior, 30% to junior, 10% to reserve.
-
-**Why the junior token trades:** its price is a live market estimate of the pool's risk. The Risk agent reads it and tightens limits when it falls. People trade the risk of the advance book, and merchants never have to trade.
-
-**Why not trading fees alone:** at a 0.05% fee, covering one $100 default takes $200,000 of volume. Advance fees carry the economics, and hook fees are a small top-up.
-
-## Limits ladder
-
-| Tier | Requirement | Max advance |
-|---|---|---|
-| 0 | World ID + about 2 weeks of sales through the link | $50 |
-| 1 | Standing Pass, 1 repaid | $100 |
-| 2 | Standing Pass, 2 repaid | $250 |
-| 3+ | Standing Pass, 3+ repaid | $500 |
-
-The caps are also limited by sales volume (the Underwriter) and by the current risk limits (the Risk agent).
+The onchain minimum repayment is 1% of original principal plus fee accrued by the repayment point per 7-day window. Full principal payoff stops further fee accrual. Contract `AdvanceOpened.totalOwed` records the maximum amount at the fee cap; live owed is principal outstanding plus accrued unpaid fee. A merchant can divert sales, and the pool can incur losses beyond junior cover and reserve. This pilot has no validated loss history and no guaranteed lender return.

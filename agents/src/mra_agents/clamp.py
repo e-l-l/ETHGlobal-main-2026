@@ -1,7 +1,7 @@
 """Deterministic offer policy, using USDC base units throughout."""
 from decimal import Decimal, InvalidOperation
 
-from .models import ALLOWED_AMOUNTS, FACTOR_BPS_RANGE, HOLDBACK_BPS_RANGE, MAX_TIER, band_floor_daily_usd
+from .models import ALLOWED_AMOUNTS, FEE_RATE_BPS_PER_WEEK, FEE_CAP_BPS, MAX_TIER, band_floor_daily_usd
 
 
 def clamp_offer(draft, features, tier, limits, max_days):
@@ -10,12 +10,12 @@ def clamp_offer(draft, features, tier, limits, max_days):
         return None, [f"Invalid tier: {tier}"]
     if draft.decision != "offer":
         return None, ["Draft declined"]
-    factor = min(max(draft.factor_bps, FACTOR_BPS_RANGE[0]), FACTOR_BPS_RANGE[1])
-    holdback = min(max(draft.holdback_bps, HOLDBACK_BPS_RANGE[0]), HOLDBACK_BPS_RANGE[1])
-    if factor != draft.factor_bps:
-        changes.append(f"Factor changed from {draft.factor_bps} to {factor} bps")
+    rate, cap = FEE_RATE_BPS_PER_WEEK, FEE_CAP_BPS
+    holdback = 800
+    if (draft.fee_rate_bps_per_week, draft.fee_cap_bps) != (rate, cap):
+        changes.append(f"Fee terms fixed at {rate} bps/week, capped at {cap} bps")
     if holdback != draft.holdback_bps:
-        changes.append(f"Holdback changed from {draft.holdback_bps} to {holdback} bps")
+        changes.append(f"Holdback fixed at {holdback} bps")
     try:
         # Pace = onchain 30-day average, floored by the zkTLS-proven band (cold start). The band is enforced
         # onchain at draw (minRevenueBand <= proven band), so it is a safe lower bound.
@@ -29,10 +29,11 @@ def clamp_offer(draft, features, tier, limits, max_days):
     eligible = [amount for amount in ALLOWED_AMOUNTS if amount <= draft.amount
                 and amount <= limits.tier_cap[tier]
                 and amount + limits.exposure <= limits.max_exposure
-                and Decimal(amount * factor) <= revenue * 1_000_000 * holdback * max_days]
+                and Decimal(amount * 10_300) <= revenue * 1_000_000 * holdback * max_days]
     if not eligible:
         return None, changes + ["No allowed amount fits the tier cap, exposure and repayment window"]
     amount = max(eligible)
     if amount != draft.amount:
         changes.append(f"Amount changed from {draft.amount} to {amount} base units (size, caps or repayment window)")
-    return draft.model_copy(update={"amount": amount, "factor_bps": factor, "holdback_bps": holdback}), changes
+    return draft.model_copy(update={"amount": amount, "fee_rate_bps_per_week": rate,
+                                    "fee_cap_bps": cap, "holdback_bps": holdback}), changes

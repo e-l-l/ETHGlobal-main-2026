@@ -66,7 +66,7 @@ The secret is generated and stored only on the merchant's device.
 
 **Lifecycle**
 1. **First advance.** When the merchant activates their agent, the app submits `h1`. `PolicyGuard` stores pending commitment `Poseidon2(h1, 1)` with the shop's first advance, backed by the Business Pass.
-2. **Full repayment.** `AdvanceManager` inserts the pending commitment into the tree. The credential is now live. The app shows "You've repaid 1 advance, your limit is now $100, nobody can see your history."
+2. **Full repayment.** `AdvanceManager` inserts the pending commitment into the tree. The credential is now live. The app shows "You've repaid 1 advance, your limit is now $100, the proof hides which credential leaf you used."
 3. **Next limit.** The merchant proves in the browser that they own a live credential with count `k ≥ tier`. The proof spends it (publishing the nullifier) and binds a new pending commitment with count `k + 1`. The proof can target the same shop or a **fresh shop**.
 4. **Default.** The pending commitment is never inserted. The old credential is already spent, so there's nothing left to borrow with.
 
@@ -90,13 +90,13 @@ The scheme also guarantees two things:
 - Verifier: generated with Barretenberg (`bb`), deployed alongside `StandingPass`.
 - **Gotcha:** onchain leaf insertion needs Poseidon2 in Solidity that exactly matches Noir's. Check a Solidity Poseidon2 library against Noir test vectors **first**. If no match works in time, fall back to keccak in the circuit, which makes proofs slower.
 
-**Start fresh shop.** The merchant rotates to a new shop pseudonym and a new payout address, then proves their Standing Pass for it. The new shop starts at the earned tier, and the explorer shows no link to the old one.
+**Start fresh shop.** The merchant rotates to a new shop pseudonym and a new payout address, then proves their Standing Pass for it. The new shop starts at the earned tier, and metadata may correlate the shops.
 
-**Demo:** a merchant repays, starts a fresh shop, proves tier 1 and gets a higher limit. The explorer shows no link between the two shops.
+**Demo:** a merchant repays, starts a fresh shop, proves tier 1 and gets a higher limit. Public metadata may correlate the two shops.
 
 ### Level 3: shielded jar (roadmap)
 
-Every shop sends 10% of each sale into a dollar jar, **whether or not it has an advance**. Private state decides whether the jar is savings or repayment, so nobody can tell who owes. This needs a shielded pool: EF's Kohaku SDK (Privacy Pools, Railgun) or a privacy chain such as Aztec. It also turns the product into automatic dollar savings with credit built in.
+A shielded repayment design is a future research idea, not the current product. Today the repayment slice applies only while an advance is active, and sales and advances are public.
 
 ## Backup and recovery
 

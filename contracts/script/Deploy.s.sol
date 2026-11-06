@@ -44,7 +44,7 @@ contract Deploy is Script {
             mock.mint(owner, 60_000e6);
         }
         TrancheVault senior = new TrancheVault(IERC20(token), "Senior", "SNR", owner, TrancheVault(address(0)), 0);
-        TrancheVault junior = new TrancheVault(IERC20(token), "Junior", "JNR", owner, senior, 1000);
+        TrancheVault junior = new TrancheVault(IERC20(token), "DripCoin", "DRIP", owner, senior, 2000);
         AdvanceBook book = deployBook(token, senior, junior, owner);
         senior.setBook(address(book));
         junior.setBook(address(book));
@@ -57,7 +57,7 @@ contract Deploy is Script {
     }
 
     function deployBook(address token, TrancheVault senior, TrancheVault junior, address owner) internal returns (AdvanceBook) {
-        uint256[4] memory caps = [uint256(50e6), 100e6, 250e6, 500e6];
+        uint256[4] memory caps = [uint256(50e6), 100e6, 200e6, 300e6];
         uint256[4] memory floors = [uint256(50e6), 50e6, 50e6, 50e6];
         BusinessPassRegistry registry = new BusinessPassRegistry(IPoseidon2(poseidon), owner, issuer, [uint16(32), 566, 404, 0]);
         return new AdvanceBook(BookConfig(IERC20(token), senior, junior, IPoseidon2(poseidon), IVerifier(verifier), owner, signer, risk, caps, floors, 100_000e6, 1_000e6, 30 days, 5e6, IBusinessPass(address(registry)), IVerifier(bizVerifier), attester));

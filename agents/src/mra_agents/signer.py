@@ -6,7 +6,7 @@ from eth_utils import keccak
 _FIELDS = [
     {"name": name, "type": typ} for name, typ in (
         ("offerId", "bytes32"), ("shopId", "bytes32"), ("recipient", "address"),
-        ("amount", "uint256"), ("factorBps", "uint16"), ("holdbackBps", "uint16"),
+        ("amount", "uint256"), ("feeRateBpsPerWeek", "uint16"), ("feeCapBps", "uint16"), ("holdbackBps", "uint16"),
         ("tier", "uint8"), ("passNullifier", "uint256"), ("minRevenueBand", "uint8"), ("expiresAt", "uint64"),
     )
 ]
@@ -19,7 +19,8 @@ def _message(offer, chain_id, verifying_contract):
         message_types={"Offer": _FIELDS},
         message_data={"offerId": offer.offer_id, "shopId": offer.shop_id,
                       "recipient": offer.recipient, "amount": offer.amount,
-                      "factorBps": offer.factor_bps, "holdbackBps": offer.holdback_bps,
+                      "feeRateBpsPerWeek": offer.fee_rate_bps_per_week, "feeCapBps": offer.fee_cap_bps,
+                      "holdbackBps": offer.holdback_bps,
                       "tier": offer.tier, "passNullifier": offer.pass_nullifier,
                       "minRevenueBand": offer.min_revenue_band, "expiresAt": offer.expires_at},
     )

@@ -24,7 +24,7 @@ contract BusinessPassRegistryTest is Test {
     }
 
     function _att(uint256 bizNull, uint256 commitment) internal view returns (BusinessVerified memory) {
-        return BusinessVerified(bizNull, commitment, uint64(block.timestamp + 1 hours));
+        return BusinessVerified(bizNull, commitment, uint64(vm.getBlockTimestamp() + 1 hours));
     }
 
     /// Independent EIP-712 digest (domain "BusinessPassRegistry", "1").

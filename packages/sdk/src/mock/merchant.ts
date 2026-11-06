@@ -46,7 +46,7 @@ export function splitSale(total: number) {
 /* ---------------------------------------------------- M11 advance arrived */
 
 export const drawReasons = [
-  "Sales are up 12% this week, so repayment is quick",
+  "Payments are up 12% this week, so paying back will be quick",
   "You usually restock on Mondays",
   `${formatMoney(advance.drawn)} is inside your ${formatMoney(agentLimits.perAdvance)} per-advance limit`,
   `This month: ${formatMoney(agentSummary.monthUsed)} of your ${formatMoney(agentLimits.perMonth)} limit used`,
@@ -136,7 +136,8 @@ export const agentActivity: { id: string; time: string; kind: ActivityKind; titl
 export const perAdvanceOptions = [
   { value: 50 },
   { value: 100 },
-  { value: 250, lockedReason: "$250 unlocks after 2 repaid advances" },
+  { value: 200, lockedReason: "$200 unlocks after 2 repaid advances" },
+  { value: 300, lockedReason: "$300 unlocks after 3 repaid advances" },
 ] as const;
 
 export const perMonthStepper = { step: 50, min: 50, max: 500 } as const;
@@ -170,9 +171,9 @@ export const myQr = {
   /** Shown under the QR; also the encoded value until real pay links exist. */
   payLink: appUrl(routes.pay),
   howToPay: [
-    "Scan with any phone camera, no app needed",
-    "Pay in any token; you always get dollars",
-    `While an advance is open, ${advance.holdback}% of each sale repays it`,
+    "They scan with any phone camera. No app needed.",
+    "They pay in any token. You always get dollars.",
+    `The contract splits each payment. While an advance is open, ${advance.holdback}% pays it back.`,
   ],
 } as const;
 
@@ -181,8 +182,9 @@ export const myQr = {
 export const worldView = {
   public: [
     { k: "Shop", v: shop.pseudonym },
-    { k: "Sale amounts", v: "15,000 · 4,500 …" },
-    { k: "Advance drawn", v: "$100 · 9:12" },
+    { k: "Sales", v: "payer addresses and amounts" },
+    { k: "Advance", v: "amount and tier" },
+    { k: "Payout and owner addresses", v: "public on registration" },
     { k: "Repayments", v: `${advance.holdback}% per sale` },
     { k: "Nullifier", v: "0x9c1e…a7" },
   ],
@@ -190,7 +192,7 @@ export const worldView = {
     { k: "Your name", v: "never collected" },
     { k: "Business facts", v: "AR · band 2 · 6m+" },
     { k: "Standing Pass", v: "1 repaid" },
-    { k: "Who paid you", v: "hashed, never shown" },
+    { k: "Pass secrets", v: "held on this device" },
     { k: "Backup key", v: "this device only" },
   ],
 };

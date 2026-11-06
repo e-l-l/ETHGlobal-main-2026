@@ -21,7 +21,8 @@ export type UInt = bigint | number;
 export type OfferDraft = {
   decision: "offer" | "decline";
   amount: number;
-  factor_bps: number;
+  fee_rate_bps_per_week: number;
+  fee_cap_bps: number;
   holdback_bps: number;
   est_days_slow: number;
   est_days_normal: number;
@@ -39,7 +40,8 @@ export type Offer = {
   shop_id: Hex32;
   recipient: Address;
   amount: number;
-  factor_bps: number;
+  fee_rate_bps_per_week: number;
+  fee_cap_bps: number;
   holdback_bps: number;
   tier: number;
   pass_nullifier: UInt;
@@ -108,7 +110,7 @@ export type DrawFirstRequest = { signed_offer: SignedOffer; proof: Hex; root: UI
 /** POST /relay/draw-with-pass: Standing Pass proof (tier ≥ 1). */
 export type DrawWithPassRequest = { signed_offer: SignedOffer; proof: Hex; root: UInt; nullifier: UInt; commitment_next: UInt };
 
-/** Seconds and USDC base units. max_per_period ≥ max_per_draw; 50e6 ≤ max_per_draw ≤ 500e6; 1d ≤ period ≤ 90d; expiry ≤ now + 180d. */
+/** Seconds and USDC base units. max_per_period ≥ max_per_draw; 50e6 ≤ max_per_draw ≤ 300e6; 1d ≤ period ≤ 90d; expiry ≤ now + 180d. */
 export type LimitsInput = { max_per_draw: UInt; max_per_period: UInt; period: number; expiry: number };
 
 /** POST /relay/register-mandate. proof = business_pass (tier 0) or standing_pass (tier ≥ 1), context = mandateHash % P. */

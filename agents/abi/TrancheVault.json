@@ -563,6 +563,19 @@
   },
   {
     "type": "function",
+    "name": "setCoverRatio",
+    "inputs": [
+      {
+        "name": "ratioBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "symbol",
     "inputs": [],
     "outputs": [
@@ -729,6 +742,19 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CoverRatioSet",
+    "inputs": [
+      {
+        "name": "ratioBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
       }
     ],
     "anonymous": false
@@ -1042,6 +1068,11 @@
   },
   {
     "type": "error",
+    "name": "InvalidCoverRatio",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotBook",
     "inputs": []
   },
@@ -1066,6 +1097,11 @@
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "ProvisionedDepositsDisabled",
+    "inputs": []
   },
   {
     "type": "error",

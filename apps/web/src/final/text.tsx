@@ -69,7 +69,7 @@ export type MoneyProps = {
   rate?: number;
   size?: "amount" | "h1" | "h2";
   className?: string;
-  /** Override the figure colour (e.g. lime inside the jar card). */
+  /** Override the figure colour (e.g. lime inside the drip card). */
   figureClassName?: string;
   localClassName?: string;
 };

@@ -30,8 +30,17 @@ export type AdvanceVM = {
   purpose: string;
   drawn: number;
   feeLabel: string;
+  /** Deprecated aliases retained while the UI consumes the handoff migration. */
   fee: number;
   total: number;
+  owedNow: number;
+  feeSoFar: number;
+  feeIfRepaidIn1Week: number;
+  feeIfRepaidIn2Weeks: number;
+  feeIfRepaidIn4Weeks: number;
+  feeIfRepaidIn6Weeks: number;
+  maxFeeBps: number;
+  annualizedCostPercent: number;
   repaid: number;
   left: number;
   /** Percent of the total already repaid (0–100, rounded). */
@@ -202,6 +211,8 @@ export type AgentStatusView = {
   agentId?: string;
   mandateId?: string;
   mandateVerified?: boolean;
+  expiry?: number;
+  remainingAllowance?: number;
   source: Source;
 };
 
@@ -423,14 +434,14 @@ export type TxResult = { hash: string; steps: TxStep[]; simulated: boolean };
 
 export type SwapSide = "buy" | "sell";
 /**
- * J03 junior swap (Uniswap v4, JAR-J/USDC pool with RiskHook). Amounts are token units (both 6 decimals);
- * prices are USDC per JAR-J from the pool's slot0 before and after the swap.
+ * J03 junior swap (Uniswap v4, DRIP/USDC pool with RiskHook). Amounts are token units (both 6 decimals);
+ * prices are USDC per DRIP from the pool's slot0 before and after the swap.
  */
 export type SwapResult = TxResult & {
   txHash: string;
   side: SwapSide;
-  tokenIn: "USDC" | "JAR-J";
-  tokenOut: "USDC" | "JAR-J";
+  tokenIn: "USDC" | "DRIP";
+  tokenOut: "USDC" | "DRIP";
   amountIn: number;
   amountOut: number;
   /** USDC the RiskHook took for the protocol reserve on this swap. */

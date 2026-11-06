@@ -44,7 +44,7 @@ from pydantic import ValidationError
 
 from .config import Settings
 from .interfaces import ChainWriter
-from .models import ALLOWED_AMOUNTS, FACTOR_BPS_RANGE, HOLDBACK_BPS_RANGE, MAX_TIER, Offer, SignedOffer
+from .models import ALLOWED_AMOUNTS, FEE_RATE_BPS_PER_WEEK, FEE_CAP_BPS, HOLDBACK_BPS_RANGE, MAX_TIER, Offer, SignedOffer
 
 log = logging.getLogger(__name__)
 
@@ -109,7 +109,8 @@ def parse_field(name: str, value: object) -> int:
 
 def offer_tuple(o: Offer) -> tuple:
     return (bytes.fromhex(o.offer_id[2:]), bytes.fromhex(o.shop_id[2:]), to_checksum_address(o.recipient),
-            o.amount, o.factor_bps, o.holdback_bps, o.tier, o.pass_nullifier, o.min_revenue_band, o.expires_at)
+            o.amount, o.fee_rate_bps_per_week, o.fee_cap_bps, o.holdback_bps, o.tier, o.pass_nullifier,
+            o.min_revenue_band, o.expires_at)
 
 
 class Relayer:
@@ -228,8 +229,8 @@ class Relayer:
         o = so.offer
         if o.amount not in ALLOWED_AMOUNTS:
             raise RelayError("bad_amount")
-        if not FACTOR_BPS_RANGE[0] <= o.factor_bps <= FACTOR_BPS_RANGE[1]:
-            raise RelayError("bad_factor")
+        if o.fee_rate_bps_per_week != FEE_RATE_BPS_PER_WEEK or o.fee_cap_bps != FEE_CAP_BPS:
+            raise RelayError("bad_fee_terms")
         if not HOLDBACK_BPS_RANGE[0] <= o.holdback_bps <= HOLDBACK_BPS_RANGE[1]:
             raise RelayError("bad_holdback")
         if not 0 <= o.tier <= MAX_TIER:

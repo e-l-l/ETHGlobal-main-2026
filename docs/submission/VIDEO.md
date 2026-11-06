@@ -27,13 +27,13 @@ Live stack used in every scene:
 | # | Time | Scene | Where | What to say | Ready? |
 |---|---|---|---|---|---|
 | 1 | 0:00–0:20 | **The problem** | A title card or a kiosk photo | "A shop owner in Buenos Aires needs dollars for stock today. The sales that pay for it come next week. Loan apps want her contacts." | ✅ |
-| 2 | 0:20–0:50 | **Business Pass** | Phone: `/onboarding/prove` → portal login → verifying → pass | "She proves the shop is real from her payments dashboard. We learn: active, 6+ months, revenue band, country. Nothing else. No name, no account number." | ⏳ waits on the burner wallet |
-| 3 | 0:50–1:15 | **Delegate once** | `/agent/setup` → approve | "She sets limits once and hands over to her own cash-flow agent. From now on, no human approves credit." | ⏳ waits on the burner wallet |
+| 2 | 0:20–0:50 | **Business Pass** | Phone: `/onboarding/prove` → portal login → verifying → pass | "This fictional portal and attestor are simulated. The real Reclaim path is built and tested; the issuer sees the account ID transiently." | ⏳ waits on the burner wallet |
+| 3 | 0:50–1:15 | **Delegate once** | `/agent/setup` → approve | "She sets limits and delegates in the World test-mode stub; real OIDC and IDKit are built and tested, pending keys." | ⏳ waits on the burner wallet |
 | 4 | 1:15–1:35 | **Automatic advance** | Home → "advance arrived" | "Her agent draws $50 automatically. Our AI underwriter saw only numbers and hashed payers." | ⏳ waits on the burner wallet |
-| 5 | 1:35–2:00 | **A live sale + voice** ⭐ | Customer profile scans the merchant's QR → pays → the merchant's phone speaks | Let the phone say *"You received 10 dollars, 1 went to your advance."* Then: "Every sale repays a slice, automatically." | ⏳ waits on the burner wallet |
-| 6 | 2:00–2:15 | **Wash trader caught** | `/risk`, or the agents log showing the rejected `wash-trader` shop (already seeded on Sepolia) | "A fake shop paying itself in a circle. The Critic catches it, and the contract caps would stop it anyway." | ✅ |
-| 7 | 2:15–2:45 | **Default + market** ⭐ | Laptop terminal: `~/mra/deploy/devnet.sh scene --execute`, next to `/junior` and `/risk` | "A merchant stops selling for 31 days. The junior tranche takes the loss; senior lenders don't. The junior token's price drops on Uniswap, and the Risk agent cuts limits on its own." | ✅ **record first** |
-| 8 | 2:45–3:00 | **What the world sees** | `/world-view`, `/explorer`, DevTools console showing `nox-worker ready` | "Onchain: pseudonyms and amounts. Every read goes through Anon-RPC. Your history stays on your phone." | ✅ |
+| 5 | 1:35–2:00 | **A live sale + voice** ⭐ | Customer profile scans the merchant's QR → pays → the merchant's phone speaks | Let the phone say *"You received 10 dollars, 1 went to your advance."* Then: "While an advance is active, a slice of each sale repays it." | ⏳ waits on the burner wallet |
+| 6 | 2:00–2:15 | **Wash trader caught** | `/risk`, or the agents log showing the rejected `wash-trader` shop (already seeded on Sepolia) | "A fake shop paying itself in a circle. This seeded direct funding pattern is caught; other wash patterns can evade checks." | ✅ |
+| 7 | 2:15–2:45 | **Default + market** ⭐ | Laptop terminal: `~/mra/deploy/devnet.sh scene --execute`, next to `/junior` and `/risk` | "This seeded devnet scene moves time forward 31 days. Junior takes losses first; a separate scripted sell moves the pool price. The write-off alone does not move market price. The Risk agent may then cut limits." | ✅ **record first** |
+| 8 | 2:45–3:00 | **What the world sees** | `/world-view`, `/explorer`, DevTools console showing `nox-worker ready` | "Owner and payout addresses, payer, shop, amounts, tier and advance-to-commitment claims are public. A later proof hides the leaf; metadata may correlate activity. Configured reads use Anon-RPC." | ✅ |
 
 ## Recording order
 
@@ -49,7 +49,7 @@ Live stack used in every scene:
 
 - "zkTLS runs in mock mode today; the real Reclaim path is built and tested."
 - "World Agent Pass is in test mode."
-- "The default scene runs on our public devnet, so we can move time forward 31 days."
+- "The seeded default scene runs on our public devnet with time advanced 31 days. A separate scripted sale moves the pool price."
 
 ## Fallbacks
 

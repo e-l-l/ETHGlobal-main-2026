@@ -1,7 +1,8 @@
 "use client";
 
 import type { MyQrView } from "@repo/sdk";
-import { Card, CheckIcon, Columns, KeyValue, Label, Ledger, Page, PageHead, Pill, QRCode, Stack } from "@/final";
+import { Card, Columns, Ledger, Page, PageHead, Pill, QRCode, Stack } from "@/final";
+import { CardTitle, NumberedList, PlainWords } from "../../_ui";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { useMRA } from "@/lib/use-mra";
@@ -22,8 +23,8 @@ export function MyQrScreen({ initial }: { initial: MyQrView | null }) {
   return (
     <Page tabs>
       <PageHead
-        label="My QR"
-        title="Customers scan this to pay."
+        label="Your checkout"
+        title="My QR"
         actions={
           <Pill tone="saving" dot>
             accepting payments
@@ -31,42 +32,32 @@ export function MyQrScreen({ initial }: { initial: MyQrView | null }) {
         }
       />
 
-      <Columns ratio="2:3">
-        <Card className="items-center text-center">
-          <QRCode value={payLink} size={208} label={`QR code to pay ${shop.name}`} />
-          <div className="flex min-w-0 max-w-full flex-col gap-1">
-            <strong className="font-display text-h2 text-charcoal">{shop.name}</strong>
-            <Ledger className="[overflow-wrap:anywhere]" title={payLink}>
-              {shop.pseudonym} · {shortLink(payLink)}
-            </Ledger>
-          </div>
-          <QrActions payLink={payLink} />
-        </Card>
-
+      <Columns ratio="3:2">
         <Stack>
-          <Card>
-            <Label>How customers pay</Label>
-            <ul className="m-0 flex list-none flex-col gap-3 p-0">
-              {howToPay.map((line) => (
-                <li key={line} className="flex items-start gap-2.5 font-body text-read text-charcoal">
-                  <span aria-hidden className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-honeydew text-hunter">
-                    <CheckIcon size={12} />
-                  </span>
-                  {line}
-                </li>
-              ))}
-            </ul>
+          <section className="flex flex-col items-center rounded-lg bg-hunter px-5 pt-8 pb-8 md:px-6">
+            <div className="flex w-full max-w-[340px] flex-col items-center gap-4 rounded-lg bg-surface p-5 text-center">
+              <QRCode value={payLink} size={232} label={`QR code to pay ${shop.name}`} className="border-0 p-0" />
+              <div className="flex min-w-0 max-w-full flex-col gap-0.5">
+                <strong className="font-display text-h1-sm text-charcoal">{shop.name}</strong>
+                <span className="font-body text-note text-charcoal-muted">Scan to pay · any token</span>
+              </div>
+            </div>
+          </section>
+          <QrActions payLink={payLink} />
+          <Ledger className="rounded-md bg-well px-3.5 py-3 [overflow-wrap:anywhere]" title={payLink}>
+            {shop.pseudonym} · {shortLink(payLink)}
+          </Ledger>
+        </Stack>
+
+        <Stack gap="lg">
+          <Card padding="lg">
+            <CardTitle>How customers pay</CardTitle>
+            <NumberedList label="How customers pay" items={howToPay} />
           </Card>
-          <Card>
-            <Label>Shop</Label>
-            <KeyValue
-              rows={[
-                ["Name customers see", shop.name],
-                ["Public ID", shop.pseudonym],
-                ["Sales today", today.salesCount],
-              ]}
-            />
-          </Card>
+          <PlainWords label="Private">
+            Customers only see your shop name. Never your advance, your fee or your balance. {today.salesCount}{" "}
+            {today.salesCount === 1 ? "payment" : "payments"} today.
+          </PlainWords>
         </Stack>
       </Columns>
     </Page>

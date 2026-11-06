@@ -95,7 +95,7 @@ def main() -> int:
 
     # 3. offer digest parity (eth_call only)
     o = Offer(offer_id="0x" + secrets.token_hex(32), shop_id="0x" + secrets.token_hex(32),
-              recipient=Account.create().address, amount=50_000_000, factor_bps=11500, holdback_bps=1000, tier=0,
+              recipient=Account.create().address, amount=50_000_000, fee_rate_bps_per_week=50, fee_cap_bps=300, holdback_bps=800, tier=0,
               pass_nullifier=42, min_revenue_band=2, expires_at=int(time.time()) + 900)
     ours = offer_digest(o, s.chain_id, r.book_address)
     theirs = "0x" + book.functions.hashOffer(offer_tuple(o)).call().hex().removeprefix("0x")
@@ -120,7 +120,7 @@ def main() -> int:
     # 6. cold start offer, offchain
     chain_now = lambda: w3.eth.get_block("latest")["timestamp"]
     llm = make_llm(s) if live else FakeLLM([
-        OfferDraft(decision="offer", amount=50_000_000, factor_bps=11_500, holdback_bps=1_000, est_days_slow=15,
+        OfferDraft(decision="offer", amount=50_000_000, fee_rate_bps_per_week=50, fee_cap_bps=300, holdback_bps=800, est_days_slow=15,
                    est_days_normal=9, est_days_busy=6, reasons_en=["Your verified sales are at least $2,000 a month"],
                    reasons_es=["Tus ventas verificadas superan los $2.000 por mes"]),
         CriticVerdict(verdict="approve", flags=[], summary_en="New shop with proven revenue.",

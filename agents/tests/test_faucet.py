@@ -22,6 +22,9 @@ class FakeChain:
         self.sent: list[tuple] = []
         self.fail_wait = False
 
+    def relayer_balance(self):
+        return ETHER
+
     def chain_id(self):
         return self.cid
 
@@ -133,14 +136,15 @@ def test_once_per_address_per_ip_and_daily_budget(tmp_path):
     assert (e.value.code, e.value.status) == ("daily_budget", 429)
 
 
-def test_failed_send_can_be_retried(tmp_path):
+def test_uncertain_send_cannot_be_retried(tmp_path):
     f, chain, _ = make(tmp_path)
     chain.fail_wait = True
     with pytest.raises(FaucetError) as e:
         f.fund(A, "1.1.1.1")
     assert e.value.code == "send_failed"
     chain.fail_wait = False
-    assert f.fund(A, "1.1.1.2")["address"].lower() == A
+    with pytest.raises(FaucetError, match="already_funded"):
+        f.fund(A, "1.1.1.2")
 
 
 def test_bad_address(tmp_path):
@@ -172,3 +176,15 @@ def test_route(tmp_path):
         "/demo/faucet", json={"address": B}).status_code == 404
     assert TestClient(create_app(stub, stub, stub, stub, stub)).post(
         "/demo/faucet", json={"address": B}).status_code == 404
+
+
+def test_relayer_floor_and_budget_alarm(tmp_path):
+    f, chain, _ = make(tmp_path)
+    chain.relayer_balance = lambda: 0
+    with pytest.raises(FaucetError, match="relayer_balance_low"):
+        f.fund(A, "1.1.1.1")
+    chain.relayer_balance = lambda: ETHER
+    f.cfg.demo_faucet_max_eth_per_day = 0.0004
+    f.fund(A, "1.1.1.1")
+    f.cfg.demo_faucet_max_eth_per_day = int(f.status()["spent_wei"]) / ETHER
+    assert f.status()["budget_alarm"]

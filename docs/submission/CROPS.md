@@ -55,7 +55,7 @@ Identity never touches the chain or our servers. Only ZK yes/no answers and pseu
   - all in git-ignored env files ([`contracts/README.md`](../../contracts/README.md), [`deploy/secrets-howto.md`](../../deploy/secrets-howto.md))
   - the agent key signs offers only and holds no funds
 - **No upgrades, no pause, nobody can move user funds.**
-- Every advance is bounded onchain: tier caps of $50 / $100 / $250 / $500, an exposure cap, fixed sizes, and junior first-loss of at least 10% of senior outstanding.
+- Every advance is bounded onchain: tier caps of $50 / $100 / $200 / $300, an exposure cap, fixed sizes, and junior first-loss cover of 20% of senior outstanding.
 - **Operator powers** ([`docs/architecture.md`](../../docs/architecture.md#operator-powers-named-for-crops), [`contracts/SPEC.md`](../../contracts/SPEC.md) "Trust assumptions"):
 
 | Power | Held by | What it can do to users | If the key is lost |
@@ -78,7 +78,7 @@ Identity never touches the chain or our servers. Only ZK yes/no answers and pseu
 - **Draws under one mandate are linkable to each other.** They are bounded by rotating the mandate per cycle.
 - **We see the payout address at request time.** A planned recipient commitment `H(recipient, salt)` is not built.
 - **Owner is a single key**, not a multisig.
-- **Anon-RPC is not wired yet.** The backend's Sepolia profile uses a Tenderly gateway. Support for Sepolia is unconfirmed.
+- **Anon-RPC is wired in the app:** 26/26 SDK reads were routed in a Chrome measurement. The backend Sepolia profile uses a Tenderly gateway.
 - **World and Reclaim have run in mock mode only.** The demo seller portal ("PagoSur") is a fictional stand-in, shown as such.
 - **Bedrock (AWS) is a third party that sees underwriting features.** These are numbers only, but AWS is still a party.
 - Not private from the law: a production launch needs licensing and selective disclosure (roadmap).

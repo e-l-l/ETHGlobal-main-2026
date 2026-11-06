@@ -1,26 +1,28 @@
 import type { ReactNode } from "react";
 import {
+  Accent,
   ActionBar,
   Banner,
+  BrandPanel,
   Button,
   Card,
   CheckIcon,
+  CrossIcon,
+  DemoBadge,
   Divider,
-  GradientHero,
   Heading,
   JarMark,
   Label,
   LockIcon,
-  PageHead,
   Pill,
   ShieldIcon,
+  SplitPage,
   Text,
-  Page,
 } from "@/final";
-import { copy, type Lang } from "@/lib/copy";
-import { isFailReason, routes } from "@/lib/routes";
+import { copy, stepEyebrow, type Lang } from "@/lib/copy";
+import { isFailReason, routes, type FailReason } from "@/lib/routes";
 import type { BusinessPassView } from "@repo/sdk";
-import { FailSheet, OnboardingHeader, PassFacts, World, WorldNote } from "./onboarding-client";
+import { FailSheet, OnboardingHeader, PassFacts, StepProgress, World, WorldNote } from "./onboarding-client";
 
 function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
@@ -31,25 +33,54 @@ function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   );
 }
 
-/* M01 Welcome. One promise, one action. The gradient sits in its own block; text sits on solid ground. */
+/** Form column heading: h2 (the brand panel holds the page's h1) and one lead line. */
+function FormHead({ title, children }: { title: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Heading level={2} size="h1">
+        {title}
+      </Heading>
+      {children ? <Text>{children}</Text> : null}
+    </div>
+  );
+}
+
+/* M01 Welcome. One promise, one action. */
 export function WelcomeScreen({ lang }: { lang: Lang }) {
   const t = copy[lang].welcome;
+  const icons = [<ShieldIcon key="s" size={22} />, <LockIcon key="l" size={22} />, <CheckIcon key="c" size={22} />];
   return (
     <>
       <OnboardingHeader lang={lang} />
-      <Page width="narrow">
-        <GradientHero />
-        <div className="flex flex-col gap-2.5">
-          <Label>{t.eyebrow}</Label>
-          <Heading level={1} size="hero">
-            {t.title}
-          </Heading>
-          <Text>{t.body}</Text>
-        </div>
+      <SplitPage
+        panel={
+          <BrandPanel
+            eyebrow={t.eyebrow}
+            title={
+              <>
+                {t.title} <Accent>{t.accent}</Accent>
+              </>
+            }
+            body={t.body}
+          />
+        }
+      >
+        <Text className="md:hidden">{t.body}</Text>
+        <FormHead title={t.heading} />
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
-          <Fact icon={<LockIcon size={20} />}>{t.promise1}</Fact>
-          <Fact icon={<ShieldIcon size={20} />}>{t.promise2}</Fact>
-          <Fact icon={<CheckIcon size={20} />}>{t.promise3}</Fact>
+          {t.promises.map((p, i) => (
+            <li key={p.title}>
+              <Card padding="sm" className="flex-row items-start gap-4">
+                <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-md bg-honeydew text-hunter">
+                  {icons[i]}
+                </span>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="font-body text-read font-semibold text-charcoal">{p.title}</span>
+                  <span className="font-body text-note text-charcoal-soft">{p.body}</span>
+                </span>
+              </Card>
+            </li>
+          ))}
         </ul>
         <ActionBar>
           <Button href={routes.prove}>{t.cta}</Button>
@@ -57,7 +88,7 @@ export function WelcomeScreen({ lang }: { lang: Lang }) {
             {t.back}
           </Button>
         </ActionBar>
-      </Page>
+      </SplitPage>
     </>
   );
 }
@@ -68,25 +99,71 @@ export function ProveScreen({ lang }: { lang: Lang }) {
   const t = c.prove;
   return (
     <>
-      <OnboardingHeader lang={lang} step={1} />
-      <Page width="narrow">
-        <PageHead back={routes.welcome} backLabel={c.welcome.back} title={t.title}>
-          {t.body}
-        </PageHead>
-        <Card as="section" aria-label={t.weCheck}>
-          <Label>{t.weCheck}</Label>
-          <ul className="m-0 flex list-none flex-col gap-3 p-0">
-            {t.facts.map((f) => (
-              <Fact key={f} icon={<CheckIcon size={20} />}>
-                {f}
-              </Fact>
+      <OnboardingHeader lang={lang} />
+      <SplitPage
+        panel={
+          <BrandPanel
+            eyebrow={stepEyebrow(lang, 1)}
+            title={
+              <>
+                {t.title} <Accent>{t.accent}</Accent>
+              </>
+            }
+            body={t.panel}
+          />
+        }
+      >
+        <StepProgress lang={lang} at={1} />
+        <DemoBadge>Demo attestor · demo seller portal</DemoBadge>
+        <FormHead title={t.heading}>{t.body}</FormHead>
+        <section aria-label={t.whereSell} className="flex flex-col gap-2">
+          <Label>{t.whereSell}</Label>
+          <div className="flex flex-col gap-2">
+            {t.sources.map((s, i) => (
+              <div
+                key={s.name}
+                className={
+                  i === 0
+                    ? "flex items-center gap-3 rounded-md border-2 border-hunter bg-surface px-4 py-3"
+                    : "flex items-center gap-3 rounded-md border border-hairline bg-well px-4 py-3"
+                }
+              >
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className={i === 0 ? "font-body text-read font-semibold text-charcoal" : "font-body text-read font-semibold text-charcoal-soft"}>{s.name}</span>
+                  <span className="font-body text-note text-charcoal-muted">{s.sub}</span>
+                </span>
+                {i === 0 ? <CheckIcon size={20} className="shrink-0 text-hunter" /> : null}
+              </div>
             ))}
-          </ul>
-          <Divider />
-          <p className="m-0 flex items-start gap-2.5 font-body text-note text-charcoal-soft">
-            <LockIcon size={18} className="mt-px shrink-0 text-charcoal-muted" />
-            {t.neverSee}
-          </p>
+          </div>
+        </section>
+        <Card as="section" aria-label={t.weCheck}>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="flex flex-col gap-3">
+              <Label>{t.weCheck}</Label>
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+                {t.facts.map((f) => (
+                  <Fact key={f.k} icon={<CheckIcon size={18} />}>
+                    <span className="flex flex-col">
+                      <span className="font-semibold">{f.k}</span>
+                      <span className="text-note text-charcoal-muted">{f.v}</span>
+                    </span>
+                  </Fact>
+                ))}
+              </ul>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Label>{t.neverTitle}</Label>
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+                {t.never.map((f) => (
+                  <li key={f} className="flex items-start gap-3 font-body text-read text-charcoal-soft">
+                    <CrossIcon size={18} className="mt-0.5 shrink-0 text-charcoal-muted" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </Card>
         <WorldNote>{t.world}</WorldNote>
         <div className="flex justify-center">
@@ -98,7 +175,7 @@ export function ProveScreen({ lang }: { lang: Lang }) {
             {t.demoShop}
           </Button>
         </ActionBar>
-      </Page>
+      </SplitPage>
     </>
   );
 }
@@ -109,15 +186,27 @@ export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPas
   const t = c.pass;
   return (
     <>
-      <OnboardingHeader lang={lang} step={2} />
-      <Page width="narrow">
-        <div className="flex flex-col items-center gap-3 pt-2 text-center">
-          <span className="grid size-18 place-items-center rounded-full bg-hunter text-lime">
-            <CheckIcon size={36} strokeWidth={3} />
-          </span>
-          <Heading level={1}>{t.title}</Heading>
-          <Text>{t.body}</Text>
-        </div>
+      <OnboardingHeader lang={lang} />
+      <SplitPage
+        panel={
+          <BrandPanel
+            eyebrow={stepEyebrow(lang, 3)}
+            title={
+              <>
+                {t.title} <Accent>{t.accent}</Accent>
+              </>
+            }
+            body={t.panel}
+            top={
+              <span aria-hidden className="hidden size-16 place-items-center rounded-full bg-lime text-hunter md:grid">
+                <CheckIcon size={32} strokeWidth={3} />
+              </span>
+            }
+          />
+        }
+      >
+        <StepProgress lang={lang} at={3} />
+        <FormHead title={t.heading}>{t.body}</FormHead>
         <World kind="priv">
           <Card as="section" aria-label="Business Pass" tone="tint">
             <div className="flex items-center justify-between gap-3">
@@ -125,7 +214,7 @@ export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPas
                 <JarMark size={24} lit={2} />
                 <Label>Business Pass</Label>
               </span>
-              <Pill tone="locked">{lang === "es" ? "En este teléfono" : "On this phone"}</Pill>
+              <Pill tone="locked">{t.onPhone}</Pill>
             </div>
             <PassFacts lang={lang} initial={initial} />
             <p className="m-0 font-body text-read font-bold text-charcoal">{t.learned}</p>
@@ -136,7 +225,7 @@ export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPas
         <ActionBar>
           <Button href={routes.shop}>{t.cta}</Button>
         </ActionBar>
-      </Page>
+      </SplitPage>
     </>
   );
 }
@@ -145,17 +234,40 @@ export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPas
 export function FailedScreen({ lang, reason }: { lang: Lang; reason?: string }) {
   const t = copy[lang].failed;
   const f = isFailReason(reason) ? t[reason] : t.generic;
+  const others = (["too-new", "suspended", "revenue-low"] as FailReason[]).filter((r) => r !== reason);
   return (
     <>
       <OnboardingHeader lang={lang} />
-      <Page width="narrow">
-        <div className="flex flex-col items-start gap-3.5 pt-2">
-          <JarMark lit={0} on="meter" size={64} label={lang === "es" ? "Sin verificar" : "Not verified"} />
+      <SplitPage
+        panel={
+          <BrandPanel
+            eyebrow={t.eyebrow}
+            title={
+              <>
+                {t.title} <Accent>{t.accent}</Accent>
+              </>
+            }
+            body={t.panel}
+          />
+        }
+      >
+        <div className="flex flex-col items-start gap-3.5">
+          <JarMark lit={0} on="meter" size={56} label={t.notVerified} />
           <Pill tone="risk">{f.tag}</Pill>
-          <Heading level={1}>{f.title}</Heading>
-          <Text>{f.body}</Text>
+          <FormHead title={f.title}>{f.body}</FormHead>
         </div>
         <Banner tone="caution">{f.next}</Banner>
+        <Card as="section" aria-label={t.others} tone="well">
+          <Label>{t.others}</Label>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {others.map((r, i) => (
+              <li key={r} className="flex flex-col gap-2">
+                {i > 0 ? <Divider /> : null}
+                <span className="font-body text-note text-charcoal-soft">{t[r].title}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
         <WorldNote>{t.world}</WorldNote>
         <ActionBar>
           <Button href={routes.portalLogin}>{t.retry}</Button>
@@ -163,7 +275,7 @@ export function FailedScreen({ lang, reason }: { lang: Lang; reason?: string }) 
             {t.start}
           </Button>
         </ActionBar>
-      </Page>
+      </SplitPage>
     </>
   );
 }

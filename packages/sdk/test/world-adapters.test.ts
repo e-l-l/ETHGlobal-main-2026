@@ -77,14 +77,14 @@ describe("World Agent Pass, real", () => {
   it("device flow: starts on the backend, shows the World link, polls until ready, returns the session body", async () => {
     let n = 0;
     const { fn, calls } = fakeFetch((c) => {
-      if (c.method === "POST") return { json: { device_session: "ds_0123456789abcdef", verification_uri: "https://world.org/device?user_code=AB", user_code: "AB", expires_at: 9e9, interval: 0 } };
+      if (c.method === "POST") return { json: { device_session: "ds_0123456789abcdef", verification_uri: "https://auth.world.org/device", verification_uri_complete: "https://auth.world.org/device?user_code=AB", user_code: "AB", expires_in: 600, expires_at: 9e9, interval: 0 } };
       return { json: { status: ++n < 2 ? "pending" : "ready" } };
     });
     const shown: unknown[] = [];
     const ap = worldDeviceAgentPass({ api: new AgentsApi({ baseUrl: "https://api.test", fetch: fn }), show: (p) => shown.push(p), manageToken: () => "mt" });
     const body = await ap.authorize({ agentId: "a".repeat(32), nonce: "n" });
     expect(body).toEqual({ device_session: "ds_0123456789abcdef" });
-    expect(shown).toEqual([{ verificationUri: "https://world.org/device?user_code=AB", userCode: "AB", expiresAt: 9e9 }]);
+    expect(shown).toEqual([{ verificationUri: "https://auth.world.org/device", verificationUriComplete: "https://auth.world.org/device?user_code=AB", userCode: "AB", expiresIn: 600, interval: 0, expiresAt: 9e9 }]);
     expect(calls[0]!.url).toBe(`https://api.test/agents/${"a".repeat(32)}/agent-pass/device`);
     expect(calls[1]!.url).toBe(`https://api.test/agents/${"a".repeat(32)}/agent-pass/device/ds_0123456789abcdef`);
     expect(calls.every((c) => c.headers.authorization === "Bearer mt")).toBe(true);

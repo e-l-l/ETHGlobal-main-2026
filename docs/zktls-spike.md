@@ -49,7 +49,7 @@ App ── relayer ─► BusinessPassRegistry.issue(reclaimProof, worldIdProof,
 
 **What the judge sees:**
 1. The merchant scans a QR and logs into the dashboard on the phone (~10 s).
-2. The app shows "✅ Verified business · Argentina · revenue band 2 · 6+ months. **We learned nothing else.**"
+2. The app shows "✅ Verified business · Argentina · revenue band 2 · 6+ months. **The issuer sees the account ID transiently.**"
 3. The explorer shows only `BusinessPassIssued(index, root)`: no name, no amount, no ID.
 
 ## Needed from the team (accounts can't be created by the agent)
