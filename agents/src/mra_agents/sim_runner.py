@@ -5,11 +5,11 @@ Underwriter and Critic LLM calls, EIP-712 signer), real Noir/UltraHonk proofs, t
 Nothing is canned. Only the merchant's customers are simulated: burner accounts derived from the public anvil
 mnemonic at random indices.
 
-Fee/offer coupling is confined to three functions, so a contract change (a time-based fee, a new Offer struct)
-only touches them: `offer_terms` / `draft_summary` (how an offer or draft is described, top of this file) and
-`Simulator._advance` (an advance read by ABI field name, with `owedOf` for the balance left; repayment loops
-until the advance reads Repaid, so they don't assume a fixed total). Signing goes through the pipeline's signer and drawing
-through the Relayer, which already own the Offer struct encoding.
+Fee model (time-based: 0.5%/week on original principal while principal remains, capped at 3%, paid fee-first)
+lives in ONE section at the top of this file: `fee_words`, `offer_terms`, `draft_summary` and `fee_status`. The
+rest of the runner reads advances by ABI field name (`Simulator._advance`, with `owedOf` as the live balance) and
+repays until the advance reads Repaid, so it never assumes a fixed total. Signing goes through the pipeline's
+signer and drawing through the Relayer, which own the Offer struct encoding.
 """
 from __future__ import annotations
 
@@ -36,33 +36,63 @@ COUNTRY, REVENUE_BAND, AGE_OK = 32, 2, 1  # devnet Business Pass: AR, band 2, ov
 
 # ------------------------------------------------------------------ fee / offer terms (the one place)
 
-def offer_terms(offer) -> dict:
-    """Plain description of a signed offer. The ONLY place in the simulator that knows the fee model.
+WEEK = 7 * DAY
+BPS = 10_000
+FEE_CHECKPOINT_WEEKS = (1, 2, 4, 6)
 
-    Current contracts: a flat factor (amount x factor_bps / 1e4 owed). If the Offer struct drops `factor_bps`
-    (time-based fee), the generic branch still describes the offer from the fields it has."""
-    amount = offer.amount / USDC
-    holdback = getattr(offer, "holdback_bps", 0)
-    out = {"amount": amount, "tier": offer.tier, "holdback_bps": holdback}
-    factor = getattr(offer, "factor_bps", None)
-    if factor is not None:
-        fee = amount * (factor - 10_000) / 10_000
-        out.update(factor_bps=factor, fee_usd=round(fee, 2), total_owed=round(amount + fee, 2),
-                   summary=f"${amount:.0f} advance, one flat fee of ${fee:.2f} ({(factor - 10_000) / 100:.1f}%), "
-                           f"{holdback / 100:.0f}% of each sale until repaid. No interest, no due date.")
-    else:
-        out.update({k: v for k, v in offer.model_dump().items()
-                    if k not in ("offer_id", "shop_id", "recipient", "pass_nullifier", "expires_at")})
-        out["summary"] = f"${amount:.0f} advance, {holdback / 100:.0f}% of each sale until repaid."
-    return out
+
+def fee_words(rate_bps: int, cap_bps: int) -> str:
+    """"0.5%/week, max 3%" from the signed terms."""
+    return f"{rate_bps / 100:g}%/week, max {cap_bps / 100:g}%"
+
+
+def _fee_at(principal: int, rate_bps: int, cap_bps: int, seconds: int) -> int:
+    """AdvanceBook.accruedFee: principal x rate x time / week, capped (USDC base units, floor like mulDiv)."""
+    raw = principal * rate_bps * max(0, int(seconds)) // (BPS * WEEK)
+    return min(raw, principal * cap_bps // BPS)
+
+
+def offer_terms(offer) -> dict:
+    """Plain description of a signed offer. The ONLY place that turns offer terms into words and numbers."""
+    amount = int(offer.amount)
+    rate, cap, holdback = int(offer.fee_rate_bps_per_week), int(offer.fee_cap_bps), int(offer.holdback_bps)
+    max_fee = amount * cap // BPS
+    return {
+        "amount": amount / USDC, "tier": offer.tier, "holdback_bps": holdback,
+        "fee_rate_bps_per_week": rate, "fee_cap_bps": cap, "fee_terms": fee_words(rate, cap),
+        "max_fee_usd": max_fee / USDC, "max_total_usd": (amount + max_fee) / USDC,
+        "fee_if_repaid_in_weeks": {str(w): _fee_at(amount, rate, cap, w * WEEK) / USDC
+                                   for w in FEE_CHECKPOINT_WEEKS},
+        "summary": (f"${amount / USDC:.0f} advance. Fee {fee_words(rate, cap)} (never more than "
+                    f"${max_fee / USDC:.2f}), charged only while you owe; paying sooner saves fee. "
+                    f"{holdback / 100:g}% of each sale goes to repayment. No late fee, no due date."),
+    }
 
 
 def draft_summary(draft) -> str:
     """The Underwriter's draft in words (OfferDraft carries the same fee fields as the Offer)."""
-    factor = getattr(draft, "factor_bps", None)
-    fee = f", flat fee {(factor - 10_000) / 100:.0f}%" if factor is not None else ""
-    return (f"${draft.amount / USDC:.0f}{fee}, holdback {draft.holdback_bps / 100:.0f}%, about "
-            f"{draft.est_days_normal} days to repay.")
+    return (f"${draft.amount / USDC:.0f}, fee {fee_words(draft.fee_rate_bps_per_week, draft.fee_cap_bps)}, "
+            f"holdback {draft.holdback_bps / 100:g}%, about {draft.est_days_normal} days to repay.")
+
+
+def fee_status(a: dict, now: int) -> dict:
+    """Fee on a live advance (`Simulator._advance` dict, `left` = owedOf) against the published schedule.
+
+    accrued = owedOf - principal still out + fee already paid (the contract's accruedFee). `schedule` is the same
+    formula from the signed terms at `now`; `extra` is anything charged beyond it (a late fee would show here)."""
+    principal, prepaid, fee_paid = int(a["principal"]), int(a["principalRepaid"]), int(a["feePaid"])
+    rate, cap_bps = int(a["feeRateBpsPerWeek"]), int(a["feeCapBps"])
+    active = int(a["status"]) == 1
+    accrued = int(a["left"]) - (principal - prepaid) + fee_paid if active else fee_paid
+    elapsed = max(0, int(now) - int(a["drawnAt"]))
+    schedule = _fee_at(principal, rate, cap_bps, elapsed) if active else fee_paid
+    cap = principal * cap_bps // BPS
+    return {"fee_terms": fee_words(rate, cap_bps), "fee_accrued_usd": accrued / USDC,
+            "fee_paid_usd": fee_paid / USDC, "fee_schedule_usd": schedule / USDC, "fee_cap_usd": cap / USDC,
+            "fee_capped": accrued >= cap, "weeks_outstanding": round(elapsed / WEEK, 2),
+            "weeks_to_cap": round(cap_bps / rate, 2) if rate else None,
+            # 1 cent tolerance: eth_call and d.now() can sit a block apart.
+            "extra_fee_usd": round(max(0, accrued - schedule - 10_000) / USDC, 2)}
 
 
 def plain(text: str) -> str:
@@ -508,11 +538,13 @@ class Simulator:
         ctx["advances"].append(active)
         ctx["tier"] = signed.offer.tier
         a = self._advance(d, active)
+        fee = fee_status(a, d.now())
         self._step(ctx, "draw", f"Advance #{active} drawn: ${signed.offer.amount / USDC:.0f} paid out",
                    f"{how} The senior vault funded ${int(a['principal']) / USDC:.2f}; ${a['left'] / USDC:.2f} is owed "
-                   "back from sales.",
+                   f"now. The fee accrues {fee['fee_terms']} (at most ${fee['fee_cap_usd']:.2f}) only while principal "
+                   "is owed, and each repayment pays fee first.",
                    {"advance_id": active, "amount": signed.offer.amount / USDC, "tier": signed.offer.tier,
-                    "owed": a["left"] / USDC, "ledger": self._ledger(ctx)}, tx)
+                    "owed": a["left"] / USDC, **fee, "ledger": self._ledger(ctx)}, tx)
         return active
 
     def _sales_period(self, ctx, d, shop, advance_id, payers, *, days, pace, rng, close=False, title=None):
@@ -525,31 +557,40 @@ class Simulator:
         for day in range(days):
             times = sorted(start + day * DAY + rng.randrange(8 * HOUR, 21 * HOUR) for _ in range(rng.randint(1, 2)))
             for j, ts in enumerate(times):
-                a = self._advance(d, advance_id)
+                self._at(d, ts)
+                a = self._advance(d, advance_id)  # after the warp: owedOf includes the fee accrued so far
                 if int(a["status"]) != 1:
                     break
-                self._at(d, ts)
                 amt = int(round(pace / len(times) * rng.uniform(0.7, 1.3), 2) * USDC)
                 if close and day == days - 1 and j == len(times) - 1:
-                    amt = max(amt, sale_to_repay(a["left"], int(a["holdbackBps"])))
+                    # +1 cent: the fee keeps accruing per second until the sale mines; the book caps at owedOf.
+                    amt = max(amt, sale_to_repay(a["left"] + 10_000, int(a["holdbackBps"])))
                 rc = self._pay(d, rng.choice(payers), shop["shop_id"], amt)
                 amounts.append(amt)
         ctx["sim_day"] += days
         after = self._advance(d, advance_id)
         to_advance = int(after["repaid"]) - int(before["repaid"])
+        to_fee = int(after["feePaid"]) - int(before["feePaid"])
         done = int(after["status"]) == 2
+        fee = fee_status(after, d.now())
         span = f"Days {ctx['sim_day'] - days + 1}-{ctx['sim_day']}" if days > 1 else f"Day {ctx['sim_day']}"
         self._step(ctx, "repay", title or f"{span}: ${to_advance / USDC:.2f} repaid from sales",
                    f"{len(amounts)} sales, ${sum(amounts) / USDC:.2f} in total; the "
-                   f"{int(after['holdbackBps']) / 100:.0f}% holdback sent ${to_advance / USDC:.2f} to the advance. "
-                   + ("Fully repaid." if done else f"${after['left'] / USDC:.2f} left."),
+                   f"{int(after['holdbackBps']) / 100:g}% holdback sent ${to_advance / USDC:.2f} to the advance "
+                   f"(fee first: ${to_fee / USDC:.2f} fee, ${(to_advance - to_fee) / USDC:.2f} principal). "
+                   + (f"Fully repaid; total fee ${fee['fee_paid_usd']:.2f}." if done else
+                      f"${after['left'] / USDC:.2f} left, fee so far ${fee['fee_accrued_usd']:.2f} of at most "
+                      f"${fee['fee_cap_usd']:.2f}."),
                    {"sales_usd": sum(amounts) / USDC, "sales": len(amounts), "to_advance": to_advance / USDC,
+                    "to_fee": to_fee / USDC, "to_principal": (to_advance - to_fee) / USDC, **fee,
                     "repaid": int(after["repaid"]) / USDC, "left": after["left"] / USDC, "days": days,
                     "status": ["none", "active", "repaid", "written_off"][int(after["status"])],
                     "ledger": self._ledger(ctx)}, rc)
         return after
 
     def _repay_all(self, ctx, d, shop, advance_id, payers, pace, rng):
+        """Sales periods until owedOf reaches zero (the advance reads Repaid). The live balance includes the fee
+        accrued so far, so the total is never assumed up front."""
         for _ in range(12):
             a = self._advance(d, advance_id)
             if int(a["status"]) != 1:
@@ -566,7 +607,8 @@ class Simulator:
         leaves = [int(e["args"]["commitment"]) for e in sorted(events, key=lambda e: e["args"]["leafIndex"])]
         self._step(ctx, "standing_pass", "Standing Pass claimed",
                    "Full repayment unlocked claimStandingPass: the commitment made at the draw joins the Standing "
-                   f"Pass tree ({len(leaves)} leaves). The merchant can now prove a good record from any new shop.",
+                   f"Pass tree ({len(leaves)} {'leaf' if len(leaves) == 1 else 'leaves'}). The merchant can now prove a good "
+                   "record from any new shop.",
                    {"advance_id": advance_id, "tier": 1, "tree_size": len(leaves), "ledger": self._ledger(ctx)}, tx)
         return leaves
 
@@ -596,19 +638,23 @@ class Simulator:
             before = self._advance(d, advance_id)
             slow = self._sales_period(ctx, d, shop, advance_id, payers, days=7, pace=pace * 0.2, rng=rng,
                                       title="Slow week: sales drop 80%, repayment slows")
-            same = int(slow["totalOwed"]) == int(before["totalOwed"])
+            fee = fee_status(slow, d.now())
             per_day_normal = (int(normal["repaid"]) - int(start["repaid"])) / 3 / USDC
             per_day_slow = (int(slow["repaid"]) - int(before["repaid"])) / 7 / USDC
-            self._step(ctx, "info", "No penalty for the slow week",
-                       (f"Repayment fell from ${per_day_normal:.2f}/day to ${per_day_slow:.2f}/day, and that is all. "
-                        f"Total owed stayed at ${int(slow['totalOwed']) / USDC:.2f}: no late fee, no penalty, no due "
-                        "date, and the week's sales kept the default clock from running out.")
-                       if same else
-                       (f"Total owed moved from ${int(before['totalOwed']) / USDC:.2f} to "
-                        f"${int(slow['totalOwed']) / USDC:.2f}: only the published time-based fee, no penalty."),
-                       {"repaid_per_day_normal": round(per_day_normal, 2), "repaid_per_day_slow": round(per_day_slow, 2),
-                        "total_owed_before": int(before["totalOwed"]) / USDC,
-                        "total_owed_after": int(slow["totalOwed"]) / USDC, "penalty_usd": 0 if same else None})
+            clock_reset = int(slow["lastSaleAt"]) > int(before["lastSaleAt"])
+            if fee["extra_fee_usd"] > 0:
+                raise RuntimeError("fee above the published schedule after the slow week")
+            self._step(ctx, "info", f"Slow week: the fee keeps to {fee['fee_terms']}, no late fee",
+                       f"Repayment fell from ${per_day_normal:.2f}/day to ${per_day_slow:.2f}/day, and that is all. "
+                       f"The fee so far is ${fee['fee_accrued_usd']:.2f} after {fee['weeks_outstanding']:g} weeks: "
+                       f"exactly the published {fee['fee_terms']} on ${int(slow['principal']) / USDC:.0f}, "
+                       f"and it stops at ${fee['fee_cap_usd']:.2f} however slow sales get (the cap is reached after "
+                       f"{fee['weeks_to_cap']:g} weeks). No late fee, no penalty, no due date"
+                       + ("; the week's sales still met the 1% weekly minimum, so the default clock reset."
+                          if clock_reset else "."),
+                       {"repaid_per_day_normal": round(per_day_normal, 2),
+                        "repaid_per_day_slow": round(per_day_slow, 2), **fee, "late_fee_usd": 0,
+                        "min_repayment_met": clock_reset, "owed_now": slow["left"] / USDC})
         final = self._repay_all(ctx, d, shop, advance_id, payers, pace, rng)
         if int(final["status"]) != 2:
             raise RuntimeError("advance was not fully repaid")
@@ -617,8 +663,9 @@ class Simulator:
         if archetype == "repeat_borrower":
             return self._repeat(ctx, d, standing_secret, leaves, rng)
         days = ctx["sim_day"] - HISTORY_DAYS
-        return shop, (f"Repaid ${int(final['repaid']) / USDC:.2f} in {days} days"
-                      + (" despite a slow week, with no penalty" if archetype == "slow_week" else "")
+        return shop, (f"Repaid ${int(final['repaid']) / USDC:.2f} in {days} days (fee "
+                      f"${int(final['feePaid']) / USDC:.2f}, {fee_words(int(final['feeRateBpsPerWeek']), int(final['feeCapBps']))})"
+                      + (" despite a slow week, with no late fee" if archetype == "slow_week" else "")
                       + "; Standing Pass claimed")
 
     def _repeat(self, ctx, d, standing_secret, leaves, rng):
@@ -630,7 +677,8 @@ class Simulator:
                    {"public": [{"label": "New shop id", "value": fresh["shop_hex"]}],
                     "private": [{"label": "Which earlier shop repaid", "value": "hidden by the zero-knowledge proof"}]})
         payers = self._new_payers(d, 10)
-        self._history(ctx, d, fresh, days=6, payers=payers, rng=rng, per_day=(1, 2))
+        # A busy week on the new shop: the Standing Pass replaces history, not sales (thin sales read as unaffordable).
+        self._history(ctx, d, fresh, days=6, payers=payers, rng=rng, per_day=(2, 4))
         signed = self._underwrite(ctx, fresh, tier=1)
         if signed is None:
             return fresh, "Repaid and claimed a Standing Pass; the tier-1 request got no offer"
@@ -706,12 +754,19 @@ class Simulator:
         window = int(d.book.functions.defaultWindow().call())
         target = int(a["lastSaleAt"]) + window + DAY
         days = max(1, round((target - d.now()) / DAY))
+        dark = self.ledger()  # before the silence: DRIP provisions delinquent principal from day 14, not at writeOff
         self._at(d, target)
         ctx["sim_day"] += days
+        a = self._advance(d, advance_id)
+        fee = fee_status(a, d.now())
+        delinquent = int(d.book.functions.DELINQUENCY_WINDOW().call())
         self._step(ctx, "warp", f"{days} days with no sales",
-                   f"Anvil's clock jumps {days} days. After {window // DAY} days without a repaying sale, anyone may "
-                   "call writeOff.", {"days": days, "default_window_days": window // DAY,
-                                      "left": a["left"] / USDC, "ledger": self._ledger(ctx)})
+                   f"Anvil's clock jumps {days} days. The minimum repayment is 1% of principal plus fee every 7 "
+                   f"days; with none, the advance is delinquent after {delinquent // DAY} days and anyone may call "
+                   f"writeOff after {window // DAY}. ${a['left'] / USDC:.2f} is owed (fee "
+                   f"${fee['fee_accrued_usd']:.2f}, capped at ${fee['fee_cap_usd']:.2f}).",
+                   {"days": days, "default_window_days": window // DAY, "delinquency_days": delinquent // DAY,
+                    "left": a["left"] / USDC, **fee, "ledger": self._ledger(ctx)})
         caps0 = [int(d.book.functions.tierCap(i).call()) for i in range(4)]
         max0 = int(d.book.functions.maxExposure().call())
         _, tick0 = d.slot0()
@@ -734,12 +789,17 @@ class Simulator:
                 raise RuntimeError("keeper did not write off the eligible advance")
             loss = int(a["principal"]) - int(a["principalRepaid"])
             post = self.ledger()
+            senior_hit = post["senior_assets"] < dark["senior_assets"] - 0.01
             self._step(ctx, "writeoff", f"Keeper writes off advance #{advance_id}: ${loss / USDC:.2f} lost",
-                       f"The junior tranche absorbs it first: junior assets ${pre['junior_assets']:,.2f} to "
-                       f"${post['junior_assets']:,.2f}, share price {pre['junior_share_price']:.4f} to "
-                       f"{post['junior_share_price']:.4f}. Senior holders lose nothing.",
-                       {"amount": loss / USDC, "junior_before": pre["junior_assets"],
-                        "junior_after": post["junior_assets"], "junior_price_before": pre["junior_share_price"],
+                       f"DRIP, the junior tranche, absorbs it first: it marked the unpaid principal down as soon as "
+                       f"the advance went delinquent (day {delinquent // DAY}), and writeOff makes the loss final. "
+                       f"Junior assets ${dark['junior_assets']:,.2f} to ${post['junior_assets']:,.2f}, share price "
+                       f"{dark['junior_share_price']:.4f} to {post['junior_share_price']:.4f}. "
+                       + (f"Senior assets moved ${dark['senior_assets']:,.2f} to ${post['senior_assets']:,.2f}."
+                          if senior_hit else "Senior holders lose nothing."),
+                       {"amount": loss / USDC, "junior_before": dark["junior_assets"],
+                        "junior_at_writeoff": pre["junior_assets"], "junior_after": post["junior_assets"],
+                        "junior_price_before": dark["junior_share_price"],
                         "junior_price_after": post["junior_share_price"], "senior_before": pre["senior_assets"],
                         "senior_after": post["senior_assets"], "ledger": self._ledger(ctx)},
                        sent[0] if sent else None)
@@ -754,7 +814,7 @@ class Simulator:
             rc = d.swap_to_tick(lp, tick0 - 1625 if d.junior_is_token0() else tick0 + 1625, balance)
             _, tick1 = d.slot0()
             price1 = d.junior_price_from_tick(tick1)
-            self._step(ctx, "swap", f"Junior holder panics and sells on Uniswap v4 (-{(1 - price1 / price0) * 100:.0f}%)",
+            self._step(ctx, "swap", f"DRIP holder panics and sells on Uniswap v4 (-{(1 - price1 / price0) * 100:.0f}%)",
                        f"A junior LP dumps shares into the junior/USDC v4 pool: ${price0:.4f} to ${price1:.4f} per share "
                        f"(tick {tick0} to {tick1}). The RiskHook records every swap for its TWAP oracle.",
                        {"tick_before": tick0, "tick_after": tick1, "price_before": round(price0, 6),
@@ -787,7 +847,7 @@ class Simulator:
                    "found them.", {"tier_caps": [self._usd(d.book.functions.tierCap(i).call()) for i in range(4)],
                                    "junior_pool_price": round(d.junior_price_from_tick(d.slot0()[1]), 6),
                                    "ledger": self._ledger(ctx)})
-        return (f"Written off after {days} silent days; the junior tranche absorbed ${loss / USDC:.2f}; "
+        return (f"Written off after {days} silent days; DRIP (junior) absorbed ${loss / USDC:.2f}; "
                 "risk caps lowered, then restored")
 
     def _restore(self, d, caps0, max0, tick0, lp):

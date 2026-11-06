@@ -185,7 +185,7 @@ What each step does:
 - **risk**: `RiskAgent.tick()` sees `junior_twap_drop`, plus `write_offs_7d` if there were 2 or more write-offs in 7 days. It calls `lowerLimits` (down only), and the cap change is printed.
 - **summary**: Prints a before/after table.
 
-Without `--llm`, the Risk agent applies its documented deterministic −25% cut on tiers 2–3 and maxExposure: caps go from 250/500 to 187.5/375 and maxExposure from 100k to 75k.
+Without `--llm`, the Risk agent applies its documented deterministic −25% cut on tiers 2–3 and maxExposure: caps go from 200/300 to 150/225 and maxExposure from 100k to 75k.
 
 The scene is **idempotent and resumable**. Each step checks the chain and `scene-state.json` (on the devnet volume), so re-running the same command continues from where it stopped. A finished step only prints its result.
 
@@ -267,6 +267,8 @@ Judges run real merchant stories on the devnet from the web app. `agents-api-dev
 
 - **Real work only:** devnet txs, the production pipeline (red lines, Underwriter and Critic LLMs, signer),
   real UltraHonk proofs (about 7.6 KB, 0.2 s), the Keeper and the Risk agent. Only customers are simulated.
+- **Fee model:** offers read "0.5%/week, max 3%"; sales repay fee first until `owedOf` is zero. `slow_week`
+  checks the accrued fee against the published schedule (no late fee). Tier caps are $50/$100/$200/$300.
 - **Keys:** public anvil keys only. Signer, relayer and risk keys come from the anvil mnemonic, whatever
   `agents-devnet.env` says. That file only needs the LLM provider and key (`LLM_PROVIDER`, `BEDROCK_API_KEY`).
 - **One run at a time:** a worker thread runs each one in a spawned child process. It has a 210 s budget and is killed at 240 s.

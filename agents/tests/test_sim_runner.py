@@ -6,10 +6,19 @@ from types import SimpleNamespace
 import pytest
 
 from mra_agents.models import Offer
-from mra_agents.sim_runner import Prover, Simulator, offer_terms, standing_toml
+from mra_agents.sim_runner import (
+    WEEK,
+    Prover,
+    Simulator,
+    draft_summary,
+    fee_status,
+    offer_terms,
+    standing_toml,
+)
 
-FIELDS = ["shopId", "principal", "totalOwed", "repaid", "principalRepaid", "holdbackBps", "tier", "lastSaleAt",
-          "status", "credentialClaimed", "pendingCommitment", "windowStart", "windowRepaid"]
+FIELDS = ["shopId", "principal", "totalOwed", "repaid", "principalRepaid", "feePaid", "drawnAt", "feeRateBpsPerWeek",
+          "feeCapBps", "holdbackBps", "tier", "lastSaleAt", "status", "credentialClaimed", "pendingCommitment",
+          "windowStart", "windowRepaid"]
 
 
 class Call:
@@ -28,9 +37,9 @@ def _chain(advances):
     """advances: {id: (principal, totalOwed, repaid, principalRepaid, tier, status)}"""
     def get(i):
         p, owed, rep, prep, tier, status = advances[i]
-        return (b"", p, owed, rep, prep, 1000, tier, 0, status, False, 0, 0, 0)
+        return (b"", p, owed, rep, prep, rep - prep, 0, 50, 300, 800, tier, 0, status, False, 0, 0, 0)
     book = SimpleNamespace(
-        functions=Fns(tierCap=lambda i: [50, 100, 250, 500][i] * 10**6, reserve=500_000, getAdvance=get,
+        functions=Fns(tierCap=lambda i: [50, 100, 200, 300][i] * 10**6, reserve=500_000, getAdvance=get,
                       owedOf=lambda i: advances[i][1] - advances[i][2] if advances[i][5] == 1 else 0,
                       nextAdvanceId=len(advances) + 1),
         get_function_by_name=lambda _n: SimpleNamespace(abi={"outputs": [{"components": [{"name": f} for f in FIELDS]}]}))
@@ -48,22 +57,49 @@ def test_ledger_scoped_to_the_run_and_global(monkeypatch):
     mine = sim.ledger([2])
     assert (mine["advanced"], mine["repaid"], mine["written_off"]) == (100, 11.5, 0)
     assert mine["merchant_tier"] == 1 and mine["merchant_limit"] == 100
-    assert mine["outstanding"] == 45.5 and mine["tier_caps"] == [50, 100, 250, 500]
+    assert mine["outstanding"] == 45.5 and mine["tier_caps"] == [50, 100, 200, 300]
     world = sim.ledger()
     assert world["advanced"] == 200 and world["written_off"] == pytest.approx(48.26087)
     assert sim._advance(chain, 2)["left"] == 103_500_000
 
 
+def _offer(**kw):
+    base = {"offer_id": "0x" + "11" * 32, "shop_id": "0x" + "22" * 32, "recipient": "0x" + "33" * 20,
+            "amount": 50_000_000, "fee_rate_bps_per_week": 50, "fee_cap_bps": 300, "holdback_bps": 800, "tier": 0,
+            "pass_nullifier": 1, "expires_at": 1}
+    return Offer(**{**base, **kw})
+
+
 def test_offer_terms_is_the_only_fee_seam():
-    offer = Offer(offer_id="0x" + "11" * 32, shop_id="0x" + "22" * 32, recipient="0x" + "33" * 20,
-                  amount=50_000_000, factor_bps=11_500, holdback_bps=1_000, tier=0, pass_nullifier=1, expires_at=1)
-    t = offer_terms(offer)
-    assert t["fee_usd"] == 7.5 and t["total_owed"] == 57.5 and "flat fee" in t["summary"]
-    # A future Offer without factor_bps (time-based fee) still gets described, never crashes.
-    later = SimpleNamespace(amount=50_000_000, holdback_bps=1_000, tier=0,
-                            model_dump=lambda: {"amount": 50_000_000, "fee_bps_per_week": 50, "fee_cap_bps": 300})
-    t = offer_terms(later)
-    assert t["fee_bps_per_week"] == 50 and "factor_bps" not in t
+    t = offer_terms(_offer())
+    assert t["fee_terms"] == "0.5%/week, max 3%"
+    assert t["max_fee_usd"] == 1.5 and t["max_total_usd"] == 51.5
+    assert t["fee_if_repaid_in_weeks"] == {"1": 0.25, "2": 0.5, "4": 1.0, "6": 1.5}
+    assert "0.5%/week, max 3%" in t["summary"] and "flat" not in t["summary"] and "No late fee" in t["summary"]
+    draft = SimpleNamespace(amount=100_000_000, fee_rate_bps_per_week=50, fee_cap_bps=300, holdback_bps=800,
+                            est_days_normal=20)
+    assert draft_summary(draft) == "$100, fee 0.5%/week, max 3%, holdback 8%, about 20 days to repay."
+
+
+def _adv(**kw):
+    a = {"principal": 50_000_000, "principalRepaid": 0, "feePaid": 0, "feeRateBpsPerWeek": 50, "feeCapBps": 300,
+         "status": 1, "drawnAt": 1_000}
+    a.update(kw)
+    return a
+
+
+def test_fee_status_accrues_on_schedule_and_caps():
+    # 2 weeks in, $5 principal repaid, $0.40 fee paid: owedOf = 45 + 0.50 - 0.40
+    two = fee_status(_adv(principalRepaid=5_000_000, feePaid=400_000, left=45_100_000), 1_000 + 2 * WEEK)
+    assert two["fee_accrued_usd"] == 0.5 and two["fee_schedule_usd"] == 0.5 and two["extra_fee_usd"] == 0
+    assert not two["fee_capped"] and two["weeks_to_cap"] == 6
+    # 10 weeks in, nothing paid: the fee stopped at 3% ($1.50)
+    late = fee_status(_adv(left=51_500_000), 1_000 + 10 * WEEK)
+    assert late["fee_accrued_usd"] == 1.5 and late["fee_capped"] and late["extra_fee_usd"] == 0
+    # anything above the schedule (a late fee) would show up
+    assert fee_status(_adv(left=52_000_000), 1_000 + 10 * WEEK)["extra_fee_usd"] == 0.49
+    # repaid: the fee is what was paid
+    assert fee_status(_adv(status=2, principalRepaid=50_000_000, feePaid=750_000, left=0), 9**9)["fee_accrued_usd"] == 0.75
 
 
 class FakeStore:
@@ -89,7 +125,8 @@ def _pipeline(decisions):
 
 
 def _decision(verdict=None, hits=(), signed=None, result="rejected"):
-    draft = SimpleNamespace(decision="offer", amount=50_000_000, factor_bps=11_500, holdback_bps=1_000,
+    draft = SimpleNamespace(decision="offer", amount=50_000_000, fee_rate_bps_per_week=50, fee_cap_bps=300,
+                            holdback_bps=800,
                             est_days_normal=14, reasons_en=["steady"], model_dump=lambda **_: {"amount": 50_000_000})
     v = SimpleNamespace(verdict=verdict, summary_en="looks fine", flags=[]) if verdict else None
     return SimpleNamespace(redline_hits=list(hits), draft=None if hits else draft, verdict=v, signed_offer=signed,
@@ -105,8 +142,7 @@ def _runner(pipeline, monkeypatch):
 
 
 def test_send_back_reasks_and_stream_names_both_models(monkeypatch):
-    offer = Offer(offer_id="0x" + "11" * 32, shop_id="0x" + "11" * 32, recipient="0x" + "33" * 20,
-                  amount=50_000_000, factor_bps=11_500, holdback_bps=1_000, tier=0, pass_nullifier=1, expires_at=1)
+    offer = _offer(shop_id="0x" + "11" * 32)
     signed = SimpleNamespace(offer=offer, signature="0x" + "ab" * 65)
     pipeline = _pipeline([_decision("send_back"), _decision("approve", signed=signed, result="offered")])
     sim, ctx, shop = _runner(pipeline, monkeypatch)
@@ -116,7 +152,8 @@ def test_send_back_reasks_and_stream_names_both_models(monkeypatch):
     assert len(pipeline.calls) == 2
     ev = ctx["store"].events
     assert ev[2]["data"]["model"] == "uw-model" and ev[3]["data"]["model"] == "critic-model"
-    assert ev[-1]["data"]["fee_usd"] == 7.5
+    assert ev[-1]["data"]["fee_terms"] == "0.5%/week, max 3%" and ev[-1]["data"]["max_fee_usd"] == 1.5
+    assert "0.5%/week, max 3%" in ev[2]["detail"]
 
 
 def test_red_lines_stop_before_any_model_and_no_retry(monkeypatch):
