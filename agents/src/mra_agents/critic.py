@@ -43,21 +43,30 @@ def features_payload(features: ShopFeatures) -> dict[str, Any]:
     return data
 
 
-def red_lines_payload() -> dict[str, str]:
-    return {
+def red_lines_payload(features: ShopFeatures | None = None) -> dict[str, str]:
+    """The red lines the code enforces for THIS shop (redlines.check). On a proven-band cold start the
+    "not enough data yet" lines are skipped there, so they are left out here too: showing the Critic a table its
+    own instructions tell it to ignore made it reject every cold start for thin history."""
+    lines = {
         "unique_payers_30d": f">= {redlines.MIN_UNIQUE_PAYERS_30D}",
         "top_payer_share_30d": f"<= {redlines.MAX_TOP_PAYER_SHARE_30D}",
         "funded_by_shop_share": f"<= {redlines.MAX_FUNDED_BY_SHOP_SHARE}",
         "days_active_30d": f">= {redlines.MIN_DAYS_ACTIVE_30D}",
         "spike_ratio": f"<= {redlines.MAX_SPIKE_RATIO}",
     }
+    if features is not None and features.cold_start and features.proven_revenue_band:
+        for k in ("unique_payers_30d", "days_active_30d", "spike_ratio"):
+            lines.pop(k)
+        if features.sales_count_30d < redlines.MIN_SALES_FOR_CONCENTRATION:
+            lines.pop("top_payer_share_30d")
+    return lines
 
 
 def build_critic_user(features: ShopFeatures, draft: OfferDraft) -> str:
     payload = {
         "features": features_payload(features),
         "draft": draft.model_dump(include=set(DRAFT_NUMBER_FIELDS)),
-        "red_lines": red_lines_payload(),
+        "red_lines": red_lines_payload(features),
     }
     return (
         "Review this draft offer. The shop's data and the draft's numbers are below; "

@@ -335,7 +335,7 @@ class MerchantAgentStore:
 # ------------------------------------------------------------------ agent
 
 
-RequestOffer = Callable[[str, int, str], Any]  # (shop_id, tier, recipient) -> Decision
+RequestOffer = Callable[..., Any]  # (shop_id, tier, recipient, *, min_revenue_band=0) -> Decision
 DrawByMandate = Callable[[Any, int, str], str]  # (signed_offer, mandate_id, agent_sig) -> tx hash
 MandateReader = Callable[[int], dict | None]  # mandate_id -> {"agentKey","limitsHash","active"} | None (unknown)
 

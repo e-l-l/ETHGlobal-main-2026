@@ -119,6 +119,18 @@ describe("POST /issue (mock mode)", () => {
     expect((await post(app, { proof: r.json().proof, commitment: C1, band: 3 })).statusCode).toBe(200);
   });
 
+  it("/mock/proof fresh: a new fictional business each time (new account id), fixed otherwise", async () => {
+    const { app } = await makeApp();
+    const acct = async (payload: Record<string, unknown>) =>
+      (await app.inject({ method: "POST", url: "/mock/proof", payload })).json().proof.extractedParameterValues.account_id as string;
+    const fixed = await acct({ account: "donpepe", commitment: C1, band: 2 });
+    expect(await acct({ account: "donpepe", commitment: C1, band: 2 })).toBe(fixed);
+    const f1 = await acct({ account: "donpepe", commitment: C1, band: 2, fresh: true });
+    const f2 = await acct({ account: "donpepe", commitment: C1, band: 2, fresh: true });
+    expect(f1).toMatch(/^acc_[0-9a-f]{32}$/);
+    expect(new Set([fixed, f1, f2]).size).toBe(3);
+  });
+
   it("/mock/proof does not exist in real mode", async () => {
     const verifier = { kind: "reclaim" as const, verify: vi.fn() };
     const { app } = await makeApp({ env: { ISSUER_MOCK: "0", RECLAIM_PROVIDER_ID: "prov" }, verifier });

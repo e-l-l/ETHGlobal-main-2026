@@ -138,3 +138,26 @@ def test_upstream_errors_are_sanitised(tmp_path):
     store.events = boom
     r = client.get(f"/agents/{aid}", headers=auth)
     assert r.status_code == 502 and "secret" not in r.text and "Traceback" not in r.text
+
+
+def test_build_merchant_services_passes_the_proven_band_to_underwriting(tmp_path):
+    """Regression: the deps lambda dropped min_revenue_band, so every tier-0 mandate tick (the Business Pass
+    cold start) crashed with TypeError on Sepolia."""
+    from types import SimpleNamespace
+
+    from pydantic import SecretStr
+
+    from mra_agents.agents_api import build_merchant_services
+    from mra_agents.config import Settings
+
+    calls = []
+    pipeline = SimpleNamespace(now=lambda: 1_000, indexer=object(),
+                               request_offer=lambda *a, **kw: calls.append((a, kw)) or "decision")
+    reader = SimpleNamespace(chain_id=31337, book_address="0x" + "11" * 20, advances=lambda: [])
+    settings = Settings(agent_key_encryption_key=SecretStr("aa" * 32), db_path=tmp_path / "a.sqlite",
+                        attester_private_key=None, world_mock=True)
+    svc = build_merchant_services(settings, pipeline=pipeline, reader=reader, writer=object())
+    deps = svc["runner"].deps
+    assert deps.request_offer("0xshop", 0, "0xrec", min_revenue_band=2) == "decision"
+    assert deps.request_offer("0xshop", 1, "0xrec") == "decision"
+    assert calls == [(("0xshop", 0, "0xrec"), {"min_revenue_band": 2}), (("0xshop", 1, "0xrec"), {"min_revenue_band": 0})]

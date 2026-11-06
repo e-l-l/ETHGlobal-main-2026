@@ -111,3 +111,19 @@ def test_managed_agent_tier1_does_not_pass_band(tmp_path):
     w.tick(aid)
     (args, kw), = seen
     assert args[1] == 1 and kw == {}
+
+
+def test_critic_sees_only_the_red_lines_the_code_enforces_on_cold_start():
+    """The Critic rejected a real Sepolia cold start ("one customer over one day isn't enough") because its
+    payload listed the few-payers / few-days lines that redlines.check skips for a proven band."""
+    import json
+
+    from mra_agents.critic import build_critic_user, red_lines_payload
+
+    cold = mark_cold_start(thin(), band=2)
+    lines = red_lines_payload(cold)
+    assert set(lines) == {"funded_by_shop_share"}
+    assert "unique_payers_30d" not in build_critic_user(cold, draft()).split('"red_lines"')[1]
+    assert set(red_lines_payload(thin())) == {"unique_payers_30d", "top_payer_share_30d", "funded_by_shop_share",
+                                              "days_active_30d", "spike_ratio"}
+    assert json.dumps(red_lines_payload())  # no-arg form unchanged

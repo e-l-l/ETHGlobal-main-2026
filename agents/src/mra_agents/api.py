@@ -133,6 +133,9 @@ class InsightsResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
 
+class FaucetRequest(Input):
+    address: Address
+
 class RiskResponse(BaseModel):
     signals: dict
     triggers: list = []
@@ -186,7 +189,7 @@ def cors_origins() -> list[str]:
     return [x.strip().rstrip("/") for x in raw.split(",") if x.strip() and x.strip() != "*"]
 
 
-def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=None):
+def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=None, faucet=None):
     app = FastAPI(debug=False)
     app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["GET", "POST", "PUT"],
                        allow_headers=["Content-Type", "Authorization"], max_age=600)
@@ -294,6 +297,25 @@ def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=N
     def health():
         return {"status": "ok"}
 
+    @app.post("/demo/faucet")
+    def demo_faucet(body: FaucetRequest, request: Request):
+        """Testnet-only burner funding (faucet.py). 404 unless DEMO_FAUCET=1 on Sepolia / anvil."""
+        from .faucet import FaucetError, client_ip
+        try:
+            if faucet is None or not faucet.enabled():
+                raise HTTPException(404, "Not found")
+        except HTTPException:
+            raise
+        except Exception:  # noqa: BLE001 - services not configured = no faucet
+            raise HTTPException(404, "Not found") from None
+        limit(request)
+        try:
+            return faucet.fund(body.address, client_ip(request.headers, request.client.host if request.client else None))
+        except FaucetError as e:
+            raise HTTPException(e.status, e.code) from None
+        except Exception:  # noqa: BLE001 - never leak upstream errors
+            raise HTTPException(502, "Upstream service failed") from None
+
     if merchant is not None or recovery is not None:  # managed agents + World recovery
         from .agents_api import build_router
         app.include_router(build_router(merchant, recovery))
@@ -344,8 +366,10 @@ class _LazyServices:
 
         pipeline = UnderwritingPipeline(reader=reader, indexer=indexer, judge=judge, signer=signer,
                                         store=store, settings=settings, now=chain_now)
+        from .faucet import build_faucet
         return {"pipeline": pipeline, "relayer": Relayer(writer, settings, now=chain_now), "reader": reader,
-                "store": store, "risk": RiskAgent(reader, writer, judge, settings, now=chain_now)}
+                "store": store, "risk": RiskAgent(reader, writer, judge, settings, now=chain_now),
+                "faucet": build_faucet(writer, settings)}
 
 
 class _LazyProxy:
@@ -364,4 +388,4 @@ def _merchant_proxies():
 
 
 app = create_app(*(_LazyProxy(_services, name) for name in ("pipeline", "relayer", "reader", "store", "risk")),
-                 *_merchant_proxies())
+                 *_merchant_proxies(), faucet=_LazyProxy(_services, "faucet"))

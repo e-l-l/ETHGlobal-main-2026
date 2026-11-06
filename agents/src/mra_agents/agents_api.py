@@ -308,7 +308,9 @@ def build_merchant_services(settings=None, *, pipeline=None, reader=None, writer
     if settings.attester_private_key is not None:
         attester = Attester(settings.attester_private_key.get_secret_value(), reader.chain_id, reader.book_address)
     deps = AgentDeps(indexer=pipeline.indexer, advances=reader.advances,
-                     request_offer=lambda shop, tier, recipient: pipeline.request_offer(shop, tier, recipient),
+                     # min_revenue_band: a tier-0 mandate's proven Business Pass band (the cold start).
+                     request_offer=lambda shop, tier, recipient, min_revenue_band=0: pipeline.request_offer(
+                         shop, tier, recipient, min_revenue_band=min_revenue_band),
                      draw_by_mandate=MandateRelay(writer, now=now), chain_id=reader.chain_id,
                      book_address=reader.book_address, settings=settings,
                      mandate_reader=make_mandate_reader(reader), now=now)

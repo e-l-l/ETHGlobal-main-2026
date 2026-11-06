@@ -1,5 +1,6 @@
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
+import { randomBytes } from "node:crypto";
 import Fastify, { type FastifyBaseLogger } from "fastify";
 import type { Config } from "./config.js";
 import { Attester } from "./eip712.js";
@@ -125,11 +126,16 @@ export async function buildApp({ cfg, logger, verifier, reclaimBackend = sdkBack
   }
 
   if (cfg.mock) {
-    /** MOCK ONLY: a canned proof for a fictional demo account, bound to the caller's commitment. */
+    /**
+     * MOCK ONLY: a canned proof for a fictional demo account, bound to the caller's commitment.
+     * `fresh: true` clones the account with a random account id: a NEW fictional business, so its business
+     * nullifier is new and BusinessPassRegistry.issue doesn't revert BusinessAlreadyHasPass on the second demo run.
+     */
     app.post("/mock/proof", { config: limit }, async (req) => {
-      const b = (req.body ?? {}) as { account?: unknown; commitment?: unknown; band?: unknown };
-      const acct = typeof b.account === "string" ? MOCK_ACCOUNTS[b.account] : undefined;
-      if (!acct) throw new IssueError("unknown_mock_account", 400);
+      const b = (req.body ?? {}) as { account?: unknown; commitment?: unknown; band?: unknown; fresh?: unknown };
+      const named = typeof b.account === "string" ? MOCK_ACCOUNTS[b.account] : undefined;
+      if (!named) throw new IssueError("unknown_mock_account", 400);
+      const acct = b.fresh === true ? { ...named, accountId: `acc_${randomBytes(16).toString("hex")}` } : named;
       if (b.band !== 1 && b.band !== 2 && b.band !== 3) throw new IssueError("bad_band", 400);
       const commitmentHex = toHex32(parseField(b.commitment, "bad_commitment"));
       return { proof: buildMockProof({ account: acct, commitmentHex, band: b.band as Band, allowedCountries: cfg.allowedCountries, timestampS: Math.floor(now() / 1000) }) };
