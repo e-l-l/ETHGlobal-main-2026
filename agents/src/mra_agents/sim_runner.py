@@ -146,7 +146,20 @@ class Prover:
         self.artifact_dir = Path(os.environ["SIM_CIRCUITS_DIR"]) if os.getenv("SIM_CIRCUITS_DIR") else None
         extra = [os.getenv("SIM_TOOLS_DIR", ""), str(Path.home() / ".nargo/bin"), str(Path.home() / ".bb")]
         self.path = os.pathsep.join([p for p in extra if p] + [os.environ.get("PATH", "")])
+        self.home = self._writable_home()
         self._lock = threading.Lock()
+
+    @staticmethod
+    def _writable_home() -> str:
+        """bb caches its downloaded CRS under $HOME/.bb-crs. In the container HOME (/srv/agents) is root-owned, so
+        use SIM_BB_HOME, else the sim DB's directory (a writable volume, so the CRS survives restarts), else /tmp."""
+        candidates = [os.getenv("SIM_BB_HOME", ""), os.environ.get("HOME", ""),
+                      str(Path(os.environ["SIM_DB_PATH"]).parent) if os.getenv("SIM_DB_PATH") else "",
+                      tempfile.gettempdir()]
+        for c in candidates:
+            if c and os.path.isdir(c) and os.access(c, os.W_OK):
+                return c
+        return tempfile.gettempdir()
 
     def _tool(self, name: str) -> str:
         found = shutil.which(name, path=self.path)
@@ -169,8 +182,12 @@ class Prover:
         return src / "target" / f"{circuit}.json", src / "target" / "vk"
 
     def _run(self, argv: list[str], *, timeout: float, cwd=None) -> None:
-        subprocess.run([self._tool(argv[0]), *argv[1:]], cwd=cwd, check=True, timeout=max(10, timeout),
-                       env=dict(os.environ, PATH=self.path), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        r = subprocess.run([self._tool(argv[0]), *argv[1:]], cwd=cwd, timeout=max(10, timeout),
+                           env=dict(os.environ, PATH=self.path, HOME=self.home),
+                           stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        if r.returncode != 0:
+            tail = (r.stderr or b"").decode(errors="replace").strip()[-400:]
+            raise RuntimeError(f"{argv[0]} {argv[1] if len(argv) > 1 else ''} failed (exit {r.returncode}): {tail}")
 
     def prove(self, circuit: str, toml: str, timeout: float = 120) -> tuple[bytes, float]:
         """Returns (proof bytes, milliseconds for witness + proof). The proof is verified before returning."""
