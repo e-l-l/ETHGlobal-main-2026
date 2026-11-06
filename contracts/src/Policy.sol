@@ -12,7 +12,8 @@ struct Offer {
     bytes32 shopId;
     address recipient;
     uint256 amount;
-    uint16 factorBps;
+    uint16 feeRateBpsPerWeek;
+    uint16 feeCapBps;
     uint16 holdbackBps;
     uint8 tier;
     uint256 passNullifier; // tier 0: Business Pass first-advance nullifier (proven in-circuit); else 0
@@ -28,7 +29,8 @@ abstract contract Policy is EIP712, Ownable2Step {
     error InvalidAmount();
     error InvalidTier();
     error TierCapExceeded();
-    error InvalidFactor();
+    error InvalidFeeRate();
+    error InvalidFeeCap();
     error InvalidHoldback();
     error ExposureExceeded();
     error InvalidPassNullifier();
@@ -36,7 +38,7 @@ abstract contract Policy is EIP712, Ownable2Step {
     error UnauthorizedRiskManager();
     error InvalidLimits();
     bytes32 public constant OFFER_TYPEHASH = keccak256(
-        "Offer(bytes32 offerId,bytes32 shopId,address recipient,uint256 amount,uint16 factorBps,uint16 holdbackBps,uint8 tier,uint256 passNullifier,uint8 minRevenueBand,uint64 expiresAt)"
+        "Offer(bytes32 offerId,bytes32 shopId,address recipient,uint256 amount,uint16 feeRateBpsPerWeek,uint16 feeCapBps,uint16 holdbackBps,uint8 tier,uint256 passNullifier,uint8 minRevenueBand,uint64 expiresAt)"
     );
 
     address public offerSigner;
@@ -74,7 +76,7 @@ abstract contract Policy is EIP712, Ownable2Step {
 
     function hashOffer(Offer calldata o) public view virtual returns (bytes32) {
         return _hashTypedDataV4(keccak256(abi.encode(
-            OFFER_TYPEHASH, o.offerId, o.shopId, o.recipient, o.amount, o.factorBps,
+            OFFER_TYPEHASH, o.offerId, o.shopId, o.recipient, o.amount, o.feeRateBpsPerWeek, o.feeCapBps,
             o.holdbackBps, o.tier, o.passNullifier, o.minRevenueBand, o.expiresAt
         )));
     }
@@ -98,7 +100,8 @@ abstract contract Policy is EIP712, Ownable2Step {
             revert InvalidAmount();
         }
         if (o.amount > tierCap[o.tier]) revert TierCapExceeded();
-        if (o.factorBps < 11000 || o.factorBps > 15000) revert InvalidFactor();
+        if (o.feeRateBpsPerWeek == 0 || o.feeRateBpsPerWeek > 1000) revert InvalidFeeRate();
+        if (o.feeCapBps == 0 || o.feeCapBps > 1000) revert InvalidFeeCap();
         if (o.holdbackBps < 500 || o.holdbackBps > 2000) revert InvalidHoldback();
         if (currentExposure > maxExposure || o.amount > maxExposure - currentExposure) revert ExposureExceeded();
         if (!manual) {
