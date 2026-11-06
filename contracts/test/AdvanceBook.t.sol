@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, Vm} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -432,9 +432,11 @@ contract AdvanceBookTest is Test {
         assertEq(usdc.balanceOf(recipient), 100e6);
         assertEq(senior.outstanding(), 100e6);
 
+        // No payment for 6 weeks: 5 weeks behind the minimum -> late fee 2.5 (0.5%/wk), all to the reserve.
+        // First sale (rep 10): fee 3 + late 2.5 + principal 4.5.
         for (uint256 i = 0; i < 10; i++) {
             _pay(SHOP, 100e6);
-            assertEq(senior.outstanding(), 93e6 - i * 10e6);
+            assertEq(senior.outstanding(), 95_500_000 - i * 10e6);
         }
         assertEq(uint8(_adv(id).status), uint8(AdvanceBook.Status.Active));
 
@@ -444,18 +446,20 @@ contract AdvanceBookTest is Test {
         vm.prank(customer);
         book.pay(SHOP, 100e6);
 
-        assertEq(usdc.balanceOf(payout), 10 * 90e6 + 97e6, "merchant payout");
+        assertEq(usdc.balanceOf(payout), 10 * 90e6 + 94_500_000, "merchant payout");
         assertEq(usdc.balanceOf(address(senior)), SENIOR_SEED + 1_200_000, "senior fee");
         assertEq(usdc.balanceOf(address(junior)), JUNIOR_SEED + 900_000, "junior fee");
-        assertEq(book.reserve(), 600_000, "reserve");
-        assertEq(usdc.balanceOf(address(book)), 600_000, "book custody == reserve");
+        assertEq(book.reserve(), 3_100_000, "reserve: 20% of fee + 100% of late fee");
+        assertEq(usdc.balanceOf(address(book)), 3_100_000, "book custody == reserve");
         assertEq(senior.outstanding(), 0);
         assertEq(senior.totalAssets(), SENIOR_SEED + 1_200_000, "senior earned its fee share");
 
         AdvanceBook.Advance memory a = _adv(id);
         assertEq(uint8(a.status), uint8(AdvanceBook.Status.Repaid));
-        assertEq(a.repaid, 103e6);
+        assertEq(a.repaid, 105_500_000);
         assertEq(a.principalRepaid, 100e6);
+        assertEq(a.lateFeePaid, 2_500_000);
+        assertEq(book.lateFeeOf(id), 2_500_000, "frozen at paid once repaid");
         assertEq(book.owedOf(id), 0);
         (,, uint256 active) = book.shops(SHOP);
         assertEq(active, 0);
@@ -464,7 +468,7 @@ contract AdvanceBookTest is Test {
         uint256 before = usdc.balanceOf(payout);
         _pay(SHOP, 50e6);
         assertEq(usdc.balanceOf(payout) - before, 50e6);
-        assertEq(book.reserve(), 600_000);
+        assertEq(book.reserve(), 3_100_000);
     }
 
     function test_pay_emitsSaleAndSplit() public {
@@ -472,7 +476,9 @@ contract AdvanceBookTest is Test {
         vm.warp(vm.getBlockTimestamp() + 6 weeks);
         usdc.mint(customer, 100e6);
         vm.expectEmit(true, false, false, true, address(book));
-        emit AdvanceBook.RepaymentSplit(id, 7e6, 1_200_000, 900_000, 600_000, 300_000);
+        emit AdvanceBook.RepaymentSplit(id, 4_500_000, 1_200_000, 900_000, 600_000, 300_000);
+        vm.expectEmit(true, false, false, true, address(book));
+        emit AdvanceBook.LateFeePaid(id, 2_500_000); // 5 weeks behind
         vm.expectEmit(true, true, false, true, address(book));
         emit AdvanceBook.Sale(SHOP, customer, 100e6, 10e6);
         vm.prank(customer);
@@ -496,7 +502,7 @@ contract AdvanceBookTest is Test {
             assertEq(senior.outstanding(), 50e6 - a.principalRepaid, "outstanding tracks principal");
         }
         AdvanceBook.Advance memory f = _adv(id);
-        assertEq(f.repaid, 51_500_000);
+        assertEq(f.repaid, 52_750_000, "principal 50 + fee 1.5 + late fee 1.25 (5 weeks behind)");
         assertEq(f.principalRepaid, 50e6);
         assertEq(senior.outstanding(), 0);
 
@@ -504,13 +510,13 @@ contract AdvanceBookTest is Test {
         uint256 toJunior = usdc.balanceOf(address(junior)) - b0.junior;
         uint256 toReserve = book.reserve() - b0.reserve;
         uint256 toPayout = usdc.balanceOf(payout) - b0.payout;
-        assertEq(toSenior + toJunior + toReserve + usdc.balanceOf(owner) - b0.treasury, 51_500_000, "repayments == principal + fee");
-        assertEq(toPayout + 51_500_000, spent, "conservation");
+        assertEq(toSenior + toJunior + toReserve + usdc.balanceOf(owner) - b0.treasury, 52_750_000, "repayments == principal + fee + late fee");
+        assertEq(toPayout + 52_750_000, spent, "conservation");
         assertLe(toJunior, 450_000);
         assertGe(toJunior + i, 450_000);
         assertLe(toSenior - 50e6, 600_000);
         assertGe(toSenior - 50e6 + i, 600_000);
-        assertGe(toReserve, 300_000);
+        assertGe(toReserve, 300_000 + 1_250_000);
     }
 
     /// Regression for the SPEC's literal per-sale formula. 20 sales repaying 7 units each round the
@@ -783,16 +789,20 @@ contract AdvanceBookTest is Test {
         uint256 drawn = _adv(id).drawnAt;
         uint256[6] memory elapsed = [uint256(0), 1, 2, 4, 6, 10];
         uint256[6] memory fees = [uint256(0), 500_000, 1_000_000, 2_000_000, 3_000_000, 3_000_000];
+        // No repayments: behind from week 1, the late fee adds 0.5%/wk on top (cap 3%), 6% total max.
+        uint256[6] memory late = [uint256(0), 0, 500_000, 1_500_000, 2_500_000, 3_000_000];
         for (uint256 i; i < elapsed.length; ++i) {
             vm.warp(drawn + elapsed[i] * 1 weeks);
-            assertEq(book.owedOf(id), 100e6 + fees[i], "linear fee accrual and cap");
+            assertEq(book.owedOf(id), 100e6 + fees[i] + late[i], "linear fee + late fee accrual and caps");
+            assertEq(book.lateFeeOf(id), late[i]);
         }
+        assertEq(book.owedOf(id), 106e6, "6% total cap");
     }
 
     function test_feeFirstAllocation_andEarlyFullRepaymentStopsAccrual() public {
         uint256 id = _drawFirst(SHOP, 100e6, 50, 800);
         vm.warp(vm.getBlockTimestamp() + 2 weeks);
-        usdc.mint(customer, 100e6 + 1e6);
+        usdc.mint(customer, 100e6 + 1e6 + 500_000); // + 0.5 late fee (1 week behind)
         vm.startPrank(customer); usdc.approve(address(book), type(uint256).max);
         book.repay(id, 500_000);
         assertEq(_adv(id).feePaid, 500_000);
@@ -811,12 +821,15 @@ contract AdvanceBookTest is Test {
     function test_writeOffWithAccruedFee_doesNotTreatUncollectedFeeAsPrincipal() public {
         uint256 id = _drawFirst(SHOP, 100e6, 50, 800);
         vm.warp(vm.getBlockTimestamp() + 6 weeks);
-        assertEq(book.owedOf(id), 103e6);
+        assertEq(book.owedOf(id), 105_500_000, "principal + 3% fee + 2.5% late fee");
         uint256 seniorBefore = senior.totalAssets();
         book.writeOff(id);
         assertEq(uint8(_adv(id).status), uint8(AdvanceBook.Status.WrittenOff));
         assertEq(senior.totalAssets(), seniorBefore);
         assertEq(usdc.balanceOf(owner), 0, "unpaid fee is not collected on write-off");
+        assertEq(book.reserve(), 0, "unpaid late fee is simply lost");
+        assertEq(book.lateFeeOf(id), 0);
+        assertEq(book.owedOf(id), 0);
     }
 
     function testFuzz_feeWaterfallSumsExactly(uint16 rawSenior, uint16 rawJunior, uint16 rawProtocol) public {
@@ -834,12 +847,177 @@ contract AdvanceBookTest is Test {
         uint256 sFee = usdc.balanceOf(address(senior)) - SENIOR_SEED;
         uint256 jFee = usdc.balanceOf(address(junior)) - JUNIOR_SEED;
         uint256 pFee = usdc.balanceOf(owner);
-        uint256 rFee = book.reserve();
+        uint256 rFee = book.reserve() - 2_500_000; // the late fee (5 weeks behind) goes 100% to the reserve
         assertEq(sFee + jFee + pFee + rFee, totalFee, "all collected fee assigned");
         assertEq(sFee, uint256(totalFee) * seniorShare / 10_000);
         assertEq(jFee, uint256(totalFee) * juniorShare / 10_000);
         assertEq(pFee, uint256(totalFee) * protocolShare / 10_000);
         assertEq(rFee, totalFee - sFee - jFee - pFee, "rounding dust goes to reserve");
+    }
+
+    // ================================================================== late-fee step-up
+    // 100 USDC, 0.5%/wk cap 3%, holdback 10%. Behind = no 1% minimum met for > 7 days since lastSaleAt.
+
+    function _repayAs(uint256 id, uint256 amount) internal {
+        usdc.mint(customer, amount);
+        vm.prank(customer);
+        book.repay(id, amount);
+    }
+
+    /// On time (minimum met every 6 days): no late fee, no LateFeePaid event, fee identical to the old formula.
+    function test_lateFee_onTimeMerchant_unchanged() public {
+        uint256 id = _drawFirst(SHOP, 100e6, 50, 1000);
+        uint256 t0 = vm.getBlockTimestamp();
+        vm.recordLogs();
+        for (uint256 k = 1; k <= 8; ++k) {
+            vm.warp(t0 + k * 6 days);
+            _pay(SHOP, 20e6); // rep 2 >= 1% minimum
+            assertFalse(book.isBehind(id));
+            assertEq(book.lateFeeOf(id), 0);
+        }
+        // exactly on the deadline (lastSaleAt + 7 days) is still on time
+        vm.warp(t0 + 8 * 6 days + 7 days);
+        assertFalse(book.isBehind(id));
+        assertEq(book.lateFeeOf(id), 0);
+        uint256 owed = book.owedOf(id);
+        uint256 elapsed = vm.getBlockTimestamp() - t0;
+        uint256 fee = Math.min(100e6 * 50 * elapsed / (10_000 * 7 days), 3e6);
+        assertEq(owed, 100e6 - _adv(id).principalRepaid + fee - _adv(id).feePaid, "owed = old formula");
+        _repayAs(id, owed);
+        bytes32 lateSig = keccak256("LateFeePaid(uint256,uint256)");
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) assertTrue(logs[i].topics[0] != lateSig, "no LateFeePaid on time");
+        AdvanceBook.Advance memory a = _adv(id);
+        assertEq(uint8(a.status), uint8(AdvanceBook.Status.Repaid));
+        assertEq(a.lateFeePaid, 0);
+        assertEq(a.lateSecs, 0);
+        assertEq(a.feePaid, 3e6);
+        assertEq(a.repaid, 103e6);
+    }
+
+    /// Falling behind starts the late fee: 1%/wk total, exactly from lastSaleAt + 7 days.
+    function test_lateFee_fallingBehind_accruesOnePercentPerWeekTotal() public {
+        uint256 id = _drawFirst(SHOP, 100e6, 50, 1000);
+        uint256 t0 = vm.getBlockTimestamp();
+        vm.warp(t0 + 7 days);
+        assertFalse(book.isBehind(id));
+        vm.warp(t0 + 7 days + 1);
+        assertTrue(book.isBehind(id));
+        vm.warp(t0 + 2 weeks);
+        uint256 owed2 = book.owedOf(id);
+        assertEq(owed2, 100e6 + 1e6 + 500_000);
+        vm.warp(t0 + 3 weeks);
+        assertEq(book.owedOf(id) - owed2, 1e6, "1% a week while behind");
+        assertEq(book.lateFeeOf(id), 1e6);
+        assertEq(_adv(id).lateSecs, 0, "nothing settled yet: accrual is computed lazily");
+    }
+
+    /// Catching up stops late accrual; the late fee already accrued stays owed until paid.
+    function test_lateFee_catchUpStopsAccrual_accruedStaysOwed() public {
+        uint256 id = _drawFirst(SHOP, 100e6, 50, 1000);
+        uint256 t0 = vm.getBlockTimestamp();
+        vm.warp(t0 + 3 weeks); // fee 1.5, late 1.0
+        uint256 minimum = book.minWindowRepayment(100e6 + 1_500_000);
+        _repayAs(id, minimum); // meets the minimum, all of it goes to the normal fee
+        AdvanceBook.Advance memory a = _adv(id);
+        assertEq(a.lastSaleAt, vm.getBlockTimestamp(), "caught up");
+        assertEq(a.lateSecs, 2 weeks, "behind stretch settled");
+        assertEq(a.lateFeePaid, 0);
+        assertFalse(book.isBehind(id));
+        vm.warp(t0 + 3 weeks + 7 days);
+        assertEq(book.lateFeeOf(id), 1e6, "no accrual while on time; accrued stays owed");
+        assertEq(book.owedOf(id), 100e6 + 2e6 - minimum + 1e6);
+        // falls behind again: accrual resumes on top of the settled part
+        vm.warp(t0 + 3 weeks + 8 days);
+        assertEq(book.lateFeeOf(id), 1e6 + uint256(100e6) * 50 * 1 days / (10_000 * 7 days));
+        uint256 r0 = book.reserve();
+        _pay(SHOP, 100e6); // rep 10: fee due, then late fee, then principal
+        a = _adv(id);
+        assertEq(a.lateFeePaid, book.lateFeeOf(id));
+        assertEq(book.reserve() - r0 - a.lateFeePaid, (a.feePaid - minimum) - (a.feePaid - minimum) * 4000 / 10_000 - (a.feePaid - minimum) * 3000 / 10_000 - (a.feePaid - minimum) * 1000 / 10_000);
+        assertFalse(book.isBehind(id));
+    }
+
+    /// Caps hold: 3% normal + 3% late = 6% total; the late fee lands 100% in the reserve.
+    function test_lateFee_capsAndAllToReserve() public {
+        vm.prank(owner);
+        book.setFeeShares(5000, 3000, 0, 2000); // reserve share of the normal fee = 0
+        uint256 id = _drawFirst(SHOP, 100e6, 50, 1000);
+        vm.warp(vm.getBlockTimestamp() + 30 weeks);
+        assertEq(book.lateFeeOf(id), 3e6);
+        assertEq(book.owedOf(id), 106e6, "6% total max");
+        Bal memory b0 = _snap();
+        usdc.mint(customer, 106e6);
+        vm.expectEmit(true, false, false, true, address(book));
+        emit AdvanceBook.LateFeePaid(id, 3e6);
+        vm.prank(customer);
+        book.repay(id, 106e6);
+        Bal memory b1 = _snap();
+        assertEq(b1.reserve - b0.reserve, 3e6, "late fee: 100% reserve");
+        assertEq(b1.book, b1.reserve, "custody");
+        assertEq(b1.junior - b0.junior, 900_000, "junior gets 30% of the normal fee only");
+        assertEq(b1.treasury - b0.treasury, 600_000, "protocol gets 20% of the normal fee only");
+        assertEq(b1.senior - b0.senior, 100e6 + 1_500_000);
+        assertEq(uint8(_adv(id).status), uint8(AdvanceBook.Status.Repaid));
+        assertFalse(book.isBehind(id));
+    }
+
+    /// Defaulter: the late fee it did pay sits in the reserve and absorbs the loss; the unpaid rest is lost.
+    function test_lateFee_writeOff_unpaidLateFeeLost_paidPartCoversLoss() public {
+        uint256 id = _drawFirst(SHOP, 100e6, 50, 1000);
+        uint256 t0 = vm.getBlockTimestamp();
+        vm.warp(t0 + 3 weeks);
+        _pay(SHOP, 10e6); // rep 1 (< 1.015 minimum): all to the 1.5 normal fee due
+        _pay(SHOP, 15e6); // rep 1.5: 0.5 normal fee, then the 1.0 late fee; window total 2.5 >= minimum: caught up
+        AdvanceBook.Advance memory a = _adv(id);
+        assertEq(a.feePaid, 1_500_000);
+        assertEq(a.lateFeePaid, 1e6);
+        uint256 r = book.reserve();
+        assertEq(r, 300_000 + 1e6);
+        _shrinkJuniorTo(20e6); // before the advance turns delinquent (provisioning locks junior withdrawals)
+        vm.warp(a.lastSaleAt + WINDOW);
+        assertTrue(book.isBehind(id));
+        assertGt(book.lateFeeOf(id), a.lateFeePaid, "more late fee owed, unpaid");
+        vm.prank(keeper);
+        book.writeOff(id);
+        assertEq(book.lateFeeOf(id), 1e6, "frozen at what was paid");
+        assertFalse(book.isBehind(id));
+        assertEq(book.reserve(), 0, "paid late fee absorbed the loss");
+        assertEq(usdc.balanceOf(address(book)), 0);
+    }
+
+    /// Lazy accrual is path independent: poking a behind advance with dust does not change what is owed.
+    function testFuzz_lateFee_lazyObservationPathIndependent(uint256 g1, uint256 g2, uint256 dust) public {
+        g1 = bound(g1, 0, 20 weeks); g2 = bound(g2, 0, 20 weeks); dust = bound(dust, 1, 9);
+        vm.prank(shopOwner); book.registerShop(SHOP2, payout);
+        uint256 a = _drawFirst(SHOP, 100e6, 50, 1000);
+        uint256 b = _drawFirst(SHOP2, 100e6, 50, 1000);
+        uint256 t0 = vm.getBlockTimestamp();
+        vm.warp(t0 + g1);
+        _pay(SHOP, dust * 10); // repays `dust` units, far below the minimum: no catch-up
+        vm.warp(t0 + g1 + g2);
+        assertEq(book.owedOf(a) + _adv(a).repaid, book.owedOf(b), "same obligation either way");
+        assertEq(book.lateFeeOf(a), book.lateFeeOf(b));
+    }
+
+    /// Random sales and gaps: custody (book USDC == reserve), caps, and reserve = normal share + late fee.
+    function testFuzz_lateFee_custodyAndCaps(uint256 seed) public {
+        vm.prank(owner);
+        book.setFeeShares(5000, 3000, 0, 2000);
+        uint256 id = _drawFirst(SHOP, 100e6, 50, 1000);
+        uint256 n;
+        for (; n < 16 && _adv(id).status == AdvanceBook.Status.Active; ++n) {
+            vm.warp(vm.getBlockTimestamp() + bound(uint256(keccak256(abi.encode(seed, n, "t"))), 0, 12 days));
+            _pay(SHOP, bound(uint256(keccak256(abi.encode(seed, n))), 1, 40e6));
+            AdvanceBook.Advance memory a = _adv(id);
+            assertEq(usdc.balanceOf(address(book)), book.reserve(), "custody");
+            assertLe(book.lateFeeOf(id), 3e6);
+            assertLe(a.feePaid, 3e6);
+            assertEq(a.repaid, a.feePaid + a.lateFeePaid + a.principalRepaid);
+            assertLe(a.repaid + book.owedOf(id), 106e6);
+            assertGe(book.reserve(), a.lateFeePaid);
+            assertLe(book.reserve(), a.lateFeePaid + 2 * (n + 1), "only rounding dust beyond the late fee");
+        }
     }
 
     // ================================================================== drawWithPass
@@ -1002,8 +1180,8 @@ contract AdvanceBookTest is Test {
         _pay(SHOP, 100e6);
         _pay(SHOP, 100e6);
         _pay(SHOP, 100e6);
-        assertEq(book.reserve(), 600_000);
-        assertEq(senior.outstanding(), 73e6);
+        assertEq(book.reserve(), 3_100_000, "0.6 fee share + 2.5 late fee");
+        assertEq(senior.outstanding(), 75_500_000);
     }
 
     function _depositReserve(uint256 amount) internal {
@@ -1040,40 +1218,40 @@ contract AdvanceBookTest is Test {
     /// Junior covers the whole loss; the reserve pays the full bounty.
     function test_writeOff_juniorCoversAll_fullBounty() public {
         uint256 id = _writeOffSetup();
-        _depositReserve(10e6); // reserve 10.6
-        uint256 seniorBefore = usdc.balanceOf(address(senior)); // 1000 - 100 + 27.6
+        _depositReserve(10e6); // reserve 13.1
+        uint256 seniorBefore = usdc.balanceOf(address(senior)); // 1000 - 100 + 24.5 principal + 1.2 fee
         vm.warp(vm.getBlockTimestamp() + WINDOW);
 
         vm.expectEmit(true, false, false, true, address(book));
-        emit AdvanceBook.AdvanceWrittenOff(id, 73e6, 73e6, 0, 0, BOUNTY);
+        emit AdvanceBook.AdvanceWrittenOff(id, 75_500_000, 75_500_000, 0, 0, BOUNTY);
         vm.prank(keeper);
         book.writeOff(id);
 
-        assertEq(usdc.balanceOf(address(senior)), seniorBefore + 73e6);
-        assertEq(seniorBefore, 928_200_000);
-        assertEq(usdc.balanceOf(address(junior)), JUNIOR_SEED + 900_000 - 73e6);
+        assertEq(usdc.balanceOf(address(senior)), seniorBefore + 75_500_000);
+        assertEq(seniorBefore, 925_700_000);
+        assertEq(usdc.balanceOf(address(junior)), JUNIOR_SEED + 900_000 - 75_500_000);
         assertEq(senior.outstanding(), 0);
         assertEq(usdc.balanceOf(keeper), BOUNTY);
-        assertEq(book.reserve(), 5_600_000);
+        assertEq(book.reserve(), 8_100_000);
         assertEq(usdc.balanceOf(address(book)), book.reserve());
         assertEq(uint8(_adv(id).status), uint8(AdvanceBook.Status.WrittenOff));
         (,, uint256 active) = book.shops(SHOP);
         assertEq(active, 0);
     }
 
-    /// Full waterfall: junior 20, reserve 0.6, senior writes down 52.4, no bounty left.
+    /// Full waterfall: junior 20, reserve 3.1 (incl. 2.5 late fee), senior writes down 52.4, no bounty left.
     function test_writeOff_fullWaterfall_noBounty() public {
         uint256 id = _writeOffSetup();
         _shrinkJuniorTo(20e6);
         vm.warp(vm.getBlockTimestamp() + WINDOW);
 
         vm.expectEmit(true, false, false, true, address(book));
-        emit AdvanceBook.AdvanceWrittenOff(id, 73e6, 20e6, 600_000, 52_400_000, 0);
+        emit AdvanceBook.AdvanceWrittenOff(id, 75_500_000, 20e6, 3_100_000, 52_400_000, 0);
         vm.prank(keeper);
         book.writeOff(id);
 
         assertEq(usdc.balanceOf(address(junior)), 0);
-        assertEq(usdc.balanceOf(address(senior)), 928_200_000 + 20e6 + 600_000);
+        assertEq(usdc.balanceOf(address(senior)), 925_700_000 + 20e6 + 3_100_000);
         assertEq(senior.outstanding(), 0);
         assertEq(senior.totalAssets(), 948_800_000, "senior realised 52.4 loss");
         assertEq(book.reserve(), 0);
@@ -1085,11 +1263,11 @@ contract AdvanceBookTest is Test {
     function test_writeOff_bountyCappedByReserveLeftover() public {
         uint256 id = _writeOffSetup();
         _shrinkJuniorTo(20e6);
-        _depositReserve(58e6); // reserve 58.6; rest after junior = 53
+        _depositReserve(58e6); // reserve 61.1; rest after junior = 55.5
         vm.warp(vm.getBlockTimestamp() + WINDOW);
 
         vm.expectEmit(true, false, false, true, address(book));
-        emit AdvanceBook.AdvanceWrittenOff(id, 73e6, 20e6, 53e6, 0, BOUNTY);
+        emit AdvanceBook.AdvanceWrittenOff(id, 75_500_000, 20e6, 55_500_000, 0, BOUNTY);
         vm.prank(keeper);
         book.writeOff(id);
         assertEq(usdc.balanceOf(keeper), BOUNTY);

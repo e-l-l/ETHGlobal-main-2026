@@ -24,7 +24,15 @@ from web3 import Web3
 from web3.exceptions import ContractLogicError
 
 from .config import Settings
-from .models import AdvanceState, AdvanceStatus, ChainLimits, SaleEvent
+from .models import (
+    LATE_FEE_CAP_BPS,
+    LATE_FEE_RATE_BPS_PER_WEEK,
+    REPAY_WINDOW_SECONDS,
+    AdvanceState,
+    AdvanceStatus,
+    ChainLimits,
+    SaleEvent,
+)
 
 ABI_DIR = Path(__file__).resolve().parents[2] / "abi"
 LOG_CHUNK_BLOCKS = 5_000
@@ -323,12 +331,20 @@ class Web3ChainReader:
         for i in range(1, n):
             a = self.book.functions.getAdvance(i).call()
             # (shopId, principal, maxOwed, repaid, principalRepaid, feePaid, drawnAt,
-            #  feeRateBpsPerWeek, feeCapBps, holdbackBps, tier, lastSaleAt, status, ...)
+            #  feeRateBpsPerWeek, feeCapBps, holdbackBps, tier, lastSaleAt, status, credentialClaimed,
+            #  pendingCommitment, windowStart, windowRepaid, lateSecs, lateFeePaid)
             now = self.block_timestamp(self.latest_block())
             raw_fee = int(a[1]) * int(a[7]) * max(0, now - int(a[6])) // (10_000 * 7 * 86_400)
             fee_so_far = min(int(a[1]) * int(a[8]) // 10_000, raw_fee)
             fee_due = max(0, fee_so_far - int(a[5])) if int(a[4]) < int(a[1]) else 0
-            owed_now = max(0, int(a[1]) - int(a[4])) + fee_due
+            # Late fee (AdvanceBook.lateFeeOf / isBehind): only while Active and behind the minimum repayment.
+            active = int(a[12]) == 1 and int(a[4]) < int(a[1])
+            behind_secs = max(0, now - int(a[11]) - REPAY_WINDOW_SECONDS) if active else 0
+            late_paid = int(a[18])
+            late_fee = (min(int(a[1]) * LATE_FEE_CAP_BPS // 10_000,
+                            int(a[1]) * LATE_FEE_RATE_BPS_PER_WEEK * (int(a[17]) + behind_secs) // (10_000 * 7 * 86_400))
+                        if active else late_paid)
+            owed_now = max(0, int(a[1]) - int(a[4])) + fee_due + max(0, late_fee - late_paid)
             out.append(AdvanceState(
                 advance_id=i,
                 shop_id=_hex(a[0]),
@@ -346,6 +362,7 @@ class Web3ChainReader:
                 owed_now=owed_now, fee_so_far=fee_so_far,
                 minimum_repayment=(int(a[1]) + fee_so_far + 99) // 100,
                 window_start=int(a[15]), window_repaid=int(a[16]),
+                late_secs=int(a[17]), late_fee=late_fee, late_fee_paid=late_paid, is_behind=behind_secs > 0,
             ))
         return out
 

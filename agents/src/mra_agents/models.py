@@ -13,6 +13,12 @@ from pydantic import BaseModel, ConfigDict, Field
 ALLOWED_AMOUNTS: tuple[int, ...] = (50_000_000, 100_000_000, 200_000_000, 300_000_000)
 FEE_RATE_BPS_PER_WEEK = 50
 FEE_CAP_BPS = 300
+# AdvanceBook contract constants (not in the signed Offer): while an advance is behind the minimum repayment
+# (no 1% of principal+fee repaid for more than REPAY_WINDOW since lastSaleAt) an extra late fee accrues at
+# LATE_FEE_RATE_BPS_PER_WEEK, capped at LATE_FEE_CAP_BPS on top of the normal cap. 100% goes to the reserve.
+LATE_FEE_RATE_BPS_PER_WEEK = 50
+LATE_FEE_CAP_BPS = 300
+REPAY_WINDOW_SECONDS = 7 * 86_400
 TIER_CAPS = (50_000_000, 100_000_000, 200_000_000, 300_000_000)
 HOLDBACK_BPS_RANGE = (500, 2_000)
 MAX_TIER = 3
@@ -82,6 +88,10 @@ class AdvanceState(BaseModel):
     minimum_repayment: int = 0
     window_start: int = 0
     window_repaid: int = 0
+    late_secs: int = 0  # settled seconds spent behind (getAdvance.lateSecs)
+    late_fee: int = 0  # late fee accrued so far, paid + unpaid (AdvanceBook.lateFeeOf)
+    late_fee_paid: int = 0
+    is_behind: bool = False  # AdvanceBook.isBehind: the late fee is accruing right now
 
 
 # ---------- features (input to judges) ----------

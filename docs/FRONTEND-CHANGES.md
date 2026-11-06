@@ -6,7 +6,7 @@ This was audited against `main` on 6 Nov. Data fields and SDK methods are docume
 
 ## P0: the fee model changed (flat fee → time-based)
 
-New terms: **0.5% per week while you owe, never more than 3%.** The fee accrues on the original advance and is paid before principal. Paying early saves fee. Holdback is **8%**. There are no late fees. Each 7 days the merchant must repay at least 1% of the advance plus the fee accrued; after 14 days short of that, the advance is marked late.
+New terms: **0.5% per week while you owe, never more than 3%.** The fee accrues on the original advance and is paid before principal. Paying early saves fee. Holdback is **8%**. Each 7 days the merchant must repay at least 1% of the advance plus the fee accrued. If they fall behind, the fee doubles while behind (see the late-fee P0 below). After 14 days short of that, the advance is marked delinquent.
 
 Exact merchant copy: **"Fee 0.5% per week while you owe, never more than 3%."**
 
@@ -22,6 +22,21 @@ Exact merchant copy: **"Fee 0.5% per week while you owe, never more than 3%."**
 | `OfferDisclosure` component | principal / fee / total | Show principal, **max fee (3%)**, "fee if repaid in 2 weeks", and `annualizedCostPercent` as "≈26%/yr maximum (simple, not an APR)" |
 
 `total` still works as an alias for `owedNow` during the migration. Prefer the new names.
+
+## P0: late fee: the fee doubles while behind the minimum
+
+The contract now charges a late fee. "No late fees" copy becomes **false** once the late-fee contracts are deployed, so it must ship with that redeploy. A merchant more than 7 days without meeting the 1% minimum pays 1% a week instead of 0.5% (max 6% total, instead of 3%) until they catch up. The extra goes 100% to the safety reserve. On time, nothing changes. Fields: `AdvanceVM.lateFee`, `lateFeePaid`, `isBehind`, `feeRule`, `lateFeeHint` (see [FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md#new-fee-model)). Mock mode returns the on-time values (`lateFee: 0`, `isBehind: false`, `lateFeeHint: null`).
+
+Exact merchant copy (also in `AdvanceVM.feeRule`): ** + COPY + **
+
+| File (apps/web/src/…) | Today | Change to |
+|---|---|---|
+| `app/merchant/(app)/advance/screen.tsx` L142 | "No late fees. The fee stops at 3%…" | `advance.feeRule`. When `advance.isBehind`, show `advance.lateFeeHint` in a caution banner, plus a "Late fee {lateFee}" row next to "Fee so far" |
+| `app/merchant/(app)/week/screen.tsx` L76, L98 | "Late fees" label, "No penalty and no late fee…" | When `lateFee === 0`: "On time: no late fee." Otherwise "Late fee {lateFee}" and `lateFeeHint` |
+| `app/merchant/(app)/screen.tsx` L199 | `Fee so far … · owed now …` | Append ` · late fee {lateFee}` only when `lateFee > 0`; caution tone when `isBehind` |
+| `app/page.tsx` L195, L268 | "No late fees" | "On time? Never more than 3%" / "A slow day just pays back less. Fall behind the 1% weekly minimum and the fee doubles until you catch up." |
+| `landing/BadWeek.tsx` L46, `lib/copy.ts` L24, `final/disclosures.tsx` L46, `app/final/components/gallery.tsx` L356, `lib/fees.ts` L4 (comment) | "No penalty, no late fee" | "A slow week just slows repayment. Keep paying the 1% weekly minimum and the fee stays 0.5% a week." |
+| `OfferDisclosure` | principal / max fee 3% | Add the `feeRule` line under the max fee |
 
 ## P0: lender fee split is now 4-way, with DRIP naming
 

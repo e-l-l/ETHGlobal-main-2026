@@ -41,6 +41,20 @@ export type AdvanceVM = {
   feeIfRepaidIn6Weeks: number;
   maxFeeBps: number;
   annualizedCostPercent: number;
+  /** Late fee accrued so far (paid + unpaid), USD. 0 for on-time merchants. Already included in `owedNow`. */
+  lateFee: number;
+  /** Part of `lateFee` already paid (all of it went to the safety reserve). */
+  lateFeePaid: number;
+  /** Behind the minimum repayment (1% of principal + fee per 7 days): the late fee is accruing right now. */
+  isBehind: boolean;
+  /** Extra fee rate while behind (contract constant, 50 = 0.5%/week on top, 1%/week total). */
+  lateFeeRateBpsPerWeek: number;
+  /** Cap of the late fee on its own (300 = 3%; with the normal fee, 6% total). */
+  maxLateFeeBps: number;
+  /** The fee rule in the merchant's words. Show it next to the fee terms. */
+  feeRule: string;
+  /** One-line status when behind or a late fee was charged; null when on time with no late fee. */
+  lateFeeHint: string | null;
   repaid: number;
   left: number;
   /** Percent of the total already repaid (0–100, rounded). */

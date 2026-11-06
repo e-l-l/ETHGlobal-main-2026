@@ -40,6 +40,24 @@ export function shopVM(ctx: Ctx, name?: string, pseudonym?: string): ShopVM {
   return { name: name ?? S.shop.name, pseudonym: pseudonym ?? S.shop.pseudonym, localCurrency: ctx.cfg.fx.currency, usdToLocal: ctx.cfg.fx.usdToLocal };
 }
 
+/** AdvanceBook.LATE_FEE_RATE_BPS_PER_WEEK / LATE_FEE_CAP_BPS (contract constants, not in the signed Offer). */
+export const LATE_FEE_RATE_BPS_PER_WEEK = 50;
+export const LATE_FEE_CAP_BPS = 300;
+
+/** The fee rule in the merchant's words (docs/FRONTEND-HANDOFF.md "New fee model"). */
+export function feeRuleCopy(rateBps = 50, capBps = 300): string {
+  const pct = (bps: number) => `${bps / 100}%`;
+  return `Paying on time keeps your fee at ${pct(rateBps)} a week, max ${pct(capBps)}. If you fall behind the minimum, the fee doubles to ${pct(rateBps + LATE_FEE_RATE_BPS_PER_WEEK)} a week (max ${pct(capBps + LATE_FEE_CAP_BPS)} total) until you catch up; the extra goes to the safety reserve.`;
+}
+
+/** Status line for the late fee: null when on time and none was ever charged. */
+export function lateFeeHint(lateFee: number, isBehind: boolean, rateBps = 50): string | null {
+  const money = (n: number) => `$${n.toFixed(2)}`;
+  if (isBehind) return `You're behind the minimum repayment, so the fee is ${(rateBps + LATE_FEE_RATE_BPS_PER_WEEK) / 100}% a week until you catch up. Late fee so far ${money(lateFee)}, paid to the safety reserve.`;
+  if (lateFee > 0) return `You're back on time: the late fee stopped at ${money(lateFee)}. It goes to the safety reserve.`;
+  return null;
+}
+
 export function advanceVM(a: AdvanceOnchain, openedAt: number | undefined, purpose: string, etaDays: number, now: number): AdvanceVM {
   const drawn = round2(usd(a.principal));
   const owed = a.owedNow ?? a.totalOwed;
@@ -49,6 +67,8 @@ export function advanceVM(a: AdvanceOnchain, openedAt: number | undefined, purpo
   const rate = a.feeRateBpsPerWeek ?? 50;
   const cap = a.feeCapBps ?? 300;
   const feeAt = (weeks: number) => round2(drawn * Math.min(cap, rate * weeks) / 10_000);
+  const lateFee = round2(usd(a.lateFee ?? 0n));
+  const isBehind = a.isBehind ?? false;
   return {
     purpose,
     drawn,
@@ -61,6 +81,13 @@ export function advanceVM(a: AdvanceOnchain, openedAt: number | undefined, purpo
     feeIfRepaidIn4Weeks: feeAt(4), feeIfRepaidIn6Weeks: feeAt(6),
     maxFeeBps: cap,
     annualizedCostPercent: (rate * 52) / 100,
+    lateFee,
+    lateFeePaid: round2(usd(a.lateFeePaid ?? 0n)),
+    isBehind,
+    lateFeeRateBpsPerWeek: LATE_FEE_RATE_BPS_PER_WEEK,
+    maxLateFeeBps: LATE_FEE_CAP_BPS,
+    feeRule: feeRuleCopy(rate, cap),
+    lateFeeHint: lateFeeHint(lateFee, isBehind, rate),
     repaid,
     left: total,
     pct: repaid + total > 0 ? Math.round((repaid / (repaid + total)) * 100) : 0,

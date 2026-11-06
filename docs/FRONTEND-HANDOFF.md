@@ -10,6 +10,17 @@ Use the current SDK data methods rather than `AdvanceOpened.totalOwed` as a live
 - Fee checkpoints: use `feeIfRepaidIn1Week`, `feeIfRepaidIn2Weeks`, `feeIfRepaidIn4Weeks`, and `feeIfRepaidIn6Weeks`. These are fee amounts in USD based on original principal and default terms (50 bps/week, maximum 300 bps). `maxFeeBps` is the signed fee cap in basis points.
 - Cost disclosure: `annualizedCostPercent` is the simple annualized maximum (about 26% at the current terms); disclose that this is not an APR computed from actual sale cash flows. Fee accrues on original principal, is collected before principal, stops after full principal payoff, and early payoff saves fee.
 - Offer terms from `mra.agent.approveView(...)` / API types contain `fee_rate_bps_per_week: 50` and `fee_cap_bps: 300`; the pilot holdback is 800 bps (8%). The exact merchant copy is: “Fee 0.5% per week while you owe, never more than 3%.”
+- **Late fee (the fee doubles while behind).** If the merchant is more than 7 days without meeting the 1% minimum repayment, an extra late fee accrues at another 0.5% a week (1% a week total), capped at another 3% (6% total). It stops as soon as they catch up; what accrued stays owed and is paid fee-first. 100% of it goes to the safety reserve. On-time merchants never see it. `AdvanceVM` fields:
+  - `lateFee`: late fee accrued so far in USD (paid + unpaid). It is already included in `owedNow` and `left`, and it is **not** part of `feeSoFar`.
+  - `lateFeePaid`: the part already paid.
+  - `isBehind`: true while the late fee is accruing. Show a caution state.
+  - `lateFeeRateBpsPerWeek` (50) and `maxLateFeeBps` (300): contract constants, not part of the signed offer.
+  - `feeRule`: the exact merchant copy below. Show it wherever the fee terms appear (offer, advance screen, week screen).
+  - `lateFeeHint`: a one-line status, or `null` when the merchant is on time and was never charged one. Render it as-is when non-null.
+
+  Exact merchant copy: **“Paying on time keeps your fee at 0.5% a week, max 3%. If you fall behind the minimum, the fee doubles to 1% a week (max 6% total) until you catch up; the extra goes to the safety reserve.”**
+
+  Contract views: `AdvanceBook.lateFeeOf(id)`, `AdvanceBook.isBehind(id)`, `getAdvance(id).lateSecs` / `.lateFeePaid`. `owedOf(id)` includes the unpaid late fee. Event: `LateFeePaid(advanceId, amount)`, emitted next to `RepaymentSplit` when a repayment pays late fee. `RepaymentSplit.reserveFee` stays the reserve's 20% share of the normal fee only. Agents API `AdvanceState` adds `late_fee`, `late_fee_paid`, `late_secs` and `is_behind`.
 - Lender fee waterfall: call `mra.lender.earn()` and render its `feeSplit` (40% senior / 30% junior DRIP / 20% reserve / 10% protocol). `waterfall` is the separate loss-order view. For a $100 principal repaid in four weeks, the $2 collected fee pays $0.80/$0.60/$0.40/$0.20 respectively.
 - Junior asset naming in new UI should be **DripCoin (DRIP)**. This is the junior vault share token; it takes losses first. Tier caps are $50/$100/$200/$300.
 
