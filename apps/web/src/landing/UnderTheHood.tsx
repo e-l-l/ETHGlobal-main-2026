@@ -4,8 +4,8 @@ import { Eyebrow, Section, SectionTitle } from "./primitives";
 const PARTS = [
   {
     tag: "Uniswap v4",
-    title: "Pay in any token",
-    body: "Customers pay in USDC, repayment settles in USDC. DripCoin (DRIP) trades on its own pool, guarded by a risk hook.",
+    title: "Pay in dollars (USDC)",
+    body: "Customers pay in USDC, repayment settles in USDC. Paying in other tokens via Uniswap is next. DripCoin (DRIP) trades on its own pool, guarded by a risk hook.",
   },
   {
     tag: "World ID",
@@ -15,7 +15,7 @@ const PARTS = [
   {
     tag: "Anon-RPC",
     title: "No one watching the wire",
-    body: "Every read goes through Anon-RPC, so nobody can tie your shop to your phone from the network.",
+    body: "Private reads go through Anon-RPC, so the network can't easily tie your shop to your phone.",
   },
 ];
 

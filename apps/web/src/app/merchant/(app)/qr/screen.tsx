@@ -40,7 +40,7 @@ export function MyQrScreen({ initial }: { initial: MyQrView | null }) {
               <QRCode value={payLink} size={208} label={`QR code to pay ${shop.name}`} className="border-0 p-0" />
               <div className="flex min-w-0 max-w-full flex-col gap-0.5">
                 <strong className="font-display text-h1-sm text-charcoal">{shop.name}</strong>
-                <span className="font-body text-note text-charcoal-muted">Scan to pay · any token</span>
+                <span className="font-body text-note text-charcoal-muted">Scan to pay in dollars (USDC)</span>
               </div>
             </div>
           </BlockPanel>
@@ -56,7 +56,7 @@ export function MyQrScreen({ initial }: { initial: MyQrView | null }) {
             <NumberedList label="How customers pay" items={howToPay} />
           </Card>
           <PlainWords label="Private">
-            Customers only see your shop name. Never your advance, your fee or your balance. {today.salesCount}{" "}
+            Checkout shows customers only your shop name. Payments and the advance are public onchain under your pseudonymous shop ID, never your name. {today.salesCount}{" "}
             {today.salesCount === 1 ? "payment" : "payments"} today.
           </PlainWords>
         </Stack>

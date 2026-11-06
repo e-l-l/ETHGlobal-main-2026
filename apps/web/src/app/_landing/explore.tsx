@@ -71,7 +71,7 @@ function PassCard() {
         </ul>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label>Never leaves your phone</Label>
+        <Label>We never see</Label>
         <span className="flex flex-wrap gap-1.5">
           {["Name", "Phone", "Books"].map((k) => (
             <span key={k} className="inline-flex items-center gap-1.5 rounded-[4px] bg-well px-2 py-1 font-ledger text-[13px] text-charcoal-muted uppercase">
@@ -183,8 +183,8 @@ const PARTS: Part[] = [
     title: "Sell like you always do",
     body: "Customers scan your QR and pay in the dollars they hold. 92% lands with you, 8% drips back until the advance is paid off.",
     points: [
-      ["swap", "Any token in, dollars out"],
-      ["eye", "Customers never see your advance"],
+      ["swap", "Pays in USDC, other tokens next"],
+      ["eye", "Checkout never shows your advance"],
       ["sound", "Every sale read out loud"],
     ],
     theme: "brand",

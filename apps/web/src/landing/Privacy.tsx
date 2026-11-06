@@ -17,14 +17,14 @@ const ROWS: { label: string; phone: string; world?: string }[] = [
     phone: "Argentina · 6+ months of sales",
     world: "Verified, nothing else",
   },
-  { label: "Advance", phone: "$100 for stock" },
+  { label: "Advance", phone: "$100 for stock", world: "$100 · public" },
   { label: "Past advances", phone: "1 paid back · limit $100" },
 ];
 
 const PROMISES = [
   { icon: LockGlyph, text: "Records stay on your phone, not our servers" },
   { icon: EyeOffGlyph, text: "No name or identity ever goes onchain" },
-  { icon: CounterGlyph, text: "Customers never see your advance" },
+  { icon: CounterGlyph, text: "Checkout never shows customers your advance" },
 ];
 
 function ViewToggle({
@@ -127,7 +127,7 @@ function LedgerCard({ view }: { view: View }) {
         className="m-0 px-5 pt-4 pb-5 text-note text-honeydew"
       >
         {world
-          ? "That’s all anyone can read onchain. Nothing else leaves your phone."
+          ? "Sales and the advance are public under shop_7f3a. Nobody can tie it to you without your other data."
           : "Only you see this, on your own phone."}
       </p>
     </div>
@@ -145,11 +145,12 @@ export function Privacy() {
           </Label>
           <h2 className="m-0 font-display text-[clamp(36px,4.6vw,56px)] leading-none font-bold tracking-[-0.03em]">
             Your books stay closed.{" "}
-            <span className="block text-lime">Even onchain.</span>
+            <span className="block text-lime">Your name stays off the chain.</span>
           </h2>
           <p className="m-0 max-w-110 text-read text-honeydew">
-            Being seen with debt is risky. Your records live on your phone, and
-            the chain only ever sees a nameless shop. Flip the switch and look
+            Being seen with debt is risky. We never learn your name, phone or
+            contacts, and your passes stay on this phone. Sales and the advance
+            are public under a pseudonymous shop ID. Flip the switch and look
             for yourself.
           </p>
           <ViewToggle view={view} onChange={setView} />

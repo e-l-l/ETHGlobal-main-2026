@@ -67,7 +67,7 @@ const STEPS: Step[] = [
     icon: <QrGlyph {...ICON} />,
     title: "Sell like you always do",
     body: "Customers scan your QR and pay in the dollars they hold. 8% of every sale drips back on its own.",
-    foot: <Tag>Any token in, dollars out</Tag>,
+    foot: <Tag>Pays in USDC · other tokens next</Tag>,
   },
   {
     n: "04",

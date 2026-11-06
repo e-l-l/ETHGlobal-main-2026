@@ -109,7 +109,7 @@ export const myQr = {
   payLink: appUrl(routes.pay),
   howToPay: [
     "They scan with any phone camera. No app needed.",
-    "They pay in any token. You always get dollars.",
+    "They pay in digital dollars (USDC). On this testnet demo it's test USDC.",
     `The contract splits each payment. While an advance is open, ${advance.holdback}% pays it back.`,
   ],
 } as const;
