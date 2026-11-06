@@ -2,7 +2,7 @@ import type { ActivityVM } from "@repo/sdk";
 import { formatMoney } from "@/lib/format";
 import { agentLimits, currentTier, limitsLadder } from "@/lib/mock/shop";
 
-export type DecisionKind = "drew" | "declined" | "waited" | "paused";
+export type DecisionKind = "drew" | "declined" | "waited" | "paused" | "setup";
 
 export type Decision = {
   id: string;
@@ -57,6 +57,7 @@ export const decisionTone = {
   declined: "slow",
   waited: "locked",
   paused: "repaying",
+  setup: "repaying",
 } as const;
 
 export const decisionLabel = {
@@ -64,6 +65,7 @@ export const decisionLabel = {
   declined: "Declined",
   waited: "Waited",
   paused: "Paused",
+  setup: "Set up",
 } as const;
 
 export const purposes = ["stock", "rent", "repairs"] as const;
@@ -77,8 +79,17 @@ export function decisionsFrom(activity: ActivityVM[], limits: { perAdvance: numb
   const inside = [`Inside your ${formatMoney(limits.perAdvance)} per-advance limit`, `Inside your ${formatMoney(limits.perMonth)} monthly limit`, `Only for ${limits.purpose}`];
   return activity.map((a) => {
     const text = `${a.title} ${a.reason}`.toLowerCase();
+    // Setup events (created, World approval, mandate, activation) are neither refusals nor pauses.
     const kind: DecisionKind =
-      a.kind === "accent" ? "drew" : a.kind === "warn" || /declin|limit/.test(text) ? "declined" : /skip|wait/.test(text) ? "waited" : "paused";
+      a.kind === "accent"
+        ? "drew"
+        : /\b(creat|approv|mandate|registered|activat)/.test(text)
+          ? "setup"
+          : a.kind === "warn" || /declin|refus|over (the )?limit/.test(text)
+            ? "declined"
+            : /skip|wait/.test(text)
+              ? "waited"
+              : "paused";
     return { id: a.id, kind, when: a.time, title: a.title, why: a.reason, limits: kind === "drew" ? inside : [] };
   });
 }
