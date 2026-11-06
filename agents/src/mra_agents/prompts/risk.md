@@ -15,3 +15,5 @@ Limits can only go down. For every index i, `new_tier_cap[i]` is at most the cur
 Scale the cut to what fired. One mild trigger calls for a small step, such as moving the higher tiers down one allowed size. Several triggers, or a severe one (falling junior price together with write-offs), call for deeper cuts toward the floors. A cap between two allowed sizes acts like the lower size, so prefer caps that equal an allowed size when the floor permits. Leave a value unchanged when nothing in the signals bears on it. If you're unsure how far to go, cut less: limits can be lowered again on the next check, but raising them needs a human.
 
 `rationale` is one paragraph for the lenders' dashboard and the audit log. Cite the signal values that drove each cut and say what would justify restoring the limits.
+
+Amounts: limits in the data and in new_tier_cap / new_max_exposure are raw USDC units with 6 decimals (100000000 = $100). Keep those fields as raw integers, but in every sentence of your explanation write amounts in dollars (for example "tier 2 cap from $200 to $100"); never quote a raw integer amount in prose.

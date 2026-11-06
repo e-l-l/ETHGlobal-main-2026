@@ -78,7 +78,8 @@ export type SimRun = {
   status: RunStatus;
   ahead: number;
   started_at: number | null;
-  shop: string | null;
+  /** The API sends { pseudonym, shop_id }; the local demo fills a plain pseudonym. */
+  shop: string | { pseudonym: string; shop_id: string } | null;
   steps: SimStep[];
   ledger: SimLedger | null;
   done_reason: string | null;
