@@ -8,7 +8,6 @@ import {
   Card,
   CheckIcon,
   CrossIcon,
-  DemoBadge,
   Divider,
   Heading,
   JarMark,
@@ -118,7 +117,6 @@ export function ProveScreen() {
         }
       >
         <StepProgress at={1} />
-        <DemoBadge>Demo attestor · demo seller portal</DemoBadge>
         <FormHead title={t.heading}>{t.body}</FormHead>
         <section aria-label={t.whereSell} className="flex flex-col gap-2">
           <Label>{t.whereSell}</Label>

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentApproveView, AgentSetupStep } from "@repo/sdk";
-import { ActionBar, Banner, Button, DemoBadge, Ledger, LockIcon, OfferDisclosure, Page, Text } from "@/final";
+import { ActionBar, Banner, Button, Ledger, LockIcon, OfferDisclosure, Page, Text } from "@/final";
 import { HeroBlock, HeroLabel } from "../../../_ui";
 import { capitalize, formatMoney, formatPercent } from "@/lib/format";
 import { isMock } from "@/lib/mra";
@@ -73,7 +73,6 @@ export function ApproveScreen({
           </Text>
         </HeroBlock>
         <div className="flex flex-col gap-4 p-5 md:p-6">
-          {worldReal ? null : <DemoBadge>World test mode</DemoBadge>}
           <Text size="note">Illustrative terms at your maximum per-draw limit; future offers may differ. Mandate expires after 90 days.</Text>
           <OfferDisclosure
             principal={advance.drawn}
