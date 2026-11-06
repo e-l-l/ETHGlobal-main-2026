@@ -474,7 +474,7 @@ export function SimulatorScreen() {
       <Head
         title={title}
         onBack={back}
-        sub={run?.shop ? `Run ${run.run_id.slice(0, 4)} · ${run.shop} · ${SIM_DEMO ? "demo" : "devnet"}` : undefined}
+        sub={run?.shop ? `Run ${run.run_id.slice(0, 4)} · ${typeof run.shop === "string" ? run.shop : run.shop.pseudonym} · ${SIM_DEMO ? "demo" : "devnet"}` : undefined}
         status={run ? <StatusPill status={run.status} day={lastDay} /> : <Pill tone="locked">Starting</Pill>}
       />
       {error ? <Banner tone="caution">{error}</Banner> : null}

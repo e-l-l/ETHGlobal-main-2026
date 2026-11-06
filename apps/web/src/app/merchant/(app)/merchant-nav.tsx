@@ -4,6 +4,11 @@ import { usePathname } from "next/navigation";
 import { AppHeader, SideNav, TextLink, type IconProps, type NavItem } from "@/final";
 import { shop } from "@/lib/mock/shop";
 import { routes } from "@/lib/routes";
+import { useMRA } from "@/lib/use-mra";
+
+/** Two-letter initials for the account chip. */
+const initialsOf = (name: string) =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "S";
 
 const svg = {
   xmlns: "http://www.w3.org/2000/svg",
@@ -81,12 +86,16 @@ function activeKey(pathname: string): string {
 /** Desktop sidebar (lg+). The top bar and phone tab bar come from MerchantNav. */
 export function MerchantSideNav() {
   const pathname = usePathname();
+  // The real shop (name + onchain pseudonym); the mock shop only fills the chip while it loads.
+  const { data } = useMRA((m) => m.merchant.settings());
+  const name = data?.shop.name ?? shop.name;
+  const id = data?.shop.pseudonym ?? (data ? "" : "…");
   return (
     <SideNav
       nav={nav}
       active={activeKey(pathname)}
       home={routes.merchant}
-      account={{ name: shop.name, id: shop.id, initials: shop.initials }}
+      account={{ name, id, initials: initialsOf(name) }}
       footer={
         <>
           <TextLink href={routes.settings} className="min-h-11 px-3 text-note">

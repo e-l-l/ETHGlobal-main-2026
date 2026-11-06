@@ -7,6 +7,7 @@ import { CURRENCIES, setCurrency, useCurrency, type CurrencyCode } from "@/lib/c
 import { isMock, withMRA } from "@/lib/mra";
 import { routes, worldIdHref } from "@/lib/routes";
 import { shop } from "@/lib/mock/shop";
+import { useMRA } from "@/lib/use-mra";
 import { CardTitle, DarkBlock, HeroLabel } from "../../_ui";
 
 /** This device's burner wallet and the shop's World ID status, read once on mount. */
@@ -32,6 +33,8 @@ function useDeviceFacts() {
 export function SettingsScreen() {
   const cur = useCurrency();
   const { wallet, human } = useDeviceFacts();
+  const { data: settings } = useMRA((m) => m.merchant.settings());
+  const shopLabel = settings ? `${settings.shop.name} · ${settings.shop.pseudonym}` : `${shop.name} · …`;
   const walletLabel = isMock ? "0x12…ab" : "Not set up yet";
   const worldRows: [string, string][] = human
     ? [
@@ -45,7 +48,7 @@ export function SettingsScreen() {
       ];
   return (
     <Page tabs>
-      <PageHead back={routes.merchant} backLabel="Home" label={`${shop.name} · ${shop.id}`} title="Settings">
+      <PageHead back={routes.merchant} backLabel="Home" label={shopLabel} title="Settings">
         Saved on this device only.
       </PageHead>
 
