@@ -1,10 +1,10 @@
 "use client";
 
-import { useId, type ReactNode, type SVGProps } from "react";
+import { useEffect, useId, useState, type ReactNode, type SVGProps } from "react";
 import { AppHeader, CopyHash, JarBandStrip, Label, Page, type NavItem } from "@/final";
 import { BlockBand, BlockWall } from "@/blocks";
 import { cn } from "@/lib/cn";
-import { MRA_ENV, isMock } from "@/lib/mra";
+import { MRA_ENV, getMRA, isMock } from "@/lib/mra";
 import { routes } from "@/lib/routes";
 import { WALLET } from "@/lib/mock/shop";
 import { useMRA } from "@/lib/use-mra";
@@ -91,6 +91,59 @@ export function WalletChip() {
   );
 }
 
+const ANON_NET_NAME: Record<string, string> = { nox: "Nox mixnet", "tor-js": "Tor", nym: "Nym mixnet", passthrough: "passthrough" };
+
+/**
+ * Where chain reads go: the Anon-RPC mode from lib/mra-browser (loaded lazily, like getMRA does), plus the
+ * transport's routed / direct counters when the SDK module exposes them. Nothing in mock mode (no chain reads).
+ */
+export function PrivateReadsChip() {
+  const [text, setText] = useState<string>();
+  useEffect(() => {
+    if (isMock) return;
+    let alive = true;
+    let unsub: (() => void) | undefined;
+    void (async () => {
+      try {
+        await getMRA();
+        const { MRA_BROWSER_STATUS, getAnonRpc } = await import("@/lib/mra-browser");
+        if (!alive) return;
+        const mode = MRA_BROWSER_STATUS.anonRpc;
+        const net = ANON_NET_NAME[MRA_ENV.anonNetwork] ?? MRA_ENV.anonNetwork;
+        const anon = getAnonRpc();
+        if (mode !== "anon" || !anon) {
+          setText(mode === "fail-closed" ? "Private reads: unavailable (blocked)" : mode === "direct-fallback" ? "Private reads: off (direct RPC)" : "Private reads: off");
+          return;
+        }
+        const show = (c?: { routed: number; direct: number }) => {
+          const ok = anon.status().phase === "ready" ? " ✓" : "";
+          setText(c ? `Private reads: ${net}${ok} (${c.routed} routed · ${c.direct} direct)` : `Private reads: ${net}${ok}`);
+        };
+        show(anon.stats?.());
+        unsub = anon.onStats?.((c) => alive && show(c));
+        const unStatus = anon.onStatus(() => alive && show(anon.stats?.()));
+        const prev = unsub;
+        unsub = () => {
+          prev?.();
+          unStatus();
+        };
+      } catch {
+        /* the chip is informational only */
+      }
+    })();
+    return () => {
+      alive = false;
+      unsub?.();
+    };
+  }, []);
+  if (!text) return null;
+  return (
+    <span className="mr-1 hidden rounded-chip bg-well px-3 py-1 font-ledger text-tag text-charcoal-muted xl:inline-flex" title={text}>
+      {text}
+    </span>
+  );
+}
+
 /**
  * Chrome shared by every lender and public page: header with nav and wallet chip,
  * then the page container.
@@ -98,7 +151,7 @@ export function WalletChip() {
 export function LendShell({ width = "wide", children }: { width?: "wide" | "narrow"; children: ReactNode }) {
   return (
     <>
-      <AppHeader home={routes.home} nav={LEND_NAV} end={<WalletChip />} />
+      <AppHeader home={routes.home} nav={LEND_NAV} end={<><PrivateReadsChip /><WalletChip /></>} />
       <Page width={width} tabs>
         {children}
       </Page>

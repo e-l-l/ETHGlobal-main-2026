@@ -95,6 +95,7 @@ export async function lenderSnapshot(ctx: Ctx): Promise<LenderSnapshot> {
 
   const vault: VaultVM = {
     apy: pctStr(apy),
+    ageDays,
     totalLent: money(usd(snap.seniorAssets)),
     tvl: money(usd(snap.seniorAssets)),
     senior: money(usd(snap.seniorAssets)),

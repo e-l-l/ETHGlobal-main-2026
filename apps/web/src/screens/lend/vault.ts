@@ -28,6 +28,18 @@ export function vaultNumbers(v: VaultVM) {
   };
 }
 
+/**
+ * The SDK's APY annualizes share-price growth since deployment, so a fresh vault reads 0% (or a wild number after a
+ * day of fees). With no meaningful history (APY <= 0 or under ~7 days) show the target instead, clearly labelled.
+ */
+export function apyView(v: VaultVM): { fresh: boolean; rate: number; value: string; short: string } {
+  const rate = num(v.apy);
+  const fresh = rate <= 0 || (v.ageDays !== undefined && v.ageDays < 7);
+  return fresh
+    ? { fresh, rate: 0, value: "8–10%", short: "New vault · target 8–10%/yr, not promised" }
+    : { fresh, rate, value: v.apy, short: `${v.apy} since deployment, illustrative` };
+}
+
 /** Split an SDK reason ("A. B. C.") into the bullet lines the Risk screen shows. */
 export function reasonLines(reason: string): string[] {
   return reason.split(/(?<=\.)\s+/).filter(Boolean);
