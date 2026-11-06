@@ -88,3 +88,18 @@ DripCoin (DRIP) is the junior, first-loss tranche share (ERC-4626). The deployed
 | Proof center (`/proof`) and simulator (`/simulator`) | Live |
 | Uniswap API checkout swaps | Roadmap; checkout takes USDC only |
 | License | [MIT](../../LICENSE) |
+
+## Verified contracts (Sepolia, Etherscan)
+
+All source-verified on Etherscan (deploy block 12076910, 6 Nov 2026):
+
+| Contract | Address | Role |
+|---|---|---|
+| AdvanceBook | [`0x82cd71d8eefa47492be6b8dcf596a18a7753a0b1`](https://sepolia.etherscan.io/address/0x82cd71d8eefa47492be6b8dcf596a18a7753a0b1#code) | the book: offers, draws, repayment split, Standing Pass |
+| BusinessPassRegistry | [`0x40700886396bafb5ee4f260487a6584efa511adb`](https://sepolia.etherscan.io/address/0x40700886396bafb5ee4f260487a6584efa511adb#code) | Business Pass tree (issuer-signed commitments) |
+| SeniorVault | [`0xc2286c564bde614ca1414518d02cacec77f3e297`](https://sepolia.etherscan.io/address/0xc2286c564bde614ca1414518d02cacec77f3e297#code) | senior lenders (ERC-4626) |
+| DripCoin (DRIP) | [`0x5998b918db6edaccde4ce3fc282b9b057ab8d81c`](https://sepolia.etherscan.io/address/0x5998b918db6edaccde4ce3fc282b9b057ab8d81c#code) | first-loss junior vault share (ERC-4626) |
+| RiskHook | [`0xf5174b8f8642aef786e6bb1c1facac6d0f201044`](https://sepolia.etherscan.io/address/0xf5174b8f8642aef786e6bb1c1facac6d0f201044#code) | Uniswap v4 hook: USDC-side fee to the reserve, TWAP oracle |
+| HonkVerifier | [`0x7764690108c612fafde5eeb1cbe2f20d80e42017`](https://sepolia.etherscan.io/address/0x7764690108c612fafde5eeb1cbe2f20d80e42017#code) | Noir UltraHonk verifier: Standing Pass |
+| BusinessPassVerifier | [`0xb79d40dcda63d941a31d866028d5d6852550136a`](https://sepolia.etherscan.io/address/0xb79d40dcda63d941a31d866028d5d6852550136a#code) | Noir UltraHonk verifier: Business Pass |
+| MockUSDC | [`0x6603ac3f0a1ea33f232c97655a1b4f91280e55bb`](https://sepolia.etherscan.io/address/0x6603ac3f0a1ea33f232c97655a1b4f91280e55bb#code) | test USDC (open mint, testnet only) |
