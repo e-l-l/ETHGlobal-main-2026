@@ -20,7 +20,8 @@ import {
   TextLink,
 } from "@/final";
 import { ETA_PENDING, etaKnown } from "@/lib/estimate";
-import { formatDays, formatLocal, formatMoney, formatPercent } from "@/lib/format";
+import { formatDays, formatMoney, formatPercent } from "@/lib/format";
+import { useCurrency } from "@/lib/currency";
 import { isMock } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -42,6 +43,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
   const { data: agent, reload: reloadAgent } = useMRA(q.agentStatus);
   const { data: cash } = useMRA(q.cashOut);
   const { data: week } = useMRA(q.week, { enabled: data?.advance != null });
+  const cur = useCurrency();
   if (!data) return <MRAState error={error} />;
   const { shop, today, agentSummary, agentLimits, advance, sales, limitsLadder, currentTier } = data;
   const holdback = advance?.holdback ?? 0;
@@ -124,7 +126,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
             <div className="hidden flex-col gap-1.5 lg:flex">
               <BigFigure className="text-charcoal">{formatMoney(today.soldUsd)}</BigFigure>
               <Ledger>
-                {formatMoney(today.soldLocal, shop.localCurrency)} · {today.salesCount} {today.salesCount === 1 ? "payment" : "payments"}
+                {cur.dollarsOnly ? "" : `${cur.format(today.soldUsd)} · `}{today.salesCount} {today.salesCount === 1 ? "payment" : "payments"}
                 {sales[0] ? ` · last ${sales[0].time}` : ""}
               </Ledger>
             </div>
@@ -157,7 +159,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
                 live
               </Pill>
             </div>
-            <SalesFeed sales={sales} usdToLocal={shop.usdToLocal} localCurrency={shop.localCurrency} holdback={holdback} className="py-1 lg:py-0" />
+            <SalesFeed sales={sales} usdToLocal={shop.usdToLocal} holdback={holdback} className="py-1 lg:py-0" />
           </div>
 
           <div className="mt-auto hidden flex-wrap items-center justify-between gap-3 border-t border-hairline px-7 py-4 lg:flex">
@@ -184,7 +186,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
                 <div className="flex min-w-0 flex-col gap-1.5">
                   <BigFigure>{formatMoney(advance.left)}</BigFigure>
                   <Ledger className="text-honeydew">
-                    left of {formatMoney(advance.drawn + advance.feeSoFar)} · {formatLocal(advance.left * shop.usdToLocal, shop.localCurrency)}
+                    left of {formatMoney(advance.drawn + advance.feeSoFar)}{cur.dollarsOnly ? "" : ` · ${cur.approx(advance.left)}`}
                   </Ledger>
                 </div>
                 <JarMark lit={lit} on="dark" size={72} label={`Limit meter: tier ${currentTier} of 3`} />

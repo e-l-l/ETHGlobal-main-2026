@@ -5,7 +5,7 @@ const PARTS = [
   {
     tag: "Uniswap v4",
     title: "Pay in any token",
-    body: "Customers pay in USDT, repayment settles in USDC. DripCoin (DRIP) trades on its own pool, guarded by a risk hook.",
+    body: "Customers pay in USDC, repayment settles in USDC. DripCoin (DRIP) trades on its own pool, guarded by a risk hook.",
   },
   {
     tag: "World ID",

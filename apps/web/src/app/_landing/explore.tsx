@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { BlockWall, type Theme } from "@/blocks";
 import { JarMark } from "@/final";
 import { cn } from "@/lib/cn";
+import { LocalAmount } from "@/lib/currency";
 import { advance, agentLimits, limitsLadder, shop } from "@/lib/mock/shop";
 import { BLOCKY, PixelBar } from "./blocky";
 import { IconTile, PixelIcon, type PixelIconName } from "./pixel-icons";
@@ -97,7 +98,7 @@ function SaleCard() {
     <CardShell icon="qr" title="Sale received" meta="10:14 · USDT">
       <div className="flex items-end justify-between gap-3">
         <span className="font-display text-[44px] leading-none font-bold tracking-[-0.03em] tabular-nums">$10.00</span>
-        <span className="pb-1 font-ledger text-[13px] text-charcoal-muted">≈ ARS {(10 * shop.usdToLocal).toLocaleString("es-AR")}</span>
+        <LocalAmount usd={10} className="pb-1 font-ledger text-[13px] text-charcoal-muted" />
       </div>
       <div className="flex flex-col gap-2">
         <div aria-hidden className="flex h-7 gap-[3px]">

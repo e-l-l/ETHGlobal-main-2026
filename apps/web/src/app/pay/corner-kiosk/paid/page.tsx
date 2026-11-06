@@ -12,7 +12,7 @@ type Search = { amt?: string; tok?: string; tx?: string; shop?: string; name?: s
 export default async function Page({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
   const amount = Number(sp.amt);
-  const token = sp.tok === "USDC" || sp.tok === "DAI" ? sp.tok : "USDT";
+  const token = "USDC";
   const target = { ...(sp.shop ? { shopId: sp.shop } : {}), ...(sp.name ? { name: sp.name } : {}) };
   const [lang, initial] = await Promise.all([getLang(), serverView(q.payShop(target.shopId, target.name))]);
   return (

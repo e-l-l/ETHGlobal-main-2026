@@ -72,9 +72,9 @@ const nav: NavItem[] = [
 
 const within = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
-/** Agent and My QR own their prefixes; the world view and backup pages highlight nothing; the rest sits under Home. */
+/** Agent and My QR own their prefixes; the world view and settings pages highlight nothing; the rest sits under Home. */
 function activeKey(pathname: string): string {
-  if (pathname === routes.worldView || pathname === routes.backup) return "";
+  if (pathname === routes.worldView || within(pathname, routes.settings)) return "";
   return nav.find((n) => n.key !== "home" && within(pathname, n.href))?.key ?? "home";
 }
 
@@ -89,6 +89,9 @@ export function MerchantSideNav() {
       account={{ name: shop.name, id: shop.id, initials: shop.initials }}
       footer={
         <>
+          <TextLink href={routes.settings} className="min-h-11 px-3 text-note">
+            Settings
+          </TextLink>
           <TextLink href={routes.backup} className="min-h-11 px-3 text-note">
             Back up with World ID
           </TextLink>
@@ -111,8 +114,8 @@ export function MerchantNav() {
       home={routes.merchant}
       end={
         <>
-          <TextLink href={routes.backup} className="min-h-11 px-3 text-note">
-            Back up
+          <TextLink href={routes.settings} className="min-h-11 px-3 text-note">
+            Settings
           </TextLink>
           <span className="hidden md:inline-flex">
             <TextLink href={routes.home} className="min-h-11 px-3 text-note">

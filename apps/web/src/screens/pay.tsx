@@ -11,7 +11,6 @@ import {
   Card,
   CheckIcon,
   CopyHash,
-  DemoBadge,
   Heading,
   Keypad,
   KeyValue,
@@ -19,7 +18,6 @@ import {
   Label,
   Ledger,
   LockIcon,
-  Segmented,
   SplitPage,
   Text,
   TextLink,
@@ -34,17 +32,12 @@ import { errorCode, explorerTxUrl, isMock, withMRA } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
-import { toLocal } from "@/lib/mock/shop";
+import { useCurrency } from "@/lib/currency";
 import { useMRA } from "@/lib/use-mra";
 import { useWorldView } from "@/lib/world-view";
 
-type Token = "USDT" | "USDC" | "DAI";
-/**
- * Mock: the designed picker (any token, swapped through Uniswap). Live: test USDC only, because the swap isn't built,
- * so nothing on screen promises one.
- */
-const TOKENS: Token[] = isMock ? ["USDT", "USDC", "DAI"] : ["USDC"];
-const DEFAULT_TOKEN: Token = isMock ? "USDT" : "USDC";
+/** Checkout pays in USDC only; no token swap exists. */
+const TOKEN = "USDC";
 
 /** Which shop the QR points at. Live modes need the bytes32 shop id (`?shop=0x…&name=…`); mock uses the demo shop. */
 export type PayTarget = { shopId?: string; name?: string };
@@ -98,9 +91,9 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
   const t = payCopy[lang];
   const router = useRouter();
   const wv = useWorldView();
+  const cur = useCurrency();
   const { data: shop, error } = useMRA(q.payShop(target.shopId, target.name), { initial });
   const [value, setValue] = useState("10");
-  const [token, setToken] = useState<Token>(DEFAULT_TOKEN);
   const [paying, setPaying] = useState(false);
   const [funding, setFunding] = useState(false);
   const [failed, setFailed] = useState<string | undefined>();
@@ -126,7 +119,7 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
         }),
       );
       await beat;
-      const sp = new URLSearchParams({ amt: receipt.amount.toFixed(2), tok: token });
+      const sp = new URLSearchParams({ amt: receipt.amount.toFixed(2), tok: TOKEN });
       targetQuery(target).forEach((v, k) => sp.set(k, v));
       if (receipt.source !== "mock") sp.set("tx", receipt.txHash);
       router.push(`${routes.paid}?${sp}`);
@@ -156,20 +149,9 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
             <WorldMark kind="pub" show={wv} className="w-fit">
               <Ledger className="text-honeydew">{shop.id}</Ledger>
             </WorldMark>
-            <div className="hidden flex-col gap-2 md:flex">
-              <span className="font-ledger text-tag tracking-[0.1em] text-honeydew uppercase">{t.accepted}</span>
-              <div className="flex flex-wrap gap-2">
-                {TOKENS.map((k) => (
-                  <span key={k} className="rounded-chip border border-honeydew/40 px-3 py-1 font-ledger text-ledger font-semibold text-canvas">
-                    {k}
-                  </span>
-                ))}
-              </div>
-            </div>
           </BrandPanel>
         }
       >
-        <DemoBadge>Faucet-funded test dollars · test USDC</DemoBadge>
         <WorldMark kind="pub" show={wv}>
           <div className="flex flex-col items-center gap-1 py-1 text-center md:items-start md:text-left">
             <Label>{t.amount}</Label>
@@ -180,17 +162,13 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
             >
               {typedUsd(value)}
             </span>
-            <Ledger className="text-charcoal-muted">{amount > 0 ? `≈ ${formatMoney(Math.round(toLocal(amount)), "ARS")} · ${t.exampleRate}` : t.enter}</Ledger>
+            <Ledger className="text-charcoal-muted">{amount === 0 ? t.enter : cur.dollarsOnly ? "\u00a0" : `${cur.approx(amount)} · ${t.exampleRate}`}</Ledger>
           </div>
         </WorldMark>
-        <div className="flex flex-col gap-2">
-          <Label>{t.youPay}</Label>
-          <Segmented label={t.youPay} value={token} onChange={setToken} options={TOKENS.map((k) => ({ value: k, label: k }))} />
-        </div>
         <Keypad value={value} onChange={setValue} />
         {failed ? <Banner tone="caution">{t.failed(failed)}</Banner> : null}
         {paying && funding ? <Ledger role="status">{t.funding}</Ledger> : null}
-        <ActionBar hint={isMock ? t.swap(token) : t.testUsdc}>
+        <ActionBar hint={isMock ? t.hint : t.testUsdc}>
           <Button width="full" onClick={() => void pay()} loading={paying} disabled={amount <= 0 || paying}>
             {amount > 0 ? t.pay(formatMoney(amount)) : t.enter}
           </Button>

@@ -7,6 +7,7 @@ import { BLOCKY } from "./_landing/blocky";
 import { Button, CheckIcon, JarMark, LockIcon, Reveal, ScrollProgress } from "@/final";
 import { APP_NAME } from "@/lib/brand";
 import { cn } from "@/lib/cn";
+import { ExampleRate } from "@/lib/currency";
 import { shop } from "@/lib/mock/shop";
 import { routes } from "@/lib/routes";
 import { DayTimeline } from "./_landing/day";
@@ -174,7 +175,7 @@ function SiteFooter() {
       </div>
       <div className={cn(WRAP, "flex flex-col gap-1 border-t border-honeydew/10 py-5 font-ledger text-[13px] text-honeydew/60 md:flex-row md:justify-between")}>
         <span>Built at ETHGlobal Mumbai · November 2026 · Open source</span>
-        <span>Demo data. Example rate 1 USD = {shop.usdToLocal.toLocaleString("en-US")} ARS.</span>
+        <span>Demo data.<ExampleRate /></span>
       </div>
     </footer>
   );

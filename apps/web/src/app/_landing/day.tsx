@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { advance, shop, toLocal } from "@/lib/mock/shop";
+import { useCurrency } from "@/lib/currency";
+import { advance, shop } from "@/lib/mock/shop";
 import { PixelIcon, type PixelIconName } from "./pixel-icons";
 
 /*
@@ -27,6 +28,7 @@ const hourLabel = (h: number) => (h === 12 ? "12" : h > 12 ? `${h - 12}` : `${h}
 
 export function DayTimeline() {
   const [speaking, setSpeaking] = useState(false);
+  const cur = useCurrency();
 
   function hear() {
     if (!("speechSynthesis" in window)) return;
@@ -40,7 +42,7 @@ export function DayTimeline() {
   }
 
   const stats = [
-    { k: "Sold today", v: `$${TOTAL.toFixed(2)}`, sub: `≈ ARS ${Math.round(toLocal(TOTAL)).toLocaleString("es-AR")}` },
+    { k: "Sold today", v: `$${TOTAL.toFixed(2)}`, sub: cur.dollarsOnly ? "in test dollars" : cur.approx(TOTAL) },
     { k: "Dripped back", v: `$${(TOTAL * HOLD).toFixed(2)}`, sub: `${advance.holdback}% of every sale` },
     { k: "Advance repaid", v: `${advance.pct}%`, sub: `$${advance.repaid} of $${advance.owedNow}` },
   ];

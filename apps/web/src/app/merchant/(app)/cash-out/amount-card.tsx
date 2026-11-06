@@ -6,7 +6,8 @@ import type { CashOutView } from "@repo/sdk";
 import { ActionBar, Button, Card, Columns, KeyValue, Label, Ledger, Stack, Text, TextField } from "@/final";
 import { CardTitle, DarkBlock, HeroLabel } from "../../_ui";
 import { cn } from "@/lib/cn";
-import { formatLocal, formatMoney } from "@/lib/format";
+import { useCurrency } from "@/lib/currency";
+import { formatMoney } from "@/lib/format";
 import { isMock } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -22,7 +23,8 @@ export function CashOutForm({ initial }: { initial: CashOutView | null }) {
 
 function CashOutFields({ view }: { view: CashOutView }) {
   const router = useRouter();
-  const { shop, available, destinations, defaultDestination } = view;
+  const { available, destinations, defaultDestination } = view;
+  const cur = useCurrency();
   const [amount, setAmount] = useState(String(available));
   const [dest, setDest] = useState<string>(defaultDestination);
   const send = useMRAAction((m, n: number, d: string) => m.merchant.cashOut(n, d));
@@ -30,7 +32,7 @@ function CashOutFields({ view }: { view: CashOutView }) {
   const over = value > available;
 
   const chosen = destinations.find((d) => d.value === dest);
-  const local = formatLocal(value * shop.usdToLocal, shop.localCurrency);
+  const local = cur.dollarsOnly ? formatMoney(value) : cur.approx(value);
 
   const sendButton = isMock ? (
     <Button href={routes.merchant} width="full" disabled={over || value <= 0}>
@@ -58,7 +60,7 @@ function CashOutFields({ view }: { view: CashOutView }) {
         <DarkBlock>
           <HeroLabel>Ready to cash out</HeroLabel>
           <span className="font-display text-hero-sm tabular-nums md:text-[52px] md:leading-none">{formatMoney(available)}</span>
-          <Ledger className="text-honeydew">{formatLocal(available * shop.usdToLocal, shop.localCurrency)} · example rate</Ledger>
+          {cur.dollarsOnly ? null : <Ledger className="text-honeydew">{cur.approx(available)} · example rate</Ledger>}
         </DarkBlock>
 
         <div className="flex flex-col gap-2">
@@ -72,7 +74,7 @@ function CashOutFields({ view }: { view: CashOutView }) {
             onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Ledger>{local} at today&rsquo;s rate</Ledger>
+            {cur.dollarsOnly ? <span /> : <Ledger>{local} at today&rsquo;s rate</Ledger>}
             <Button type="button" variant="tonal" size="sm" width="auto" onClick={() => setAmount(String(available))}>
               Max
             </Button>

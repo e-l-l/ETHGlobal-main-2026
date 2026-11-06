@@ -77,7 +77,7 @@ export const isMock = MRA_MODE === "mock";
 
 /** The config every instance shares. Browser adapters are layered on top in ./mra-browser. */
 export function baseConfig(): MRAConfig {
-  // One ARS rate for every screen: the pay page's "≈ ARS" line and Home's local totals both come from ARS_PER_USD.
+  // The SDK computes local figures at ARS_PER_USD; screens convert back to dollars and show the currency chosen in Settings (lib/currency).
   const cfg: MRAConfig = { mode: MRA_MODE, fx: { currency: shop.localCurrency, usdToLocal: ARS_PER_USD } };
   if (MRA_ENV.apiUrl) cfg.apiUrl = MRA_ENV.apiUrl;
   if (MRA_ENV.issuerUrl) cfg.issuerUrl = MRA_ENV.issuerUrl;

@@ -2,8 +2,9 @@
 
 import type { AdvanceArrivedView } from "@repo/sdk";
 import { Button, Card, Columns, KeyValue, Page, Stack, Text, TextLink } from "@/final";
+import { useCurrency } from "@/lib/currency";
 import { etaKnown } from "@/lib/estimate";
-import { formatDays, formatLocal, formatMoney, formatPercent } from "@/lib/format";
+import { formatDays, formatMoney, formatPercent } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
@@ -13,8 +14,9 @@ import { BackLink, BigFigure, CardTitle, CheckList, HeroBlock, HeroLabel } from 
 /** M11 Advance arrived: `merchant.arrived()` (the advance + the agent's reasons). */
 export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView | null }) {
   const { data, error } = useMRA(q.arrived, { initial });
+  const cur = useCurrency();
   if (!data) return <MRAState error={error} />;
-  const { shop, advance, drawReasons } = data;
+  const { advance, drawReasons } = data;
 
   return (
     <Page tabs>
@@ -26,7 +28,7 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
           {formatMoney(advance.drawn)} <span className="text-lime">for {advance.purpose}</span>
         </BigFigure>
         <Text className="max-w-[60ch] text-honeydew md:text-[17px]">
-          {formatLocal(advance.drawn * shop.usdToLocal, shop.localCurrency)}. You pay it back with{" "}
+          {cur.dollarsOnly ? "" : `${cur.approx(advance.drawn)}. `}You pay it back with{" "}
           {formatPercent(advance.holdback)} of each payment, and a fee of 0.5% a week while you owe, never more than {formatPercent(advance.maxFeeBps / 100)}.
         </Text>
       </HeroBlock>

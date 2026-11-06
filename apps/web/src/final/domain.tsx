@@ -8,7 +8,7 @@ import { SplitBar } from "./patterns";
 /* ---------------------------------------------------------------- JarCard */
 
 /** Repaid so far: Hunter ground, lime figure. The one place lime carries a number. */
-export function JarCard({ usd, rate, goal, children }: { usd: number; rate?: number; goal?: number; children?: ReactNode }) {
+export function JarCard({ usd, local, goal, children }: { usd: number; local?: boolean; goal?: number; children?: ReactNode }) {
   const v = goal ? Math.min(1, usd / goal) : 0;
   return (
     <div className="relative flex min-w-0 flex-col gap-3.5 rounded-lg bg-hunter p-5 text-canvas">
@@ -16,7 +16,7 @@ export function JarCard({ usd, rate, goal, children }: { usd: number; rate?: num
         <Label className="text-honeydew/80">Repaid so far</Label>
         <Pill tone="saving" className="bg-lime text-charcoal">Repaying</Pill>
       </div>
-      <Money usd={usd} rate={rate} figureClassName="text-lime" localClassName="text-honeydew/80" />
+      <Money usd={usd} local={local} figureClassName="text-lime" localClassName="text-honeydew/80" />
       {goal ? (
         <div className="flex flex-col gap-2">
           <div className="h-2 overflow-hidden rounded-chip bg-lime/20" aria-hidden>

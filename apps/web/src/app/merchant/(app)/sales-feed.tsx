@@ -3,6 +3,7 @@
 import type { SaleVM } from "@repo/sdk";
 import { Ledger, SplitBar, Text, WorldMark } from "@/final";
 import { cn } from "@/lib/cn";
+import { useCurrency } from "@/lib/currency";
 import { formatMoney } from "@/lib/format";
 import { useWorldView } from "@/lib/world-view";
 
@@ -13,18 +14,18 @@ import { useWorldView } from "@/lib/world-view";
 export function SalesFeed({
   sales,
   usdToLocal,
-  localCurrency,
   holdback,
   className,
 }: {
   sales: SaleVM[];
+  /** The SDK's rate for `sales[].total`, used to get back to dollars. */
   usdToLocal: number;
-  localCurrency: string;
   /** Percent of each payment that goes to the advance; 0 when there's no open advance. */
   holdback: number;
   className?: string;
 }) {
   const wv = useWorldView();
+  const cur = useCurrency();
   if (sales.length === 0) {
     return (
       <Text size="note" tone="muted" className={cn("px-5 py-6 md:px-7", className)}>
@@ -43,7 +44,7 @@ export function SalesFeed({
               <div className="flex items-baseline justify-between gap-3">
                 <span className="flex min-w-0 items-baseline gap-2.5">
                   <span className="font-display text-h2 text-charcoal tabular-nums">{formatMoney(usd)}</span>
-                  <Ledger className="truncate text-charcoal-muted">{formatMoney(s.total, localCurrency)}</Ledger>
+                  {cur.dollarsOnly ? null : <Ledger className="truncate text-charcoal-muted">{cur.format(usd)}</Ledger>}
                 </span>
                 <Ledger className="shrink-0 text-charcoal-muted">{s.time}</Ledger>
               </div>

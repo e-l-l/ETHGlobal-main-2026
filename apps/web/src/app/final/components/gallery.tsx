@@ -345,7 +345,7 @@ export function FinalGallery() {
               <Heading size="hero">Every sale pays it back.</Heading>
             </Spec>
             <Spec name="Amount · Urbanist 700 · 40">
-              <Money usd={86.4} rate={1010} />
+              <Money usd={86.4} local />
             </Spec>
             <Spec name="H1 · 28 / 24 phone · H2 · 20">
               <Heading size="h1">Your agent drew $100</Heading>
@@ -565,7 +565,7 @@ export function FinalGallery() {
         <Section id="domain" label="09 · Domain" title="Product pieces">
           <div className={grid}>
             <Spec name="Repaid card">
-              <JarCard usd={86.4} rate={1010} goal={150} />
+              <JarCard usd={86.4} local goal={150} />
             </Spec>
             <Spec name="Live sales">
               <ul className="m-0 list-none p-0">
@@ -596,7 +596,7 @@ export function FinalGallery() {
               <Pill tone="saving" dot>Live</Pill>
             </div>
             <div className="flex flex-col gap-4 p-4">
-              <JarCard usd={86.4} rate={1010} goal={150} />
+              <JarCard usd={86.4} local goal={150} />
               <Card>
                 <div className="flex items-center justify-between">
                   <Label>Today&apos;s sales</Label>

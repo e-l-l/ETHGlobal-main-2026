@@ -42,6 +42,8 @@ export const routes = {
   cashOut: "/merchant/cash-out",
   worldView: "/merchant/world-view",
   myQr: "/merchant/qr",
+  /** Local currency and other device settings. */
+  settings: "/merchant/settings",
   /** Back up this device's passes with World ID + a passphrase. */
   backup: "/merchant/settings/backup",
   /** New device: restore the passes from a World ID backup. */
