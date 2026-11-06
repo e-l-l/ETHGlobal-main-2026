@@ -1,5 +1,7 @@
 # Frontend changes needed (from the backend side)
 
+> **Status 7 Nov:** the P0 items below (time-based fee copy, late fee, 4-way fee split with DRIP naming, World ID first onboarding with its stop screen) and the World wiring are now in the app, and the live contracts use the new fee model. Treat this file as the record of what was asked; re-check a screen against the code before acting on a line number. Newer work (landing redesign, RainbowKit connect, faucet) is not tracked here.
+
 This was audited against `main` on 6 Nov. Data fields and SDK methods are documented in [FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md). The new fee fields arrive in `@repo/sdk` with the contracts merge. Mock mode returns them too, so screens can be built before the redeploy.
 
 > **Timing:** the fee copy below must ship together with the contract redeploy. Until then the live contracts still charge the old flat fee.

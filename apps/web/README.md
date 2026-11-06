@@ -11,7 +11,7 @@ pnpm install
 pnpm exec turbo run dev --filter=web...
 ```
 
-Then open <http://localhost:3001/home>.
+Then open <http://localhost:3001> (landing page) or <http://localhost:3001/home> (role picker). The app starts in `mock` mode; copy `.env.example` to `.env.local` for `local` or `sepolia` (including `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` for the RainbowKit connect button).
 
 | Script (`pnpm --filter web <script>`) | What it does |
 |---|---|
@@ -19,6 +19,7 @@ Then open <http://localhost:3001/home>.
 | `build` / `start` | Production build and serve |
 | `lint` | ESLint, `--max-warnings 0` |
 | `check-types` | `next typegen && tsc --noEmit` |
+| `screenshots` | Captures every screen listed on `/screens` into `public/screenshots` (needs `pnpm dev` running) |
 | `test:e2e` | Playwright: builds, serves on port 3101, visits every route at 390px and 1440px, runs axe |
 
 ## Source map
@@ -26,6 +27,9 @@ Then open <http://localhost:3001/home>.
 | Path | Holds |
 |---|---|
 | `src/app/` | Routes (App Router). `merchant/(app)` uses the merchant shell; `merchant/(focus)` is for full-screen steps such as Agent Pass approval. |
+| `src/app/_landing/` | Landing-page sections (hero scene, bento, mosaic, day timeline, bad-week chart, `use-in-view` scroll reveal). The route is `src/app/page.tsx`. |
+| `src/app/faucet/`, `covers/`, `screens/`, `screenshots/` | Faucet, cover-image generator, and the review pages that list and show every screen |
+| `src/lib/wagmi-config.ts` | RainbowKit + wagmi setup (Sepolia, WalletConnect id from env) |
 | `src/app/final/components/` | Component gallery. 404 in production unless `NEXT_PUBLIC_SHOW_KIT=1`. |
 | `src/app/icon.svg`, `apple-icon.png`, `favicon.ico` | App icons (the ribbon drop on Hunter), picked up automatically by Next.js |
 | `src/final/` | The design system: text, buttons, surfaces, status, controls, brand (logo), patterns, data, shell and domain pieces. Import from `@/final`. |
@@ -33,7 +37,7 @@ Then open <http://localhost:3001/home>.
 | `src/lib/routes.ts` | Every route path. Link with `routes.*` only. |
 | `src/lib/brand.ts` | Product name and domain. The name is never hard-coded anywhere else. |
 | `src/lib/copy.ts`, `lang.ts` | UI copy in English and Spanish |
-| `src/lib/mock/` | Demo data (shop, merchant) until the contracts are live |
+| `src/lib/mock/` | Demo data (shop, merchant) used in `mock` mode; `sepolia` mode reads the live contracts |
 | `src/lib/cn.ts` | `cn()` = clsx + tailwind-merge, configured with our custom tokens |
 | `e2e/` | Playwright tests |
 
@@ -42,6 +46,6 @@ Then open <http://localhost:3001/home>.
 - **Styling:** Tailwind v4 utilities only. Tokens come from `@repo/tailwind-config` (`theme.css`, `final.css`). No hex values or hand-written CSS in components.
 - **Variants:** `cva`. Merge classes with `cn()`. When you add a token, register it in `src/lib/cn.ts`.
 - **Money:** dollars first in Urbanist with `tabular-nums`, then the local amount in mono, prefixed `≈`.
-- **Copy:** short sentences that translate cleanly. Say "flat fee", never "interest" or "APR" (see [ux.md](../../anay-docs/ux.md)).
+- **Copy:** short sentences that translate cleanly. Say "fee" (0.5% per week while you owe, max 3%), never "interest" or "APR" (see [ux.md](../../anay-docs/ux.md)).
 - **Accessibility:** 44px minimum touch targets, visible focus rings, `prefers-reduced-motion` respected, and axe must pass in e2e.
 - **Privacy markup:** mark onchain elements and on-device elements so the World view overlay can label them (`src/lib/world-view.ts`).
