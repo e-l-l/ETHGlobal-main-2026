@@ -157,6 +157,40 @@ describe("writes retry transient pre-broadcast RPC errors", () => {
     expect(isTransientWriteError(new Error("User rejected the request"))).toBe(false);
   });
 
+  it("retries a stale-nonce refusal, but never after an attempt that may have been broadcast", async () => {
+    const { createChain, deploymentFor } = await import("../src/index.js");
+    const hash = `0x${"cd".repeat(32)}` as const;
+    const account = { address: `0x${"11".repeat(20)}` as const, type: "local" };
+    const receipt = {
+      transactionHash: hash, blockHash: `0x${"ef".repeat(32)}`, blockNumber: "0x10", transactionIndex: "0x0", from: account.address,
+      to: `0x${"22".repeat(20)}`, cumulativeGasUsed: "0x1", gasUsed: "0x1", effectiveGasPrice: "0x1", logs: [], logsBloom: `0x${"00".repeat(256)}`,
+      status: "0x1", type: "0x2", contractAddress: null,
+    };
+    const fetchFn: FetchFn = async (_u, init) => {
+      const req = JSON.parse(String(init?.body));
+      const result = req.method === "eth_getTransactionReceipt" ? receipt : req.method === "eth_blockNumber" ? "0x10" : req.method === "eth_chainId" ? "0xaa36a7" : null;
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: req.id, result }));
+    };
+    const run = async (errors: string[]) => {
+      let attempts = 0;
+      const wallet = {
+        account,
+        writeContract: async () => {
+          const msg = errors[attempts++];
+          if (msg) throw Object.assign(new Error("tx failed"), { cause: { details: msg } });
+          return hash;
+        },
+      };
+      const chain = createChain({ deployment: deploymentFor("sepolia"), url: "http://rpc.test", fetchFn, wallet: wallet as never, retryDelayMs: 1 });
+      const r = await chain.registerShop(`0x${"ab".repeat(32)}`, account.address).then((x) => x.transactionHash, (e: Error) => e);
+      return { r, attempts };
+    };
+    expect(await run(["nonce too low: next nonce 1, tx nonce 0"])).toEqual({ r: hash, attempts: 2 });
+    const unsafe = await run(["request timed out", "nonce too low: next nonce 1, tx nonce 0"]);
+    expect(unsafe.attempts).toBe(2);
+    expect(unsafe.r).toBeInstanceOf(Error);
+  });
+
   it("retries a write the node refused for funds, then waits for the receipt", async () => {
     const { createChain, deploymentFor } = await import("../src/index.js");
     const hash = `0x${"cd".repeat(32)}` as const;

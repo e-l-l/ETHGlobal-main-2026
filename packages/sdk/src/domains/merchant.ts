@@ -4,8 +4,10 @@ import type { AdvanceOnchain, LogEntry } from "../chain/chain.js";
 import type { Ctx } from "../context.js";
 import { MRAError } from "../errors.js";
 import { waitForLeafIndex } from "../chain/tree.js";
+import { achievedCount, proveStanding } from "./agent.js";
 import * as M from "../mock/merchant.js";
 import * as S from "../mock/shop.js";
+import type { StandingPassSecret } from "../adapters/vault.js";
 import type {
   AdvanceArrivedView,
   AdvanceDetailsView,
@@ -13,6 +15,8 @@ import type {
   AgentLimitsVM,
   AgentSummaryVM,
   CashOutResult,
+  ClaimResult,
+  ClaimStep,
   CashOutView,
   FreshShopResult,
   HomeView,
@@ -123,8 +127,21 @@ async function ladder(ctx: Ctx): Promise<LadderStepVM[]> {
 }
 
 async function standingCount(ctx: Ctx) {
-  const sp = await ctx.vault.get("standing_pass");
-  return sp ? sp.count : 0;
+  return achievedCount(await ctx.vault.get("standing_pass"));
+}
+
+/**
+ * The advance whose Standing Pass this device can claim: the shop's latest advance, fully repaid, not yet claimed,
+ * whose pendingCommitment is the `next` credential this device holds. null otherwise (no throw: screens just hide
+ * the button).
+ */
+async function claimableAdvance(ctx: Ctx, shopId: Hex, nextCommitment: string | undefined) {
+  if (!nextCommitment) return null;
+  const a = await loadAdvance(ctx, shopId, true);
+  if (!a || a.onchain.status !== 2) return null;
+  const pending = a.onchain.pendingCommitment;
+  if (pending !== undefined && pending !== BigInt(nextCommitment)) return null;
+  return a;
 }
 
 async function agentSummaryReal(ctx: Ctx, now: number): Promise<{ summary: AgentSummaryVM; limits: AgentLimitsVM }> {
@@ -308,35 +325,87 @@ export function merchantDomain(ctx: Ctx) {
           source: "mock" as const,
         });
       }
-      const sp = await ctx.vault.get("standing_pass");
-      const count = sp?.count ?? 0;
-      return {
+      const [sp, s, limitsLadder] = await Promise.all([ctx.vault.get("standing_pass"), ctx.session(), ladder(ctx)]);
+      const count = achievedCount(sp);
+      const view: RepaidView = {
         currentTier: Math.min(count, 3),
-        limitsLadder: await ladder(ctx),
+        limitsLadder,
         standingPass: { repaidCount: count, tier: Math.min(count, 3), claimed: sp?.claimed ?? false },
         source: "device",
       };
+      if (s.shopId && sp?.next) {
+        const a = await claimableAdvance(ctx, s.shopId as Hex, sp.next.commitment);
+        if (a && !a.onchain.credentialClaimed) {
+          view.standingPass.claimable = true;
+          view.standingPass.nextCap = limitsLadder[Math.min(sp.next.count, 3)]?.cap ?? 0;
+          view.source = "chain";
+        }
+      }
+      return view;
     },
 
     /**
-     * After the last repayment: ask the relayer to insert the pending Standing Pass leaf (claimStandingPass),
-     * then promote the pending credential on this device.
+     * M16, after the last repayment:
+     *  1. `claiming`: the relayer sends claimStandingPass (never the merchant's wallet), and we wait for it to mine.
+     *     Idempotent: an advance whose leaf is already in (a retry, or the demo helper) skips the tx.
+     *  2. `finding_leaf`: download the WHOLE tree and find our leaf locally (never a filtered query).
+     *  3. `proving` ("Checking your record privately…"): with a real prover, prove "I've repaid N" over that tree
+     *     on this device (standing_pass). The proof is thrown away: it only checks the pass works before the screen
+     *     shows the new limit. Skip with `{ selfCheck: false }`.
+     *  4. promote the pending credential on this device (claimed, with its leafIndex).
      */
-    async claimStandingPass(): Promise<{ txHash: string }> {
+    async claimStandingPass(opts: { onStep?: (s: ClaimStep) => void; selfCheck?: boolean } = {}): Promise<ClaimResult> {
       ctx.notMock("claimStandingPass");
+      const step = (x: ClaimStep) => {
+        opts.onStep?.(x);
+        ctx.emit("merchant.claim", x);
+      };
       const s = await ctx.requireShop();
-      const a = await requireAdvance(ctx, s.shopId as Hex);
-      if (a.onchain.status !== 2) throw new MRAError("bad_state", "the advance is not fully repaid yet");
-      const { tx_hash } = await ctx.api().relayClaim(a.onchain.id);
       const sp = await ctx.vault.get("standing_pass");
-      if (sp?.next) {
-        // Find our leaf by downloading the whole tree (never a filtered query, which would reveal which leaf is ours).
-        const leafIndex = await waitForLeafIndex(ctx.chain(), "standing", BigInt(sp.next.commitment));
-        await ctx.vault.put("standing_pass", {
-          kind: "standing_pass", ...sp.next, claimed: true, advanceId: a.onchain.id.toString(), leafIndex,
-        });
+      const chain = ctx.chain();
+      const a = await requireAdvance(ctx, s.shopId as Hex);
+      // Already claimed and promoted on this device (a double tap, or a retry after a dropped response): same answer,
+      // no second tx.
+      if (!sp?.next && sp?.claimed && sp.leafIndex !== undefined && sp.advanceId === a.onchain.id.toString()) {
+        step("done");
+        const tier = Math.min(sp.count, 3);
+        return { leafIndex: sp.leafIndex, repaidCount: sp.count, tier, newCap: (await ladder(ctx))[tier]?.cap ?? 0 };
       }
-      return { txHash: tx_hash };
+      if (!sp?.next) throw new MRAError("session_missing", "no Standing Pass waiting to be claimed on this device");
+      if (a.onchain.status !== 2) throw new MRAError("bad_state", "the advance is not fully repaid yet");
+      const pending = a.onchain.pendingCommitment;
+      if (pending === 0n) throw new MRAError("bad_state", "this advance carries no Standing Pass (only a mandate's first draw does)");
+      if (pending !== undefined && pending !== BigInt(sp.next.commitment)) {
+        throw new MRAError("bad_state", "this advance's Standing Pass belongs to another device");
+      }
+
+      step("claiming");
+      let txHash: string | undefined;
+      if (!a.onchain.credentialClaimed) {
+        const { tx_hash } = await ctx.api().relayClaim(a.onchain.id);
+        const receipt = await chain.receipt(tx_hash as Hex);
+        if (receipt.status !== "success") throw new MRAError("chain_write_failed", "claimStandingPass reverted");
+        txHash = tx_hash;
+      }
+
+      step("finding_leaf");
+      // Whole-tree download; a few retries in case the RPC serving eth_getLogs is a block behind the receipt.
+      const leafIndex = await waitForLeafIndex(chain, "standing", BigInt(sp.next.commitment));
+      if (leafIndex === undefined) throw new MRAError("chain_read_failed", "the pass was claimed, but its leaf is not visible yet; try again");
+      const claimed: StandingPassSecret = { kind: "standing_pass", ...sp.next, claimed: true, advanceId: a.onchain.id.toString(), leafIndex };
+      await ctx.vault.put("standing_pass", claimed);
+
+      const tier = Math.min(claimed.count, 3);
+      const out: ClaimResult = { leafIndex, repaidCount: claimed.count, tier, newCap: (await ladder(ctx))[tier]?.cap ?? 0 };
+      if (txHash) out.txHash = txHash;
+      const selfCheck = opts.selfCheck ?? (ctx.prover.kind !== "mock" && ctx.prover.kind !== "unconfigured");
+      if (selfCheck && tier >= 1) {
+        step("proving");
+        const p = await proveStanding(ctx, claimed, tier, 0n);
+        out.selfCheck = { ms: p.ms, proofBytes: (p.proof.length - 2) / 2 };
+      }
+      step("done");
+      return out;
     },
 
     /** M17 Fresh shop: rotate to a new pseudonym. Reputation travels privately in the passes. */

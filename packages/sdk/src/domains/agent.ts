@@ -12,6 +12,7 @@ import {
   TAG_COMMIT,
   toHex32,
 } from "../credentials.js";
+import { merkleWitness } from "../chain/tree.js";
 import { MRAError } from "../errors.js";
 import * as M from "../mock/merchant.js";
 import * as S from "../mock/shop.js";
@@ -31,6 +32,9 @@ import type {
 import { dayLabel, shortDate, toBase, usd } from "./util.js";
 
 const DAY = 86_400;
+/** Per-advance chip (USD) → the tier (repaid advances) it needs: the limits ladder. */
+const TIER_FOR_CAP: Record<number, number> = { 50: 0, 100: 1, 250: 2, 500: 3 };
+const lockedReason = (usdCap: number, need: number) => `$${usdCap} unlocks after ${need} repaid ${need === 1 ? "advance" : "advances"}`;
 
 export type SetupLimits = {
   perAdvance: number;
@@ -66,6 +70,51 @@ function permissions(l: AgentLimitsVM) {
   };
 }
 
+
+/** Repaid advances this device has proven onchain (a claimed Standing Pass), spent or not. */
+export function achievedCount(sp: StandingPassSecret | undefined): number {
+  return sp?.claimed ? sp.count : 0;
+}
+
+/** The tier this device can prove right now: a claimed, unspent Standing Pass (tier 0 = Business Pass only). */
+export function provableTier(sp: StandingPassSecret | undefined): 0 | 1 | 2 | 3 {
+  return sp?.claimed && !sp.spent ? (Math.min(sp.count, 3) as 0 | 1 | 2 | 3) : 0;
+}
+
+/**
+ * A standing_pass proof for `tier`, bound to `context`. The Merkle witness comes from the WHOLE downloaded tree
+ * (every LeafInserted, unfiltered) and the path is built locally, so the RPC never learns which leaf is ours. The
+ * root is checked against AdvanceBook.isKnownRoot before proving (a lagging RPC that misses newer leaves still
+ * gives an older, known root: fine, as long as our leaf is in it).
+ */
+export async function proveStanding(ctx: Ctx, sp: StandingPassSecret, tier: number, context: bigint) {
+  if (!sp.claimed) throw new MRAError("bad_state", "this Standing Pass has not been claimed onchain yet");
+  if (sp.spent) throw new MRAError("bad_state", "this Standing Pass was already used; claim the next one after repaying");
+  if (!(tier >= 1 && tier <= Math.min(sp.count, 3))) throw new MRAError("bad_state", `this Standing Pass proves up to tier ${Math.min(sp.count, 3)}`);
+  const chain = ctx.chain();
+  const h2 = (x: bigint[]) => ctx.prover.poseidon2(x);
+  const leaves = await chain.leaves("standing");
+  const whole = { leaves: async () => leaves };
+  const which = sp.leafIndex !== undefined ? { leafIndex: sp.leafIndex } : { commitment: BigInt(sp.commitment) };
+  const w = await merkleWitness(whole, h2, "standing", which);
+  // A stale leafIndex would only fail deep inside the prover: check it is really our leaf.
+  if (leaves[w.leafIndex] !== BigInt(sp.commitment)) throw new MRAError("bad_state", "the Standing Pass leaf on this device does not match the tree");
+  if (!(await chain.isKnownStandingRoot(w.root))) throw new MRAError("chain_read_failed", "the downloaded Standing Pass tree does not match the chain yet; try again");
+  const secret = BigInt(sp.secret);
+  const secretNext = randomField();
+  const nullifier = await standingNullifier(h2, secret);
+  const next = await standingCommitment(h2, secretNext, sp.count + 1);
+  const t0 = Date.now();
+  const { proof } = await ctx.prover.prove("standing_pass", {
+    secret, count: BigInt(sp.count), path: w.path, index_bits: w.indexBits, secret_next: secretNext,
+    root: w.root, nullifier, tier: BigInt(tier), commitment_next: next.commitment, context,
+  });
+  return {
+    proof, root: w.root, nullifier, commitmentNext: next.commitment, leafIndex: w.leafIndex, ms: Date.now() - t0,
+    next: { secret: toHex32(secretNext), h: toHex32(next.h), commitment: toHex32(next.commitment), count: sp.count + 1 },
+  };
+}
+
 export function agentDomain(ctx: Ctx) {
   const isMock = ctx.mode === "mock";
 
@@ -90,17 +139,9 @@ export function agentDomain(ctx: Ctx) {
       });
       return { proof, root, nullifier, commitmentNext, next: { secret: toHex32(secretNext), h: toHex32(hNext), commitment: toHex32(commitmentNext), count: 1 } };
     }
-    if (!sp || !sp.claimed || sp.leafIndex === undefined) throw new MRAError("session_missing", "no claimed Standing Pass on this device");
-    const leaves = await chain.leaves("standing");
-    const secret = BigInt(sp.secret);
-    const { path, indexBits, root } = await merklePath(h2, leaves, sp.leafIndex);
-    const nullifier = await standingNullifier(h2, secret);
-    const next = await standingCommitment(h2, secretNext, sp.count + 1);
-    const { proof } = await ctx.prover.prove("standing_pass", {
-      secret, count: BigInt(sp.count), path, index_bits: indexBits, secret_next: secretNext,
-      root, nullifier, tier: BigInt(r.tier), commitment_next: next.commitment, context,
-    });
-    return { proof, root, nullifier, commitmentNext: next.commitment, next: { secret: toHex32(secretNext), h: toHex32(next.h), commitment: toHex32(next.commitment), count: sp.count + 1 } };
+    if (!sp || !sp.claimed) throw new MRAError("session_missing", "no claimed Standing Pass on this device");
+    const out = await proveStanding(ctx, sp, r.tier, context);
+    return { proof: out.proof, root: out.root, nullifier: out.nullifier, commitmentNext: out.commitmentNext, next: out.next, leafIndex: out.leafIndex };
   }
 
   async function status(): Promise<AgentStatusView> {
@@ -126,7 +167,7 @@ export function agentDomain(ctx: Ctx) {
   return {
     /** M07 Agent setup: options and defaults. */
     async setupOptions(): Promise<AgentSetupView> {
-      const count = isMock ? 1 : ((await ctx.vault.get("standing_pass"))?.count ?? 0);
+      const tier = isMock ? 1 : provableTier(await ctx.vault.get("standing_pass"));
       const view: AgentSetupView = {
         agentLimits: { ...S.agentLimits },
         perAdvanceOptions: M.perAdvanceOptions.map((o) => ({ ...o })),
@@ -136,8 +177,14 @@ export function agentDomain(ctx: Ctx) {
         source: isMock ? "mock" : "device",
       };
       if (!isMock) {
-        // $250 unlocks after 2 repaid advances (the ladder); unlock it for shops that qualify.
-        view.perAdvanceOptions = view.perAdvanceOptions.map((o) => (o.value === 250 && count >= 2 ? { value: 250 } : o));
+        // The ladder: $100 needs 1 repaid advance (a claimed Standing Pass), $250 needs 2. Locked until this device
+        // can prove it (claimed, and not yet spent on a mandate or draw).
+        view.currentTier = tier;
+        view.perAdvanceOptions = view.perAdvanceOptions.map((o) => {
+          const need = TIER_FOR_CAP[o.value] ?? 0;
+          if (tier >= need) return { value: o.value };
+          return { value: o.value, lockedReason: lockedReason(o.value, need) };
+        });
       }
       return ctx.mocked(view);
     },
@@ -187,8 +234,13 @@ export function agentDomain(ctx: Ctx) {
       const s = await ctx.requireShop();
       if (!s.payout) throw new MRAError("session_missing", "shop has no payout address");
       const [bp, sp] = await Promise.all([ctx.vault.get("business_pass"), ctx.vault.get("standing_pass")]);
-      const tier = Math.min(sp?.claimed ? sp.count : 0, 3) as 0 | 1 | 2 | 3;
+      const tier = provableTier(sp);
       const band = tier === 0 ? (bp?.band ?? 0) : 0;
+      // The contract caps every draw at tierCap[tier]: a mandate above it would register but could never draw that.
+      const cap = (await chain.protocol()).tierCaps[tier];
+      if (cap !== undefined && toBase(limits.perAdvance) > cap) {
+        throw new MRAError("invalid_limits", lockedReason(limits.perAdvance, TIER_FOR_CAP[limits.perAdvance] ?? tier + 1));
+      }
       const now = ctx.now();
       const wire = {
         max_per_draw: toBase(limits.perAdvance),
@@ -197,6 +249,9 @@ export function agentDomain(ctx: Ctx) {
         expiry: now + (limits.expiryDays ?? 90) * DAY,
       };
 
+      // One agent per shop: the previous one (e.g. the tier-0 agent before a Standing Pass) is stopped once the new
+      // one is active, and kept if World denies the new one.
+      const prev = s.agentId && s.manageToken ? { agentId: s.agentId, manageToken: s.manageToken, mandateId: s.mandateId } : undefined;
       step("creating_agent");
       const created = await api.createAgent({ shop_id: s.shopId as Hex, tier, recipient: s.payout as Hex, limits: wire });
       // manage_token is shown once: keep it in the vault only.
@@ -206,6 +261,7 @@ export function agentDomain(ctx: Ctx) {
       const passBody = await ctx.agentPass.authorize({ agentId: created.id, nonce: created.agent_pass_nonce });
       const pass = await api.agentPass(created.id, created.manage_token, passBody);
       if (!pass.approved) {
+        if (prev) await ctx.saveSession(prev);
         return { status: pass.reason === "expired" ? "expired" : "denied", agentId: created.id, reason: pass.reason };
       }
 
@@ -250,12 +306,18 @@ export function agentDomain(ctx: Ctx) {
 
       // The credential is spent; its successor waits for claimStandingPass after repayment.
       if (tier === 0 && bp) await ctx.vault.put("business_pass", { ...bp, spent: true });
-      const base: StandingPassSecret = sp ?? { kind: "standing_pass", secret: cred.next.secret, h: cred.next.h, commitment: cred.next.commitment, count: 0, claimed: false };
-      await ctx.vault.put("standing_pass", { ...base, next: cred.next });
+      if (tier > 0 && sp) {
+        // Its nullifier is public now: never prove with it again. The count it attests stays (the ladder shows it).
+        await ctx.vault.put("standing_pass", { ...sp, spent: true, ...(cred.leafIndex !== undefined ? { leafIndex: cred.leafIndex } : {}), next: cred.next });
+      } else {
+        const base: StandingPassSecret = sp ?? { kind: "standing_pass", secret: cred.next.secret, h: cred.next.h, commitment: cred.next.commitment, count: 0, claimed: false };
+        await ctx.vault.put("standing_pass", { ...base, next: cred.next });
+      }
 
       step("activating");
       await api.activateAgent(created.id, created.manage_token, { mandate_id: mandateId, tx_hash });
       await ctx.saveSession({ mandateId });
+      if (prev && prev.agentId !== created.id) await api.revokeAgent(prev.agentId, prev.manageToken).catch(() => undefined);
       step("done");
       return { status: "active", agentId: created.id, mandateId, txHash: tx_hash };
     },

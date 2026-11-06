@@ -46,6 +46,8 @@ export type AdvanceOnchain = {
   /** 0 None, 1 Active, 2 Repaid, 3 WrittenOff */
   status: number;
   credentialClaimed: boolean;
+  /** The Standing Pass leaf claimStandingPass will insert (0 = this advance carries none). */
+  pendingCommitment?: bigint;
 };
 
 export type ProtocolSnapshot = {
@@ -121,6 +123,8 @@ export interface Chain {
   countrySet(): Promise<readonly number[]>;
   juniorTwapTick(secondsAgo: number): Promise<number>;
   leaves(tree: "business" | "standing"): Promise<bigint[]>;
+  /** AdvanceBook.isKnownRoot: every Standing Pass root ever produced (a proof may use any of them). */
+  isKnownStandingRoot(root: bigint): Promise<boolean>;
   bookLogs(eventName: string, args?: Record<string, unknown>, fromBlock?: bigint, toBlock?: bigint): Promise<LogEntry[]>;
   registryLogs(eventName: string, fromBlock?: bigint): Promise<LogEntry[]>;
   vaultLogs(tranche: "senior" | "junior", eventName: string, args?: Record<string, unknown>): Promise<LogEntry[]>;
@@ -137,6 +141,18 @@ export interface Chain {
 }
 
 const TRANSIENT_WRITE = /insufficient funds|rate limit|exceeds defined limit|too many requests|\b429\b|timed? ?out|fetch failed|network/i;
+/** The node that filled in the nonce was a block behind the one that broadcast (e.g. right after a faucet mint). */
+const STALE_NONCE = /nonce too low|nonce provided for the transaction is lower/i;
+/** Errors after which the tx MAY have gone out: never re-send with a fresh nonce after one of these. */
+const MAYBE_SENT = /timed? ?out|fetch failed|network/i;
+
+function errorText(e: unknown): string {
+  let out = "";
+  for (let x: unknown = e, i = 0; x && i < 8; x = (x as { cause?: unknown }).cause, i++) {
+    out += ` ${(x as { shortMessage?: string }).shortMessage ?? ""} ${(x as { details?: string }).details ?? ""} ${(x as Error).message ?? ""}`;
+  }
+  return out;
+}
 
 /** Pre-broadcast write errors worth retrying (viem nests the RPC error in `cause`). Never reverts. */
 export function isTransientWriteError(e: unknown): boolean {
@@ -197,11 +213,17 @@ export function createChain(opts: ChainOptions): Chain {
     let hash: Hex | undefined;
     // Transient errors from load-balanced public RPCs BEFORE broadcast (no hash came back, so nothing was sent):
     // a node that hasn't seen the faucet's ETH yet ("insufficient funds") or a rate limit. Retry those only.
+    // "nonce too low" from a lagging node is retried too, but only if no earlier attempt could have been broadcast
+    // (a timeout may have sent it; a fresh nonce would then send it twice).
+    let maybeSent = false;
     for (let attempt = 0; hash === undefined; attempt++) {
       try {
         hash = await wallet.writeContract({ ...params, account, chain } as never);
       } catch (e) {
-        if (attempt < 3 && isTransientWriteError(e)) {
+        const text = errorText(e);
+        const staleNonce = STALE_NONCE.test(text) && !maybeSent && !/revert/i.test(text);
+        if (MAYBE_SENT.test(text)) maybeSent = true;
+        if (attempt < 3 && (isTransientWriteError(e) || staleNonce)) {
           await new Promise((r) => setTimeout(r, (opts.retryDelayMs ?? 2_500) * (attempt + 1)));
           continue;
         }
@@ -327,6 +349,7 @@ export function createChain(opts: ChainOptions): Chain {
         lastSaleAt: a.lastSaleAt,
         status: Number(a.status),
         credentialClaimed: a.credentialClaimed,
+        pendingCommitment: a.pendingCommitment,
       };
     },
 
@@ -361,6 +384,8 @@ export function createChain(opts: ChainOptions): Chain {
       const evs = await logs(tree === "business" ? A.registry : A.book, tree === "business" ? businessPassRegistryAbi : advanceBookAbi, "LeafInserted");
       return evs.sort((a, b) => Number(a.args.leafIndex - b.args.leafIndex)).map((e) => e.args.commitment as bigint);
     },
+
+    isKnownStandingRoot: (root: bigint) => read("isKnownRoot", () => book("isKnownRoot", [root])) as Promise<boolean>,
 
     bookLogs: (eventName: string, args?: Record<string, unknown>, fromBlock?: bigint, toBlock?: bigint) =>
       logs(A.book, advanceBookAbi, eventName, args, fromBlock, toBlock),

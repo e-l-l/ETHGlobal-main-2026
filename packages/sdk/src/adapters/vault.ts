@@ -34,6 +34,8 @@ export type StandingPassSecret = {
   claimed: boolean;
   leafIndex?: number;
   advanceId?: string;
+  /** Its nullifier was published (a tier >= 1 registerMandate / drawWithPass). It can't prove again; `next` takes over once claimed. */
+  spent?: boolean;
   /** The next credential (bound as commitment_next by the last draw), waiting for its claim. */
   next?: { secret: string; h: string; commitment: string; count: number };
 };
