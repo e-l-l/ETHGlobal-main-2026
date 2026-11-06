@@ -15,8 +15,8 @@ ETHGlobal asks every project to list its AI tool use. This is ours.
   - ran deployments and handled keys and accounts (AWS, Reclaim, World, Sepolia funds)
 - **Docs**, including these submission docs, were drafted with Claude Code from the repo's own docs and edited by the team.
 - **Research** (market data, finalist analysis) was AI-assisted. Sources are listed in [`docs/research.md`](../../docs/research.md).
-- `TODO(team): list contributor names and any part written mainly by hand.`
-- `TODO(team): list any AI design or asset tools used for the UI (apps/web), or delete this line if none.`
+- **Team:** Anay Shah, Bhavya Gor, Prathmesh Ghatol.
+- **UI design:** Claude Design was used for the visual design of the app (`apps/web`).
 
 ## AI inside the product
 

@@ -47,3 +47,7 @@ circuits/**/target/
 # auto-deploy state on the box
 deploy/.paused
 deploy/.last-failed
+
+# editor and agent scratch
+.claude/
+.vscode/

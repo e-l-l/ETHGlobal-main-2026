@@ -15,7 +15,7 @@ Foundry project for DripMoney. The full spec is in [SPEC.md](SPEC.md), and the a
 
 ```bash
 forge build
-FOUNDRY_OFFLINE=true forge test      # 170 tests incl. 2 invariants and real-proof E2Es. Offline avoids a macOS proxy-lookup panic.
+FOUNDRY_OFFLINE=true forge test      # 169 tests incl. 2 invariants and real-proof E2Es. Offline avoids a macOS proxy-lookup panic.
 ```
 
 Poseidon2 is the deployed `zemse/poseidon2-evm` contract (`0xB2542195Ad96AcfBC962C48A97D7640A9F5386D2` on Sepolia). Tests etch its bytecode from `test/fixtures/`.

@@ -28,7 +28,7 @@ Design rules everyone should know:
 
 ## 1. Contracts (Solidity, Foundry): ✅ done, deployed and verified on Sepolia 2026-11-06
 
-Built in parallel by 3 Claude and 3 Codex agents, then merged. The first iteration had 97 tests; the suite is now 170 Foundry tests (offline). The fee model later changed to time-based (0.5% per week, max 3%, late fee while behind), holdback 8%, tier caps $50/$100/$200/$300, and a 40/30/20/10 fee split. See [economics.md](economics.md). Spec: [contracts/SPEC.md](../contracts/SPEC.md).
+Built in parallel by 3 Claude and 3 Codex agents, then merged. The first iteration had 97 tests; the suite is now 169 Foundry tests (offline). The fee model later changed to time-based (0.5% per week, max 3%, late fee while behind), holdback 8%, tier caps $50/$100/$200/$300, and a 40/30/20/10 fee split. See [economics.md](economics.md). Spec: [contracts/SPEC.md](../contracts/SPEC.md).
 
 | ID | Task | P | Status |
 |---|---|---|---|
