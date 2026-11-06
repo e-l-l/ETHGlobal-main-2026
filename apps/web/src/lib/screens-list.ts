@@ -4,7 +4,13 @@ export type ScreenItem = { id: string; title: string; href: string };
 
 /** Every route with its canvas ID. Shared by /screens and the /screenshots capture. */
 export const SCREEN_GROUPS: { group: string; screens: ScreenItem[] }[] = [
-  { group: "Entry", screens: [{ id: "—", title: "Home hub", href: routes.home }] },
+  {
+    group: "Entry",
+    screens: [
+      { id: "—", title: "Landing page", href: routes.landing },
+      { id: "—", title: "Home hub", href: routes.home },
+    ],
+  },
   {
     group: "Merchant onboarding",
     screens: [
