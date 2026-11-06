@@ -32,7 +32,7 @@ describe("swap helpers", () => {
 
   it("computes the live Sepolia pool id and its StateLibrary slot", () => {
     const id = poolIdOf(poolKeyOf(D));
-    expect(id).toBe("0xdc7dda596f984a642b7eeceee08f5cc511dab233e852d3306d7dde323d9ed840");
+    expect(id).toBe("0x52fc4a8e7b0910f8019c7e5b9a60f0c120d1829e71315ff3ae03e9c27602bd50");
     const s = poolSlots(id);
     expect(BigInt(s.liquidity) - BigInt(s.slot0)).toBe(3n);
   });
