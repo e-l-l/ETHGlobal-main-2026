@@ -57,6 +57,11 @@ export type MRAConfig = {
   idkit?: IdkitAdapter;
   /** Merchant's local currency. Default ARS at 1,500 per USD (the mock rate). */
   fx?: { currency: string; usdToLocal: number };
+  /**
+   * Mock mode only: what `onboarding.checkHuman()` answers. Default: `?mockWorld=` from the page URL if present
+   * (`banned` | `open_advance` | `eligible`), else "eligible". Lets the UI show both stop screens without a backend.
+   */
+  mockWorld?: "eligible" | "banned" | "open_advance";
   /** Mock mode only: simulated latency per call, so spinners show. Default 0. */
   mockLatencyMs?: number;
   /** Receives event codes only (never values). Hook up to your logger if you like. */

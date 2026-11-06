@@ -11,7 +11,7 @@ export const SCREENS: ScreenMap[] = [
   { canvas: "M03", title: "Verifying", route: "/onboarding/verifying", call: "onboarding.finishProof(sessionId, { onStep })", viewModel: "ProveResult (+ ProveStep events)", owner: "B" },
   { canvas: "M04", title: "Business Pass", route: "/onboarding/pass", call: "onboarding.pass()", viewModel: "BusinessPassView", owner: "B" },
   { canvas: "M05", title: "Failed", route: "/onboarding/failed?reason=", call: "ProveResult.reason from finishProof", viewModel: "ProveResult { ok: false, reason }", owner: "B" },
-  { canvas: "M06", title: "Create shop", route: "/onboarding/shop", call: "onboarding.createShop(name), onboarding.nameIdeas()", viewModel: "ShopView", owner: "B" },
+  { canvas: "M06", title: "Create shop", route: "/onboarding/shop", call: "onboarding.createShop(name) (auto-binds the World ID ticket from checkHuman → ShopView.human), onboarding.nameIdeas()", viewModel: "ShopView", owner: "B" },
   // Person A: merchant app
   { canvas: "M07", title: "Agent setup", route: "/agent/setup", call: "agent.setupOptions()", viewModel: "AgentSetupView", owner: "A" },
   { canvas: "M08", title: "Approve", route: "/agent/approve", call: "agent.approveView(limits), then agent.setup(limits, { onStep })", viewModel: "AgentApproveView, AgentSetupResult", owner: "A" },

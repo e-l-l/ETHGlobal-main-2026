@@ -99,10 +99,11 @@ uniqueness: businessNullifier = HMAC(issuerPepper, accountId) stored as "used": 
 
 ### World ID binding: what we store and what we don't
 
-Before a shop's first offer, its owner proves "unique human" with World ID (IDKit 4, Proof of Human, action
-`WORLD_BORROWER_ACTION`, by default the same action as recovery so no new portal setup is needed). Our offer signer
-then refuses offers to banned humans and to humans with an open advance on any of their shops. Code:
-`agents/src/mra_agents/humans.py`.
+World ID is the **first** onboarding step, before any business step: the merchant proves "unique human" with World
+ID (IDKit 4, Proof of Human, action `WORLD_BORROWER_ACTION`, by default the same action as recovery so no new portal
+setup is needed) and `POST /world/borrower/check` stops a banned human, or one with an open advance on another shop,
+before they prove a business or open a shop. The offer signer still refuses offers to banned humans and to humans
+with an open advance on any of their shops (the backstop). Code: `agents/src/mra_agents/humans.py`.
 
 | Stored (agents DB, offer signer only) | Not stored, anywhere |
 |---|---|
@@ -110,10 +111,22 @@ then refuses offers to banned humans and to humans with an open advance on any o
 | `shop_key = HMAC(server key, "world-shop" ‖ shopId)`, so a DB dump doesn't even list the bound shops | Name, phone, address, document, or anything else about the person (we never have it) |
 | AES-256-GCM ciphertexts of shop → human and human → [shops], each bound to its row key | Anything onchain: no new contract fields, events or transactions |
 | `banned` flag, ban time and a reason code (`written_off`) | Free-text notes about anyone |
+| Spent eligibility tickets: `HMAC(server key, "world-ticket" ‖ ticket id)`, the bound `shop_key` and the expiry (purged after expiry) | The ticket itself, or anything about the human in that table |
 
 - **The API never returns the nullifier.** `POST /shops/{id}/human` answers `{"verified": true}`. `GET` shows
   `verified` publicly, and `banned` plus the unlock status only to the shop's owner (an EIP-191 signature by the
   onchain shop owner). Responses are fixed shapes, so nothing from World's verify can leak through.
+- **The eligibility ticket (World ID first).** `POST /world/borrower/check {idkit, owner}` verifies the proof and,
+  when the person may borrow, returns `{"eligible": true, "ticket", "expires_at"}`; otherwise
+  `{"eligible": false, "reason": "human_banned" | "human_has_open_advance"}`. The ticket is an AES-256-GCM
+  ciphertext under the same server key as the rows (`secretbox.py`, AAD `world-ticket:v1`, random nonce) over
+  `{human_key, owner address, expiry, random 128-bit id}`. So it holds the HMAC, never the nullifier; the client
+  can't read it and can't forge or edit it; two checks by the same human give unrelated tickets. It **expires 30
+  minutes** after the check, is bound to the wallet the client declared (the burner that will own the shop: the
+  bind needs the onchain shop owner's signature, and that owner must equal the ticket's address), and is **single
+  use**: its first bind records the ticket id's HMAC, a second shop is refused (`ticket_used`), and a retry for the
+  same shop is a no-op. The device keeps it in the credential vault until the shop is bound, then deletes it; it is
+  not restored from backups. A check stores nothing: no human row exists until a shop is bound.
 - **Shops stay unlinkable in public.** The chain sees independent pseudonymous shops. Only the offer signer, holding
   the server key, can tell that two shops share a human, and it uses that only for the red lines and the unlock.
 - **Unjoinable with recovery.** The recovery backup is keyed under a different HMAC label, so even the same human's

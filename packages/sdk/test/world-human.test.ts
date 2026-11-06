@@ -62,7 +62,7 @@ const UNLOCK = {
   reasons: ["first advance at this level: 50% now"],
 };
 
-async function realMra(api: FetchFn, session = true) {
+async function realMra(api: FetchFn, session = true, idkit?: ReturnType<typeof mockIdkit>) {
   const vault = new MemoryVault();
   const { wallet } = await loadOrCreateBurner(vault, { chainId: 11155111, rpcUrl: "http://rpc.test" });
   if (session) await vault.put("session", { shopId: SHOP, pseudonym: "shop_abab", payout: wallet.account!.address });
@@ -74,6 +74,7 @@ async function realMra(api: FetchFn, session = true) {
     vault,
     wallet,
     faucet: false,
+    ...(idkit ? { idkit } : {}),
   });
   return { mra, address: wallet.account!.address };
 }
@@ -245,10 +246,102 @@ describe("human-limit fields on merchant / agent views", () => {
 
 describe("reason messages", () => {
   it("new World ID codes have plain merchant-facing English", () => {
-    expect(reasonMessage("human_banned")).toBe("This World ID can't take new advances because an earlier advance wasn't repaid.");
-    expect(reasonMessage("human_has_open_advance")).toBe("You already have an advance open on one of your shops. Repay it first.");
+    // Also the World ID stop-screen copy.
+    expect(reasonMessage("human_banned")).toBe("This World ID can't borrow on DripMoni after a default.");
+    expect(reasonMessage("human_has_open_advance")).toBe("Repay your open advance first.");
     expect(reasonMessage("human_not_verified")).toBe("Verify you're a unique human with World ID first.");
     expect(reasonMessage("few_payers")).toMatch(/fewer than 5 different customers/);
     expect(reasonMessage("some_new_code")).toBe("some new code");
+  });
+});
+
+describe("World ID FIRST: checkHuman → ticket → createShop / bindHumanTicket", () => {
+  it("mock: eligible stores a ticket and createShop binds it, then clears it", async () => {
+    const mra = createMRA({ mode: "mock" });
+    const steps: string[] = [];
+    const r = await mra.onboarding.checkHuman({ onStep: (s) => steps.push(s) });
+    expect(r).toMatchObject({ eligible: true, source: "mock" });
+    expect(steps).toEqual(["verifying_human", "checking", "eligible"]);
+    expect(await mra.raw.vault.get("world_ticket")).toMatchObject({ kind: "world_ticket" });
+    const shop = await mra.onboarding.createShop("Corner Kiosk");
+    expect(shop.human).toEqual({ verified: true });
+    expect(await mra.raw.vault.get("world_ticket")).toBeUndefined();
+    // No ticket left: the next bind asks for World ID again.
+    expect(await mra.onboarding.bindHumanTicket()).toEqual({ verified: false, needsWorldId: true, reason: "no_ticket" });
+  });
+
+  it("mock: mockWorld=banned / open_advance → stop screen copy, no ticket", async () => {
+    const banned = createMRA({ mode: "mock", mockWorld: "banned" });
+    expect(await banned.onboarding.checkHuman()).toEqual({
+      eligible: false, reason: "human_banned", message: "This World ID can't borrow on DripMoni after a default.", source: "mock",
+    });
+    expect(await banned.raw.vault.get("world_ticket")).toBeUndefined();
+    const open = createMRA({ mode: "mock", mockWorld: "open_advance" });
+    expect(await open.onboarding.checkHuman()).toMatchObject({ eligible: false, reason: "human_has_open_advance", message: "Repay your open advance first." });
+  });
+
+  it("mockWorldMode reads ?mockWorld= from the URL when not configured", async () => {
+    const { mockWorldMode } = await import("../src/index.js");
+    const g = globalThis as { location?: unknown };
+    const saved = g.location;
+    try {
+      g.location = { search: "?mockWorld=banned" };
+      expect(mockWorldMode()).toBe("banned");
+      g.location = { search: "?mockWorld=open-advance" };
+      expect(mockWorldMode()).toBe("open_advance");
+      expect(mockWorldMode("eligible")).toBe("eligible");
+      g.location = { search: "" };
+      expect(mockWorldMode()).toBe("eligible");
+    } finally {
+      g.location = saved;
+    }
+  });
+
+  it("real: POST /world/borrower/check with the burner, ticket saved, then bound with owner auth (no second scan)", async () => {
+    let idkitCalls = 0;
+    const { fn, calls } = fakeFetch((c) =>
+      c.url.endsWith("/world/borrower/check") ? { json: { eligible: true, ticket: "v1:sealed", expires_at: Math.floor(Date.now() / 1000) + 1800 } } : { json: { verified: true } },
+    );
+    const counting = { kind: "mock" as const, verify: async () => (idkitCalls++, { mock: "approve", mock_human: "alice" }) };
+    const { mra: mra2, address } = await realMra(fn, true, counting);
+    const r = await mra2.onboarding.checkHuman();
+    expect(r).toMatchObject({ eligible: true, source: "api" });
+    expect(calls[0]).toMatchObject({ method: "POST", url: "http://api.test/world/borrower/check", body: { idkit: { mock: "approve", mock_human: "alice" }, owner: address } });
+    expect(await mra2.raw.vault.get("world_ticket")).toMatchObject({ ticket: "v1:sealed", owner: address.toLowerCase() });
+    expect(await mra2.onboarding.bindHumanTicket()).toEqual({ verified: true });
+    expect(calls[1]).toMatchObject({ method: "POST", url: `http://api.test/shops/${SHOP_LC}/human`, body: { ticket: "v1:sealed" } });
+    expect(calls[1]!.headers.authorization).toMatch(/^Owner \d+:0x[0-9a-f]{130}$/);
+    expect(idkitCalls).toBe(1);
+    expect(await mra2.raw.vault.get("world_ticket")).toBeUndefined();
+  });
+
+  it("real: banned → stop screen; expired / used tickets → needsWorldId; transient errors keep the ticket", async () => {
+    const banned = fakeFetch(() => ({ json: { eligible: false, reason: "human_banned" } }));
+    const a = await realMra(banned.fn);
+    expect(await a.mra.onboarding.checkHuman()).toEqual({ eligible: false, reason: "human_banned", message: "This World ID can't borrow on DripMoni after a default.", source: "api" });
+    expect(await a.mra.raw.vault.get("world_ticket")).toBeUndefined();
+
+    const now = Math.floor(Date.now() / 1000);
+    const used = fakeFetch(() => ({ status: 409, json: { detail: "ticket_used" } }));
+    const b = await realMra(used.fn);
+    await b.mra.raw.vault.put("world_ticket", { kind: "world_ticket", ticket: "v1:x", owner: b.address.toLowerCase(), expiresAt: now - 1, chainId: 11155111 });
+    expect(await b.mra.onboarding.bindHumanTicket()).toEqual({ verified: false, needsWorldId: true, reason: "ticket_expired" });
+    expect(used.calls).toHaveLength(0);
+    await b.mra.raw.vault.put("world_ticket", { kind: "world_ticket", ticket: "v1:x", owner: b.address.toLowerCase(), expiresAt: now + 1800, chainId: 11155111 });
+    expect(await b.mra.onboarding.bindHumanTicket()).toEqual({ verified: false, needsWorldId: true, reason: "ticket_used" });
+    expect(await b.mra.raw.vault.get("world_ticket")).toBeUndefined();
+
+    const busy = fakeFetch(() => ({ status: 429, json: { detail: "rate_limited" } }));
+    const c = await realMra(busy.fn);
+    await c.mra.raw.vault.put("world_ticket", { kind: "world_ticket", ticket: "v1:x", owner: c.address.toLowerCase(), expiresAt: now + 1800, chainId: 11155111 });
+    expect(await c.mra.onboarding.bindHumanTicket()).toMatchObject({ verified: false, needsWorldId: false });
+    expect(await c.mra.raw.vault.get("world_ticket")).toBeDefined();
+
+    // A ticket for another wallet never reaches the API.
+    const other = fakeFetch(() => ({ json: { verified: true } }));
+    const d = await realMra(other.fn);
+    await d.mra.raw.vault.put("world_ticket", { kind: "world_ticket", ticket: "v1:x", owner: "0x" + "99".repeat(20), expiresAt: now + 1800, chainId: 11155111 });
+    expect(await d.mra.onboarding.bindHumanTicket()).toEqual({ verified: false, needsWorldId: true, reason: "ticket_owner_mismatch" });
+    expect(other.calls).toHaveLength(0);
   });
 });

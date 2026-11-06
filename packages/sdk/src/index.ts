@@ -70,6 +70,6 @@ export { ANON_SPECIFIERS, anonFetchFrom, bootstrapProvider, type AnonRpcWorkerLi
 // Helpers
 export { formatMoney, formatLocal, formatNumber, formatPercent, formatDays, truncateAddress, capitalize } from "./format.js";
 export { splitSale, pseudonymOf, annualizedCost } from "./domains/util.js";
-export { failReasonFor } from "./domains/onboarding.js";
+export { failReasonFor, mockWorldMode } from "./domains/onboarding.js";
 export { ownerAuthMessage, ownerAuthHeader, humanLimitFrom, unlockVM } from "./domains/human.js";
 export * as credentials from "./credentials.js";

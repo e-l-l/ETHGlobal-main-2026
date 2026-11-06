@@ -131,6 +131,27 @@ export type HumanVerifyStep = "signing_owner" | "verifying_human" | "verified";
  */
 export type HumanVerifyResult = { verified: true } | { verified: false; reason: string };
 
+export type HumanCheckStep = "verifying_human" | "checking" | "eligible" | "stopped";
+/**
+ * `onboarding.checkHuman()`: World ID FIRST, before any business step. Eligible → the ticket is saved on the device
+ * and `createShop()` binds it automatically. Not eligible → show the stop screen with `message`:
+ *   human_banned           "This World ID can't borrow on DripMoni after a default."
+ *   human_has_open_advance "Repay your open advance first."
+ * Other `reason`s are errors from the proof (verification_failed | wrong_action | unknown_or_used_nonce |
+ * invalid_request | rate_limited): let the merchant retry the scan.
+ */
+export type HumanCheckResult =
+  | { eligible: true; expiresAt: number; source: Source }
+  | { eligible: false; reason: "human_banned" | "human_has_open_advance" | (string & {}); message: string; source: Source };
+
+/**
+ * World ID outcome attached to `createShop()` (and returned by `bindHumanTicket()`): `verified` when the shop was
+ * bound with the stored ticket. `needsWorldId: true` when the ticket is missing, expired, used or for another wallet:
+ * run `checkHuman()` again, then `bindHumanTicket()`. `needsWorldId: false` (network, 429, 5xx): just retry
+ * `bindHumanTicket()`; the ticket is kept.
+ */
+export type ShopHumanBinding = { verified: true } | { verified: false; needsWorldId: boolean; reason: string };
+
 /** M10 Home. */
 export type HomeView = {
   shop: ShopVM;
@@ -325,6 +346,8 @@ export type ShopView = {
   payout?: string;
   txHash?: string;
   nameIdeas: string[];
+  /** World ID binding done right after the shop was created (World ID FIRST flow). */
+  human?: ShopHumanBinding;
   source: Source;
 };
 
