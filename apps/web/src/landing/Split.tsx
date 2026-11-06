@@ -28,19 +28,29 @@ export function Split() {
           <Eyebrow>The split</Eyebrow>
           <SectionTitle>Every sale pays a little back.</SectionTitle>
           <Text className="m-0">
-            Customers pay you like always. Nine parts land with you, one part drips back until the advance is paid off. Your customers never see the advance.
+            Customers pay you like always. Nine parts land with you, one part
+            drips back until the advance is paid off. Your customers never see
+            the advance.
           </Text>
         </div>
         <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-4">
           <NineToOne />
           <div className="flex justify-between gap-4">
             <div className="flex flex-col gap-1">
-              <span className="font-display text-[32px] leading-normal font-bold tracking-[-0.025em]">90%</span>
-              <span className="text-note leading-normal text-charcoal-soft">yours, to spend or save</span>
+              <span className="font-display text-[32px] leading-normal font-bold tracking-[-0.025em]">
+                90%
+              </span>
+              <span className="text-note leading-normal text-charcoal-soft">
+                yours, to spend or save
+              </span>
             </div>
             <div className="flex flex-col items-end gap-1 text-right">
-              <span className="font-display text-[32px] leading-normal font-bold tracking-[-0.025em] text-hunter">10%</span>
-              <span className="text-note leading-normal text-charcoal-soft">drips back to the advance</span>
+              <span className="font-display text-[32px] leading-normal font-bold tracking-[-0.025em] text-hunter">
+                10%
+              </span>
+              <span className="text-note leading-normal text-charcoal-soft">
+                drips back to the advance
+              </span>
             </div>
           </div>
         </div>

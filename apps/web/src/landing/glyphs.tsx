@@ -7,7 +7,12 @@ import type { ReactNode } from "react";
 
 type GlyphProps = { size?: number; stroke?: number; className?: string };
 
-function Glyph({ size = 20, stroke = 2, className, children }: GlyphProps & { children: ReactNode }) {
+function Glyph({
+  size = 20,
+  stroke = 2,
+  className,
+  children,
+}: GlyphProps & { children: ReactNode }) {
   return (
     <svg
       width={size}

@@ -96,11 +96,30 @@ void main(){
   gl_FragColor=vec4(clamp(color,0.0,1.0),1.0);
 }`;
 
-const VERTEX = "attribute vec2 position; void main(){gl_Position=vec4(position,0.0,1.0);}";
+const VERTEX =
+  "attribute vec2 position; void main(){gl_Position=vec4(position,0.0,1.0);}";
 
 const UNIFORMS = [
-  "res", "noise", "shape", "pigment", "turn", "bloom", "flow", "layers", "seed", "angle", "scale",
-  "spread", "wetness", "pigmentStrength", "blooms", "granulation", "edges", "texture", "warmth", "veil",
+  "res",
+  "noise",
+  "shape",
+  "pigment",
+  "turn",
+  "bloom",
+  "flow",
+  "layers",
+  "seed",
+  "angle",
+  "scale",
+  "spread",
+  "wetness",
+  "pigmentStrength",
+  "blooms",
+  "granulation",
+  "edges",
+  "texture",
+  "warmth",
+  "veil",
 ] as const;
 type UniformName = (typeof UNIFORMS)[number];
 
@@ -123,10 +142,17 @@ function lcg(seed: number) {
 }
 
 /** Wobble that starts at zero: sin(e·t + n) − sin(n). */
-const wobble = (e: number, t: number, n: number) => Math.sin(e * t + n) - Math.sin(n);
+const wobble = (e: number, t: number, n: number) =>
+  Math.sin(e * t + n) - Math.sin(n);
 
 function createPainter(canvas: HTMLCanvasElement): Painter | null {
-  const gl = canvas.getContext("webgl", { alpha: false, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: true });
+  const gl = canvas.getContext("webgl", {
+    alpha: false,
+    antialias: false,
+    depth: false,
+    stencil: false,
+    preserveDrawingBuffer: true,
+  });
   if (!gl) return null;
   const prog = gl.createProgram();
   if (!prog) return null;
@@ -147,7 +173,11 @@ function createPainter(canvas: HTMLCanvasElement): Painter | null {
 
   // One oversized triangle covers the viewport.
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array([-1, -1, 3, -1, -1, 3]),
+    gl.STATIC_DRAW,
+  );
   const pos = gl.getAttribLocation(prog, "position");
   gl.enableVertexAttribArray(pos);
   gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
@@ -160,14 +190,43 @@ function createPainter(canvas: HTMLCanvasElement): Painter | null {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE, noise);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.RGBA,
+    256,
+    256,
+    0,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    noise,
+  );
 
-  const u = Object.fromEntries(UNIFORMS.map((k) => [k, gl.getUniformLocation(prog, `u_${k}`)])) as Painter["u"];
+  const u = Object.fromEntries(
+    UNIFORMS.map((k) => [k, gl.getUniformLocation(prog, `u_${k}`)]),
+  ) as Painter["u"];
   gl.uniform1i(u.noise, 0);
-  return { gl, u, shapes: new Float32Array(32), colors: new Float32Array(32), turns: new Float32Array(16), blooms: new Float32Array(24) };
+  return {
+    gl,
+    u,
+    shapes: new Float32Array(32),
+    colors: new Float32Array(32),
+    turns: new Float32Array(16),
+    blooms: new Float32Array(24),
+  };
 }
 
-type Layer = { x: number; y: number; rx: number; ry: number; c: number; s: number; strength: number; color: number[]; bloom: number[] };
+type Layer = {
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+  c: number;
+  s: number;
+  strength: number;
+  color: number[];
+  bloom: number[];
+};
 
 /** Pigment pools for one moment `a` of the animation. Stops become absorption colours along the layers. */
 function layers(a: number): Layer[] {
@@ -175,34 +234,70 @@ function layers(a: number): Layer[] {
   const rnd = lcg(P.seed * 8191);
   const absorb = P.stops.map((hex) => {
     const v = parseInt(hex.slice(1), 16);
-    return [(v >> 16) & 255, (v >> 8) & 255, v & 255].map((c) => -Math.log(Math.max(0.025, c / 255)));
+    return [(v >> 16) & 255, (v >> 8) & 255, v & 255].map(
+      (c) => -Math.log(Math.max(0.025, c / 255)),
+    );
   });
-  const divsOk = P.divs.length === absorb.length - 1 && P.divs.every((d, i) => Number.isFinite(d) && d >= (i ? P.divs[i - 1]! : 0) && d <= 1);
-  const edges = [0, ...(divsOk ? P.divs : absorb.slice(1).map((_, i) => (i + 1) / absorb.length)), 1];
+  const divsOk =
+    P.divs.length === absorb.length - 1 &&
+    P.divs.every(
+      (d, i) => Number.isFinite(d) && d >= (i ? P.divs[i - 1]! : 0) && d <= 1,
+    );
+  const edges = [
+    0,
+    ...(divsOk
+      ? P.divs
+      : absorb.slice(1).map((_, i) => (i + 1) / absorb.length)),
+    1,
+  ];
   const widths = absorb.map((_, i) => edges[i + 1]! - edges[i]!);
   const centres = absorb.map((_, i) => (edges[i + 1]! + edges[i]!) * 0.5);
 
   const out: Layer[] = [];
   for (let k = 0; k < P.layers; k++) {
     const p = (k + 0.5) / P.layers;
-    const m = widths.map((w, i) => w * Math.exp(-0.5 * Math.pow((p - centres[i]!) / (0.13 + 0.2 / P.layers), 2)));
-    const h = Math.max(1e-8, m.reduce((s, x) => s + x, 0));
-    const color = [0, 1, 2].map((c) => absorb.reduce((s, col, i) => s + col[c]! * m[i]! / h, 0));
+    const m = widths.map(
+      (w, i) =>
+        w *
+        Math.exp(
+          -0.5 * Math.pow((p - centres[i]!) / (0.13 + 0.2 / P.layers), 2),
+        ),
+    );
+    const h = Math.max(
+      1e-8,
+      m.reduce((s, x) => s + x, 0),
+    );
+    const color = [0, 1, 2].map((c) =>
+      absorb.reduce((s, col, i) => s + (col[c]! * m[i]!) / h, 0),
+    );
     const f = k * 1.71 + P.seed * 0.007;
     const g = (rnd() - 0.5) * 2.5 + 0.12 * wobble(a, 0.47, f);
     const size = (0.12 + (P.coverage / 100) * 0.26) * (0.76 + rnd() * 0.46);
     const x = (p - 0.5) * 1.4 + (rnd() - 0.5) * 0.2 + 0.09 * wobble(a, 0.67, f);
-    const y = Math.sin(p * Math.PI * 2 + P.seed * 0.7) * 0.2 + (rnd() - 0.5) * 0.28 + 0.075 * wobble(a, 0.59, f + 1.6);
+    const y =
+      Math.sin(p * Math.PI * 2 + P.seed * 0.7) * 0.2 +
+      (rnd() - 0.5) * 0.28 +
+      0.075 * wobble(a, 0.59, f + 1.6);
     out.push({
       x,
       y,
-      rx: size * (P.technique === "veil" ? 1.7 : 1.22) * (1 + 0.09 * wobble(a, 0.81, f)),
-      ry: size * (P.technique === "pools" ? 0.84 : 1.1) * (1 + 0.09 * wobble(a, 0.63, f + 1.8)),
+      rx:
+        size *
+        (P.technique === "veil" ? 1.7 : 1.22) *
+        (1 + 0.09 * wobble(a, 0.81, f)),
+      ry:
+        size *
+        (P.technique === "pools" ? 0.84 : 1.1) *
+        (1 + 0.09 * wobble(a, 0.63, f + 1.8)),
       c: Math.cos(g),
       s: Math.sin(g),
       strength: 0.68 + rnd() * 0.4,
       color,
-      bloom: [0.36 * Math.sin(k * 2.3 + 1) + 0.12 * wobble(a, 0.41, f), 0.36 * Math.cos(k * 1.7) + 0.12 * wobble(a, 0.53, f + 1.2), 0.04 * wobble(a, 0.65, f)],
+      bloom: [
+        0.36 * Math.sin(k * 2.3 + 1) + 0.12 * wobble(a, 0.41, f),
+        0.36 * Math.cos(k * 1.7) + 0.12 * wobble(a, 0.53, f + 1.2),
+        0.04 * wobble(a, 0.65, f),
+      ],
     });
   }
   return out;
@@ -236,7 +331,15 @@ function draw(W: Painter, canvas: HTMLCanvasElement, t: number) {
   gl.uniform4fv(u.pigment, W.colors);
   gl.uniform2fv(u.turn, W.turns);
   gl.uniform3fv(u.bloom, W.blooms);
-  gl.uniform4fv(u.flow, new Float32Array([0.32 * wobble(a, 0.72, 0), 0.3 * wobble(a, 0.57, 1.3), 0.28 * wobble(a, 0.39, 0.7), 0.3 * wobble(a, 0.83, 2.1)]));
+  gl.uniform4fv(
+    u.flow,
+    new Float32Array([
+      0.32 * wobble(a, 0.72, 0),
+      0.3 * wobble(a, 0.57, 1.3),
+      0.28 * wobble(a, 0.39, 0.7),
+      0.3 * wobble(a, 0.83, 2.1),
+    ]),
+  );
   gl.uniform1f(u.spread, P.spread / 100);
   gl.uniform1f(u.wetness, P.wetness / 100);
   gl.uniform1f(u.blooms, P.blooms / 100);
@@ -269,7 +372,9 @@ export function WatercolorBackground({ className }: { className?: string }) {
     })();
     if (!W) return; // Canvas stays hidden; the parent's flat colour shows.
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     let t = START_TIME;
     let raf = 0;
     let last = 0;
@@ -345,5 +450,11 @@ export function WatercolorBackground({ className }: { className?: string }) {
   }, []);
 
   /* Hidden until the first frame lands, so the unpainted (black) buffer never flashes. */
-  return <canvas ref={ref} aria-hidden className={cn("absolute inset-0 block size-full opacity-0", className)} />;
+  return (
+    <canvas
+      ref={ref}
+      aria-hidden
+      className={cn("absolute inset-0 block size-full opacity-0", className)}
+    />
+  );
 }

@@ -3,12 +3,22 @@ import { Card, JarMark, Label, Text } from "@/final";
 import { QrGlyph, ShieldCheckGlyph, SlidersGlyph, TrendGlyph } from "./glyphs";
 import { Eyebrow, Section, SectionTitle } from "./primitives";
 
-type Step = { n: string; icon: ReactNode; title: string; body: string; foot: ReactNode };
+type Step = {
+  n: string;
+  icon: ReactNode;
+  title: string;
+  body: string;
+  foot: ReactNode;
+};
 
 const ICON = { size: 28, stroke: 1.8, className: "text-sage" };
 
 function Tag({ children }: { children: ReactNode }) {
-  return <Label className="mt-auto self-start rounded-chip bg-honeydew px-2 py-1 text-hunter">{children}</Label>;
+  return (
+    <Label className="mt-auto self-start rounded-chip bg-honeydew px-2 py-1 text-hunter">
+      {children}
+    </Label>
+  );
 }
 
 /* The logo is the tier meter: two bands lit = tier 1, $100. */
@@ -23,7 +33,10 @@ function Ladder() {
   return (
     <div className="mt-auto flex items-center gap-4">
       <JarMark lit={2} on="meter" size={56} label="Tier 1, limit $100" />
-      <ol aria-label="Limits ladder" className="m-0 flex list-none flex-col gap-0.5 p-0 font-ledger text-ledger leading-[1.3]">
+      <ol
+        aria-label="Limits ladder"
+        className="m-0 flex list-none flex-col gap-0.5 p-0 font-ledger text-ledger leading-[1.3]"
+      >
         {LADDER.map((l) => (
           <li key={l.cap} className={l.tone}>
             {l.cap}
@@ -77,7 +90,9 @@ export function HowItWorks() {
           <Card as="article" key={s.n} gap="sm" className="p-6">
             <div className="flex items-center justify-between">
               {s.icon}
-              <span className="font-ledger text-ledger leading-normal text-charcoal-muted">{s.n}</span>
+              <span className="font-ledger text-ledger leading-normal text-charcoal-muted">
+                {s.n}
+              </span>
             </div>
             <h3 className="m-0 font-display text-h2 font-bold">{s.title}</h3>
             <Text size="note" className="m-0">

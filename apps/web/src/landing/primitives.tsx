@@ -8,16 +8,32 @@ import { Label } from "@/final";
  */
 
 /** 1200px column with the export's fluid gutter. Every section below the hero uses it. */
-export function Section({ className, children, ...props }: ComponentPropsWithoutRef<"section">) {
+export function Section({
+  className,
+  children,
+  ...props
+}: ComponentPropsWithoutRef<"section">) {
   return (
-    <section className={cn("mx-auto box-border w-full max-w-300 px-[clamp(16px,4vw,40px)] pb-24", className)} {...props}>
+    <section
+      className={cn(
+        "mx-auto box-border w-full max-w-300 px-[clamp(16px,4vw,40px)] pb-24",
+        className,
+      )}
+      {...props}
+    >
       {children}
     </section>
   );
 }
 
 /** Mono 11 uppercase section opener. */
-export function Eyebrow({ className, children }: { className?: string; children: ReactNode }) {
+export function Eyebrow({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <Label as="p" className={cn("m-0", className)}>
       {children}
@@ -26,10 +42,16 @@ export function Eyebrow({ className, children }: { className?: string; children:
 }
 
 /** Section headline: Urbanist, 28 → 40px. */
-export function SectionTitle({ className, ...props }: ComponentPropsWithoutRef<"h2">) {
+export function SectionTitle({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<"h2">) {
   return (
     <h2
-      className={cn("m-0 font-display text-[clamp(28px,3.4vw,40px)] leading-[1.1] font-bold tracking-[-0.025em] text-charcoal", className)}
+      className={cn(
+        "m-0 font-display text-[clamp(28px,3.4vw,40px)] leading-[1.1] font-bold tracking-[-0.025em] text-charcoal",
+        className,
+      )}
       {...props}
     />
   );
@@ -42,4 +64,5 @@ export const FROST = cn(
 );
 
 /** Focus ring that stays visible on Hunter panels (the global ring is Charcoal). */
-export const RING_ON_HUNTER = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime";
+export const RING_ON_HUNTER =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime";
