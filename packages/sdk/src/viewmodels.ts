@@ -317,7 +317,8 @@ export type TxResult = { hash: string; steps: TxStep[]; simulated: boolean };
 
 export type TierCapVM = { tier: number; cap: string; was?: string };
 export type SignalVM = { name: string; value: string; state: "ok" | "watch"; note: string };
-export type RiskLogVM = { time: string; title: string; kind: ActivityKind; reason: string };
+/** `reasons`: the same text as bullet lines, when the source has them (mock); otherwise split `reason`. */
+export type RiskLogVM = { time: string; title: string; kind: ActivityKind; reason: string; reasons?: string[] };
 
 /** P02 Protocol. */
 export type ProtocolView = { vault: VaultVM; feeSplit: KV[]; tierCaps: TierCapVM[]; waterfall: [LossTier, LossTier, LossTier]; source: Source };

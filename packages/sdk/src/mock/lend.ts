@@ -67,7 +67,7 @@ export const TIER_CAPS = [
 
 export const signals = [
   { name: "Junior price (TWAP)", value: "$0.986", state: "watch" as const, note: "Fell through $0.97 after the write-off, recovering" },
-  { name: "Repayment speed", value: "−40% · 1 shop", state: "watch" as const, note: "One shop is selling slower than its usual week" },
+  { name: "Repayment speed", value: "−40%", state: "watch" as const, note: "One shop is selling slower than its usual week" },
   { name: "Junior coverage", value: "20.3%", state: "ok" as const, note: "Above the 15% floor" },
 ];
 
@@ -76,25 +76,33 @@ export const riskLog = [
     time: "14:41",
     title: "Lowered the tier 3 cap, $500 → $250",
     kind: "down" as const,
-    reason: "Junior TWAP fell through $0.97 after a $100 write-off. Tier 3 advances move first. Limits only move down.",
+    reason: "Junior TWAP fell through $0.97 after a $100 write-off. Tier 3 advances are the largest, so they move first. Limits only move down, inside the preset band. A person raises them back.",
+    reasons: [
+      "Junior TWAP fell through $0.97 after a $100 write-off.",
+      "Tier 3 advances are the largest, so they move first.",
+      "Limits only move down, inside the preset band. A person raises them back.",
+    ],
   },
   {
     time: "11:05",
     title: "Watching one shop's repayment speed",
     kind: "warn" as const,
     reason: "Sales on one shop ran 40% below its usual week. No limit change. Junior still covers it.",
+    reasons: ["Sales on one shop ran 40% below its usual week.", "No limit change. Junior still covers it."],
   },
   {
     time: "Mon",
     title: "Hook fee added to the reserve",
     kind: "accent" as const,
     reason: "The Uniswap v4 hook on JAR-J/USDC skimmed a small fee into the reserve.",
+    reasons: ["The Uniswap v4 hook on JAR-J/USDC skimmed a small fee into the reserve."],
   },
   {
     time: "Sep 3",
     title: "Wrote off an advance",
     kind: "down" as const,
     reason: "No sales for 30 days. The shop's jar and junior took the loss. Senior was not touched.",
+    reasons: ["No sales for 30 days.", "The shop's jar and junior took the loss. Senior was not touched."],
   },
 ];
 

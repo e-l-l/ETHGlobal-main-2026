@@ -23,16 +23,25 @@ import {
   Text,
   TokenBadge,
 } from "@/final";
+import type { EarnView, JuniorView, PositionView, ProtocolView, RiskView } from "@repo/sdk";
+import { isMock } from "@/lib/mra";
+import { q } from "@/lib/mra-queries";
+import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
-import { JUNIOR_WRITE_OFF_INDEX, TIER_CAPS, VAULT, juniorSeries, positionActivity, riskLog, seniorSeries, signals } from "./data";
+import { useMRA } from "@/lib/use-mra";
 import { LendShell, Pub } from "./shell";
+import { reasonLines, vaultNumbers } from "./vault";
 
 const pct = (a: number, b: number) => `${(((b - a) / b) * 100).toFixed(1)}%`;
 const usd2 = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const price = (v: number) => `$${v.toFixed(3)}`;
 
 /* ------------------------------------------------------------------ L01 Earn */
-export function EarnScreen() {
+export function EarnScreen({ initial }: { initial: EarnView | null }) {
+  const { data, error } = useMRA(q.earn, { initial });
+  if (!data) return <MRAState error={error} />;
+  const VAULT = data.vault;
+  const wroteOff = VAULT.writtenOff !== "$0" && VAULT.writtenOff !== "—";
   return (
     <LendShell note="Vault totals and positions are onchain. Lenders never see a shop's books or who owns it.">
       <PageHead label="Senior vault" title="Earn">
@@ -61,8 +70,8 @@ export function EarnScreen() {
               <ListRow
                 href={routes.position}
                 title="Your position"
-                sub={`+${usd2(VAULT.positionEarned)} earned`}
-                end={usd2(VAULT.positionValue)}
+                sub={`${VAULT.positionEarned} earned`}
+                end={VAULT.positionValue}
               />
             </RowList>
             <div className="flex flex-col gap-2 md:flex-row">
@@ -74,7 +83,11 @@ export function EarnScreen() {
           </Stack>
         </Stack>
         <Stack gap="lg">
-          <Banner>A shop stopped selling. Junior took the $100 loss. Senior was not touched.</Banner>
+          {isMock ? (
+            <Banner>A shop stopped selling. Junior took the $100 loss. Senior was not touched.</Banner>
+          ) : wroteOff ? (
+            <Banner>Written off so far: {VAULT.writtenOff}. Junior and the reserve absorb a loss before senior does.</Banner>
+          ) : null}
           <Card>
             <Label>Who takes a loss first</Label>
             <LossWaterfall you="senior" />
@@ -86,7 +99,11 @@ export function EarnScreen() {
 }
 
 /* -------------------------------------------------------------- L03 Position */
-export function PositionScreen() {
+export function PositionScreen({ initial }: { initial: PositionView | null }) {
+  const { data, error } = useMRA(q.position, { initial });
+  if (!data) return <MRAState error={error} />;
+  const { vault, seniorSeries, positionActivity } = data;
+  const VAULT = vaultNumbers(vault);
   return (
     <LendShell note="Your shares are onchain under this wallet. Nothing ties the wallet to your name.">
       <PageHead back={routes.earn} backLabel="Earn" label="Senior vault" title="My position" />
@@ -97,14 +114,14 @@ export function PositionScreen() {
               <Label>Value</Label>
               <Money usd={VAULT.positionValue} />
               <Text size="note" tone="muted">
-                +{usd2(VAULT.positionEarned)} earned · {VAULT.positionShares.toLocaleString("en-US")} shares
+                {vault.positionEarned} earned · {vault.positionShares} shares
               </Text>
             </Card>
           </Pub>
           <StatGrid
             items={[
-              { label: "Withdraw now", value: `$${VAULT.availableToWithdraw.toLocaleString("en-US")}`, sub: "cash in the vault" },
-              { label: "In advances", value: usd2(VAULT.positionValue - VAULT.availableToWithdraw), sub: "back as shops repay" },
+              { label: "Withdraw now", value: vault.availableToWithdraw, sub: "cash in the vault" },
+              { label: "In advances", value: usd2(Math.max(0, VAULT.positionValue - VAULT.availableToWithdraw)), sub: "back as shops repay" },
             ]}
           />
         </Stack>
@@ -113,12 +130,12 @@ export function PositionScreen() {
             <Card>
               <div className="flex items-center justify-between gap-3">
                 <Label>Share value, 12 weeks</Label>
-                <span className="font-ledger text-ledger text-charcoal">{price(VAULT.sharePrice)}</span>
+                <span className="font-ledger text-ledger text-charcoal">{vault.sharePrice}</span>
               </div>
               <LineChart
                 points={seniorSeries}
                 height={160}
-                label="Share value rising steadily over 12 weeks, flat through the write-off"
+                label={isMock ? "Share value rising steadily over 12 weeks, flat through the write-off" : "Share value over time"}
                 xLabels={["12 weeks ago", "Now"]}
                 format={(v) => `$${(v / 100).toFixed(3)}`}
               />
@@ -130,7 +147,7 @@ export function PositionScreen() {
           <DataTable
             caption="Position activity"
             rows={[...positionActivity]}
-            rowKey={(a) => a.what}
+            rowKey={(a, i) => `${a.what}-${i}`}
             columns={[
               { key: "what", label: "What", render: (a) => a.what },
               { key: "when", label: "When", render: (a) => a.when },
@@ -150,7 +167,11 @@ export function PositionScreen() {
 }
 
 /* ---------------------------------------------------------------- J01 Junior */
-export function JuniorScreen() {
+export function JuniorScreen({ initial }: { initial: JuniorView | null }) {
+  const { data, error } = useMRA(q.junior, { initial });
+  if (!data) return <MRAState error={error} />;
+  const { vault, juniorSeries, writeOffIndex } = data;
+  const VAULT = vaultNumbers(vault);
   return (
     <LendShell note="The JAR-J price, pool and coverage are public. So is every mint and trade.">
       <PageHead
@@ -170,7 +191,7 @@ export function JuniorScreen() {
           </>
         }
       >
-        JAR-J takes losses before anyone else, and earns {VAULT.feeShareJunior} of every fee for it.
+        JAR-J takes losses before anyone else, and earns {vault.feeShareJunior} of every fee for it.
       </PageHead>
       <Columns ratio="3:2">
         <Stack gap="lg">
@@ -179,19 +200,19 @@ export function JuniorScreen() {
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="flex flex-col gap-1">
                   <Label>JAR-J price</Label>
-                  <span className="font-display text-amount tabular-nums text-charcoal">{price(VAULT.juniorPrice)}</span>
+                  <span className="font-display text-amount tabular-nums text-charcoal">{vault.juniorPrice}</span>
                 </div>
                 <span className="text-right font-ledger text-ledger text-charcoal-soft">
                   {pct(VAULT.juniorPrice, VAULT.juniorBook)} under book
                   <br />
-                  TWAP {price(VAULT.juniorTwap)}
+                  TWAP {vault.juniorTwap}
                 </span>
               </div>
               <LineChart
                 points={juniorSeries}
                 height={180}
-                label="JAR-J price over 12 weeks. It dips at the write-off, then recovers to 0.982."
-                markers={[{ index: JUNIOR_WRITE_OFF_INDEX, label: "The $100 write-off" }]}
+                label={isMock ? "JAR-J price over 12 weeks. It dips at the write-off, then recovers to 0.982." : "JAR-J price over time"}
+                markers={writeOffIndex >= 0 ? [{ index: writeOffIndex, label: isMock ? "The $100 write-off" : "Latest write-off" }] : []}
                 xLabels={["12 weeks ago", "Now"]}
                 format={price}
               />
@@ -199,9 +220,9 @@ export function JuniorScreen() {
           </Pub>
           <StatGrid
             items={[
-              { label: "Coverage", value: VAULT.coverage },
-              { label: "Fee share", value: VAULT.feeShareJunior },
-              { label: "Pool", value: "$42k" },
+              { label: "Coverage", value: vault.coverage },
+              { label: "Fee share", value: vault.feeShareJunior },
+              { label: "Pool", value: isMock ? "$42k" : vault.junior },
             ]}
           />
         </Stack>
@@ -215,7 +236,11 @@ export function JuniorScreen() {
 }
 
 /* -------------------------------------------------------------- P02 Protocol */
-export function ProtocolScreen() {
+export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
+  const { data, error } = useMRA(q.protocol, { initial });
+  if (!data) return <MRAState error={error} />;
+  const { vault: VAULT, tierCaps: TIER_CAPS } = data;
+  const lowered = TIER_CAPS.find((t) => t.was);
   return (
     <LendShell note="Everything on this screen is public. None of it names a person.">
       <PageHead label="Public dashboard" title="Protocol">
@@ -229,7 +254,7 @@ export function ProtocolScreen() {
             { label: "Repaid, 30 days", value: VAULT.repaid30d },
             { label: "Written off", value: VAULT.writtenOff, sub: "all time" },
             { label: "Reserve", value: VAULT.reserve },
-            { label: "Junior TWAP", value: price(VAULT.juniorTwap) },
+            { label: "Junior TWAP", value: VAULT.juniorTwap },
             { label: "Shops", value: VAULT.shopsActive, sub: "pseudonyms" },
           ]}
         />
@@ -250,7 +275,11 @@ export function ProtocolScreen() {
           </Card>
         </Pub>
         <RowList>
-          <ListRow href={routes.risk} title="Risk status" sub="Tier 3 limit lowered today" />
+          <ListRow
+            href={routes.risk}
+            title="Risk status"
+            sub={isMock ? "Tier 3 limit lowered today" : lowered ? `Tier ${lowered.tier} limit lowered` : "Signals and every limit change"}
+          />
           <ListRow href={routes.explorer} title="Explorer" sub="Every sale, draw and pass. No names" />
         </RowList>
       </Columns>
@@ -262,8 +291,15 @@ export function ProtocolScreen() {
 const signalPill = { watch: { tone: "slow" as const, text: "Watch" }, ok: { tone: "saving" as const, text: "OK" } };
 const logPill = { down: { tone: "risk" as const, text: "Lowered" }, watch: { tone: "slow" as const, text: "Watch" }, ok: { tone: "saving" as const, text: "Info" } };
 
-export function RiskScreen() {
+const logKind = (k: string): keyof typeof logPill => (k === "down" ? "down" : k === "warn" || k === "watch" ? "watch" : "ok");
+const linesOf = (l: { reason: string; reasons?: string[] | undefined }) => l.reasons ?? reasonLines(l.reason);
+
+export function RiskScreen({ initial }: { initial: RiskView | null }) {
+  const { data, error } = useMRA(q.risk, { initial });
+  if (!data) return <MRAState error={error} />;
+  const { signals, riskLog } = data;
   const [latest, ...rest] = riskLog;
+  const latestKind = latest ? logKind(latest.kind) : "ok";
   return (
     <LendShell note="Signals and every limit change are public, with the Risk agent's reasons.">
       <PageHead label="Risk agent" title="Risk">
@@ -273,16 +309,16 @@ export function RiskScreen() {
         <Stack gap="lg">
           {latest ? (
             <Pub>
-              <Card className="border-caution/50">
+              <Card className={latestKind === "down" ? "border-caution/50" : undefined}>
                 <div className="flex items-center justify-between gap-3">
-                  <Pill tone="slow">Limits lowered</Pill>
-                  <span className="font-ledger text-ledger text-charcoal-soft">Today {latest.time}</span>
+                  {latestKind === "down" ? <Pill tone="slow">Limits lowered</Pill> : <Pill tone={logPill[latestKind].tone}>{logPill[latestKind].text}</Pill>}
+                  <span className="font-ledger text-ledger text-charcoal-soft">{isMock ? `Today ${latest.time}` : latest.time}</span>
                 </div>
                 <Heading level={2} size="h2">
                   {latest.title}
                 </Heading>
                 <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                  {latest.reasons.map((r) => (
+                  {linesOf(latest).map((r) => (
                     <li key={r} className="flex gap-2 font-body text-note text-charcoal-soft">
                       <span aria-hidden className="text-hunter">
                         →
@@ -300,14 +336,14 @@ export function RiskScreen() {
               <Card>
                 <ActivityList
                   label="Earlier risk decisions, newest first"
-                  items={rest.map((l) => ({
-                    id: l.title,
+                  items={rest.map((l, i) => ({
+                    id: `${l.title}-${i}`,
                     title: l.title,
                     when: l.time,
-                    tag: <Pill tone={logPill[l.kind].tone}>{logPill[l.kind].text}</Pill>,
+                    tag: <Pill tone={logPill[logKind(l.kind)].tone}>{logPill[logKind(l.kind)].text}</Pill>,
                     detail: (
                       <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                        {l.reasons.map((r) => (
+                        {linesOf(l).map((r) => (
                           <li key={r}>{r}</li>
                         ))}
                       </ul>

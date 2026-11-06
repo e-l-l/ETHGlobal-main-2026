@@ -79,3 +79,14 @@ export function splitSale(total: number, holdbackPct: number) {
 }
 
 export const truncate = (s: string, head = 6, tail = 4) => (s.length <= head + tail + 1 ? s : `${s.slice(0, head)}…${s.slice(-tail)}`);
+
+/**
+ * Junior coverage, as anay-docs/economics.md defines it: (junior + reserve) as a share of outstanding advances.
+ * `undefined` with nothing outstanding (there is nothing to cover). Display caps at ">999%": early on a testnet a few
+ * dollars outstanding against a funded junior gives five-digit percentages that read like a bug.
+ */
+export function coveragePct(juniorAssets: bigint, reserve: bigint, outstanding: bigint): number | undefined {
+  if (outstanding <= 0n) return undefined;
+  return ((usd(juniorAssets) + usd(reserve)) / usd(outstanding)) * 100;
+}
+export const coverageStr = (pct: number | undefined) => (pct === undefined ? "—" : pct > 999 ? ">999%" : pctStr(pct));

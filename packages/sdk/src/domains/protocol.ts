@@ -4,7 +4,7 @@ import type { Ctx } from "../context.js";
 import * as L from "../mock/lend.js";
 import type { ExplorerEventVM, ExplorerShopVM, ExplorerView, LossTier, ProtocolView, RiskLogVM, RiskView, SignalVM, TierCapVM } from "../viewmodels.js";
 import { lenderSnapshot } from "./lender.js";
-import { ago, clock, money, pctStr, pseudonymOf, shortDate, usd } from "./util.js";
+import { ago, clock, coveragePct, coverageStr, money, pseudonymOf, shortDate, usd } from "./util.js";
 
 const BLOCKS_PER_DAY = 7_200n;
 
@@ -41,9 +41,9 @@ export function signalsFrom(status: RiskStatus, coveragePct?: number): SignalVM[
   }
   out.push({
     name: "Junior coverage",
-    value: coveragePct !== undefined ? pctStr(coveragePct) : "—",
+    value: coverageStr(coveragePct),
     state: coveragePct !== undefined && coveragePct < 15 ? "watch" : "ok",
-    note: coveragePct !== undefined && coveragePct < 15 ? "Below the 15% floor" : "Above the 15% floor",
+    note: coveragePct === undefined ? "No advances outstanding" : coveragePct < 15 ? "Below the 15% floor" : "Above the 15% floor",
   });
   return out;
 }
@@ -108,7 +108,7 @@ export function protocolDomain(ctx: Ctx) {
         return ctx.mocked({ signals: L.signals.map((x) => ({ ...x })), riskLog: L.riskLog.map((x) => ({ ...x })), tierCaps: L.TIER_CAPS.map((x) => ({ ...x })), triggers: ["junior_twap_drop"], source: "mock" as const });
       }
       const [status, snap] = await Promise.all([ctx.api().riskStatus(), ctx.chain().protocol()]);
-      const coverage = snap.seniorOutstanding > 0n ? (usd(snap.juniorAssets) / usd(snap.seniorOutstanding)) * 100 : undefined;
+      const coverage = coveragePct(snap.juniorAssets, snap.reserve, snap.seniorOutstanding);
       const changed = await ctx.chain().bookLogs("LimitsChanged").catch(() => []);
       const prev = changed.at(-2)?.args.caps as bigint[] | undefined;
       const log: RiskLogVM[] = [...riskLogFrom(status)];

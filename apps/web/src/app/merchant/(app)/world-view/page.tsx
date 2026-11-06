@@ -1,12 +1,16 @@
 import { Page, PageHead } from "@/final";
+import { serverView } from "@/lib/mra";
+import { q } from "@/lib/mra-queries";
 import { routes } from "@/lib/routes";
 import { WorldViewLists } from "./world-view-lists";
 
-export default function WorldViewPage() {
+/** P01 What the world sees: `world.publicView()`. */
+export default async function WorldViewPage() {
+  const initial = await serverView(q.world);
   return (
     <Page tabs>
       <PageHead back={routes.merchant} backLabel="Home" label="World view · on every screen" title="What the world sees." />
-      <WorldViewLists />
+      <WorldViewLists initial={initial} />
     </Page>
   );
 }

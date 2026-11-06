@@ -144,6 +144,7 @@ export function createContext(cfg: ResolvedConfig): Ctx {
         deployment: cfg.deployment ?? deploymentFor(mode as "local" | "sepolia"),
         url: cfg.rpc.url,
         timeoutMs: cfg.timeoutMs,
+        ...(cfg.rpc.multicall === false ? { multicall: false } : {}),
         ...(fetchFn ? { fetchFn } : {}),
         ...(cfg.wallet ? { wallet: cfg.wallet } : {}),
       });

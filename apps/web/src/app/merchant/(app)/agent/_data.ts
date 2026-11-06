@@ -1,3 +1,4 @@
+import type { ActivityVM } from "@repo/sdk";
 import { formatMoney } from "@/lib/format";
 import { agentLimits, currentTier, limitsLadder } from "@/lib/mock/shop";
 
@@ -67,3 +68,17 @@ export const decisionLabel = {
 
 export const purposes = ["stock", "rent", "repairs"] as const;
 export const perMonthOptions = [100, 200, 300, 500] as const;
+
+/**
+ * Live modes: the agent's real log (`agent.log().activity`) in the same card shape. The SDK reports a kind per event;
+ * a draw is "drew", a refusal "declined", a skip "waited", the rest (approved, revoked, idle) "paused".
+ */
+export function decisionsFrom(activity: ActivityVM[], limits: { perAdvance: number; perMonth: number; purpose: string }): Decision[] {
+  const inside = [`Inside your ${formatMoney(limits.perAdvance)} per-advance limit`, `Inside your ${formatMoney(limits.perMonth)} monthly limit`, `Only for ${limits.purpose}`];
+  return activity.map((a) => {
+    const text = `${a.title} ${a.reason}`.toLowerCase();
+    const kind: DecisionKind =
+      a.kind === "accent" ? "drew" : a.kind === "warn" || /declin|limit/.test(text) ? "declined" : /skip|wait/.test(text) ? "waited" : "paused";
+    return { id: a.id, kind, when: a.time, title: a.title, why: a.reason, limits: kind === "drew" ? inside : [] };
+  });
+}

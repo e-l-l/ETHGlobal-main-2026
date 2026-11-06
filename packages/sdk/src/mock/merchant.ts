@@ -4,7 +4,8 @@
  * Shared shop / advance numbers live in ./shop.ts.
  */
 import type { ActivityKind } from "../viewmodels.js";
-import { APP_NAME } from "./brand.js";
+import { appUrl } from "./brand.js";
+import { routes } from "./routes.js";
 import { formatMoney } from "../format.js";
 import { advance, agentLimits, shop, toUsd } from "./shop.js";
 
@@ -167,7 +168,7 @@ export const cashOut = {
 
 export const myQr = {
   /** Shown under the QR; also the encoded value until real pay links exist. */
-  payLink: `pay.${APP_NAME}/corner-kiosk`,
+  payLink: appUrl(routes.pay),
   howToPay: [
     "Scan with any phone camera, no app needed",
     "Pay in any token; you always get dollars",

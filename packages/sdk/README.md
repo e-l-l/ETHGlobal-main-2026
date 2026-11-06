@@ -113,11 +113,18 @@ Notes:
 
 ## Mock mode is identical to apps/web
 
-`src/mock/*` is a **copy** of `apps/web/src/lib/mock/{shop,merchant,lend,catalog}.ts` (plus `routes.ts` and `brand.ts`). Only the import paths were rewritten; each file's header names its source. The SDK never imports apps/web.
+`src/mock/*` mirrors the frontend's demo data: `apps/web/src/lib/mock/{shop,merchant}.ts` for the merchant screens and `apps/web/src/screens/lend/data.ts` for the lender and public screens (plus `routes.ts` and `brand.ts`). The SDK never imports apps/web.
 
-`test/mock-parity.test.ts` deep-compares every mock-mode view-model with the live apps/web files. That suite needs apps/web's tsconfig to resolve, which means running `pnpm install` at the root, or pointing `MRA_WEB_SRC` at a copy. If either mock file changes, the test fails until the copy is updated.
+- **One ARS rate.** `ARS_PER_USD` (1,010, apps/web's example rate) is the mock shop's rate *and* the default `fx` in every mode, so the pay page and Home never disagree. apps/web passes the same constant as `fx`.
+- **Numbers vs strings.** apps/web's lender `VAULT` holds numbers (`sharePrice: 1.024`); the SDK's `VaultVM` holds display strings (`"$1.024"`). The lender screens parse them once (`screens/lend/vault.ts`).
+- **Screen-only data.** The merchant agent's decision cards (`app/merchant/(app)/agent/_data.ts`) stay in apps/web for mock mode; live modes map `agent.log().activity` onto the same cards.
 
-> **Heads-up for the lender screens:** `apps/web/src/screens/lend/{screens,client}.tsx` import `./data`, a second copy whose `VAULT` uses **numbers** (for example `sharePrice: 1.024`, `walletUsdc: 2500`). `lib/mock/lend.ts` uses **display strings** (`"$1.024"`, `"$2,500"`). The SDK follows `lib/mock/lend.ts`, so those screens need to read the string fields (or delete `screens/lend/data.ts`) when they switch.
+`test/mock-parity.test.ts` deep-compares the SDK's mock values and mock-mode view-models with those apps/web files. That suite needs apps/web's tsconfig to resolve, which means running `pnpm install` at the root, or pointing `MRA_WEB_SRC` at a copy. If an apps/web mock file changes, the test fails until `src/mock/*` is updated.
+
+### Estimates and ratios in live modes
+
+- **Days left** (`AdvanceVM.etaDays`, `week.newEstimateDays`, `daysLeftEstimates`): the last 7 days' repayment pace, only once there are `ETA_MIN_SALES` (3) repaying sales. Before that it is the agent's own estimate when there is one, else `0` = "no estimate yet" (screens hide the number).
+- **Junior coverage** (`VaultVM.coverage`, the P03 signal): `(junior + reserve) / outstanding advances`, as `anay-docs/economics.md` defines it. `"—"` with nothing outstanding, `">999%"` above 999%.
 
 ## From mock to Sepolia
 

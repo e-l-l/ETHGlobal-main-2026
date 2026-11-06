@@ -30,6 +30,8 @@ export type ChainOptions = {
   /** Max block span per eth_getLogs call (public RPCs cap it). */
   logChunk?: number;
   timeoutMs?: number;
+  /** Batch reads via Multicall3 when the chain has it. Default true. */
+  multicall?: boolean;
 };
 
 export type AdvanceOnchain = {
@@ -151,10 +153,13 @@ export function createChain(opts: ChainOptions): Chain {
   const chain = chainFor(d.chainId);
   const transport = http(opts.url, {
     ...(opts.fetchFn ? { fetchFn: opts.fetchFn as typeof fetch } : {}),
-    retryCount: 1,
+    retryCount: 3,
     timeout: opts.timeoutMs ?? 20_000,
   });
-  const client = createPublicClient({ chain, transport }) as PublicClient;
+  // Batch the screens' parallel eth_calls into Multicall3 calls where the chain has it (Sepolia does; a bare anvil
+  // doesn't), so public RPCs don't rate-limit a screen that reads ~20 values at once.
+  const multicall = opts.multicall !== false && !!(chain as { contracts?: { multicall3?: unknown } }).contracts?.multicall3;
+  const client = createPublicClient({ chain, transport, ...(multicall ? { batch: { multicall: true } } : {}) }) as PublicClient;
   const A = {
     book: d.AdvanceBook as Addr,
     registry: d.BusinessPassRegistry as Addr,

@@ -18,7 +18,7 @@ import type {
   TxStep,
   VaultVM,
 } from "../viewmodels.js";
-import { ago, clock, int, money, num, pctStr, shortDate, toBase, usd } from "./util.js";
+import { ago, clock, coveragePct, coverageStr, int, money, num, pctStr, shortDate, toBase, usd } from "./util.js";
 
 const DAY = 86_400;
 const BLOCKS_PER_DAY = 7_200n;
@@ -100,7 +100,7 @@ export async function lenderSnapshot(ctx: Ctx): Promise<LenderSnapshot> {
     juniorCushion: money(usd(snap.juniorAssets)),
     juniorBalance: pos ? `${num(usd(pos.juniorShares), 0)} jUSD` : dash,
     reserve: money(usd(snap.reserve)),
-    coverage: pctStr(snap.seniorOutstanding > 0n ? (usd(snap.juniorAssets) / usd(snap.seniorOutstanding)) * 100 : 0),
+    coverage: coverageStr(coveragePct(snap.juniorAssets, snap.reserve, snap.seniorOutstanding)),
     feeShareJunior: pctStr(snap.juniorFeeBps / 100, 0),
     feeSplit: `${snap.seniorFeeBps / 100}% senior · ${snap.juniorFeeBps / 100}% junior · ${reserveBps / 100}% reserve`,
     receivedShares: pos ? `${num(usd(pos.seniorShares))} sUSD` : dash,

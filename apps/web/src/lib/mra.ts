@@ -17,6 +17,7 @@
  * prover) are loaded by `./mra-browser` through dynamic import(), only outside mock mode.
  */
 import { createMRA, type MRA, type MRAConfig, type Mode } from "@repo/sdk";
+import { ARS_PER_USD, shop } from "./mock/shop";
 
 export type { MRA };
 
@@ -66,7 +67,8 @@ export const isMock = MRA_MODE === "mock";
 
 /** The config every instance shares. Browser adapters are layered on top in ./mra-browser. */
 export function baseConfig(): MRAConfig {
-  const cfg: MRAConfig = { mode: MRA_MODE };
+  // One ARS rate for every screen: the pay page's "≈ ARS" line and Home's local totals both come from ARS_PER_USD.
+  const cfg: MRAConfig = { mode: MRA_MODE, fx: { currency: shop.localCurrency, usdToLocal: ARS_PER_USD } };
   if (MRA_ENV.apiUrl) cfg.apiUrl = MRA_ENV.apiUrl;
   if (MRA_ENV.issuerUrl) cfg.issuerUrl = MRA_ENV.issuerUrl;
   if (MRA_ENV.account) cfg.account = MRA_ENV.account;

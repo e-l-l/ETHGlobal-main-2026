@@ -4,6 +4,9 @@
  * keep every number here so screens agree with each other.
  */
 
+/** Example rate (apps/web's ARS_PER_USD, anay-design.md section 8). Also the SDK's default `fx` in every mode. */
+export const ARS_PER_USD = 1010;
+
 /* ------------------------------------------------------- Person B screens */
 
 export const SHOP = {
@@ -43,8 +46,8 @@ export const shop = {
   name: "Corner Kiosk",
   pseudonym: "shop_7f3a",
   localCurrency: "ARS",
-  /** 1 USD ≈ 1,500 ARS */
-  usdToLocal: 1500,
+  /** 1 USD ≈ 1,010 ARS (apps/web's ARS_PER_USD). */
+  usdToLocal: ARS_PER_USD,
 } as const;
 
 const drawn = 100;

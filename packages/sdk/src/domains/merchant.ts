@@ -95,9 +95,18 @@ async function loadSales(ctx: Ctx, shopId: Hex, days: number): Promise<SaleEv[]>
   return out.sort((a, b) => b.at - a.at);
 }
 
-function etaFrom(left: number, sales: SaleEv[], now: number, fallback: number) {
-  const week = sales.filter((s) => s.at >= now - 7 * DAY).reduce((t, s) => t + s.repay, 0);
-  return week > 0 ? Math.max(1, Math.ceil(left / (week / 7))) : fallback;
+/** Fewer repaying sales than this in the last 7 days and the pace is noise (one $1 sale → "~800 days"). */
+export const ETA_MIN_SALES = 3;
+
+/**
+ * Days left at the last 7 days' repayment pace. `fallback` when there isn't enough data yet (fewer than
+ * ETA_MIN_SALES repaying sales). 0 means "no estimate yet": screens hide the line instead of inventing one.
+ */
+export function etaFrom(left: number, sales: { at: number; repay: number }[], now: number, fallback: number) {
+  const recent = sales.filter((s) => s.at >= now - 7 * DAY && s.repay > 0);
+  const week = recent.reduce((t, s) => t + s.repay, 0);
+  if (recent.length < ETA_MIN_SALES || !(week > 0)) return fallback;
+  return Math.max(1, Math.ceil(left / (week / 7)));
 }
 
 async function decisionDraft(ctx: Ctx, shopId: Hex) {
@@ -188,7 +197,7 @@ export function merchantDomain(ctx: Ctx) {
       let advance: AdvanceVM | null = null;
       if (loaded) {
         const left = usd(loaded.onchain.totalOwed - loaded.onchain.repaid);
-        advance = advanceVM(loaded.onchain, loaded.openedAt, s.purpose ?? "stock", etaFrom(left, sales, now, S.advance.etaDays), now);
+        advance = advanceVM(loaded.onchain, loaded.openedAt, s.purpose ?? "stock", etaFrom(left, sales, now, 0), now);
       }
       const salesVM: SaleVM[] = sales
         .filter((x) => sameDay(x.at, now))
@@ -214,7 +223,7 @@ export function merchantDomain(ctx: Ctx) {
       const [a, draft] = await Promise.all([requireAdvance(ctx, s.shopId as Hex), decisionDraft(ctx, s.shopId as Hex)]);
       return {
         shop: shopVM(ctx, s.shopName, s.pseudonym),
-        advance: advanceVM(a.onchain, a.openedAt, s.purpose ?? "stock", draft?.est_days_normal ?? S.advance.etaDays, now),
+        advance: advanceVM(a.onchain, a.openedAt, s.purpose ?? "stock", draft?.est_days_normal ?? 0, now),
         drawReasons: draft?.reasons_en ?? [],
         source: "chain",
       };
@@ -242,14 +251,15 @@ export function merchantDomain(ctx: Ctx) {
         cum += sales.filter((x) => x.at >= since + (d - 1) * DAY && x.at < since + d * DAY).reduce((t, x) => t + x.repay, 0);
         points.push(round2(cum));
       }
-      const vm = advanceVM(a.onchain, a.openedAt, s.purpose ?? "stock", etaFrom(usd(a.onchain.totalOwed - a.onchain.repaid), sales, now, draft?.est_days_normal ?? S.advance.etaDays), now);
+      const vm = advanceVM(a.onchain, a.openedAt, s.purpose ?? "stock", etaFrom(usd(a.onchain.totalOwed - a.onchain.repaid), sales, now, draft?.est_days_normal ?? 0), now);
       return {
         advance: vm,
         repaymentCurve: { points, ariaLabel: `Repayment growing from $0 to $${Math.round(cum)} over ${days} days` },
         daysLeftEstimates: [
+          // 0 = no estimate yet (screens hide it).
           { label: "Slow week", days: draft?.est_days_slow ?? vm.etaDays * 2 },
           { label: "Normal", days: draft?.est_days_normal ?? vm.etaDays },
-          { label: "Busy week", days: draft?.est_days_busy ?? Math.max(1, Math.round(vm.etaDays * 0.6)) },
+          { label: "Busy week", days: draft?.est_days_busy ?? (vm.etaDays > 0 ? Math.max(1, Math.round(vm.etaDays * 0.6)) : 0) },
         ],
         source: "chain",
       };
@@ -277,12 +287,12 @@ export function merchantDomain(ctx: Ctx) {
       });
       const left = usd(a.onchain.totalOwed - a.onchain.repaid);
       return {
-        advance: advanceVM(a.onchain, a.openedAt, s.purpose ?? "stock", etaFrom(left, sales, now, S.advance.etaDays), now),
+        advance: advanceVM(a.onchain, a.openedAt, s.purpose ?? "stock", etaFrom(left, sales, now, 0), now),
         week: {
           dayLabels: days.map((d) => labels[new Date(d.t * 1000).getDay()]!),
           days: days.map(({ you, repay }) => ({ you, repay })),
           ariaLabel: "Daily sales this week, split between you and repayment",
-          newEstimateDays: etaFrom(left, sales, now, S.advance.etaDays),
+          newEstimateDays: etaFrom(left, sales, now, 0),
         },
         source: "chain",
       };

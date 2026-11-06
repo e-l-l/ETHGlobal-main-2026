@@ -22,6 +22,16 @@ export const q = {
   agentApprove: (limits?: AgentLimitsInput) => (m: MRA) => m.agent.approveView(limits), // M08
   agentLog: (m: MRA) => m.agent.log(), // M14
   agentStatus: (m: MRA) => m.agent.status(), // M15
+  /** M14 page: the status decides whether there is a log to show (no agent yet → set it up). */
+  agentPage: async (m: MRA) => {
+    const status = await m.agent.status();
+    return { status, log: status.status === "none" ? null : await m.agent.log() };
+  },
+  /** M07 page: defaults, plus the ladder and tier that lock the bigger caps. */
+  agentSetupPage: async (m: MRA) => {
+    const [setup, repaid] = await Promise.all([m.agent.setupOptions(), m.merchant.repaid()]);
+    return { agentLimits: setup.agentLimits, limitsLadder: repaid.limitsLadder, currentTier: repaid.currentTier, source: setup.source };
+  },
 
   /* onboarding */
   pass: (m: MRA) => m.onboarding.pass(), // M04

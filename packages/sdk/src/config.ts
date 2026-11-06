@@ -4,6 +4,7 @@ import type { Prover } from "./adapters/prover.js";
 import type { CredentialVault } from "./adapters/vault.js";
 import type { Deployment } from "./chain/deployments.js";
 import { ConfigError } from "./errors.js";
+import { ARS_PER_USD } from "./mock/shop.js";
 import type { FetchFn } from "./http.js";
 import type { AnonRpcWorkerLike } from "./transport/anon.js";
 import type { Mode } from "./viewmodels.js";
@@ -17,6 +18,8 @@ export type RpcConfig = {
   anonWorker?: AnonRpcWorkerLike;
   /** Or any anonymized fetch. */
   anonFetch?: FetchFn;
+  /** Batch parallel reads into Multicall3 calls when the chain has it (default true). Turn off for RPC fakes. */
+  multicall?: boolean;
   /** If anonRpc is on but no worker was given, read directly instead of failing. Default false (fail closed). */
   allowDirectFallback?: boolean;
 };
@@ -88,7 +91,7 @@ export function resolveConfig(cfg: MRAConfig): ResolvedConfig {
   const out: ResolvedConfig = {
     ...cfg,
     rpc: { ...cfg.rpc, url },
-    fx: cfg.fx ?? { currency: "ARS", usdToLocal: 1500 },
+    fx: cfg.fx ?? { currency: "ARS", usdToLocal: ARS_PER_USD },
     timeoutMs: cfg.timeoutMs ?? 20_000,
   };
   const apiUrl = cfg.apiUrl ?? (local ? DEFAULTS.local.apiUrl : undefined);

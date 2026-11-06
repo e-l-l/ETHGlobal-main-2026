@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   ActionBar,
@@ -12,6 +12,7 @@ import {
   Chips,
   Heading,
   JarMark,
+  KeyValue,
   LangToggle,
   Label,
   Ledger,
@@ -27,10 +28,14 @@ import {
   TextLink,
   WorldMark,
 } from "@/final";
+import type { BusinessPassView, ProveStep } from "@repo/sdk";
 import { appUrl } from "@/lib/brand";
 import { copy, type Lang } from "@/lib/copy";
-import { isFailReason, routes, verifyingHref, type FailReason } from "@/lib/routes";
-import { shop, SHOP_NAME_IDEAS } from "@/lib/mock/shop";
+import { explorerTxUrl, isMock, withMRA } from "@/lib/mra";
+import { q } from "@/lib/mra-queries";
+import { MRAState } from "@/lib/mra-state";
+import { failedHref, isFailReason, routes, verifyingHref, type FailReason } from "@/lib/routes";
+import { useMRA, useMRAAction } from "@/lib/use-mra";
 import { useWorldView } from "@/lib/world-view";
 
 /* ---------------------------------------------------------- Shared bits */
@@ -87,30 +92,77 @@ export function FailSheet({ lang }: { lang: Lang }) {
 }
 
 /* ---------------------------------------------------------- M03 Verifying
- * The proof runs; the screen moves on by itself. Cancel is always there.
- * A failing outcome stops on the second step, the way a real check would.
+ * The proof runs through `onboarding.proveBusiness({ onStep })`; the SDK's steps drive the list and the result
+ * routes: a pass → M04, `ok: false` → M05 with its reason. Cancel is always there (it aborts the proof).
+ * Real modes: the issuer checks the portal facts, then this device's burner wallet sends BusinessPassRegistry.issue
+ * (gas from the demo faucet). Steps are paced so each one is seen (mock resolves at once).
  */
 const TIMING = [900, 2100, 3000, 3600]; // ms: read done, check done, saved, leave
+
+/** SDK step → how many of the three list items are done. */
+const STEP_DONE: Record<ProveStep, number> = {
+  starting: 0,
+  waiting_for_portal: 0,
+  proof_received: 1,
+  issuing: 1,
+  registering: 2,
+  saved: 3,
+};
+
+/** The demo portal's outcome → the seeded account that produces it (the SDK mock and the issuer's ISSUER_MOCK). */
+const OUTCOME_ACCOUNT: Record<FailReason, string> = { "too-new": "newshop", suspended: "suspended", "revenue-low": "lowrevenue" };
 
 export function VerifyingScreen({ lang, outcome }: { lang: Lang; outcome?: string }) {
   const c = copy[lang];
   const t = c.verifying;
   const router = useRouter();
   const fail = isFailReason(outcome) ? outcome : undefined;
-  const [done, setDone] = useState(0);
+  const [reached, setReached] = useState(0); // furthest step the SDK reported
+  const [tick, setTick] = useState(0); // pacing: one step per TIMING slot at most
+  const [failed, setFailed] = useState<string | undefined>();
+  const done = Math.min(reached, tick);
+  // One proof per visit. React's dev double-mount must not start a second one: past the portal step a proof can't be
+  // cancelled (the issuer signs, the wallet sends BusinessPassRegistry.issue), so both would land onchain.
+  const proof = useRef<{ fail: FailReason | undefined; run: Promise<{ dest: string; at: number } | { error: string }> } | null>(null);
 
   useEffect(() => {
-    const dest = fail ? `${routes.failed}?reason=${fail}` : routes.pass;
-    router.prefetch(dest);
-    const timers = fail
-      ? [window.setTimeout(() => setDone(1), TIMING[0]), window.setTimeout(() => router.replace(dest), TIMING[1])]
-      : [
-          window.setTimeout(() => setDone(1), TIMING[0]),
-          window.setTimeout(() => setDone(2), TIMING[1]),
-          window.setTimeout(() => setDone(3), TIMING[2]),
-          window.setTimeout(() => router.replace(dest), TIMING[3]),
-        ];
-    return () => timers.forEach(window.clearTimeout);
+    let alive = true;
+    const t0 = performance.now();
+    const at = (ms: number) => new Promise((r) => window.setTimeout(r, Math.max(0, t0 + ms - performance.now())));
+    const timers = TIMING.slice(0, 3).map((ms, i) => window.setTimeout(() => setTick(i + 1), ms));
+    router.prefetch(routes.pass);
+
+    if (!proof.current || proof.current.fail !== fail) {
+      // Real modes: gas for BusinessPassRegistry.issue from the demo faucet while the proof runs (once per device;
+      // the SDK asks again before the transaction if this hasn't finished). Mock: a no-op.
+      void withMRA((m) => m.wallet.ensureFunded()).catch(() => undefined);
+      const run = withMRA((m) =>
+        m.onboarding.proveBusiness({
+          ...(fail ? { account: OUTCOME_ACCOUNT[fail] } : {}),
+          onStep: (st) => setReached((n) => Math.max(n, STEP_DONE[st])),
+        }),
+      ).then(
+        (r) => (r.ok ? { dest: routes.pass as string, at: TIMING[3]! } : { dest: r.reason === "error" ? routes.failed : failedHref(r.reason), at: TIMING[1]! }),
+        // A network / chain error is not a verdict on the shop: say so and offer a retry instead of M05.
+        (e: unknown) => ({ error: e && typeof e === "object" && "code" in e ? String((e as { code: unknown }).code) : "error" }),
+      );
+      proof.current = { fail, run };
+    }
+
+    void proof.current.run.then(async (r) => {
+      if ("error" in r) {
+        if (alive) setFailed(r.error);
+        return;
+      }
+      if (r.dest === routes.pass) setReached(3);
+      await at(r.at);
+      if (alive) router.replace(r.dest);
+    });
+
+    return () => {
+      alive = false;
+      timers.forEach(window.clearTimeout);
+    };
   }, [fail, router]);
 
   const steps = t.steps.map((label, i) => ({
@@ -133,6 +185,11 @@ export function VerifyingScreen({ lang, outcome }: { lang: Lang; outcome?: strin
           </Card>
         </World>
         <WorldNote>{t.world}</WorldNote>
+        {failed ? (
+          <Banner tone="caution">
+            {lang === "es" ? `No pudimos terminar el chequeo (${failed}). No se guardó nada.` : `The check couldn't finish (${failed}). Nothing was saved.`}
+          </Banner>
+        ) : null}
         <p role="status" className="sr-only">
           {steps.find((s) => s.state === "current")?.label ?? t.steps[t.steps.length - 1]}
         </p>
@@ -148,13 +205,28 @@ export function VerifyingScreen({ lang, outcome }: { lang: Lang; outcome?: strin
 
 /* --------------------------------------------------------- M06 Create shop
  * The QR updates as you type, so the name and what customers will see are one thing.
+ * Name ideas come from `onboarding.nameIdeas()`. Live modes: the CTA is `onboarding.createShop(name)` (a fresh
+ * pseudonymous shop id registered onchain from this device's wallet), then M07. Mock keeps the plain link.
  */
-export function ShopScreen({ lang }: { lang: Lang }) {
+type ShopDraft = { nameIdeas: string[]; pseudonym: string };
+
+export function ShopScreen({ lang, initial }: { lang: Lang; initial: ShopDraft | null }) {
+  const { data, error } = useMRA(q.shopDraft, { initial });
+  if (!data) return <MRAState error={error} />;
+  return <ShopForm lang={lang} draft={data} />;
+}
+
+function ShopForm({ lang, draft }: { lang: Lang; draft: ShopDraft }) {
   const c = copy[lang];
   const t = c.shop;
-  const [name, setName] = useState<string>(shop.name);
+  const router = useRouter();
+  const create = useMRAAction((m, shopName: string) => m.onboarding.createShop(shopName));
+  const fallbackName = draft.nameIdeas[0] ?? "";
+  const [name, setName] = useState<string>(fallbackName);
   const clean = name.trim();
   const payUrl = appUrl(routes.pay);
+  // Live: the pseudonym is minted on create (random id), so there is none to show before.
+  const pseudonym = isMock ? draft.pseudonym : (create.pending ? "shop_…" : "shop_····");
 
   return (
     <>
@@ -175,30 +247,70 @@ export function ShopScreen({ lang }: { lang: Lang }) {
             autoCapitalize="words"
             enterKeyHint="done"
           />
-          <Chips label={t.ideas} value={clean} onChange={setName} options={SHOP_NAME_IDEAS.map((n) => ({ value: n, label: n }))} />
+          <Chips label={t.ideas} value={clean} onChange={setName} options={draft.nameIdeas.map((n) => ({ value: n, label: n }))} />
         </div>
         <World kind="pub">
           <Card aria-label={t.qr} className="flex-row items-center gap-4" padding="sm">
-            <QRCode value={payUrl} size={104} label={`${t.qr}: ${clean || shop.name}`} className="p-2.5" />
+            <QRCode value={payUrl} size={104} label={`${t.qr}: ${clean || fallbackName}`} className="p-2.5" />
             <div className="flex min-w-0 flex-col gap-1">
               <Label>{t.qr}</Label>
               <span className="font-display text-h2 [overflow-wrap:anywhere] text-charcoal">{clean || "—"}</span>
-              <Ledger>{shop.id}</Ledger>
+              <Ledger>{pseudonym}</Ledger>
             </div>
           </Card>
         </World>
         <WorldNote>{t.world}</WorldNote>
+        {create.error ? (
+          <Banner tone="caution">
+            {lang === "es" ? `No se pudo crear el kiosco (${create.error}).` : `Couldn't create the shop (${create.error}).`}
+          </Banner>
+        ) : null}
         <ActionBar>
-          {clean.length >= 2 ? (
+          {clean.length < 2 ? (
+            <Button disabled>{t.empty}</Button>
+          ) : isMock ? (
             <Button href={routes.agent.setup}>{t.cta}</Button>
           ) : (
-            <Button disabled>
-              {t.empty}
+            <Button
+              loading={create.pending}
+              onClick={() => {
+                create.run(clean).then(
+                  () => router.push(routes.agent.setup),
+                  () => undefined,
+                );
+              }}
+            >
+              {t.cta}
             </Button>
           )}
           <TextLink href={routes.pay}>{t.preview}</TextLink>
         </ActionBar>
       </Page>
+    </>
+  );
+}
+
+/* ---------------------------------------------------------- M04 pass facts
+ * The facts on the Business Pass, from `onboarding.pass()` (this device's vault in real modes). Labels stay in the
+ * app language; values come from the SDK. Live: the issue transaction links to Etherscan.
+ */
+export function PassFacts({ lang, initial }: { lang: Lang; initial: BusinessPassView | null }) {
+  const labels = copy[lang].pass.facts;
+  const { data, error } = useMRA(q.pass, { initial });
+  if (data === undefined) return <MRAState error={error} />;
+  if (data === null) {
+    return <Text size="note">{lang === "es" ? "Todavía no hay un pase en este teléfono." : "No pass on this phone yet."}</Text>;
+  }
+  const values = [data.country, `${lang === "es" ? "Banda" : "Band"} ${data.band}`, lang === "es" ? data.months.replace("months", "meses") : data.months];
+  const tx = explorerTxUrl(data.txHash);
+  return (
+    <>
+      <KeyValue rows={labels.map((f, i) => [f.k, values[i] ?? f.v])} />
+      {tx ? (
+        <TextLink href={tx} target="_blank" rel="noreferrer" arrow>
+          {lang === "es" ? "Ver el registro en Etherscan" : "See the record on Etherscan"}
+        </TextLink>
+      ) : null}
     </>
   );
 }

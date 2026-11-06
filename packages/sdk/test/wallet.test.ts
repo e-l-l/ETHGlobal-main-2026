@@ -42,7 +42,7 @@ async function realMra(net: ReturnType<typeof fakeNet>, extra: Record<string, un
   return createMRA({
     mode: "sepolia",
     apiUrl: "http://api.test",
-    rpc: { url: "http://rpc.test", anonRpc: true, anonFetch: net.rpc },
+    rpc: { url: "http://rpc.test", anonRpc: true, anonFetch: net.rpc, multicall: false },
     fetch: net.api,
     vault,
     wallet,
@@ -136,7 +136,7 @@ describe("pay link (SDK gap 6)", () => {
     const mra2 = createMRA({
       mode: "sepolia",
       apiUrl: "http://api.test",
-      rpc: { url: "http://rpc.test", anonRpc: true, anonFetch: rpc },
+      rpc: { url: "http://rpc.test", anonRpc: true, anonFetch: rpc, multicall: false },
       vault: mra.raw.vault,
       payUrl: "https://app.test/pay/corner-kiosk",
     });

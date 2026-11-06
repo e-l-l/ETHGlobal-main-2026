@@ -9,7 +9,6 @@ import {
   GradientHero,
   Heading,
   JarMark,
-  KeyValue,
   Label,
   LockIcon,
   PageHead,
@@ -20,7 +19,8 @@ import {
 } from "@/final";
 import { copy, type Lang } from "@/lib/copy";
 import { isFailReason, routes } from "@/lib/routes";
-import { FailSheet, OnboardingHeader, World, WorldNote } from "./onboarding-client";
+import type { BusinessPassView } from "@repo/sdk";
+import { FailSheet, OnboardingHeader, PassFacts, World, WorldNote } from "./onboarding-client";
 
 function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
@@ -103,8 +103,8 @@ export function ProveScreen({ lang }: { lang: Lang }) {
   );
 }
 
-/* M04 Business Pass. A rare, first-time moment. */
-export function PassScreen({ lang }: { lang: Lang }) {
+/* M04 Business Pass. A rare, first-time moment. The facts come from `onboarding.pass()` (this device's vault). */
+export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPassView | null }) {
   const c = copy[lang];
   const t = c.pass;
   return (
@@ -127,7 +127,7 @@ export function PassScreen({ lang }: { lang: Lang }) {
               </span>
               <Pill tone="locked">{lang === "es" ? "En este teléfono" : "On this phone"}</Pill>
             </div>
-            <KeyValue rows={t.facts.map((f) => [f.k, f.v])} />
+            <PassFacts lang={lang} initial={initial} />
             <p className="m-0 font-body text-read font-bold text-charcoal">{t.learned}</p>
           </Card>
         </World>

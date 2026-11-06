@@ -58,7 +58,7 @@ describe("createAnonRpc", () => {
     const anon = createAnonRpc({ workerFactory: h.factory, directFetch: direct, onStatus: (s) => statuses.push(s.phase) });
     expect(anon.status()).toMatchObject({ phase: "connecting", label: "Connecting privately…", network: "nox", anonymous: true });
 
-    const mra = createMRA({ mode: "sepolia", apiUrl: "https://api.test", rpc: anon.rpcConfig() });
+    const mra = createMRA({ mode: "sepolia", apiUrl: "https://api.test", rpc: { ...anon.rpcConfig(), multicall: false } });
     expect(mra.network()).toMatchObject({ rpc: "anon", chainId: 11155111 });
     const chain = mra.raw.chain();
     await chain.blockNumber();
@@ -89,7 +89,7 @@ describe("createAnonRpc", () => {
   it("targets any https RPC URL (our devnet) and forwards isolation keys", async () => {
     const h = fakeHarness();
     const anon = createAnonRpc({ network: "tor-js", rpc: { url: "https://rpc.devnet.example" }, isolationKey: "shop_ab12", workerFactory: h.factory, directFetch: bootstrapOk });
-    const mra = createMRA({ mode: "sepolia", apiUrl: "https://api.test", rpc: anon.rpcConfig() });
+    const mra = createMRA({ mode: "sepolia", apiUrl: "https://api.test", rpc: { ...anon.rpcConfig(), multicall: false } });
     await mra.raw.chain().blockNumber();
     await anon.isolated("shop_other")("https://rpc.devnet.example", { method: "POST", body: JSON.stringify({ jsonrpc: "2.0", id: 9, method: "eth_chainId" }) });
     expect(h.seen[0]).toMatchObject({ url: expect.stringMatching(/^https:\/\/rpc\.devnet\.example\/?$/), isolationKey: "shop_ab12" });
@@ -103,7 +103,7 @@ describe("createAnonRpc", () => {
     const h = fakeHarness({ fail: { code: "bad-config", message: "gateways missing" } });
     const direct = vi.fn((u: string, i?: RequestInit) => bootstrapOk(u, i));
     const anon = createAnonRpc({ workerFactory: h.factory, directFetch: direct });
-    const mra = createMRA({ mode: "sepolia", apiUrl: "https://api.test", rpc: anon.rpcConfig() });
+    const mra = createMRA({ mode: "sepolia", apiUrl: "https://api.test", rpc: { ...anon.rpcConfig(), multicall: false } });
     await expect(anon.ready).rejects.toMatchObject({ code: "anon_rpc_unavailable" });
     await expect(mra.raw.chain().blockNumber()).rejects.toMatchObject({ code: "chain_read_failed" });
     expect(anon.status()).toMatchObject({ phase: "failed", error: { code: "bad-config" } });
@@ -124,7 +124,7 @@ describe("createAnonRpc", () => {
     const h = fakeHarness({ fail: { code: "unsupported-platform", message: "no WebRTC" } });
     const direct = vi.fn(async (_u: string, init?: RequestInit) => new Response(JSON.stringify(rpcAnswer(String(init?.body)))));
     const anon = createAnonRpc({ workerFactory: h.factory, directFetch: direct, allowDirectFallback: true });
-    const mra = createMRA({ mode: "sepolia", apiUrl: "https://api.test", rpc: anon.rpcConfig() });
+    const mra = createMRA({ mode: "sepolia", apiUrl: "https://api.test", rpc: { ...anon.rpcConfig(), multicall: false } });
     await mra.raw.chain().blockNumber();
     expect(anon.stats()).toMatchObject({ routed: 0, direct: 1, routedShare: 0 });
   });
