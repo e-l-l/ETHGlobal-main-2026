@@ -57,7 +57,7 @@ export async function lenderSnapshot(ctx: Ctx): Promise<LenderSnapshot> {
   const account = (chain.walletAddress() ?? ctx.cfg.account) as Addr | undefined;
   const latest = await chain.blockNumber();
   const from30d = latest > 30n * BLOCKS_PER_DAY ? latest - 30n * BLOCKS_PER_DAY : 0n;
-  const [snapR, posR, twapR, spotR, woR, shopsR, splitR, deployR, depR, wdR] = await Promise.allSettled([
+  const [snapR, posR, twapR, spotR, woR, shopsR, splitR, deployR, depR, wdR, lateR] = await Promise.allSettled([
     chain.protocol(),
     account ? chain.position(account) : Promise.resolve(null),
     chain.juniorTwapTick(3600),
@@ -68,6 +68,7 @@ export async function lenderSnapshot(ctx: Ctx): Promise<LenderSnapshot> {
     chain.blockTime(BigInt(chain.deployment.deployBlock)),
     account ? chain.vaultLogs("senior", "Deposit", { owner: account }) : Promise.resolve([]),
     account ? chain.vaultLogs("senior", "Withdraw", { owner: account }) : Promise.resolve([]),
+    chain.bookLogs("LateFeePaid", undefined, from30d, latest),
   ]);
   if (snapR.status === "rejected") throw snapR.reason;
   const snap = snapR.value;
@@ -83,7 +84,7 @@ export async function lenderSnapshot(ctx: Ctx): Promise<LenderSnapshot> {
   const repaid30d = (settled(splitR) ?? []).reduce(
     (t, e) => t + usd((e.args.principalPart as bigint) + (e.args.seniorFee as bigint) + (e.args.juniorFee as bigint) + (e.args.reserveFee as bigint)),
     0,
-  );
+  ) + (settled(lateR) ?? []).reduce((t, e) => t + usd(e.args.amount as bigint), 0); // late fee: 100% to the reserve
   const writtenOff = writeOffs.reduce((t, e) => t + usd(e.args.loss as bigint), 0);
   const reserveBps = snap.reserveFeeBps;
   const twap = settled(twapR);

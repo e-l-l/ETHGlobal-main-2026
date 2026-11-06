@@ -45,6 +45,11 @@ export type AdvanceOnchain = {
   drawnAt?: bigint;
   feeRateBpsPerWeek?: number;
   feeCapBps?: number;
+  /** Late fee accrued so far, paid + unpaid (AdvanceBook.lateFeeOf). Only while behind the minimum; 100% to the reserve. */
+  lateFee?: bigint;
+  lateFeePaid?: bigint;
+  /** AdvanceBook.isBehind: behind the 1%-per-7-days minimum, so the late fee is accruing now. */
+  isBehind?: boolean;
   repaid: bigint;
   /** Principal returned so far (the rest of `repaid` was fee). Optional so older fakes still type-check. */
   principalRepaid?: bigint;
@@ -365,9 +370,11 @@ export function createChain(opts: ChainOptions): Chain {
     },
 
     async advance(id: bigint): Promise<AdvanceOnchain> {
-      const [a, owedNow, head] = await Promise.all([
+      const [a, owedNow, lateFee, isBehind, head] = await Promise.all([
         read("advance", () => book("getAdvance", [id])),
         read("advance owed", () => book("owedOf", [id])),
+        read("advance late fee", () => book("lateFeeOf", [id])),
+        read("advance behind", () => book("isBehind", [id])),
         client.getBlock(),
       ]);
       const rawFee = a.principal * BigInt(a.feeRateBpsPerWeek) * (head.timestamp - a.drawnAt) / (10_000n * 604_800n);
@@ -384,6 +391,9 @@ export function createChain(opts: ChainOptions): Chain {
         drawnAt: a.drawnAt,
         feeRateBpsPerWeek: Number(a.feeRateBpsPerWeek),
         feeCapBps: Number(a.feeCapBps),
+        lateFee,
+        lateFeePaid: a.lateFeePaid,
+        isBehind,
         repaid: a.repaid,
         principalRepaid: a.principalRepaid,
         holdbackBps: Number(a.holdbackBps),

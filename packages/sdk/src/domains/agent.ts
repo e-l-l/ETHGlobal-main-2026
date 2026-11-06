@@ -209,7 +209,8 @@ export function agentDomain(ctx: Ctx) {
           feeSoFar: 0, owedNow: limits.perAdvance, total: limits.perAdvance, left: limits.perAdvance,
           feeIfRepaidIn1Week: limits.perAdvance * 0.005, feeIfRepaidIn2Weeks: limits.perAdvance * 0.01,
           feeIfRepaidIn4Weeks: limits.perAdvance * 0.02, feeIfRepaidIn6Weeks: limits.perAdvance * 0.03,
-          maxFeeBps: 300, annualizedCostPercent: 26, repaid: 0, pct: 0 },
+          maxFeeBps: 300, annualizedCostPercent: 26, lateFee: 0, lateFeePaid: 0, isBehind: false, lateFeeHint: null,
+          repaid: 0, pct: 0 },
         agentLimits: { perAdvance: limits.perAdvance, perMonth: limits.perMonth, purpose: limits.purpose ?? "stock" },
         source: "device",
       };
