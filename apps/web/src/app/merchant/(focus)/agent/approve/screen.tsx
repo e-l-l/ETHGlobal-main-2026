@@ -10,7 +10,7 @@ import { capitalize, formatMoney, formatPercent } from "@/lib/format";
 import { isMock } from "@/lib/mra";
 import { q, type AgentLimitsInput } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
-import { agentDeniedHref, blockedHref, redlineHref, routes } from "@/lib/routes";
+import { agentDeniedHref, blockedHref, redlineHref, routes, worldIdHref } from "@/lib/routes";
 import { useMRA, useMRAAction } from "@/lib/use-mra";
 import { WORLD_MODE, useWorldPrompt } from "@/lib/world-prompt";
 import { AgentPassWait } from "../../../_world";
@@ -59,7 +59,7 @@ export function ApproveScreen({
   );
   const worldPrompt = useWorldPrompt("agent-pass");
 
-  const redirect = data ? (data.banned ? blockedHref("banned") : data.humanVerified ? undefined : routes.worldId) : undefined;
+  const redirect = data ? (data.banned ? blockedHref("banned") : data.humanVerified ? undefined : worldIdHref({ bind: true })) : undefined;
   const errorHref = redlineHref(setup.error);
   useEffect(() => {
     const to = redirect ?? errorHref;

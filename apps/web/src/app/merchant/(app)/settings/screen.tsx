@@ -5,7 +5,7 @@ import type { HumanStatusView } from "@repo/sdk";
 import { Button, Card, Columns, CopyHash, KeyValue, Page, PageHead, Pill, Stack, Text } from "@/final";
 import { CURRENCIES, setCurrency, useCurrency, type CurrencyCode } from "@/lib/currency";
 import { isMock, withMRA } from "@/lib/mra";
-import { routes } from "@/lib/routes";
+import { routes, worldIdHref } from "@/lib/routes";
 import { shop } from "@/lib/mock/shop";
 import { CardTitle, DarkBlock, HeroLabel } from "../../_ui";
 
@@ -107,7 +107,7 @@ export function SettingsScreen() {
             <CardTitle>World ID</CardTitle>
             <KeyValue rows={worldRows} />
             {human && !human.humanVerified && !human.banned ? (
-              <Button href={routes.worldId} variant="secondary" width="auto">
+              <Button href={worldIdHref({ bind: true })} variant="secondary" width="auto">
                 Verify with World ID
               </Button>
             ) : null}
