@@ -94,8 +94,8 @@ export const riskLog = [
     time: "Mon",
     title: "Hook fee added to the reserve",
     kind: "accent" as const,
-    reason: "The Uniswap v4 hook on JAR-J/USDC skimmed a small fee into the reserve.",
-    reasons: ["The Uniswap v4 hook on JAR-J/USDC skimmed a small fee into the reserve."],
+    reason: "The Uniswap v4 hook on DRIP/USDC skimmed a small fee into the reserve.",
+    reasons: ["The Uniswap v4 hook on DRIP/USDC skimmed a small fee into the reserve."],
   },
   {
     time: "Sep 3",
@@ -198,7 +198,7 @@ export type LenderKey = (typeof lenderLinks)[number]["key"];
  * Lender risk panel + live loss waterfall (SDK-only mock: apps/web reads it through `lender.riskPanel()` /
  * `lender.waterfall()`). Every overlapping number matches VAULT / TIER_CAPS above (test/lender-risk.test.ts checks):
  * junior $42,000 + reserve $8,400 against $248,000 outstanding = 20.3% coverage; $1,100 written off; 23 write-offs
- * of 1,284 advances = the "1.8%" count rate on Earn; JAR-J $0.982 spot, $0.986 TWAP against a $1.000 book.
+ * of 1,284 advances = the "1.8%" count rate on Earn; DRIP $0.982 spot, $0.986 TWAP against a $1.000 book.
  * ---------------------------------------------------------------------------------------------------------------- */
 
 const SEPOLIA_SCAN = "https://sepolia.etherscan.io/address/";
@@ -251,7 +251,7 @@ export const RISK_PANEL: RiskPanelView = {
     change1hVs24h: "−1.2%",
     ratio: 0.988,
     trigger: { threshold: 0.9, state: "armed", note: "Armed: it fires if the 1h price drops under 0.90× the 24h price." },
-    read: "Traders price JAR-J 1.4% under its book value: they expect losses beyond the $1,100 written off so far.",
+    read: "Traders price DRIP 1.4% under its book value: they expect losses beyond the $1,100 written off so far.",
     tone: "ok",
   },
   agent: {
@@ -270,7 +270,7 @@ export const RISK_PANEL: RiskPanelView = {
   contracts: [
     contract("AdvanceBook", "0x873bb34ad35a66947dbd2f9482d15ba5d400d8db"),
     contract("Senior vault", "0x51892eb237ae06e85b59007270dc28142a69ff95"),
-    contract("Junior vault (JAR-J)", "0x30911a69b90523fa53f2dd3e8096ac3096c61a90"),
+    contract("Junior vault (DRIP)", "0x30911a69b90523fa53f2dd3e8096ac3096c61a90"),
     contract("RiskHook", "0x216ec669911e5e042c73de8f593397a51e00d044"),
   ],
   approximations: [],
@@ -287,7 +287,7 @@ export const WATERFALL: WaterfallView = {
       usd: 37200,
       estimated: true,
     },
-    { key: "junior", title: "Junior (JAR-J)", description: "Cash in the junior vault. Takes the first write-off.", amount: VAULT.junior, usd: 42000, estimated: false },
+    { key: "junior", title: "Junior (DRIP)", description: "Cash in the junior vault. Takes the first write-off.", amount: VAULT.junior, usd: 42000, estimated: false },
     { key: "reserve", title: "Reserve", description: "Fees and hook fees held back. Pays what junior can't.", amount: VAULT.reserve, usd: 8400, estimated: false },
     {
       key: "senior",

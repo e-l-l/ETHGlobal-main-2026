@@ -50,13 +50,13 @@ describe("lender.junior.swap (mock)", () => {
     const mra = createMRA({ mode: "mock" });
     const steps: string[] = [];
     const buy = await mra.lender.junior.swap({ side: "buy", amount: 100, onStep: (s) => steps.push(s.label) });
-    expect(buy).toMatchObject({ simulated: true, side: "buy", tokenIn: "USDC", tokenOut: "JAR-J", amountIn: 100 });
+    expect(buy).toMatchObject({ simulated: true, side: "buy", tokenIn: "USDC", tokenOut: "DRIP", amountIn: 100 });
     expect(buy.hookFeeUsdc).toBeGreaterThan(0);
     expect(buy.amountOut).toBeGreaterThan(90);
     expect(buy.priceAfter).toBeGreaterThan(buy.priceBefore);
     expect(steps).toEqual(["Approve USDC", "Swap on Uniswap v4"]);
     const sell = await mra.lender.junior.swap({ side: "sell", amount: 10 });
-    expect(sell).toMatchObject({ simulated: true, tokenIn: "JAR-J", tokenOut: "USDC" });
+    expect(sell).toMatchObject({ simulated: true, tokenIn: "DRIP", tokenOut: "USDC" });
     expect(sell.priceAfter).toBeLessThan(sell.priceBefore);
   });
 
@@ -89,7 +89,7 @@ function fakeSepolia(o: { side: "buy" | "sell"; allowance?: bigint; failSwapsBef
   const writes: { address: string; functionName: string; args: readonly unknown[] }[] = [];
   let failSwaps = o.failSwapsBeforeBroadcast ?? 0;
   const buy = o.side === "buy";
-  // Exact-out buy of 19.8 JAR-J for 20 USDC (fee in); exact-in sell of 10 JAR-J for 9.978515 USDC (fee out).
+  // Exact-out buy of 19.8 DRIP for 20 USDC (fee in); exact-in sell of 10 DRIP for 9.978515 USDC (fee out).
   const quote = buy ? delta(19_800_000n, -20_000_000n) : delta(-10_000_000n, 9_978_515n);
   const fee = buy ? 59_820n : 30_025n;
   const after = sqrtOf(buy ? 1.004 : 0.997);
@@ -189,14 +189,14 @@ describe("lender.junior.swap (live path, fakes)", () => {
     expect(params.sqrtPriceLimitX96 > Q96).toBe(true);
     expect(settings).toEqual({ takeClaims: false, settleUsingBurn: false });
     expect(hookData).toBe("0x");
-    expect(r).toMatchObject({ simulated: false, side: "buy", tokenIn: "USDC", tokenOut: "JAR-J", amountIn: 20, amountOut: 19.8, hookFeeUsdc: 0.05982, observationCount: 3 });
+    expect(r).toMatchObject({ simulated: false, side: "buy", tokenIn: "USDC", tokenOut: "DRIP", amountIn: 20, amountOut: 19.8, hookFeeUsdc: 0.05982, observationCount: 3 });
     expect(r.txHash).toBe(r.hash);
     expect(r.priceBefore).toBe(1);
     expect(r.priceAfter).toBeCloseTo(1.004, 6);
     expect(steps).toEqual(["Approve USDC:pending", "Approve USDC:done", "Swap on Uniswap v4:pending", "Swap on Uniswap v4:done"]);
   });
 
-  it("sell: skips the approval when the allowance covers it, exact-in JAR-J, retries a pre-broadcast failure", async () => {
+  it("sell: skips the approval when the allowance covers it, exact-in DRIP, retries a pre-broadcast failure", async () => {
     const { mra, writes } = fakeSepolia({ side: "sell", allowance: maxUint256, failSwapsBeforeBroadcast: 1 });
     const r = await mra.lender.junior.swap({ side: "sell", amount: 10, retryDelayMs: 1 });
     expect(writes.map((w) => w.functionName)).toEqual(["swap"]);
@@ -204,8 +204,8 @@ describe("lender.junior.swap (live path, fakes)", () => {
     expect(params.zeroForOne).toBe(true);
     expect(params.amountSpecified).toBe(-10_000_000n);
     expect(params.sqrtPriceLimitX96 < Q96).toBe(true);
-    expect(r).toMatchObject({ tokenIn: "JAR-J", tokenOut: "USDC", amountIn: 10, amountOut: 9.978515, hookFeeUsdc: 0.030025 });
-    expect(r.steps[0]).toMatchObject({ label: "Approve JAR-J", status: "skipped" });
+    expect(r).toMatchObject({ tokenIn: "DRIP", tokenOut: "USDC", amountIn: 10, amountOut: 9.978515, hookFeeUsdc: 0.030025 });
+    expect(r.steps[0]).toMatchObject({ label: "Approve DRIP", status: "skipped" });
     expect(r.priceAfter).toBeLessThan(r.priceBefore);
   });
 

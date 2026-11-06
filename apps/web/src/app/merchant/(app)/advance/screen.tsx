@@ -1,7 +1,7 @@
 "use client";
 
 import type { AdvanceDetailsView } from "@repo/sdk";
-import { Button, Card, Columns, KeyValue, Label, LineChart, Page, PageHead, Stack, StatGrid, Text } from "@/final";
+import { Button, Card, Columns, KeyValue, Label, LineChart, OfferDisclosure, Page, PageHead, Stack, StatGrid, Text } from "@/final";
 import { ETA_PENDING, etaKnown } from "@/lib/estimate";
 import { formatDays, formatMoney, formatPercent } from "@/lib/format";
 import { isMock } from "@/lib/mra";
@@ -41,6 +41,7 @@ export function AdvanceDetailsScreen({ initial }: { initial: AdvanceDetailsView 
         ]}
       />
 
+      <OfferDisclosure principal={advance.drawn} fee={advance.fee} total={advance.total} holdback={advance.holdback} estimates={daysLeftEstimates.map((e) => ({ ...e, label: `${e.label} (estimated total duration)`, days: e.days > 0 ? e.days + Math.max(0, repaymentCurve.points.length - 1) : 0 }))} />
       <Columns ratio="3:2">
         <Card>
           <div className="flex items-center justify-between gap-3">

@@ -59,7 +59,7 @@ const GROUPS: { group: string; screens: Item[] }[] = [
       { id: "L03", title: "My position", href: routes.position },
       { id: "J01", title: "Junior vault", href: routes.junior },
       { id: "J02", title: "Mint or redeem", href: routes.mint },
-      { id: "J03", title: "Trade JAR-J", href: routes.trade },
+      { id: "J03", title: "Trade DRIP", href: routes.trade },
     ],
   },
   {

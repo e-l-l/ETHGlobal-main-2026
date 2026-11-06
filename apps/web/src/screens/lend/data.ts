@@ -78,7 +78,7 @@ export const riskLog = [
     time: "Mon",
     title: "Hook fee added to the reserve",
     kind: "ok" as const,
-    reasons: ["The Uniswap v4 hook on JAR-J/USDC skimmed a small fee into the reserve."],
+    reasons: ["The Uniswap v4 hook on DRIP/USDC skimmed a small fee into the reserve."],
   },
   {
     time: "Sep 3",

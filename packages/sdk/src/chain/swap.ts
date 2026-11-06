@@ -1,5 +1,5 @@
 /**
- * Uniswap v4 swap plumbing for the JAR-J/USDC pool (the RiskHook pool): pool id, slot0 and liquidity via
+ * Uniswap v4 swap plumbing for the DRIP/USDC pool (the RiskHook pool): pool id, slot0 and liquidity via
  * PoolManager.extsload (StateLibrary layout), price math, and parsing a swap receipt into the numbers a screen shows.
  *
  * The router is Uniswap's PoolSwapTest (official v4 Sepolia periphery deployment, `deployment.PoolSwapTest`). It
@@ -94,7 +94,7 @@ export function decodeSlot0(slot0Word: Hex, liquidityWord: Hex): Slot0 {
   return { sqrtPriceX96, tick, liquidity: BigInt(liquidityWord) & ((1n << 128n) - 1n) };
 }
 
-/** Price of currency0 in currency1 (USDC per JAR-J; both 6 decimals). */
+/** Price of currency0 in currency1 (USDC per DRIP; both 6 decimals). */
 export const priceOf = (sqrtPriceX96: bigint) => (Number(sqrtPriceX96) / Q96) ** 2;
 
 export function sqrtX96FromPrice(price: number): bigint {
