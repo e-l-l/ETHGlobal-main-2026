@@ -18,8 +18,8 @@ import time
 from collections import defaultdict, deque
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Header, HTTPException, Path, Request
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
+from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, model_validator
 
 from .merchant_agents import AgentError
 from .models import Address, Hex32
@@ -28,6 +28,7 @@ from .world import MAX_BACKUP_BYTES, Limits, WorldError, agent_pass_nonce, limit
 log = logging.getLogger(__name__)
 
 AgentId = Annotated[str, Path(pattern=r"^[0-9a-f]{32}$")]
+ShopId = Annotated[str, Path(pattern=r"^0x[0-9a-fA-F]{64}$")]
 WRITE_LIMIT, READ_LIMIT, WINDOW = 10, 60, 60.0
 MAX_IDKIT_PAYLOAD = 32 * 1024
 
@@ -286,6 +287,7 @@ def build_merchant_services(settings=None, *, pipeline=None, reader=None, writer
     if pipeline is None or reader is None or writer is None:
         from .chain import Web3ChainReader, Web3ChainWriter
         from .decisions import DecisionStore
+        from .humans import build_human_services
         from .indexer import Indexer
         from .llm_bedrock import make_llm
         from .pipeline import UnderwritingPipeline
@@ -302,7 +304,8 @@ def build_merchant_services(settings=None, *, pipeline=None, reader=None, writer
                                                                                             settings),
                 signer=EIP712Signer(settings.offer_signer_private_key.get_secret_value()),
                 store=DecisionStore(settings.db_path), settings=settings,
-                now=lambda: reader.w3.eth.get_block("latest")["timestamp"])
+                now=lambda: reader.w3.eth.get_block("latest")["timestamp"],
+                humans=build_human_services(settings, reader)[0])
     now = pipeline.now
     attester = None
     if settings.attester_private_key is not None:
@@ -341,3 +344,103 @@ class LazyProxy:
 
     def __getattr__(self, attr):
         return getattr(self._services.get(self._name), attr)
+
+
+# -------------------------------------------------------------------- World ID for borrowers (humans.py)
+
+
+class HumanBindIn(_In):
+    # Exactly one of: the IDKit 4 result forwarded as-is (WORLD_MOCK=1: {"mock": "approve", "mock_human": "<label>"}),
+    # or the ticket from POST /world/borrower/check (no second World ID scan).
+    idkit: dict | None = None
+    ticket: str | None = Field(default=None, min_length=1, max_length=1024)
+
+    @model_validator(mode="after")
+    def _one(self):
+        if (self.idkit is None) == (self.ticket is None):
+            raise ValueError("send exactly one of idkit or ticket")
+        return self
+
+
+class HumanCheckIn(_In):
+    idkit: dict
+    owner: str = Field(pattern=r"^0x[0-9a-fA-F]{40}$")  # the wallet that will own the shop (the burner)
+
+
+def build_human_router(humans) -> APIRouter:
+    """World ID binding for borrowers. Owner auth: `Authorization: Owner <issued_at>:<signature>`, an EIP-191
+    signature by the shop's onchain owner over humans.owner_auth_message (valid +-10 min).
+
+      POST /world/borrower/rp-context  signed IDKit 4 context for WORLD_BORROWER_ACTION (mock: {"mock": true})
+      POST /world/borrower/check       {"idkit", "owner"} BEFORE any shop -> {"eligible": true, "ticket", "expires_at"}
+                                       | {"eligible": false, "reason": "human_banned" | "human_has_open_advance"}
+      POST /shops/{shop_id}/human      owner auth + {"idkit"} | {"ticket"} -> {"verified": true}. NEVER returns the
+                                       nullifier (nor the human key).
+      GET  /shops/{shop_id}/human      {"verified"}; with owner auth also {"banned", "unlock"} (owner only).
+    """
+    from .humans import HumanError
+
+    r = APIRouter()
+    limiter = _Limiter()
+
+    def limit(request: Request, kind: str, extra: str | None = None) -> None:
+        ip = request.client.host if request.client else "unknown"
+        keys = [(kind, "ip", ip)] + ([(kind, "key", extra.lower())] if extra else [])
+        limiter.check(keys, WRITE_LIMIT if kind == "w" else READ_LIMIT)
+
+    def call(fn, *a, **kw):
+        try:
+            return fn(*a, **kw)
+        except HTTPException:
+            raise
+        except PermissionError:
+            raise HTTPException(401, "unauthorized") from None
+        except HumanError as e:
+            status = {"shop_bound_to_other_human": 409, "ticket_used": 409, "ticket_owner_mismatch": 403}
+            raise HTTPException(status.get(e.code, 400), e.code) from None
+        except WorldError as e:
+            raise HTTPException(400, e.code) from None
+        except LookupError:
+            raise HTTPException(404, "not_found") from None
+        except ValueError:
+            raise HTTPException(400, "invalid_request") from None
+        except Exception as e:  # noqa: BLE001 - API boundary: never leak upstream errors
+            log.warning("human binding upstream failure: %s", type(e).__name__)
+            raise HTTPException(502, "upstream_failed") from None
+
+    @r.post("/world/borrower/rp-context")
+    def borrower_rp_context(request: Request):
+        limit(request, "w")
+        return call(humans.rp_context)
+
+    @r.post("/world/borrower/check")
+    def borrower_check(body: HumanCheckIn, request: Request):
+        limit(request, "w", body.owner)
+        if len(json.dumps(body.idkit)) > MAX_IDKIT_PAYLOAD:
+            raise HTTPException(400, "invalid_request")
+        out = call(humans.check, body.idkit, body.owner)
+        if out.get("eligible") is True:  # fixed shapes: the nullifier and human key can never reach the response
+            return {"eligible": True, "ticket": out["ticket"], "expires_at": out["expires_at"]}
+        return {"eligible": False, "reason": out["reason"]}
+
+    @r.post("/shops/{shop_id}/human")
+    def bind_human(shop_id: ShopId, body: HumanBindIn, request: Request,
+                   authorization: Annotated[str | None, Header()] = None):
+        limit(request, "w", shop_id)
+        if body.ticket is not None:
+            call(humans.bind_ticket, shop_id, body.ticket, authorization)
+            return {"verified": True}
+        if len(json.dumps(body.idkit)) > MAX_IDKIT_PAYLOAD:
+            raise HTTPException(400, "invalid_request")
+        call(humans.bind, shop_id, body.idkit, authorization)
+        return {"verified": True}  # fixed shape: nothing from the verifier can reach the response
+
+    @r.get("/shops/{shop_id}/human")
+    def human_status(shop_id: ShopId, request: Request, tier: Annotated[int | None, Query(ge=0, le=3)] = None,
+                     authorization: Annotated[str | None, Header()] = None):
+        limit(request, "r", shop_id)
+        out = call(humans.status, shop_id, authorization, tier)
+        allowed = {"verified", "banned", "unlock"}
+        return {k: v for k, v in out.items() if k in allowed}
+
+    return r

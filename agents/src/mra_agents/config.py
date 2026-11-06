@@ -83,6 +83,13 @@ class Settings(BaseSettings):
     world_verify_base_url: str = "https://developer.world.org"
     world_environment: str = "production"  # IDKit result `environment` we accept ("staging" on testnets)
     world_recovery_action: str = "credential-recovery-v1"
+    # World ID for borrowers (humans.py). Default = the recovery action: works live with no new portal config.
+    world_borrower_action: str = Field(
+        default="credential-recovery-v1",
+        validation_alias=AliasChoices("world_borrower_action", "world_recovery_action"))
+    # WORLD_BINDING_REQUIRED=1: no offer without a World ID binding (red line human_not_verified). Banned humans and
+    # open advances on another shop of the same human are refused whenever the registry is wired, either way.
+    world_binding_required: bool = True
     world_mock: bool = True  # WORLD_MOCK=1: Agent Pass + IDKit are mocked (approve/deny/expire)
     merchant_agent_interval_seconds: int = 60
     agent_pass_max_age_seconds: int = 600  # an Agent Pass login older than this is "expired"

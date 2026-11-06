@@ -2,11 +2,10 @@
 
 import type { WorldView } from "@repo/sdk";
 import { BlockBand } from "@/blocks";
-import { Banner, Card, Columns, KeyValue, LockIcon, Pill, Stack, WorldMark } from "@/final";
+import { Banner, Card, Columns, KeyValue, LockIcon, Pill, Stack } from "@/final";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { useMRA } from "@/lib/use-mra";
-import { useWorldView } from "@/lib/world-view";
 import { CardTitle, DarkBlock } from "../../_ui";
 
 /**
@@ -14,22 +13,21 @@ import { CardTitle, DarkBlock } from "../../_ui";
  * World view toggle outlines each on this and every other screen.
  */
 export function WorldViewLists({ initial }: { initial: WorldView | null }) {
-  const wv = useWorldView();
   const { data, error } = useMRA(q.world, { initial });
   if (!data) return <MRAState error={error} />;
   return (
     <Stack gap="md">
       <BlockBand cols={24} seed={21} grain={false} className="pointer-events-none h-8 rounded-md opacity-90 lg:h-10" />
       <Columns className="items-stretch">
-        <WorldMark kind="pub" show={wv} className="h-full">
+        <div className="h-full">
           <Card padding="md" className="h-full">
             <CardTitle end={<Pill tone="onchain">anyone</Pill>}>Public onchain</CardTitle>
             <div className="lg:max-h-[calc(100vh-27rem)] lg:overflow-auto">
               <KeyValue rows={data.public.map((r) => [r.k, r.v])} />
             </div>
           </Card>
-        </WorldMark>
-        <WorldMark kind="priv" show={wv} className="h-full">
+        </div>
+        <div className="h-full">
           <DarkBlock className="h-full gap-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="m-0 font-display text-h2">Private on this device</h2>
@@ -47,7 +45,7 @@ export function WorldViewLists({ initial }: { initial: WorldView | null }) {
               ))}
             </dl>
           </DarkBlock>
-        </WorldMark>
+        </div>
       </Columns>
       <Banner>Public transactions can be linked through addresses, timing and payment flows. The issuer sees seller account details during the demo attestation.</Banner>
     </Stack>

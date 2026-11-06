@@ -15,6 +15,11 @@ export type RequestOptions = {
   body?: unknown;
   /** Bearer token. Sent as a header only, never logged or put in an error. */
   token?: string;
+  /**
+   * Raw `Authorization` header value (e.g. `Owner <issuedAt>:<signature>`), for schemes other than Bearer.
+   * Wins over `token` when both are set. Never logged or put in an error.
+   */
+  authorization?: string;
   signal?: AbortSignal;
   query?: Record<string, string | number | undefined>;
 };
@@ -40,7 +45,8 @@ export function createHttp(opts: HttpOptions): Http {
       }
       const headers: Record<string, string> = { accept: "application/json" };
       if (ro.body !== undefined) headers["content-type"] = "application/json";
-      if (ro.token) headers.authorization = `Bearer ${ro.token}`;
+      if (ro.authorization) headers.authorization = ro.authorization;
+      else if (ro.token) headers.authorization = `Bearer ${ro.token}`;
 
       const ctl = new AbortController();
       let timedOut = false;

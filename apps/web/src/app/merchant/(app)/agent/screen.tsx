@@ -12,7 +12,6 @@ import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA, useMRAAction } from "@/lib/use-mra";
 import { BigFigure, CardTitle, HeroLabel, PlainWords } from "../../_ui";
-import { PrivateMark } from "./_parts";
 import { DecisionLog } from "./decision-log";
 import { decisions as demoDecisions, decisionsFrom } from "./_data";
 
@@ -108,7 +107,7 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
         <Stack gap="md">
           {status.active ? <AgentStop onDone={reload} /> : null}
           {!isMock && status.active ? <RunAgentNow onDone={reload} /> : null}
-          <PrivateMark>
+          <div>
             <Card padding="md">
               <CardTitle end={<TextLink href={routes.agent.setup}>Edit</TextLink>}>Your limits</CardTitle>
               <KeyValue
@@ -121,7 +120,7 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
                 ]}
               />
             </Card>
-          </PrivateMark>
+          </div>
           <PlainWords>
             Your agent only draws when your payments can pay it back, and never past these limits. The contract blocks
             anything else.

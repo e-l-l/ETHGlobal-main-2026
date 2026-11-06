@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getLang } from "@/lib/lang";
 import { serverView } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { PaidScreen } from "@/screens/pay";
@@ -14,10 +13,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
   const amount = Number(sp.amt);
   const token = "USDC";
   const target = { ...(sp.shop ? { shopId: sp.shop } : {}), ...(sp.name ? { name: sp.name } : {}) };
-  const [lang, initial] = await Promise.all([getLang(), serverView(q.payShop(target.shopId, target.name))]);
+  const initial = await serverView(q.payShop(target.shopId, target.name));
   return (
     <PaidScreen
-      lang={lang}
       amount={Number.isFinite(amount) && amount > 0 ? amount : 10}
       token={token}
       initial={initial}

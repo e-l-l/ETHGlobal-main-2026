@@ -155,6 +155,8 @@ export interface Chain {
   registerShop(shopId: Hex, payout: Addr): Promise<Receipt>;
   issueBusinessPass(att: { businessNullifier: Hex; commitment: Hex; expiresAt: number }, signature: Hex): Promise<Receipt>;
   signMandate(r: MandateRequestArgs): Promise<Hex>;
+  /** EIP-191 personal_sign of `text` with the connected wallet (e.g. the shop-owner auth message). */
+  signMessage(text: string): Promise<Hex>;
   parseLogs(receipt: { logs: readonly unknown[] }): { eventName: string; args: any }[];
   receipt(hash: Hex): Promise<Receipt>;
 }
@@ -498,6 +500,16 @@ export function createChain(opts: ChainOptions): Chain {
         });
       } catch (e) {
         throw new ChainError("chain_write_failed", "mandate signature rejected", e);
+      }
+    },
+
+    /** EIP-191 personal_sign with the connected wallet (shop-owner auth for the agents API). */
+    async signMessage(text: string): Promise<Hex> {
+      const { wallet, account } = requireWallet();
+      try {
+        return await wallet.signMessage({ account, message: text });
+      } catch (e) {
+        throw new ChainError("chain_write_failed", "message signature rejected", e);
       }
     },
 

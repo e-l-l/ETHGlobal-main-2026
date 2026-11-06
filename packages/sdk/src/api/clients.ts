@@ -7,12 +7,15 @@ import type {
   AgentPassResponse,
   AgentStatusResponse,
   BackupResponse,
+  BindHumanResponse,
+  HumanCheckResponse,
   CreateAgentRequest,
   CreateAgentResponse,
   Decision,
   DrawFirstRequest,
   DrawWithPassRequest,
   HealthResponse,
+  HumanStatusResponse,
   Hex32,
   InsightsResponse,
   IssueRequest,
@@ -24,11 +27,17 @@ import type {
   RecoveryVerifyResponse,
   RegisterMandateRequest,
   RiskStatus,
+  RpContextResponse,
   TriggerResponse,
   TxResponse,
 } from "./types.js";
 
 const AGENT_ID = /^[0-9a-f]{32}$/;
+const SHOP_ID = /^0x[0-9a-fA-F]{64}$/;
+function shopPath(shopId: string, suffix = "") {
+  if (!SHOP_ID.test(shopId)) throw new TypeError("invalid shop id");
+  return `/shops/${shopId.toLowerCase()}${suffix}`;
+}
 function agentPath(agentId: string, suffix = "") {
   // Validate before it reaches a URL: the backend's own pattern.
   if (!AGENT_ID.test(agentId)) throw new TypeError("invalid agent id");
@@ -107,6 +116,42 @@ export class AgentsApi {
   }
   getBackup(recoveryToken: string) {
     return this.http.request<BackupResponse>("GET", "/recovery/backup", { token: recoveryToken });
+  }
+  recoveryRpContext() {
+    return this.http.request<RpContextResponse>("POST", "/recovery/rp-context");
+  }
+
+  // ---- World ID for borrowers: one proven human per shop; defaulters are banned on all their shops.
+  /** POST /world/borrower/rp-context: IDKit 4 config for the borrower action (`{ mock: true }` under WORLD_MOCK=1). */
+  worldBorrowerRpContext() {
+    return this.http.request<RpContextResponse>("POST", "/world/borrower/rp-context");
+  }
+  /**
+   * POST /shops/{shopId}/human: bind the IDKit proof of human to the shop. `ownerAuth` = the full Authorization value
+   * from `ownerAuthHeader` (`Owner <issuedAt>:<sig>`). 400 verification_failed | wrong_action | unknown_or_used_nonce |
+   * invalid_request, 401 unauthorized, 404 not_found, 409 shop_bound_to_other_human, 429 rate_limited.
+   */
+  bindHuman(shopId: Hex32, ownerAuth: string, idkit: Record<string, unknown>) {
+    return this.http.request<BindHumanResponse>("POST", shopPath(shopId, "/human"), { body: { idkit }, authorization: ownerAuth });
+  }
+  /**
+   * POST /shops/{shopId}/human with the ticket from `checkHuman` (no second World ID scan). Owner auth as above; the
+   * ticket's owner must be the shop's onchain owner. 400 ticket_expired | ticket_invalid, 403 ticket_owner_mismatch,
+   * 409 ticket_used (it already bound another shop) | shop_bound_to_other_human.
+   */
+  bindHumanTicket(shopId: Hex32, ownerAuth: string, ticket: string) {
+    return this.http.request<BindHumanResponse>("POST", shopPath(shopId, "/human"), { body: { ticket }, authorization: ownerAuth });
+  }
+  /** POST /world/borrower/check: World ID before any shop. `owner` = the wallet that will own the shop. */
+  checkHuman(owner: string, idkit: Record<string, unknown>) {
+    return this.http.request<HumanCheckResponse>("POST", "/world/borrower/check", { body: { idkit, owner } });
+  }
+  /** GET /shops/{shopId}/human: `{ verified }`; with owner auth also `banned` and the gradual-unlock status for `tier`. */
+  humanStatus(shopId: Hex32, ownerAuth?: string, tier?: 0 | 1 | 2 | 3 | number) {
+    return this.http.request<HumanStatusResponse>("GET", shopPath(shopId, "/human"), {
+      ...(ownerAuth ? { authorization: ownerAuth } : {}),
+      ...(tier !== undefined ? { query: { tier } } : {}),
+    });
   }
 }
 

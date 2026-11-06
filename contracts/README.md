@@ -55,10 +55,10 @@ Addresses are in [`agents/deployments/sepolia.json`](../agents/deployments/sepol
 
 | Contract | Address |
 |---|---|
-| AdvanceBook | `0x76424347274b1ff54efa942d9d7adf668049b884` |
-| BusinessPassRegistry | `0x3dda9f1756c762c4089c36a31de21b1d6805aab5` |
-| SeniorVault / JuniorVault (junior token) | `0x3f12864bb1cc5b9814a61bc41ad9797a4dd3ac4f` / `0x26c6ad44e926204cdaac0abf519ca488b9ff38f4` |
-| RiskHook (Uniswap v4, junior/USDC pool) | `0xd9cfcadf7ea8a753198383ce7f210070e5559044` |
+| AdvanceBook | `0x82cd71d8eefa47492be6b8dcf596a18a7753a0b1` |
+| BusinessPassRegistry | `0x40700886396bafb5ee4f260487a6584efa511adb` |
+| SeniorVault / JuniorVault (junior token) | `0xc2286c564bde614ca1414518d02cacec77f3e297` / `0x5998b918db6edaccde4ce3fc282b9b057ab8d81c` |
+| RiskHook (Uniswap v4, junior/USDC pool) | `0xf5174b8f8642aef786e6bb1c1facac6d0f201044` |
 | MockUSDC (demo) | `0x6603ac3f0a1ea33f232c97655a1b4f91280e55bb` |
 | HonkVerifier / BusinessPassVerifier | `0x7764690108c612fafde5eeb1cbe2f20d80e42017` / `0xb79d40dcda63d941a31d866028d5d6852550136a` |
 

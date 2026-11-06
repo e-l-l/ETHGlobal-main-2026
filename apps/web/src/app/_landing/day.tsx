@@ -20,7 +20,7 @@ const HOLD = advance.holdback / 100;
 const MOMENTS: { at: number; time: string; icon: PixelIconName; title: string; body: string }[] = [
   { at: 1, time: "9:12", icon: "agent", title: `Your agent drew $${advance.drawn} for stock`, body: "Why: cash was low before Thursday's restock." },
   { at: 2, time: "10:14", icon: "coin", title: "A $10.00 sale", body: "$9.20 to you. $0.80 drips back to the advance." },
-  { at: 8, time: "4:20 pm", icon: "sound", title: "Read out loud", body: "“Recibiste 10 dólares, 80 centavos fueron a tu adelanto.”" },
+  { at: 8, time: "4:20 pm", icon: "sound", title: "Read out loud", body: "“You got 10 dollars. 80 cents went to your advance.”" },
   { at: 11, time: "7:45 pm", icon: "shop", title: "Shop closes", body: `$${TOTAL.toFixed(2)} sold. $${(TOTAL * HOLD).toFixed(2)} went back, automatically.` },
 ];
 
@@ -33,8 +33,8 @@ export function DayTimeline() {
   function hear() {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance("Recibiste 10 dólares, 80 centavos fueron a tu adelanto");
-    u.lang = "es-AR";
+    const u = new SpeechSynthesisUtterance("You got 10 dollars. 80 cents went to your advance.");
+    u.lang = "en-US";
     u.onend = () => setSpeaking(false);
     u.onerror = () => setSpeaking(false);
     setSpeaking(true);

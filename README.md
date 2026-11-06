@@ -101,7 +101,7 @@ Every route lives in [`apps/web/src/lib/routes.ts`](apps/web/src/lib/routes.ts).
 │       ├── src/app/             Routes: onboarding, merchant, pay, portal, earn, dripcoin, protocol, risk, explorer
 │       ├── src/final/           Design-system components (Tailwind utilities only)
 │       ├── src/screens/         Larger screen compositions shared by routes
-│       ├── src/lib/             routes, brand name, copy (EN/ES), formatting, mock data
+│       ├── src/lib/             routes, brand name, copy, formatting, mock data
 │       └── e2e/                 Playwright + axe tests
 ├── packages/
 │   ├── sdk/                     @repo/sdk: typed view-models per screen; mock | local | sepolia; Anon-RPC, prover, wallet

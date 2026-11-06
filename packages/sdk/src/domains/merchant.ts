@@ -29,6 +29,7 @@ import type {
   TodayVM,
   WeekView,
 } from "../viewmodels.js";
+import { humanLimit, mockHumanLimit, tierLimit } from "./human.js";
 import { clock, dayLabel, longDate, payUrlFor, pseudonymOf, round2, sameDay, shortDate, usd } from "./util.js";
 
 const DAY = 86_400;
@@ -237,6 +238,7 @@ export function merchantDomain(ctx: Ctx) {
           limitsLadder: S.limitsLadder.map((x) => ({ ...x })),
           currentTier: S.currentTier,
           sales: M.sales.map((x) => ({ ...x })),
+          ...mockHumanLimit(ctx),
           source: "mock" as const,
         });
       }
@@ -249,6 +251,8 @@ export function merchantDomain(ctx: Ctx) {
         ladder(ctx),
         standingCount(ctx),
       ]);
+      const currentTier = Math.min(count, 3);
+      const human = await humanLimit(ctx, { tier: currentTier, fallbackLimit: limitsLadder[currentTier]?.cap ?? 0 });
       let advance: AdvanceVM | null = null;
       if (loaded) {
         const left = usd(loaded.onchain.owedNow ?? (loaded.onchain.totalOwed - loaded.onchain.repaid));
@@ -264,8 +268,9 @@ export function merchantDomain(ctx: Ctx) {
         advance,
         agentLimits: agent.limits,
         limitsLadder,
-        currentTier: Math.min(count, 3),
+        currentTier,
         sales: salesVM,
+        ...human,
         source: "chain",
       };
     },
@@ -291,6 +296,7 @@ export function merchantDomain(ctx: Ctx) {
           advance: { ...S.advance },
           repaymentCurve: { points: [...M.repaymentCurve.points], ariaLabel: M.repaymentCurve.ariaLabel },
           daysLeftEstimates: M.daysLeftEstimates.map((x) => ({ ...x })),
+          ...mockHumanLimit(ctx),
           source: "mock" as const,
         });
       }
@@ -299,7 +305,11 @@ export function merchantDomain(ctx: Ctx) {
       const a = await requireAdvance(ctx, s.shopId as Hex);
       const since = a.openedAt ?? now - 30 * DAY;
       const days = Math.max(1, Math.ceil((now - since) / DAY));
-      const [sales, draft] = await Promise.all([loadSales(ctx, s.shopId as Hex, Math.min(days + 1, 60)), decisionDraft(ctx, s.shopId as Hex)]);
+      const [sales, draft, human] = await Promise.all([
+        loadSales(ctx, s.shopId as Hex, Math.min(days + 1, 60)),
+        decisionDraft(ctx, s.shopId as Hex),
+        tierLimit(ctx, a.onchain.tier).then((t) => humanLimit(ctx, t)),
+      ]);
       const points: number[] = [0];
       let cum = 0;
       for (let d = 1; d <= days; d++) {
@@ -316,6 +326,7 @@ export function merchantDomain(ctx: Ctx) {
           { label: "Normal", days: draft?.est_days_normal ?? vm.etaDays },
           { label: "Busy week", days: draft?.est_days_busy ?? (vm.etaDays > 0 ? Math.max(1, Math.round(vm.etaDays * 0.6)) : 0) },
         ],
+        ...human,
         source: "chain",
       };
     },

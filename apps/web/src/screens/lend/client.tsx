@@ -33,7 +33,7 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
-import { DarkCard, LendShell, Pub, PublicBand } from "./shell";
+import { DarkCard, LendShell, PublicBand } from "./shell";
 import { num, vaultNumbers } from "./vault";
 
 /** The demo faucet sends a fresh burner this much test USDC on its first write (agents DEMO_FAUCET_USDC). */
@@ -257,7 +257,7 @@ function ActionForm({ label, sides, initial, after, note }: { label: string; sid
   return (
     <div className="flex flex-col gap-5">
       <Segmented label={label} value={sideKey} onChange={reset} options={sides.map((s) => ({ value: s.key, label: s.label }))} />
-      <Pub>
+      <div>
         <AmountEntry
           label={side.amountLabel}
           hint={side.maxLabel}
@@ -268,7 +268,7 @@ function ActionForm({ label, sides, initial, after, note }: { label: string; sid
           disabled={busy}
           quick={side.quick}
         />
-      </Pub>
+      </div>
       <KeyValue className="rounded-md bg-well p-4 text-note" rows={side.details(n)} />
       {failed ? <Banner tone="caution">Didn&rsquo;t go through ({failed}). Nothing moved.</Banner> : null}
       {side.steps.length > 1 ? <Steps items={side.steps.map((s, i) => ({ label: s, state: i < step ? "done" : i === step ? "current" : "next" }))} /> : null}
@@ -351,7 +351,7 @@ export function DepositPanel({ vault }: { vault: VaultVM }) {
 /** The dark position card (Vault page and L02). */
 export function PositionCard({ vault, link = true }: { vault: VaultVM; link?: boolean }) {
   return (
-    <Pub>
+    <div>
       <DarkCard label="Your position">
         <Label className="text-lime">Your position</Label>
         <span className="font-display text-amount tabular-nums text-canvas">{vault.positionValue}</span>
@@ -365,7 +365,7 @@ export function PositionCard({ vault, link = true }: { vault: VaultVM; link?: bo
           </TextLink>
         ) : null}
       </DarkCard>
-    </Pub>
+    </div>
   );
 }
 
@@ -374,7 +374,7 @@ export function DepositScreen({ side, initial }: { side?: string; initial: Depos
   const { data, error } = useMRA(q.deposit, { initial });
   if (!data) return <MRAState error={error} />;
   return (
-    <LendShell note="Deposits and shares are onchain under this wallet. Your name is not.">
+    <LendShell>
       <PageHead back={routes.earn} backLabel="Vault" label="The vault · USDC" title="Deposit or withdraw">
         Your USDC funds small stock advances. It comes back, with fees, as shops&rsquo; customers pay.
       </PageHead>
@@ -453,7 +453,7 @@ export function MintScreen({ initial }: { initial: DepositView | null }) {
     },
   ];
   return (
-    <LendShell note="Mints and redemptions are public, like every token transfer.">
+    <LendShell>
       <PageHead back={routes.dripcoin} backLabel="DripCoin" label="DripCoin · DRIP" title="Mint or redeem DRIP">
         Mint at book value with USDC, or redeem DRIP back to USDC.
       </PageHead>
@@ -467,7 +467,7 @@ export function MintScreen({ initial }: { initial: DepositView | null }) {
           />
         </Card>
         <Stack gap="lg">
-          <Pub>
+          <div>
             <Card>
               <Heading level={2} size="h2">
                 Mint or trade?
@@ -483,8 +483,8 @@ export function MintScreen({ initial }: { initial: DepositView | null }) {
                 <TextLink href={routes.trade}>Trade instead</TextLink>
               </Text>
             </Card>
-          </Pub>
-          <Pub>
+          </div>
+          <div>
             <Card>
               <Label>You hold</Label>
               <div className="flex items-center gap-3">
@@ -495,7 +495,7 @@ export function MintScreen({ initial }: { initial: DepositView | null }) {
                 ≈ {usdText(V.walletJarJ * V.juniorPrice, 2)} at market price
               </Text>
             </Card>
-          </Pub>
+          </div>
         </Stack>
       </Columns>
     </LendShell>
@@ -598,14 +598,14 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
         ];
 
   return (
-    <LendShell note="The pool, its price and every swap are public.">
+    <LendShell>
       <PageHead
         back={routes.dripcoin}
         backLabel="DripCoin"
         label="Uniswap v4 · DRIP / USDC"
         title="Trade DripCoin"
         actions={
-          <Pub>
+          <div>
             <dl className="m-0 grid grid-cols-3 gap-2">
               {[
                 ["Price", view.vault.juniorPrice],
@@ -618,12 +618,12 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
                 </div>
               ))}
             </dl>
-          </Pub>
+          </div>
         }
       />
       <Columns ratio="3:2">
         <Stack gap="lg">
-          <Pub>
+          <div>
             <Card padding="lg">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Heading level={2} size="h2">
@@ -640,7 +640,7 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
                 format={price}
               />
             </Card>
-          </Pub>
+          </div>
           <Card padding="lg">
             <Heading level={2} size="h2">
               What you hold
@@ -672,7 +672,7 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
                 { value: "sell", label: "Sell" },
               ]}
             />
-            <Pub>
+            <div>
               <AmountEntry
                 label={side === "buy" ? "You pay (USDC)" : "You sell (DRIP)"}
                 hint={side === "buy" ? (isMock ? `Wallet: ${usdText(V.walletUsdc)}` : "From this device's wallet") : `You hold ${fmt(V.walletJarJ, 2)} DRIP`}
@@ -686,7 +686,7 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
                 }}
                 quick={quick}
               />
-            </Pub>
+            </div>
             <KeyValue
               className="rounded-md bg-well p-4 text-note"
               rows={[
@@ -766,7 +766,7 @@ function ExplorerList({ explorerEvents }: { explorerEvents: Ev[] }) {
   }, [search, filter, explorerEvents]);
 
   return (
-    <LendShell note="This is the whole public record. Look for a name: there isn't one.">
+    <LendShell>
       <PageHead label="Pseudonyms only · no names anywhere" title="Explorer">
         Every payment, advance and pass, newest first.
       </PageHead>
@@ -787,7 +787,7 @@ function ExplorerList({ explorerEvents }: { explorerEvents: Ev[] }) {
         </div>
         <Chips label="Filter" value={filter} onChange={setFilter} options={FILTERS} />
       </div>
-      <Pub>
+      <div>
         {rows.length > 0 ? (
           <DataTable<Ev>
             caption="Public events, newest first"
@@ -814,7 +814,7 @@ function ExplorerList({ explorerEvents }: { explorerEvents: Ev[] }) {
             <Text>Nothing matches. Try a shop id like shop_b19c.</Text>
           </Card>
         )}
-      </Pub>
+      </div>
       <Banner>No names anywhere. shop_b19c has no onchain link to shop_7f3a, even though it is the same owner.</Banner>
     </LendShell>
   );

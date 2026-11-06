@@ -77,7 +77,7 @@ export default function Page_() {
   if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_SHOW_KIT !== "1") notFound();
   return (
     <>
-      <AppHeader home={routes.home} world={false} />
+      <AppHeader home={routes.home} />
       <Page>
         <PageHead back={routes.home} label="Dev" title="All screens">
           Every route with its canvas ID.

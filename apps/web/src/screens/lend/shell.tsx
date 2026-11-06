@@ -1,14 +1,13 @@
 "use client";
 
 import { useId, type ReactNode, type SVGProps } from "react";
-import { AppHeader, Banner, CopyHash, JarBandStrip, Label, Page, WorldMark, type NavItem } from "@/final";
+import { AppHeader, CopyHash, JarBandStrip, Label, Page, type NavItem } from "@/final";
 import { BlockBand, BlockWall } from "@/blocks";
 import { cn } from "@/lib/cn";
 import { MRA_ENV, isMock } from "@/lib/mra";
 import { routes } from "@/lib/routes";
 import { WALLET } from "@/lib/mock/shop";
 import { useMRA } from "@/lib/use-mra";
-import { useWorldView } from "@/lib/world-view";
 
 /* Small stroke icons for the phone tab bar (the kit has none for these sections). */
 function Svg({ children, ...p }: SVGProps<SVGSVGElement>) {
@@ -77,29 +76,17 @@ export function WalletChip() {
 }
 
 /**
- * Chrome shared by every lender and public page: header with nav, wallet chip and world toggle,
- * then the page container. `note` is what the world-view legend says about this screen.
+ * Chrome shared by every lender and public page: header with nav and wallet chip,
+ * then the page container.
  */
-export function LendShell({ width = "wide", note, children }: { width?: "wide" | "narrow"; note?: string; children: ReactNode }) {
-  const wv = useWorldView();
+export function LendShell({ width = "wide", children }: { width?: "wide" | "narrow"; children: ReactNode }) {
   return (
     <>
       <AppHeader home={routes.home} nav={LEND_NAV} end={<WalletChip />} />
       <Page width={width} tabs>
-        {wv && note ? <Banner>{note}</Banner> : null}
         {children}
       </Page>
     </>
-  );
-}
-
-/** Public onchain content: dashed ONCHAIN outline when "what the world sees" is on. */
-export function Pub({ children, className }: { children: ReactNode; className?: string }) {
-  const wv = useWorldView();
-  return (
-    <WorldMark kind="pub" show={wv} className={className}>
-      {children}
-    </WorldMark>
   );
 }
 

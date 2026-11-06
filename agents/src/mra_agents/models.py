@@ -124,6 +124,9 @@ class ShopFeatures(BaseModel):
     # Cold start: a tier-0 request backed by a Business Pass proof of revenue band k (enforced onchain at draw).
     proven_revenue_band: int | None = None
     cold_start: bool = False  # onchain history too thin to judge; underwrite on the proven band instead
+    # Gradual unlock (unlock.py), base units: the approved limit L for this tier and what this human may draw now.
+    approved_limit: int | None = None
+    available_now: int | None = None
 
 
 # ---------- judge outputs (structured outputs) ----------

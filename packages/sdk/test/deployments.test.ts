@@ -7,7 +7,7 @@ describe("deployments", () => {
   it("bundled sepolia config matches the copied agents/deployments/sepolia.json", () => {
     expect(DEPLOYMENTS.sepolia).toEqual(sepoliaJson);
     expect(DEPLOYMENTS.sepolia.chainId).toBe(11155111);
-    expect(DEPLOYMENTS.sepolia.AdvanceBook).toBe("0x76424347274b1ff54efa942d9d7adf668049b884");
+    expect(DEPLOYMENTS.sepolia.AdvanceBook).toBe("0x82cd71d8eefa47492be6b8dcf596a18a7753a0b1");
     expect(DEPLOYMENTS.sepolia.poolKey.hooks).toBe(DEPLOYMENTS.sepolia.RiskHook);
     expect(deploymentFor("local")).toEqual(localJson);
   });

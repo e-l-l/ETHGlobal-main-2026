@@ -94,7 +94,51 @@ uniqueness: businessNullifier = HMAC(issuerPepper, accountId) stored as "used": 
 |---|---|---|---|
 | **Delegating to the merchant's managed cash-flow agent, once** | **Agent Pass** | We host one agent per merchant. Before it may draw advances on the merchant's behalf, a **real, consenting human** must authorise it, with limits. Without this, anyone could run bots posing as merchants' agents. A denied or expired approval means no mandate and no automatic draws. | Agent Pass |
 | **Recovering credentials on a new phone** | **IDKit** (Proof of Human) | The Business Pass and Standing Pass secrets live on the device. Only the same human can unlock their encrypted backup. Proof of Human is the minimum sufficient credential: we need "same unique human", not age or nationality. | Best Use of IDKit |
+| **Before a shop's first advance** | **IDKit** (Proof of Human) | One defaulter must not walk away and borrow again under a fresh pseudonym. "Same unique human" is exactly the question, and nothing more. | Best Use of IDKit |
 | Business verification, credit decisions | *(none)* | The business is proven by zkTLS from a KYC'd platform. Decisions are agents + code + contract. | — |
+
+### World ID binding: what we store and what we don't
+
+World ID is the **first** onboarding step, before any business step: the merchant proves "unique human" with World
+ID (IDKit 4, Proof of Human, action `WORLD_BORROWER_ACTION`, by default the same action as recovery so no new portal
+setup is needed) and `POST /world/borrower/check` stops a banned human, or one with an open advance on another shop,
+before they prove a business or open a shop. The offer signer still refuses offers to banned humans and to humans
+with an open advance on any of their shops (the backstop). Code: `agents/src/mra_agents/humans.py`.
+
+| Stored (agents DB, offer signer only) | Not stored, anywhere |
+|---|---|
+| `human_key = HMAC(server key, "world-human" ‖ nullifier ‖ action)` | The World nullifier itself (it lives only for the verify call) |
+| `shop_key = HMAC(server key, "world-shop" ‖ shopId)`, so a DB dump doesn't even list the bound shops | Name, phone, address, document, or anything else about the person (we never have it) |
+| AES-256-GCM ciphertexts of shop → human and human → [shops], each bound to its row key | Anything onchain: no new contract fields, events or transactions |
+| `banned` flag, ban time and a reason code (`written_off`) | Free-text notes about anyone |
+| Spent eligibility tickets: `HMAC(server key, "world-ticket" ‖ ticket id)`, the bound `shop_key` and the expiry (purged after expiry) | The ticket itself, or anything about the human in that table |
+
+- **The API never returns the nullifier.** `POST /shops/{id}/human` answers `{"verified": true}`. `GET` shows
+  `verified` publicly, and `banned` plus the unlock status only to the shop's owner (an EIP-191 signature by the
+  onchain shop owner). Responses are fixed shapes, so nothing from World's verify can leak through.
+- **The eligibility ticket (World ID first).** `POST /world/borrower/check {idkit, owner}` verifies the proof and,
+  when the person may borrow, returns `{"eligible": true, "ticket", "expires_at"}`; otherwise
+  `{"eligible": false, "reason": "human_banned" | "human_has_open_advance"}`. The ticket is an AES-256-GCM
+  ciphertext under the same server key as the rows (`secretbox.py`, AAD `world-ticket:v1`, random nonce) over
+  `{human_key, owner address, expiry, random 128-bit id}`. So it holds the HMAC, never the nullifier; the client
+  can't read it and can't forge or edit it; two checks by the same human give unrelated tickets. It **expires 30
+  minutes** after the check, is bound to the wallet the client declared (the burner that will own the shop: the
+  bind needs the onchain shop owner's signature, and that owner must equal the ticket's address), and is **single
+  use**: its first bind records the ticket id's HMAC, a second shop is refused (`ticket_used`), and a retry for the
+  same shop is a no-op. The device keeps it in the credential vault until the shop is bound, then deletes it; it is
+  not restored from backups. A check stores nothing: no human row exists until a shop is bound.
+- **Shops stay unlinkable in public.** The chain sees independent pseudonymous shops. Only the offer signer, holding
+  the server key, can tell that two shops share a human, and it uses that only for the red lines and the unlock.
+- **Unjoinable with recovery.** The recovery backup is keyed under a different HMAC label, so even the same human's
+  rows in the two tables can't be matched without a fresh proof.
+- **Ban on default.** Any advance on a bound shop that reads `WrittenOff` onchain bans that human. `writeOff` is
+  permissionless, so bans come from chain state: the pipeline checks before every offer, and the Keeper and status
+  reads sync too. For the hackathon the ban is permanent. **Appeal / expiry path (roadmap):** repaying the
+  written-off principal through a recovery payment, or a time-based expiry (for example 24 months), clears the flag.
+  Both need only `world_humans.banned` and a ban timestamp, which we already keep.
+- **Trust assumption, stated plainly.** This is enforced by our offer signer and a private list, not by the contract.
+  An operator with the server key could link a human's shops. The roadmap moves the check into a ZK proof ("my
+  World nullifier is not in the banned set", against a published commitment) so even we can't link them.
 
 ### Managed agents with mandates (how automation stays private)
 
@@ -191,7 +235,7 @@ Uniswap swaps (junior/USDC) ─► hook fee → Reserve ; TWAP → Risk agent �
 | **The issuer (Business Pass)** | That a zkTLS predicate passed; the HMAC of the account ID | The business name or account data; the revealed predicates are yes/no plus bands |
 | **AI models (Bedrock)** | Numbers and hashed payers only | Any identity; raw payer addresses |
 | **RPC providers** | Configured app reads are routed through Anon-RPC; bootstrap and other interactions have separate boundaries | — |
-| **World** | That a human delegated to an agent / recovered credentials in our app | Which business, what was borrowed |
+| **World** | That a human delegated to an agent, recovered credentials, or verified before borrowing in our app | Which business, what was borrowed |
 | **Regulators** | Only what the merchant chooses to disclose (selective disclosure, 🔭) | Everything else |
 
 ### The honest gap ⚠️ and how we shrink it

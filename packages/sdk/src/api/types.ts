@@ -57,7 +57,8 @@ export type Decision = {
   shop_id: Hex32;
   tier: number;
   features_hash: Hex32;
-  redline_hits: string[];
+  /** Red-line / eligibility codes; see `REDLINE_CODES` and `reasonMessage(code)`. */
+  redline_hits: RedlineCode[];
   draft: OfferDraft | null;
   verdict: CriticVerdict | null;
   clamp_changes: string[];
@@ -258,6 +259,78 @@ export type RecoveryVerifyResponse = { recovery_token: string; expires_at: numbe
 export type BackupRequest = { ciphertext: string };
 export type BackupResponse = { ciphertext: string };
 
+/* ------------------------------------------- World ID for borrowers (proof of human per shop) */
+
+/** POST /recovery/rp-context and POST /world/borrower/rp-context: what IDKit 4 needs. `rp_context` is signed by the backend. */
+export type IdkitRequestConfig = {
+  app_id: string;
+  action: string;
+  environment: "production" | "staging" | "sandbox" | (string & {});
+  rp_context: { rp_id: string; nonce: string; created_at: number; expires_at: number; signature: string };
+};
+/** The backend runs WORLD_MOCK=1: no rp_context, send a mock IDKit payload (`mockIdkit()`) instead. */
+export type IdkitMockConfig = { mock: true; action?: string };
+export type RpContextResponse = IdkitRequestConfig | IdkitMockConfig;
+
+/**
+ * POST /shops/{shopId}/human body: the IDKit result unchanged (WORLD_MOCK=1: `{mock:"approve", mock_human}`).
+ * Header `Authorization: Owner <issuedAt>:<signature>` (see `ownerAuthHeader`). The backend keeps only an HMAC of
+ * the World nullifier and never returns it.
+ */
+export type BindHumanRequest = { idkit: Record<string, unknown> } | { ticket: string };
+export type BindHumanResponse = { verified: true };
+
+/**
+ * POST /world/borrower/check: World ID FIRST, before any business step or shop. Body `{ idkit, owner }` where `owner`
+ * is the wallet that will own the shop (this device's burner). Eligible → an opaque ticket (AES-GCM, server key)
+ * good for 30 minutes and ONE shop bind; never the nullifier. Not eligible → the red line that stops the person.
+ */
+export type HumanCheckRequest = { idkit: Record<string, unknown>; owner: string };
+export type HumanCheckResponse =
+  | { eligible: true; ticket: string; expires_at: number }
+  | { eligible: false; reason: "human_banned" | "human_has_open_advance" | (string & {}) };
+
+/** One step of the gradual unlock: at `pct`% of the limit, `amount_usd` (an allowed size) can be drawn. */
+export type UnlockStepWire = { pct: number; amount_usd: number; unlocked: boolean };
+
+/**
+ * Gradual unlock at limit level `tier`: the first advance is capped at 50% of the limit (rounded down to an allowed
+ * size, never below $50), each full week of on-time minimum repayments unlocks +25%, a missed minimum freezes it.
+ */
+export type UnlockStatus = {
+  tier: number;
+  limit_usd: number;
+  available_now_usd: number;
+  /** 50..100 */
+  unlocked_pct: number;
+  good_weeks: number;
+  frozen: boolean;
+  /** unix seconds; null when fully unlocked or frozen */
+  next_unlock_at: number | null;
+  steps: UnlockStepWire[];
+  reasons: string[];
+};
+
+/**
+ * GET /shops/{shopId}/human[?tier=]. Without owner auth: `{ verified }` only. With a valid owner auth header also
+ * `banned` and `unlock` (null when the shop is not verified).
+ */
+export type HumanStatusResponse = { verified: boolean; banned?: boolean; unlock?: UnlockStatus | null };
+
+/** Redline / rejection codes a Decision's `redline_hits` may carry (any other code passes through as a string). */
+export const REDLINE_CODES = [
+  "few_payers",
+  "payer_concentration",
+  "circular_funding",
+  "few_active_days",
+  "sales_spike",
+  "payer_velocity",
+  "human_not_verified",
+  "human_banned",
+  "human_has_open_advance",
+] as const;
+export type RedlineCode = (typeof REDLINE_CODES)[number] | (string & {});
+
 /** Every stable error code the agents API returns in `{"detail": code}`. */
 export const AGENTS_API_ERROR_CODES = [
   "invalid_request",
@@ -279,6 +352,12 @@ export const AGENTS_API_ERROR_CODES = [
   "invalid_token",
   "token_expired",
   "bad_backup_size",
+  "unknown_or_used_nonce",
+  "shop_bound_to_other_human",
+  "ticket_expired",
+  "ticket_invalid",
+  "ticket_used",
+  "ticket_owner_mismatch",
 ] as const;
 
 /* -------------------------------------------------------------- issuer (Node) */

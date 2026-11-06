@@ -11,7 +11,6 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
-import { PrivateMark } from "../_parts";
 import { perMonthOptions, purposes } from "../_data";
 
 type SetupPage = { agentLimits: AgentLimitsVM; limitsLadder: LadderStepVM[]; currentTier: number };
@@ -37,7 +36,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
 
   return (
     <Columns ratio="3:2">
-      <PrivateMark>
+      <div>
         <Stack gap="md" className="lg:gap-3">
           <Card padding="md">
             <Label>Max per advance</Label>
@@ -92,7 +91,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
             }))}
           />
         </Stack>
-      </PrivateMark>
+      </div>
 
       <Stack gap="md" className="md:sticky md:top-24">
         <BlockPanel seed={4} dim={78} cols={6} rows={6} bodyClassName="gap-4 p-5 md:gap-5 md:p-7">

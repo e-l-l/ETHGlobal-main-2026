@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useTransition, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/cn";
 import { APP_NAME } from "@/lib/brand";
 import { routes } from "@/lib/routes";
-import { setWorldView, useWorldView } from "@/lib/world-view";
 import { Lockup } from "./brand";
-import { ChevronLeftIcon, CrossIcon, EyeIcon } from "./icons";
+import { ChevronLeftIcon, CrossIcon } from "./icons";
 import { Heading, Label, Text } from "./text";
 import { ScrollProgress } from "./reveal";
 
@@ -34,7 +33,6 @@ export function AppHeader({
   active,
   home = routes.home,
   end,
-  world = true,
   center,
   hideFrom,
 }: {
@@ -46,8 +44,6 @@ export function AppHeader({
   /** Where the logo goes. */
   home?: string;
   end?: ReactNode;
-  /** Shows the "what the world sees" switch. */
-  world?: boolean;
   /** Replaces the nav in the middle, e.g. onboarding step dots. */
   center?: ReactNode;
 }) {
@@ -57,7 +53,6 @@ export function AppHeader({
     nav
       ?.filter((n) => pathname === n.href || pathname.startsWith(`${n.href}/`))
       .sort((a, b) => b.href.length - a.href.length)[0]?.key;
-  const wv = useWorldView();
 
   return (
     <>
@@ -93,10 +88,8 @@ export function AppHeader({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {end}
-            {world ? <WorldToggle /> : null}
           </div>
         </div>
-        {world && wv ? <WorldLegend /> : null}
         <ScrollProgress />
       </header>
       {nav ? <TabBar nav={nav} current={current} /> : null}
@@ -133,62 +126,8 @@ function TabBar({ nav, current }: { nav: NavItem[]; current?: string }) {
   );
 }
 
-function WorldLegend() {
-  return (
-    <div role="status" className="mx-auto flex w-full max-w-280 flex-wrap gap-x-5 gap-y-1 px-4 pb-3 font-ledger text-ledger text-charcoal-soft md:px-8">
-      <span className="inline-flex items-center gap-2">
-        <i aria-hidden className="size-3 rounded-[3px] border-[1.5px] border-dashed border-hunter" />
-        Onchain, anyone can see
-      </span>
-      <span className="inline-flex items-center gap-2">
-        <i aria-hidden className="size-3 rounded-[3px] bg-[repeating-linear-gradient(-45deg,var(--color-well)_0_3px,var(--color-charcoal-muted)_3px_4px)]" />
-        Private, only on this device
-      </span>
-    </div>
-  );
-}
 
-/** Toggles the world view overlay on every screen (wrap public/private content in <WorldMark>). */
-export function WorldToggle() {
-  const wv = useWorldView();
-  return (
-    <button
-      type="button"
-      aria-pressed={wv}
-      title="What the world sees: public onchain vs private on this device"
-      onClick={() => setWorldView(!wv)}
-      className={cn(
-        "inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md px-3 font-body text-note font-semibold transition-colors duration-150",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal",
-        wv ? "bg-hunter text-canvas" : "text-charcoal-soft hover:bg-well hover:text-charcoal",
-      )}
-    >
-      <EyeIcon size={18} />
-      <span className="sr-only sm:not-sr-only">World view</span>
-    </button>
-  );
-}
 
-/** ES / EN. Writes the cookie and re-renders on the server (see lib/lang.ts). */
-export function LangToggle({ lang }: { lang: "en" | "es" }) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  const next = lang === "es" ? "en" : "es";
-  return (
-    <button
-      type="button"
-      aria-label={lang === "es" ? "ES, switch to English" : "EN, cambiar a español"}
-      aria-busy={pending || undefined}
-      onClick={() => {
-        document.cookie = `dj-lang=${next}; path=/; max-age=31536000; samesite=lax`;
-        start(() => router.refresh());
-      }}
-      className="inline-flex min-h-11 cursor-pointer items-center rounded-md px-3 font-ledger text-ledger font-semibold text-charcoal-soft hover:bg-well hover:text-charcoal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
-    >
-      {lang.toUpperCase()}
-    </button>
-  );
-}
 
 /** Onboarding progress, shown in the header's centre slot. */
 export function StepDots({ at, of, label }: { at: number; of: number; label: string }) {
@@ -413,7 +352,6 @@ export function SideNav({
         })}
       </nav>
       <div className="mt-auto flex flex-col gap-1 border-t border-hairline pt-4">
-        <WorldToggle />
         {footer}
       </div>
     </aside>
@@ -463,10 +401,31 @@ export function Accent({ children }: { children: ReactNode }) {
   return <span className="text-lime">{children}</span>;
 }
 
-/** The Hunter panel of a SplitPage: eyebrow, big headline, one line of body, the lime wave at the foot. */
-export function BrandPanel({ eyebrow, title, body, top, children }: { eyebrow?: ReactNode; title: ReactNode; body?: ReactNode; top?: ReactNode; children?: ReactNode }) {
+/**
+ * The Hunter panel of a SplitPage: logo, eyebrow, big headline, one line of body, the lime wave at the foot.
+ * It carries the logo, so split screens render no AppHeader.
+ */
+export function BrandPanel({
+  eyebrow,
+  title,
+  body,
+  top,
+  home = routes.home,
+  children,
+}: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  body?: ReactNode;
+  top?: ReactNode;
+  /** Where the logo goes. */
+  home?: string;
+  children?: ReactNode;
+}) {
   return (
-    <aside className="relative flex flex-col gap-5 overflow-hidden bg-hunter px-4 pt-5 text-canvas md:sticky md:top-16 md:h-[calc(100dvh-4rem)] md:w-[44%] md:max-w-155 md:shrink-0 md:gap-8 md:px-12 md:pt-12 lg:px-14">
+    <aside className="relative flex flex-col gap-5 overflow-hidden bg-hunter px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] text-canvas md:sticky md:top-0 md:h-dvh md:w-[44%] md:max-w-[620px] md:shrink-0 md:gap-8 md:px-12 md:pt-10 lg:px-14">
+      <Link href={home} aria-label={`${APP_NAME} home`} className="w-fit shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime">
+        <Lockup size={28} on="dark" />
+      </Link>
       {top}
       <div className="flex flex-col gap-3 md:my-auto md:gap-5">
         {eyebrow ? <span className="font-ledger text-tag tracking-[0.1em] text-lime uppercase">{eyebrow}</span> : null}

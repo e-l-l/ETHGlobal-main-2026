@@ -8,7 +8,6 @@ import {
   Card,
   CheckIcon,
   CrossIcon,
-  DemoBadge,
   Divider,
   Heading,
   JarMark,
@@ -20,11 +19,11 @@ import {
   Text,
   TextLink,
 } from "@/final";
-import { copy, stepEyebrow, type Lang } from "@/lib/copy";
+import { copy, stepEyebrow } from "@/lib/copy";
 import { isFailReason, routes, type FailReason } from "@/lib/routes";
 import type { BusinessPassView } from "@repo/sdk";
 import { PanelBlocks, litTiles } from "./panel-blocks";
-import { FailSheet, OnboardingHeader, PassFacts, StepProgress, World, WorldNote } from "./onboarding-client";
+import { FailSheet, PassFacts, StepProgress } from "./onboarding-client";
 
 function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
@@ -48,12 +47,11 @@ function FormHead({ title, children }: { title: ReactNode; children?: ReactNode 
 }
 
 /* M01 Welcome. One promise, one action. */
-export function WelcomeScreen({ lang }: { lang: Lang }) {
-  const t = copy[lang].welcome;
+export function WelcomeScreen() {
+  const t = copy.welcome;
   const icons = [<ShieldIcon key="s" size={22} />, <LockIcon key="l" size={22} />, <CheckIcon key="c" size={22} />];
   return (
     <>
-      <OnboardingHeader lang={lang} />
       <SplitPage
         panel={
           <BrandPanel
@@ -100,17 +98,16 @@ export function WelcomeScreen({ lang }: { lang: Lang }) {
 }
 
 /* M02 Prove your business. The real path goes through the seller portal; the demo shop skips it. */
-export function ProveScreen({ lang }: { lang: Lang }) {
-  const c = copy[lang];
+export function ProveScreen() {
+  const c = copy;
   const t = c.prove;
   return (
     <>
-      <OnboardingHeader lang={lang} />
       <SplitPage
         panel={
           <BrandPanel
             top={<PanelBlocks seed={11} lit={litTiles(1)} />}
-            eyebrow={stepEyebrow(lang, 1)}
+            eyebrow={stepEyebrow(1)}
             title={
               <>
                 {t.title} <Accent>{t.accent}</Accent>
@@ -120,8 +117,7 @@ export function ProveScreen({ lang }: { lang: Lang }) {
           />
         }
       >
-        <StepProgress lang={lang} at={1} />
-        <DemoBadge>Demo attestor · demo seller portal</DemoBadge>
+        <StepProgress at={1} />
         <FormHead title={t.heading}>{t.body}</FormHead>
         <section aria-label={t.whereSell} className="flex flex-col gap-2">
           <Label>{t.whereSell}</Label>
@@ -172,9 +168,8 @@ export function ProveScreen({ lang }: { lang: Lang }) {
             </div>
           </div>
         </Card>
-        <WorldNote>{t.world}</WorldNote>
         <div className="flex justify-center">
-          <FailSheet lang={lang} />
+          <FailSheet />
         </div>
         <ActionBar hint={t.time}>
           <Button href={routes.portalLogin}>{t.cta}</Button>
@@ -188,16 +183,15 @@ export function ProveScreen({ lang }: { lang: Lang }) {
 }
 
 /* M04 Business Pass. A rare, first-time moment. The facts come from `onboarding.pass()` (this device's vault). */
-export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPassView | null }) {
-  const c = copy[lang];
+export function PassScreen({ initial }: { initial: BusinessPassView | null }) {
+  const c = copy;
   const t = c.pass;
   return (
     <>
-      <OnboardingHeader lang={lang} />
       <SplitPage
         panel={
           <BrandPanel
-            eyebrow={stepEyebrow(lang, 3)}
+            eyebrow={stepEyebrow(3)}
             title={
               <>
                 {t.title} <Accent>{t.accent}</Accent>
@@ -216,9 +210,9 @@ export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPas
           />
         }
       >
-        <StepProgress lang={lang} at={3} />
+        <StepProgress at={3} />
         <FormHead title={t.heading}>{t.body}</FormHead>
-        <World kind="priv">
+        <div>
           <Card as="section" aria-label="Business Pass" tone="tint">
             <div className="flex items-center justify-between gap-3">
               <span className="flex items-center gap-2">
@@ -227,11 +221,10 @@ export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPas
               </span>
               <Pill tone="locked">{t.onPhone}</Pill>
             </div>
-            <PassFacts lang={lang} initial={initial} />
+            <PassFacts initial={initial} />
             <p className="m-0 font-body text-read font-bold text-charcoal">{t.learned}</p>
           </Card>
-        </World>
-        <WorldNote>{t.world}</WorldNote>
+        </div>
         <Banner>{t.next}</Banner>
         <ActionBar>
           <Button href={routes.shop}>{t.cta}</Button>
@@ -242,13 +235,12 @@ export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPas
 }
 
 /* M05 Verification failed. Calm, specific, and a way forward. Nothing was saved. */
-export function FailedScreen({ lang, reason }: { lang: Lang; reason?: string }) {
-  const t = copy[lang].failed;
+export function FailedScreen({ reason }: { reason?: string }) {
+  const t = copy.failed;
   const f = isFailReason(reason) ? t[reason] : t.generic;
   const others = (["too-new", "suspended", "revenue-low"] as FailReason[]).filter((r) => r !== reason);
   return (
     <>
-      <OnboardingHeader lang={lang} />
       <SplitPage
         panel={
           <BrandPanel
@@ -280,7 +272,6 @@ export function FailedScreen({ lang, reason }: { lang: Lang; reason?: string }) 
             ))}
           </ul>
         </Card>
-        <WorldNote>{t.world}</WorldNote>
         <ActionBar>
           <Button href={routes.portalLogin}>{t.retry}</Button>
           <Button href={routes.welcome} variant="ghost">

@@ -209,6 +209,9 @@ class Web3ChainReader:
         self._start_block_cache: dict[int, int] = {}
         self._opened_at: dict[int, int] = {}
         self._opened_scanned_to = self.deploy_block - 1
+        self._split_ev = self.book.events.RepaymentSplit()
+        self._repaid: dict[int, list[tuple[int, int]]] = {}  # advance id -> [(timestamp, amount)]
+        self._repaid_scanned_to = self.deploy_block - 1
 
     # -- basics
     def latest_block(self) -> int:
@@ -394,6 +397,30 @@ class Web3ChainReader:
              "inputs": [{"name": "slot", "type": "bytes32"}], "outputs": [{"type": "bytes32"}]}])
         word = pm.functions.extsload((state + 3).to_bytes(32, "big")).call()
         return int.from_bytes(word, "big") & ((1 << 128) - 1)
+
+    def repayments(self, advance_ids: list[int]) -> dict[int, list[tuple[int, int]]]:
+        """Every repayment per advance from RepaymentSplit logs (pay() holdbacks and direct repay()), as
+        [(block timestamp, amount)], amount = principal part + all fee parts. Used by unlock.py to replay the
+        contract's minimum-repayment windows. Scanned incrementally, like AdvanceOpened."""
+        latest = self.latest_block()
+        if latest > self._repaid_scanned_to:
+            for log in self._get_logs(self.book_address, [_hex(self._split_ev.topic)],
+                                      self._repaid_scanned_to + 1, latest):
+                ev = self._split_ev.process_log(log)
+                args = ev["args"]
+                amount = sum(int(args[k]) for k in
+                             ("principalPart", "seniorFee", "juniorFee", "reserveFee", "protocolFee"))
+                self._repaid.setdefault(int(args["advanceId"]), []).append(
+                    (self.block_timestamp(int(log["blockNumber"])), amount))
+            self._repaid_scanned_to = latest
+        return {i: list(self._repaid.get(int(i), [])) for i in advance_ids}
+
+    def shop_owner(self, shop_id: str) -> str | None:
+        """The address that registered the shop (AdvanceBook.shops(id).owner); None if not registered."""
+        owner, _payout, _active = self.book.functions.shops(_bytes32(shop_id)).call()
+        if not owner or int(owner, 16) == 0:
+            return None
+        return Web3.to_checksum_address(owner)
 
     def shop_payout(self, shop_id: str) -> str | None:
         _owner, payout, _active = self.book.functions.shops(_bytes32(shop_id)).call()

@@ -52,6 +52,5 @@ export function LenderDisclosure() {
     <Text>For a $100 advance repaid in 4 weeks, the $2 fee pays $0.80 senior, $0.60 DripCoin (DRIP), $0.40 reserve, $0.20 protocol.</Text>
     <Text size="note">Pool swaps pay a 0.30% pool fee and a separate 0.30% RiskHook fee when USDC is the unspecified swap currency. Hook fees go to reserve.</Text>
     <Text size="note">Senior is not guaranteed. Junior withdrawals require remaining cover of at least 10% of senior outstanding; new draws do not enforce this ratio. Withdrawals also depend on available cash.</Text>
-    <DemoBadge>Seeded liquidity · test balances</DemoBadge>
   </Card>;
 }

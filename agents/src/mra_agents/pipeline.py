@@ -56,10 +56,28 @@ def _clamp(*args, **kwargs):
 
 class UnderwritingPipeline:
     def __init__(self, *, reader, indexer, judge, signer, store, settings,
-                 build_features=_build_features, redline_check=_redline_check, clamp=_clamp, now=time.time):
+                 build_features=_build_features, redline_check=_redline_check, clamp=_clamp, now=time.time,
+                 humans=None):
         self.reader, self.indexer, self.judge, self.signer, self.store = reader, indexer, judge, signer, store
         self.settings, self.build_features, self.redline_check, self.clamp, self.now = (
             settings, build_features, redline_check, clamp, now)
+        # World ID binding (humans.HumanRegistry). None = legacy: no human red lines, no gradual unlock.
+        self.humans = humans
+
+    def human_gate(self, shop_id, tier, limits, features, now):
+        """World ID red lines (pure code, before any model call) and the gradual unlock cap on `features`.
+        Returns (reason codes, features). No registry wired = ([], features)."""
+        if self.humans is None:
+            return [], features
+        advances = list(self.reader.advances())
+        required = bool(getattr(self.settings, "world_binding_required", False))
+        hits = self.humans.check(shop_id, advances, required=required)
+        if hits or not 0 <= tier <= 3:
+            return hits, features
+        from .humans import unlock_for
+        mine = self.humans.human_advances(shop_id, advances)
+        u = unlock_for(self.reader, mine, tier, now=now, tier_caps=limits.tier_cap)
+        return [], features.model_copy(update={"approved_limit": u.limit, "available_now": u.available_now})
 
     def request_offer(self, shop_id, tier, recipient, pass_nullifier=0, min_revenue_band=0):
         """tier 0 manual draw (drawFirst): pass the Business Pass first-advance nullifier and the band the proof
@@ -89,6 +107,9 @@ class UnderwritingPipeline:
             return decision
 
         decision.redline_hits = self.redline_check(features)
+        human_hits, features = self.human_gate(shop_id, tier, limits, features, now)
+        decision.redline_hits = list(decision.redline_hits) + human_hits
+        decision.features_hash = features_hash(features)  # includes the unlock cap the judges saw
         if decision.redline_hits:
             return finish("rejected")
         if (not 0 <= tier <= 3 or not 0 <= pass_nullifier < BN254_P

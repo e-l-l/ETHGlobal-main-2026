@@ -47,6 +47,31 @@ Exact merchant copy (also in `AdvanceVM.feeRule`): ** + COPY + **
 - Tier caps shown anywhere are now **$50 / $100 / $200 / $300**.
 - **Naming:** say **DripCoin (DRIP)** everywhere. "Junior token" is still in `landing/Lenders.tsx`, `landing/UnderTheHood.tsx` and `app/page.tsx` (user-facing copy only; leave code identifiers).
 
+## P0: World ID FIRST in onboarding, before any business step (backend refuses unverified shops)
+
+Backend: every offer needs a World ID bound to the shop (`WORLD_BINDING_REQUIRED=1`, the default), and World ID now
+comes **first**: a banned person, or someone with an open advance on another shop, must be stopped before Business
+Pass / zkTLS / Create shop. **Until the World ID screen ships, live offers from the web app come back `rejected`
+with `human_not_verified`.** If the frontend can't ship it before the demo, set `WORLD_BINDING_REQUIRED=0` on the
+agents API (bans and the unlock still apply to verified shops). Full spec, SDK calls per screen and HTTP:
+[FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md#world-id-for-borrowers-world-id-first-ban-on-default-gradual-unlock).
+
+**New screen order:** `/onboarding` → **World ID** → (stop screen if banned / open advance) → prove business
+(portal / zkTLS) → Business Pass → Create shop → agent setup.
+
+| Where (apps/web/src/…) | Change |
+|---|---|
+| New World ID screen, right after `/onboarding` (Welcome), before prove business (M02) | Button "Verify with World" → `mra.onboarding.checkHuman({ onStep })`. Steps: `verifying_human` → `checking` → `eligible` / `stopped`. On `eligible: true` go to prove business. Configure `idkitV4` as for recovery; the SDK passes `purpose: "borrower"`. |
+| New stop screen (from the World ID screen) | `eligible: false` with `reason` `human_banned` → **"This World ID can't borrow on DripMoni after a default."**; `human_has_open_advance` → **"Repay your open advance first."** (`result.message` has this text). No business steps, no retry button. Any other `reason` (e.g. `verification_failed`) → retry the scan on the World ID screen. |
+| Create shop (M06) | No new call: `createShop(name)` binds the World ID with the saved ticket. If `shop.human.needsWorldId` is true (ticket expired after 30 min, or missing), send the merchant to the World ID screen, run `checkHuman()`, then `mra.onboarding.bindHumanTicket()`. Don't create a second shop. If `needsWorldId` is false and `verified` is false, retry `bindHumanTicket()`. |
+| Remove | The old "Verify you're a unique human" step after `createShop` (`verifyHuman()`). `verifyHuman()` still works for an existing shop, but the new flow doesn't need it. |
+| Offer / "ask for an advance" result (backstop) | Handle `redline_hits` `human_not_verified` (World ID screen, then `bindHumanTicket()`), `human_banned` (banned screen), `human_has_open_advance` ("Repay your open advance first."). Use `reasonMessage(code)`. |
+| Banned state on home | When `home().banned` is true: "This World ID can't borrow on DripMoni after a default." Hide the advance CTA. |
+| `app/merchant/(app)/screen.tsx` (home) and `advance/screen.tsx` | Show "Available now $`availableNow` of $`limit`", the `unlockSteps` bar (50/75/100%) and `nextUnlockAt`. The first advance at a new level is 50% of the limit. |
+| `(focus)/agent/approve/screen.tsx` | Cap the per-advance limit suggestion at `availableNow`; show the same unlock line. |
+| Simulator page | Step kinds `world_id` and `unlock`; render them like `info` if there is no special style. Every archetype now starts with "World ID first: a unique human, cleared to borrow", then Business Pass, then the shop, then "Shop bound to the World ID from the first step". `defaulter` ends with "World ID banned: this person can't borrow again, on any shop" and "World ID check: banned, stopped before any business step" (no Business Pass, no shop). |
+| Mock / demo | Stop screens without a backend: add `?mockWorld=banned` or `?mockWorld=open_advance` to the URL (mock mode only). |
+
 ## P1: World is real on the backend; the screens aren't wired
 
 The backend and SDK are done and were tested against live World (OIDC device flow plus IDKit v4 proof verification). The live box runs `WORLD_MOCK=1` until these screens ship. After that, we flip it to `0`.

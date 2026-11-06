@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentApproveView, AgentSetupStep } from "@repo/sdk";
-import { ActionBar, Banner, Button, DemoBadge, Ledger, LockIcon, OfferDisclosure, Page, Text } from "@/final";
+import { ActionBar, AppHeader, Banner, Button, Ledger, LockIcon, OfferDisclosure, Page, Text } from "@/final";
 import { BlockPanel } from "@/blocks";
 import { HeroLabel } from "../../../_ui";
 import { capitalize, formatMoney, formatPercent } from "@/lib/format";
@@ -60,7 +60,9 @@ export function ApproveScreen({
   };
 
   return (
-    <Page dense className="justify-center">
+    <>
+      <AppHeader home={routes.merchant} />
+      <Page dense className="justify-center">
       <section className="mx-auto flex w-full max-w-140 flex-col overflow-hidden rounded-lg border border-hairline bg-surface shadow-lift lg:max-w-250 lg:grid lg:grid-cols-[5fr_7fr]">
         <BlockPanel seed={5} dim={76} cols={6} rows={8} className="rounded-none" bodyClassName="gap-4 p-5 md:gap-5 md:p-7 lg:justify-center">
           <span className="grid size-12 place-items-center rounded-full bg-lime text-charcoal" aria-hidden>
@@ -74,7 +76,6 @@ export function ApproveScreen({
           </Text>
         </BlockPanel>
         <div className="flex flex-col gap-4 p-5 md:p-6 lg:gap-3">
-          {worldReal ? null : <DemoBadge>World test mode</DemoBadge>}
           <Text size="note">Illustrative terms at your maximum per-draw limit; future offers may differ. Mandate expires after 90 days.</Text>
           <OfferDisclosure
             principal={advance.drawn}
@@ -108,10 +109,11 @@ export function ApproveScreen({
             )}
             <Button href={routes.agent.denied} variant="ghost">
               Not now
-            </Button>
-          </ActionBar>
-        </div>
-      </section>
-    </Page>
+              </Button>
+            </ActionBar>
+          </div>
+        </section>
+      </Page>
+    </>
   );
 }

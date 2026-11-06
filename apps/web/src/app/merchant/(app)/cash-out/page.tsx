@@ -1,4 +1,4 @@
-import { DemoBadge, Page, PageHead, Text } from "@/final";
+import { Page, PageHead, Text } from "@/final";
 import { serverView } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { routes } from "@/lib/routes";
@@ -9,17 +9,7 @@ export default async function CashOutPage() {
   const initial = await serverView(q.cashOut);
   return (
     <Page tabs dense>
-      <PageHead
-        back={routes.merchant}
-        backLabel="Home"
-        title="Cash out"
-        actions={
-          <span className="flex flex-wrap items-center gap-3">
-            <DemoBadge>Simulated cash-out</DemoBadge>
-            <Text size="note">No local money is sent.</Text>
-          </span>
-        }
-      />
+      <PageHead back={routes.merchant} backLabel="Home" title="Cash out" actions={<Text size="note">No local money is sent.</Text>} />
       <CashOutForm initial={initial} />
     </Page>
   );

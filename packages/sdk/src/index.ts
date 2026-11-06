@@ -11,7 +11,8 @@ export { SCREENS, type ScreenMap } from "./screens.js";
 // API clients + wire types
 export { AgentsApi, IssuerApi } from "./api/clients.js";
 export type * from "./api/types.js";
-export { AGENTS_API_ERROR_CODES, ISSUER_ERROR_CODES } from "./api/types.js";
+export { AGENTS_API_ERROR_CODES, ISSUER_ERROR_CODES, REDLINE_CODES } from "./api/types.js";
+export { REASON_MESSAGES, reasonMessage, reasonMessages } from "./reasons.js";
 export { createHttp, toJson, type FetchFn, type Http } from "./http.js";
 
 // Chain
@@ -56,6 +57,8 @@ export {
   type AgentPassRealRequest,
   type DevicePrompt,
   type IdkitRequestConfig,
+  type IdkitPurpose,
+  type IdkitVerifyOptions,
   type ReclaimAdapter,
   type ReclaimProofRequestLike,
   type AgentPassAdapter,
@@ -67,5 +70,6 @@ export { ANON_SPECIFIERS, anonFetchFrom, bootstrapProvider, type AnonRpcWorkerLi
 // Helpers
 export { formatMoney, formatLocal, formatNumber, formatPercent, formatDays, truncateAddress, capitalize } from "./format.js";
 export { splitSale, pseudonymOf, annualizedCost } from "./domains/util.js";
-export { failReasonFor } from "./domains/onboarding.js";
+export { failReasonFor, mockWorldMode } from "./domains/onboarding.js";
+export { ownerAuthMessage, ownerAuthHeader, humanLimitFrom, unlockVM } from "./domains/human.js";
 export * as credentials from "./credentials.js";

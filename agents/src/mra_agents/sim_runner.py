@@ -360,10 +360,114 @@ class Simulator:
         if ts > now:
             d.warp(ts - now)
 
+    # -------------------------------------------------------------- World ID FIRST, ban, unlock (humans.py)
+    def _world_check(self, ctx, owner) -> dict:
+        """World ID before any business step: POST /world/borrower/check for the wallet that will own the shop. Mock
+        IDKit: one human per run (the same person always yields the same nullifier). Returns the service's answer;
+        the eligible step is recorded here, a refusal is the caller's to narrate."""
+        from mra_agents.world import MockIDKit
+        humans = self._service("humans")
+        human = f"sim-{ctx['run_id']}"
+        if isinstance(humans.verifier, MockIDKit):
+            out = humans.check({"mock": "approve", "mock_human": human}, owner.address)
+        else:  # a real World verifier is configured: a devnet stand-in nullifier for this run's merchant
+            from eth_utils import keccak
+            out = humans.check_nullifier("0x" + keccak(f"sim-world:{human}".encode()).hex(), owner.address)
+        if out.get("eligible"):
+            self._step(ctx, "world_id", "World ID first: a unique human, cleared to borrow",
+                       "Before any business step, the merchant proved with World ID (proof of human, mock IDKit on "
+                       "the devnet) that a unique person is applying, and the offer signer checked that this person "
+                       "is not banned and has no open advance on another shop. The app gets a 30-minute sealed "
+                       "ticket instead of the World nullifier, so the shop can be bound later without a second scan.",
+                       {"eligible": True, "ticket_minutes": 30,
+                        "public": [{"label": "Onchain", "value": "nothing: the check lives in the offer signer"}],
+                        "private": [{"label": "World nullifier", "value": "never stored or returned; HMAC only"},
+                                    {"label": "Ticket", "value": "AES-GCM sealed, bound to the shop wallet, one use"}]})
+        return out
+
+    def _world_bind(self, ctx, shop, ticket):
+        """Right after the shop is created: bind it to the checked human with the ticket (owner-authenticated)."""
+        from eth_account import Account
+        from eth_account.messages import encode_defunct
+
+        from mra_agents.humans import owner_auth_message
+        issued = int(time.time())
+        msg = owner_auth_message(shop["shop_hex"], 31337, issued)
+        sig = Account.sign_message(encode_defunct(text=msg), shop["owner"].key).signature.hex()
+        auth = f"Owner {issued}:0x{sig.removeprefix('0x')}"
+        out = self._service("humans").bind_ticket(shop["shop_hex"], ticket, auth)
+        shop["auth"] = auth
+        self._step(ctx, "world_id", "Shop bound to the World ID from the first step",
+                   "The shop owner signed in with the shop wallet and handed back the sealed ticket, so the new shop "
+                   "is now linked, privately, to the human checked at the start. No second World ID scan. The "
+                   "ticket is spent: it can't bind another shop.",
+                   {"verified": out.get("verified") is True,
+                    "public": [{"label": "Onchain", "value": "nothing: the binding lives in the offer signer's DB"}],
+                    "private": [{"label": "Which shops belong to this human", "value": "encrypted at rest"}]})
+        return out
+
+    def _world_ban(self, ctx, d, shop):
+        """After a write-off: the human behind the shop is banned; their next attempt stops at the World ID check,
+        before any Business Pass proof or shop."""
+        reader = self._service("reader")
+        registry = self._service("human_registry")
+        registry.sync_write_offs(reader.advances())  # the Keeper already did this; idempotent
+        human = registry.human_for_shop(shop["shop_hex"])
+        banned = bool(human and registry.is_banned(human))
+        if not banned:
+            raise RuntimeError("write-off did not ban the World ID")
+        status = self._service("humans").status(shop["shop_hex"], shop["auth"])
+        self._step(ctx, "world_id", "World ID banned: this person can't borrow again, on any shop",
+                   "The advance was written off, so the offer signer banned the World ID behind this shop. It is a "
+                   "private list: nothing about the person went onchain, and only the shop's owner can see the "
+                   "ban. A new pseudonym won't help, because the same human gives the same World ID.",
+                   {"banned": status.get("banned"), "verified": status.get("verified"),
+                    "public": [{"label": "Onchain", "value": "only the write-off of a pseudonymous shop"}],
+                    "private": [{"label": "Ban list", "value": "HMAC of the World nullifier, offer signer only"}]})
+        before = self.ledger()
+        ctx["stage"] = "new_attempt"
+        owner = self._burner()  # a brand-new wallet: nothing onchain links it to the defaulted shop
+        out = self._world_check(ctx, owner)
+        if out.get("eligible") or out.get("reason") != "human_banned":
+            raise RuntimeError("banned human was not stopped at the World ID check")
+        after = self.ledger()
+        self._step(ctx, "world_view", "World ID check: banned, stopped before any business step",
+                   "Same person, brand-new wallet, trying again. The very first screen is World ID, and the check "
+                   "answered human_banned: no Business Pass proof, no shop, no transaction. If they skipped the app "
+                   "and opened a shop directly, the offer signer would still refuse it at offer time (human_banned "
+                   f"or human_not_verified). Outstanding stays at ${after['outstanding']:,.2f}.",
+                   {"eligible": False, "reason": out.get("reason"), "business_pass": "not started",
+                    "shop": "not created", "outstanding_before": before["outstanding"],
+                    "outstanding_after": after["outstanding"],
+                    "unchanged": before["outstanding"] == after["outstanding"]})
+        return out
+
+    def _unlock_step(self, ctx, shop, tier, amount):
+        """Owner-only status after the first draw at a new level: what the gradual unlock allows now and next."""
+        status = self._service("humans").status(shop["shop_hex"], shop["auth"], tier)
+        u = status.get("unlock") or {}
+        steps = u.get("steps") or []
+        ladder = ", ".join(f"{s['pct']}% = ${s['amount_usd']:.0f}" for s in steps)
+        self._step(ctx, "unlock", f"Gradual unlock: ${amount / USDC:.0f} of the ${u.get('limit_usd', 0):.0f} limit",
+                   f"The first advance at a new limit level is capped at 50%. Each full week of on-time minimum "
+                   f"repayments (1% of principal plus fee per 7 days) unlocks 25% more: {ladder}. A missed minimum "
+                   "freezes it; a write-off bans the World ID.",
+                   {"unlock": u, "drawn": amount / USDC})
+        return u
+
     # -------------------------------------------------------------- shop + sales history
-    def _register(self, ctx, d, kind: str):
+    def _world_first(self, ctx, d):
+        """Every merchant starts with World ID: a fresh shop wallet, then the eligibility check. Returns
+        (owner, ticket)."""
+        owner = self._burner()
+        out = self._world_check(ctx, owner)
+        if not out.get("eligible"):
+            raise RuntimeError(f"World ID check refused a new merchant: {out.get('reason')}")
+        return owner, out["ticket"]
+
+    def _register(self, ctx, d, kind: str, owner, ticket):
         from web3 import Web3
-        owner, payout = self._burner(), self._burner()
+        payout = self._burner()
         self._fund_eth(d, owner)
         self._fund_eth(d, payout)
         shop_id = Web3.keccak(text=f"sim:{kind}:{secrets.token_hex(16)}")
@@ -374,7 +478,9 @@ class Simulator:
         self._step(ctx, "shop", "Merchant opens a pseudonymous shop",
                    f"Registered {label} onchain: a random shop id and a fresh payout address. No name, no phone.",
                    {"pseudonym": label, "shop_id": shop_hex}, rc)
-        return {"shop_id": shop_id, "shop_hex": shop_hex, "payout": payout, "label": label}
+        shop = {"shop_id": shop_id, "shop_hex": shop_hex, "payout": payout, "label": label, "owner": owner}
+        self._world_bind(ctx, shop, ticket)
+        return shop
 
     def _history(self, ctx, d, shop, *, days, payers, rng, per_day=(1, 3), amount=(6.0, 28.0), machine=False):
         """Real customer sales, one step per simulated day. Honest: 1-3 sales a day at scattered hours, uneven
@@ -651,10 +757,11 @@ class Simulator:
     # -------------------------------------------------------------- scenarios
     def _honest(self, ctx, d, archetype, rng):
         from mra_agents import zk
-        shop = self._register(ctx, d, archetype)
+        owner, ticket = self._world_first(ctx, d)
+        secret = self._business_pass(ctx, d)
+        shop = self._register(ctx, d, archetype, owner, ticket)
         payers = self._new_payers(d, 16)
         self._history(ctx, d, shop, days=HISTORY_DAYS, payers=payers, rng=rng)
-        secret = self._business_pass(ctx, d)
         signed = self._underwrite(ctx, shop, tier=0, pass_nullifier=zk.business_nullifier(secret), band=1)
         if signed is None:
             return shop, "Underwriting did not issue an offer; no money moved"
@@ -715,7 +822,8 @@ class Simulator:
     def _repeat(self, ctx, d, standing_secret, leaves, rng):
         from mra_agents import zk
         ctx["stage"] = "repeat"
-        fresh = self._register(ctx, d, "repeat_borrower")
+        owner, ticket = self._world_first(ctx, d)  # repaid, nothing open: the same human is cleared again
+        fresh = self._register(ctx, d, "repeat_borrower", owner, ticket)
         self._step(ctx, "world_view", "A fresh, unlinkable pseudonym",
                    "The returning merchant opened a brand-new shop. Onchain, nothing links it to the repaid one.",
                    {"public": [{"label": "New shop id", "value": fresh["shop_hex"]}],
@@ -750,12 +858,15 @@ class Simulator:
                    f"${signed.offer.amount / USDC:.0f}.",
                    {"tier": 1, "advance_id": aid, "limit": ledger["merchant_limit"],
                     "amount": signed.offer.amount / USDC, "ledger": ledger})
+        self._unlock_step(ctx, fresh, 1, signed.offer.amount)
         return fresh, (f"Repaid, claimed a Standing Pass, then drew ${signed.offer.amount / USDC:.0f} at tier 1 "
                        "on a fresh pseudonym")
 
     def _wash(self, ctx, d, rng):
         from mra_agents import zk
-        shop = self._register(ctx, d, "wash_ring")
+        owner, ticket = self._world_first(ctx, d)  # World ID can't spot a ring: one real human runs it
+        secret = self._business_pass(ctx, d)
+        shop = self._register(ctx, d, "wash_ring", owner, ticket)
         payout = shop["payout"]
         ring = self._new_payers(d, 4)
         funder = self._burner()
@@ -772,7 +883,6 @@ class Simulator:
                    "They buy from the shop every day, so the same money goes round in a circle.",
                    {"payers": 4, "funded_from_payout_usd": 4_000, "common_funder_usd": 4_000}, rc)
         self._history(ctx, d, shop, days=HISTORY_DAYS, payers=ring, rng=rng, machine=True, amount=(90, 140))
-        secret = self._business_pass(ctx, d)
         before = self.ledger()
         signed = self._underwrite(ctx, shop, tier=0, pass_nullifier=zk.business_nullifier(secret), band=1,
                                   attempts=1)
@@ -853,7 +963,8 @@ class Simulator:
                 def advances(self):
                     return [x for x in reader.advances() if x.advance_id == advance_id]
 
-            sent = Keeper(ThisAdvanceOnly(), relayer.writer, self._service("pipeline").settings, now=d.now).tick()
+            sent = Keeper(ThisAdvanceOnly(), relayer.writer, self._service("pipeline").settings, now=d.now,
+                          humans=self._service("human_registry")).tick()
             a = self._advance(d, advance_id)
             if int(a["status"]) != 3:
                 raise RuntimeError("keeper did not write off the eligible advance")
@@ -917,8 +1028,10 @@ class Simulator:
                    "found them.", {"tier_caps": [self._usd(d.book.functions.tierCap(i).call()) for i in range(4)],
                                    "junior_pool_price": round(d.junior_price_from_tick(d.slot0()[1]), 6),
                                    "ledger": self._ledger(ctx)})
+        self._world_ban(ctx, d, shop)
         return (f"Written off after {days} silent days; DRIP (junior) absorbed ${loss / USDC:.2f}; "
-                "risk caps lowered, then restored")
+                "risk caps lowered, then restored; World ID banned, and the retry stopped at the World ID check "
+                "(human_banned) before any business step")
 
     def _restore(self, d, caps0, max0, tick0, lp):
         """Runs even when the scenario fails: the next judge must start from the same limits and pool price."""
