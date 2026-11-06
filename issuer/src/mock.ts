@@ -1,5 +1,5 @@
 // Canned proofs for ISSUER_MOCK=1. Same shape as a real Reclaim proof (so the app can use one code path),
-// built from the demo portal's fictional accounts (demo-portal/config/demo-accounts.json). Using the same
+// built from the demo portal's fictional accounts (demo/portal/config/demo-accounts.json). Using the same
 // fictional account ids means a mock-issued pass and a real-proof pass for the same demo business share a
 // nullifier, so the registry blocks the second one either way.
 import { createHash, randomBytes } from "node:crypto";

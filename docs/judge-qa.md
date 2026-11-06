@@ -1,0 +1,18 @@
+# Hard questions judges will ask
+
+| Question | Our answer |
+|---|---|
+| How big is this market? | Small businesses in emerging markets face a **$5.7T finance gap** (IFC). The repay-from-sales model is proven: **Shopify Capital $4.2B** a year, **Mercado Pago $2.9B** in merchant loans, Moniepoint about $700M, M-Pesa's Fuliza. They do it by owning your data and your payment rails; we do it with no data, open rails, and a credit history the merchant owns. Our real bottleneck is stablecoin acceptance at the till, and the advance is the reason to switch. |
+| Why World ID if the borrower is a business? | We don't use it to verify the business: zkTLS from a KYC'd seller platform does that, and one-per-human would wrongly block owners of several businesses. World sits at the two human moments: **Agent Pass**, when a merchant delegates once to their managed cash-flow agent (after that, credit is fully automatic), and **IDKit**, so only the same human can recover their private credentials on a new phone. |
+| What stops a merchant switching to another payment address? | Nothing fully stops it, and this is our main weakness. We limit the damage with small first advances, limits that grow only through repayment, and alerts on sudden sales drops. The Standing Pass makes good behaviour valuable, because a repaid credential is worth more than one skipped repayment. |
+| Who are the merchants today? | Merchants in dollar-short economies, such as Argentina, Nigeria and Kenya, where people already hold stablecoins to escape inflation. The advance gives them a reason to accept stablecoins at the till. |
+| Customers there use USDT, not USDC. | Checkout takes any token and swaps through Uniswap. The customer pays in USDT, and repayment settles in USDC. |
+| What does ZK actually hide? | Who you are (World ID), your borrowing history (Standing Pass), and in the stretch version your offchain books (zkTLS). Repayment on a known shop is still public. Hiding that needs a shielded pool, which is our roadmap. |
+| Why not just use a KYC'd lender? | Contact-harvesting loan apps show what happens when lenders hold borrower data. Our privacy is built into the system, not a policy we promise to follow. Selective disclosure covers regulators. |
+| Can sales be faked to get a bigger advance? | Yes, through wash trading. World ID blocks duplicate accounts, the Critic flags suspicious patterns, and first limits are small, so faking costs more than it earns. |
+| Can a prompt injection drain the pool? | No. Agent output is schema-bound, the Critic must approve independently, and `AdvanceBook` caps every draw onchain. We show it failing in the demo. |
+| Can a defaulter come back with a new wallet? | No. The World ID first-advance action works once per human, and later advances need a Standing Pass, which is only minted on full repayment. |
+| Is this predatory? | Merchant advances can be expensive, so we show one flat fee upfront, with slow, normal and busy repayment estimates. There are no rollovers and no late fees, and a bad week only slows repayment. |
+| Why would anyone trade the junior token? | It earns fees for taking first loss. Liquidity would be thin at first, so the demo seeds the pool. |
+| Is it legal? | A real launch needs licensing in each market (for example, Kenya licenses digital lenders) and KYC through selective disclosure. AI credit decisions face extra scrutiny, including the EU AI Act's high-risk rules. |
+| Isn't the anonymity set tiny? | In a demo, yes. Privacy grows with the number of repaid advances, which is why the Standing Pass should be portable across lenders. |

@@ -2,7 +2,7 @@
 
 The small trusted service behind the Business Pass (`docs/privacy-architecture.md` section 2). It:
 
-- receives the merchant's **combined Reclaim proof**: the public predicates plus the issuer-only `account_id` extraction (`demo-portal/lib/reclaim.ts`, `issuerProviderConfig`)
+- receives the merchant's **combined Reclaim proof**: the public predicates plus the issuer-only `account_id` extraction (`demo/portal/lib/reclaim.ts`, `issuerProviderConfig`)
 - verifies it
 - derives a per-business nullifier
 - **drops the account id**

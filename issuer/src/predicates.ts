@@ -7,7 +7,7 @@
 // So "predicate P is true" == "a match with exactly P's regex is present, not inverted, not optional".
 // The redacted response itself is NOT in the proof; we never see the values, only that the patterns matched.
 //
-// Regexes are byte-identical to demo-portal/lib/reclaim.ts (PREDICATE_REGEX).
+// Regexes are byte-identical to demo/portal/lib/reclaim.ts (PREDICATE_REGEX).
 import type { Band } from "./config.js";
 
 export class IssueError extends Error {
