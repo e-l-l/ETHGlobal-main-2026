@@ -8,9 +8,14 @@
  *
  * With `initial` (mock mode, rendered on the server) it doesn't fetch at all unless `refreshMs` is set, so the
  * server HTML and the hydrated client are identical. Without it (local / sepolia), it loads on mount.
+ *
+ * Stale-while-revalidate (local / sepolia): the last answer for the same query on the same page (this tab, same
+ * wallet) shows at once with `stale: true` while a fresh one loads (`refreshing`). Key: `opts.key`, or the query's
+ * source + the page's path and search. `cache: false` opts out. Any successful write clears the cache (lib/mra-cache).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { errorCode, getMRA, type MRA } from "./mra";
+import { cacheClear, cacheGet, cacheKey, cacheSet } from "./mra-cache";
+import { errorCode, getMRA, isMock, type MRA } from "./mra";
 
 export type MRAQuery<T> = (mra: MRA) => Promise<T>;
 
@@ -20,38 +25,67 @@ export type UseMRAResult<T> = {
   error: string | undefined;
   loading: boolean;
   reload: () => void;
+  /** `data` came from the cache and a fresh read hasn't landed yet. */
+  stale?: boolean;
+  /** A read is in flight while `data` is already showing. */
+  refreshing?: boolean;
 };
+
+function keyFor(query: MRAQuery<unknown>, explicit?: string): string | undefined {
+  if (isMock || typeof window === "undefined") return undefined;
+  return cacheKey(explicit ?? `${window.location.pathname}${window.location.search}|${query.toString()}`);
+}
 
 export function useMRA<T>(
   query: MRAQuery<T>,
-  opts: { initial?: T | null; refreshMs?: number; enabled?: boolean } = {},
+  opts: { initial?: T | null; refreshMs?: number; enabled?: boolean; key?: string; cache?: boolean } = {},
 ): UseMRAResult<T> {
-  const { initial, refreshMs, enabled = true } = opts;
+  const { initial, refreshMs, enabled = true, cache = true } = opts;
   const hasInitial = initial !== null && initial !== undefined;
   const [data, setData] = useState<T | undefined>(hasInitial ? initial : undefined);
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(!hasInitial && enabled);
+  const [stale, setStale] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [nonce, setNonce] = useState(0);
   const queryRef = useRef(query);
   useEffect(() => {
     queryRef.current = query;
   });
+  const explicitKey = opts.key;
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
+    const key = cache && !hasInitial ? keyFor(queryRef.current as MRAQuery<unknown>, explicitKey) : undefined;
+    // Paint the cached answer first (read after mount, so the hydrated HTML still matches the server's).
+    if (key && nonce === 0) {
+      const hit = cacheGet<T>(key);
+      if (hit) {
+        setData(hit.v);
+        setStale(true);
+        setLoading(false);
+      }
+    }
     const run = async () => {
+      setRefreshing(true);
       try {
         const next = await queryRef.current(await getMRA());
         if (!alive) return;
         setData(next);
         setError(undefined);
+        setStale(false);
+        // Re-derive the key: the namespace is only known once getMRA() has resolved on a fresh tab.
+        if (cache && !hasInitial) cacheSet(keyFor(queryRef.current as MRAQuery<unknown>, explicitKey), next);
       } catch (e) {
         if (alive) setError(errorCode(e));
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     };
     // Already have server data and nothing to refresh: no client fetch (the default in mock mode).
@@ -66,9 +100,9 @@ export function useMRA<T>(
       alive = false;
       if (timer) window.clearInterval(timer);
     };
-  }, [enabled, hasInitial, refreshMs, nonce]);
+  }, [enabled, hasInitial, refreshMs, nonce, cache, explicitKey]);
 
-  return { data, error, loading, reload };
+  return { data, error, loading, reload, stale, refreshing };
 }
 
 /**
@@ -86,7 +120,10 @@ export function useMRAAction<A extends unknown[], R>(fn: (mra: MRA, ...args: A) 
     setPending(true);
     setError(undefined);
     try {
-      return await fnRef.current(await getMRA(), ...args);
+      const out = await fnRef.current(await getMRA(), ...args);
+      // A write landed: every cached read may now be out of date.
+      cacheClear();
+      return out;
     } catch (e) {
       setError(errorCode(e));
       throw e;
