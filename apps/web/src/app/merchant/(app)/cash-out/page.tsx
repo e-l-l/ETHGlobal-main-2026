@@ -9,7 +9,7 @@ export default async function CashOutPage() {
   const initial = await serverView(q.cashOut);
   return (
     <Page tabs>
-      <PageHead back={routes.merchant} backLabel="Home" label="Cash out" title="Move your dollars." />
+      <PageHead back={routes.merchant} backLabel="Home" title="Cash out" />
       <CashOutForm initial={initial} />
     </Page>
   );

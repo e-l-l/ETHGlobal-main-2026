@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { AgentLimitsVM, LadderStepVM } from "@repo/sdk";
-import { ActionBar, Button, Card, Chips, Label, SettingRow, Stack, Switch, Text } from "@/final";
+import { ActionBar, Button, Card, Chips, Columns, Label, SettingRow, Stack, Switch, Text } from "@/final";
+import { HeroBlock, HeroLabel } from "../../../_ui";
 import { formatMoney } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -34,10 +35,10 @@ function LimitsFields({ view }: { view: SetupPage }) {
   const pick = (v: string) => (Number(v) <= cap ? setPerAdvance(v) : undefined);
 
   return (
-    <Stack gap="lg">
+    <Columns ratio="3:2">
       <PrivateMark>
         <Stack gap="md">
-          <Card>
+          <Card padding="lg">
             <Label>Max per advance</Label>
             <Chips
               label="Max per advance"
@@ -53,7 +54,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
               {formatMoney(cap)} today.
             </Text>
           </Card>
-          <Card>
+          <Card padding="lg">
             <Label>Max per month</Label>
             <Chips
               label="Max per month"
@@ -62,7 +63,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
               options={perMonthOptions.map((v) => ({ value: String(v), label: formatMoney(v) }))}
             />
           </Card>
-          <Card>
+          <Card padding="lg">
             <Label>What it can draw for</Label>
             <Chips
               label="Purpose"
@@ -70,26 +71,41 @@ function LimitsFields({ view }: { view: SetupPage }) {
               onChange={setPurpose}
               options={purposes.map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
             />
-          </Card>
-          <Card padding="sm">
-            <SettingRow title="Pay my supplier directly" hint="Advances go straight to your supplier, in pesos.">
-              <Switch checked={supplier} onCheckedChange={setSupplier} aria-label="Pay my supplier directly" />
-            </SettingRow>
+            <div className="border-t border-hairline pt-4">
+              <SettingRow title="Pay my supplier directly" hint="Advances go straight to your supplier, in pesos.">
+                <Switch checked={supplier} onCheckedChange={setSupplier} aria-label="Pay my supplier directly" />
+              </SettingRow>
+            </div>
           </Card>
         </Stack>
       </PrivateMark>
-      <Card tone="tint" gap="sm">
-        <Label>In plain words</Label>
-        <Text className="text-charcoal">
-          Your agent can draw up to {formatMoney(Number(perAdvance))} at a time, and {formatMoney(Number(perMonth))} in a
-          month, for {purpose}
-          {supplier ? ", paid straight to your supplier" : ""}. Only when your sales can repay it. It can never go past
-          these limits: the contract blocks it.
-        </Text>
-      </Card>
-      <ActionBar hint="One-time approval. Only you can turn the agent on.">
-        <Button href={`${routes.agent.approve}?${new URLSearchParams({ perAdvance, perMonth, purpose })}`}>Approve with World</Button>
-      </ActionBar>
-    </Stack>
+
+      <Stack gap="md" className="md:sticky md:top-24">
+        <HeroBlock rule={false}>
+          <HeroLabel>In plain words</HeroLabel>
+          <p className="m-0 font-display text-h2 text-canvas">
+            Your agent can draw up to <span className="text-lime">{formatMoney(Number(perAdvance))} at a time</span> and{" "}
+            <span className="text-lime">{formatMoney(Number(perMonth))} a month</span>, for {purpose}
+            {supplier ? ", paid straight to your supplier" : ""}.
+          </p>
+          <Text className="text-honeydew">Only when your sales can repay it. The contract blocks anything past these limits.</Text>
+          <div className="grid grid-cols-2 gap-4 border-t border-honeydew/25 pt-4 font-body text-note">
+            <div className="flex flex-col">
+              <span className="text-honeydew">Paid back from</span>
+              <span className="font-semibold text-canvas">A share of each sale</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-honeydew">Fee</span>
+              <span className="font-semibold text-canvas">One flat fee</span>
+            </div>
+          </div>
+        </HeroBlock>
+        <ActionBar hint="One-time approval. Only you can turn the agent on.">
+          <Button href={`${routes.agent.approve}?${new URLSearchParams({ perAdvance, perMonth, purpose })}`} width="full">
+            Approve with World
+          </Button>
+        </ActionBar>
+      </Stack>
+    </Columns>
   );
 }

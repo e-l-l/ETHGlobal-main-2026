@@ -1,12 +1,14 @@
 "use client";
 
 import type { AdvanceArrivedView } from "@repo/sdk";
-import { Button, Card, CheckIcon, Columns, KeyValue, Label, Ledger, Page, PageHead, Stack, Text, TextLink } from "@/final";
-import { formatLocal, formatMoney, formatPercent } from "@/lib/format";
+import { Button, Card, Columns, KeyValue, Page, Stack, Text, TextLink } from "@/final";
+import { etaKnown } from "@/lib/estimate";
+import { formatDays, formatLocal, formatMoney, formatPercent } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
+import { BackLink, BigFigure, CardTitle, CheckList, HeroBlock, HeroLabel } from "../../../_ui";
 
 /** M11 Advance arrived: `merchant.arrived()` (the advance + the agent's reasons). */
 export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView | null }) {
@@ -16,56 +18,51 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
 
   return (
     <Page tabs>
-      <PageHead
-        back={routes.advance.details}
-        backLabel="Advance"
-        label="Advance arrived"
-        title={`Your agent drew ${formatMoney(advance.drawn)} for ${advance.purpose}.`}
-      >
-        <Ledger>
-          {formatLocal(advance.drawn * shop.usdToLocal, shop.localCurrency)}
-          {advance.drawnAt ? ` · ${advance.drawnAt}` : ""}
-        </Ledger>
-      </PageHead>
+      <BackLink href={routes.advance.details}>Your advance</BackLink>
 
-      <Columns>
-        <Stack>
-          <Card>
-            <KeyValue
-              rows={[
-                ["You pay back", formatMoney(advance.total)],
-                [`${advance.feeLabel} · fixed`, formatMoney(advance.fee)],
-                ["From each sale", formatPercent(advance.holdback)],
-              ]}
-            />
-          </Card>
-          <div className="flex flex-col gap-3 md:flex-row">
-            <Button href={routes.cashOut}>Send to my supplier</Button>
-            <Button href={routes.advance.details} variant="secondary">
-              See advance details
-            </Button>
-          </div>
-        </Stack>
-        <Card>
-          <Label>Why it drew this</Label>
+      <HeroBlock>
+        <HeroLabel>Your agent drew an advance{advance.drawnAt ? ` · ${advance.drawnAt}` : ""}</HeroLabel>
+        <BigFigure as="h1" className="text-balance">
+          {formatMoney(advance.drawn)} <span className="text-lime">for {advance.purpose}</span>
+        </BigFigure>
+        <Text className="max-w-[60ch] text-honeydew md:text-[17px]">
+          {formatLocal(advance.drawn * shop.usdToLocal, shop.localCurrency)}. You pay it back with{" "}
+          {formatPercent(advance.holdback)} of each payment, and a flat fee that never grows.
+        </Text>
+      </HeroBlock>
+
+      <Columns ratio="3:2">
+        <Card padding="lg">
+          <CardTitle>Why it drew this</CardTitle>
           {drawReasons.length > 0 ? (
-            <ul className="m-0 flex list-none flex-col gap-3 p-0">
-              {drawReasons.map((r) => (
-                <li key={r} className="flex items-start gap-2.5 font-body text-read text-charcoal">
-                  <span aria-hidden className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-honeydew text-hunter">
-                    <CheckIcon size={12} />
-                  </span>
-                  {r}
-                </li>
-              ))}
-            </ul>
+            <CheckList label="Reasons" items={drawReasons.map((r) => ({ text: r }))} />
           ) : (
             <Text size="note">It stayed inside your limits. The full reasoning is in the activity log.</Text>
           )}
-          <TextLink href={routes.agent.log} arrow>
-            full activity log
+          <TextLink href={routes.agent.log} arrow className="w-fit">
+            Full activity log
           </TextLink>
         </Card>
+
+        <Stack>
+          <Card padding="lg">
+            <CardTitle>What you pay back</CardTitle>
+            <KeyValue
+              rows={[
+                ["Total", formatMoney(advance.total)],
+                [`${advance.feeLabel}, included`, formatMoney(advance.fee)],
+                ["From each payment", formatPercent(advance.holdback)],
+                ...(etaKnown(advance.etaDays) ? [["At your usual pace", formatDays(advance.etaDays)] as [string, string]] : []),
+              ]}
+            />
+          </Card>
+          <Button href={routes.advance.details} width="full">
+            See your advance
+          </Button>
+          <Button href={routes.cashOut} variant="secondary" width="full">
+            Send to my supplier
+          </Button>
+        </Stack>
       </Columns>
     </Page>
   );

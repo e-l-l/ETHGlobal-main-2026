@@ -90,3 +90,8 @@ export function coveragePct(juniorAssets: bigint, reserve: bigint, outstanding: 
   return ((usd(juniorAssets) + usd(reserve)) / usd(outstanding)) * 100;
 }
 export const coverageStr = (pct: number | undefined) => (pct === undefined ? "—" : pct > 999 ? ">999%" : pctStr(pct));
+
+/** An agent trigger id ("junior_twap_drop") as screen words ("DRIP price drop"). The ids stay as the agents send them. */
+export function triggerName(id: string): string {
+  return id === "junior_twap_drop" ? "DRIP price drop" : id.replace(/_/g, " ");
+}

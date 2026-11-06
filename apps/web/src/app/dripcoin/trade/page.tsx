@@ -3,7 +3,7 @@ import { serverView } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { TradeScreen } from "@/screens/lend/client";
 
-export const metadata: Metadata = { title: "Trade JAR-J" };
+export const metadata: Metadata = { title: "Trade DRIP" };
 
 /** J03 Trade: `lender.junior.trade()`. */
 export default async function Page() {

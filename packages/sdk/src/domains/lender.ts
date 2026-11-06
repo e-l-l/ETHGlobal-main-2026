@@ -266,12 +266,12 @@ async function juniorSwap(ctx: Ctx, o: JuniorSwapOptions): Promise<SwapResult> {
     chain.client.readContract({ address: tokenIn, abi: erc20Abi, functionName: "balanceOf", args: [account] }) as Promise<bigint>,
     chain.client.readContract({ address: chain.addresses.hook, abi: riskHookAbi, functionName: "feePips" }).then((v) => BigInt(v as number)),
   ]);
-  if (pool.sqrtPriceX96 === 0n || pool.liquidity === 0n) throw new MRAError("bad_state", "the JAR-J/USDC pool has no liquidity yet");
-  if (balIn < base) throw new MRAError("insufficient_balance", `not enough ${buy ? "USDC" : "JAR-J"} in this wallet`);
+  if (pool.sqrtPriceX96 === 0n || pool.liquidity === 0n) throw new MRAError("bad_state", "the DRIP/USDC pool has no liquidity yet");
+  if (balIn < base) throw new MRAError("insufficient_balance", `not enough ${buy ? "USDC" : "DRIP"} in this wallet`);
   const priceBefore = priceOf(pool.sqrtPriceX96);
 
   // 1. Approve the router once (max allowance), skipped when it already covers this swap.
-  const approveLabel = buy ? "Approve USDC" : "Approve JAR-J";
+  const approveLabel = buy ? "Approve USDC" : "Approve DRIP";
   step({ label: approveLabel, status: "pending" });
   const a = await chain.approveToken(tokenIn, router, base, maxUint256);
   step({ label: approveLabel, status: a ? "done" : "skipped", ...(a ? { hash: a.transactionHash } : {}) });
@@ -295,7 +295,7 @@ async function juniorSwap(ctx: Ctx, o: JuniorSwapOptions): Promise<SwapResult> {
     // Pool input such that input + hook fee ≈ the USDC budget (2 units of rounding headroom).
     const poolIn = (base * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feePips) - 2n;
     const q = await sim(false, -poolIn, open(false));
-    if (q.amount0 <= 0n) throw new MRAError("bad_state", "the pool quoted zero JAR-J for this amount");
+    if (q.amount0 <= 0n) throw new MRAError("bad_state", "the pool quoted zero DRIP for this amount");
     amountSpecified = q.amount0; // exact output of JAR-J
   } else {
     amountSpecified = -base; // exact input of JAR-J
@@ -359,7 +359,7 @@ function mockSwap(o: JuniorSwapOptions): SwapResult {
   const hookFeeUsdc = buy ? o.amount * (fee / (1 + fee)) : o.amount * p * (1 - fee) * fee;
   const amountOut = buy ? ((o.amount - hookFeeUsdc) * (1 - fee)) / p : o.amount * p * (1 - fee) - hookFeeUsdc;
   const steps: TxStep[] = [
-    { label: buy ? "Approve USDC" : "Approve JAR-J", status: "done" },
+    { label: buy ? "Approve USDC" : "Approve DRIP", status: "done" },
     { label: "Swap on Uniswap v4", status: "done" },
   ];
   steps.forEach((s) => o.onStep?.(s));

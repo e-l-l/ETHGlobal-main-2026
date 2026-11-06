@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Accent,
   ActionBar,
   AlertIcon,
   AppHeader,
   Banner,
+  BrandPanel,
   Button,
   Card,
   Chips,
@@ -17,10 +19,10 @@ import {
   Label,
   Ledger,
   ListRow,
-  Page,
   QRCode,
   RowList,
   Sheet,
+  SplitPage,
   StepDots,
   Steps,
   Text,
@@ -30,7 +32,7 @@ import {
 } from "@/final";
 import type { BusinessPassView, ProveStep } from "@repo/sdk";
 import { appUrl } from "@/lib/brand";
-import { copy, type Lang } from "@/lib/copy";
+import { copy, stepEyebrow, type Lang } from "@/lib/copy";
 import { explorerTxUrl, isMock, withMRA } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -40,14 +42,19 @@ import { useWorldView } from "@/lib/world-view";
 
 /* ---------------------------------------------------------- Shared bits */
 
-/** Onboarding header: logo goes to the /home hub, step dots in the middle, ES/EN at the end. */
-export function OnboardingHeader({ lang, step }: { lang: Lang; step?: number }) {
+/** Onboarding header: logo goes to the /home hub, ES/EN at the end. Step progress sits in the form column. */
+export function OnboardingHeader({ lang }: { lang: Lang }) {
+  return <AppHeader home={routes.home} end={<LangToggle lang={lang} />} />;
+}
+
+/** Step progress at the top of the form column: four bars and "Step 1 of 4". */
+export function StepProgress({ lang, at }: { lang: Lang; at: number }) {
+  const c = copy[lang];
   return (
-    <AppHeader
-      home={routes.home}
-      center={step ? <StepDots at={step} of={3} label={copy[lang].steps(step)} /> : undefined}
-      end={<LangToggle lang={lang} />}
-    />
+    <div className="flex items-center gap-3">
+      <StepDots at={at} of={4} label={c.steps(at)} />
+      <Ledger className="text-charcoal-muted">{c.steps(at)}</Ledger>
+    </div>
   );
 }
 
@@ -172,12 +179,29 @@ export function VerifyingScreen({ lang, outcome }: { lang: Lang; outcome?: strin
 
   return (
     <>
-      <OnboardingHeader lang={lang} step={1} />
-      <Page width="narrow">
-        <div className="flex flex-col items-center gap-3 pt-4 text-center">
-          <JarMark loading size={96} label={t.title} />
-          <Heading level={1}>{t.title}</Heading>
-          <Text>{t.body}</Text>
+      <OnboardingHeader lang={lang} />
+      <SplitPage
+        panel={
+          <BrandPanel
+            eyebrow={stepEyebrow(lang, 2)}
+            title={
+              <>
+                {t.title} <Accent>{t.accent}</Accent>
+              </>
+            }
+            body={t.panel}
+          />
+        }
+      >
+        <StepProgress lang={lang} at={2} />
+        <div className="flex items-center gap-4">
+          <JarMark loading size={64} label={`${t.title} ${t.accent}`} />
+          <div className="flex min-w-0 flex-col gap-1">
+            <Heading level={2} size="h1">
+              {t.heading}
+            </Heading>
+            <Text>{t.body}</Text>
+          </div>
         </div>
         <World kind="priv">
           <Card>
@@ -198,7 +222,7 @@ export function VerifyingScreen({ lang, outcome }: { lang: Lang; outcome?: strin
             {t.cancel}
           </Button>
         </ActionBar>
-      </Page>
+      </SplitPage>
     </>
   );
 }
@@ -230,10 +254,25 @@ function ShopForm({ lang, draft }: { lang: Lang; draft: ShopDraft }) {
 
   return (
     <>
-      <OnboardingHeader lang={lang} step={3} />
-      <Page width="narrow">
+      <OnboardingHeader lang={lang} />
+      <SplitPage
+        panel={
+          <BrandPanel
+            eyebrow={stepEyebrow(lang, 4)}
+            title={
+              <>
+                {t.panelTitle} <Accent>{t.accent}</Accent>
+              </>
+            }
+            body={t.panel}
+          />
+        }
+      >
+        <StepProgress lang={lang} at={4} />
         <div className="flex flex-col gap-2">
-          <Heading level={1}>{t.title}</Heading>
+          <Heading level={2} size="h1">
+            {t.title}
+          </Heading>
           <Text>{t.body}</Text>
         </div>
         <div className="flex flex-col gap-3">
@@ -250,9 +289,9 @@ function ShopForm({ lang, draft }: { lang: Lang; draft: ShopDraft }) {
           <Chips label={t.ideas} value={clean} onChange={setName} options={draft.nameIdeas.map((n) => ({ value: n, label: n }))} />
         </div>
         <World kind="pub">
-          <Card aria-label={t.qr} className="flex-row items-center gap-4" padding="sm">
-            <QRCode value={payUrl} size={104} label={`${t.qr}: ${clean || fallbackName}`} className="p-2.5" />
-            <div className="flex min-w-0 flex-col gap-1">
+          <Card aria-label={t.qr} className="flex-row items-center gap-5" padding="lg">
+            <QRCode value={payUrl} size={128} label={`${t.qr}: ${clean || fallbackName}`} className="p-3" />
+            <div className="flex min-w-0 flex-col gap-1.5">
               <Label>{t.qr}</Label>
               <span className="font-display text-h2 [overflow-wrap:anywhere] text-charcoal">{clean || "—"}</span>
               <Ledger>{pseudonym}</Ledger>
@@ -285,7 +324,7 @@ function ShopForm({ lang, draft }: { lang: Lang; draft: ShopDraft }) {
           )}
           <TextLink href={routes.pay}>{t.preview}</TextLink>
         </ActionBar>
-      </Page>
+      </SplitPage>
     </>
   );
 }

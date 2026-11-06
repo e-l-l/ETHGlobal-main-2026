@@ -124,7 +124,7 @@ export function SplitBar({ className, legend = true }: { className?: string; leg
       {legend ? (
         <div className="flex flex-wrap gap-x-4 gap-y-1 font-ledger text-[12px] text-charcoal-soft">
           <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-unlit" />90% to you</span>
-          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-hunter" />10% to your jar</span>
+          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-hunter" />10% to your advance</span>
         </div>
       ) : null}
     </div>

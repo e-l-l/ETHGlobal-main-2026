@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentApproveView, AgentSetupStep } from "@repo/sdk";
-import { ActionBar, Banner, Button, Card, Heading, Ledger, LockIcon, Page, Text } from "@/final";
+import { ActionBar, Banner, Button, Ledger, LockIcon, Page, Text } from "@/final";
+import { HeroBlock, HeroLabel } from "../../../_ui";
 import { capitalize, formatMoney, formatPercent } from "@/lib/format";
 import { isMock } from "@/lib/mra";
 import { q, type AgentLimitsInput } from "@/lib/mra-queries";
@@ -51,37 +52,40 @@ export function ApproveScreen({
 
   return (
     <Page width="narrow" className="justify-center">
-      <Card padding="lg" className="shadow-lift">
-        <span className="grid size-12 place-items-center rounded-full bg-honeydew text-hunter" aria-hidden>
-          <LockIcon size={24} />
-        </span>
-        <Heading level={1} size="h2">
-          Approve your agent once.
-        </Heading>
-        <Text>This is a one-time World Agent Pass approval. Only you can turn the agent on.</Text>
-        <ApproveMarks
-          rows={[
-            ["Max per advance", formatMoney(agentLimits.perAdvance)],
-            ["Max per month", formatMoney(agentLimits.perMonth)],
-            ["Draws for", capitalize(agentLimits.purpose)],
-          ]}
-          publicRows={[["Repaid from", `${formatPercent(advance.holdback)} of each sale`]]}
-        />
-        {setup.pending && step ? <Ledger role="status">{STEP_LABEL[step]}…</Ledger> : null}
-        {setup.error ? <Banner tone="risk">Not approved ({setup.error}). Nothing was drawn.</Banner> : null}
-        <ActionBar>
-          {isMock ? (
-            <Button href={routes.merchant}>Approve in World App</Button>
-          ) : (
-            <Button onClick={approve} loading={setup.pending}>
-              Approve in World App
+      <section className="flex flex-col overflow-hidden rounded-lg border border-hairline bg-surface shadow-lift">
+        <HeroBlock className="rounded-none">
+          <span className="grid size-12 place-items-center rounded-full bg-lime text-charcoal" aria-hidden>
+            <LockIcon size={24} />
+          </span>
+          <HeroLabel>World Agent Pass · one time</HeroLabel>
+          <h1 className="m-0 font-display text-h1-sm text-canvas md:text-h1">Approve your agent once.</h1>
+          <Text className="text-honeydew">Only you can turn the agent on. It can never draw past these limits.</Text>
+        </HeroBlock>
+        <div className="flex flex-col gap-4 p-5 md:p-6">
+          <ApproveMarks
+            rows={[
+              ["Max per advance", formatMoney(agentLimits.perAdvance)],
+              ["Max per month", formatMoney(agentLimits.perMonth)],
+              ["Draws for", capitalize(agentLimits.purpose)],
+            ]}
+            publicRows={[["Paid back from", `${formatPercent(advance.holdback)} of each payment`]]}
+          />
+          {setup.pending && step ? <Ledger role="status">{STEP_LABEL[step]}…</Ledger> : null}
+          {setup.error ? <Banner tone="risk">Not approved ({setup.error}). Nothing was drawn.</Banner> : null}
+          <ActionBar>
+            {isMock ? (
+              <Button href={routes.merchant}>Approve in World App</Button>
+            ) : (
+              <Button onClick={approve} loading={setup.pending}>
+                Approve in World App
+              </Button>
+            )}
+            <Button href={routes.agent.denied} variant="ghost">
+              Not now
             </Button>
-          )}
-          <Button href={routes.agent.denied} variant="ghost">
-            Not now
-          </Button>
-        </ActionBar>
-      </Card>
+          </ActionBar>
+        </div>
+      </section>
     </Page>
   );
 }

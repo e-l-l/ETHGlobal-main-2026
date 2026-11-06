@@ -35,7 +35,10 @@ export function AppHeader({
   end,
   world = true,
   center,
+  hideFrom,
 }: {
+  /** Hide the top bar from this width up, where a SideNav takes over. The phone tab bar still shows below md. */
+  hideFrom?: "lg";
   nav?: NavItem[];
   /** Key of the active nav item. Omit to derive it from the URL (longest matching href). */
   active?: string;
@@ -57,7 +60,12 @@ export function AppHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-hairline bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150 motion-reduce:backdrop-blur-none">
+      <header
+        className={cn(
+          "sticky top-0 z-30 border-b border-hairline bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150 motion-reduce:backdrop-blur-none",
+          hideFrom === "lg" && "lg:hidden",
+        )}
+      >
         <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center gap-4 px-4 md:px-8">
           <Link href={home} aria-label={`${APP_NAME} home`} className="shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal">
             <Lockup size={28} />
@@ -334,5 +342,137 @@ export function Sheet({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+/* ---------------------------------------------------------------- SideNav */
+
+/**
+ * Desktop sidebar for apps with a home base (the merchant app). Shown from lg up; below that the
+ * AppHeader (with hideFrom="lg") and its phone tab bar take over. Wrap the page in <SideNavLayout>.
+ */
+export function SideNav({
+  nav,
+  active,
+  home,
+  account,
+  footer,
+}: {
+  nav: NavItem[];
+  active?: string;
+  home: string;
+  /** Who is signed in: shop name and its public pseudonym. */
+  account?: { name: string; id: string; initials: string };
+  footer?: ReactNode;
+}) {
+  const pathname = usePathname();
+  const current =
+    active ??
+    nav
+      .filter((n) => pathname === n.href || pathname.startsWith(`${n.href}/`))
+      .sort((a, b) => b.href.length - a.href.length)[0]?.key;
+  return (
+    <aside className="sticky top-0 hidden h-dvh w-62 shrink-0 flex-col gap-7 overflow-y-auto border-r border-hairline bg-surface px-4 py-7 lg:flex">
+      <Link href={home} aria-label={`${APP_NAME} home`} className="w-fit rounded-md px-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal">
+        <Lockup size={30} />
+      </Link>
+      {account ? (
+        <div className="flex items-center gap-3 rounded-md bg-well p-3">
+          <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-md bg-hunter font-display text-[15px] font-bold text-lime">
+            {account.initials}
+          </span>
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate font-body text-note font-semibold text-charcoal">{account.name}</span>
+            <span className="truncate font-ledger text-[12px] text-charcoal-muted">{account.id}</span>
+          </span>
+        </div>
+      ) : null}
+      <nav aria-label="Sections" className="flex flex-col gap-1">
+        {nav.map((n) => {
+          const on = n.key === current;
+          return (
+            <Link
+              key={n.key}
+              href={n.href}
+              aria-current={on ? "page" : undefined}
+              className={cn(
+                "flex min-h-11 items-center gap-3 rounded-md px-3 font-body text-note font-semibold transition-colors duration-150 [&_svg]:size-5",
+                on ? "bg-honeydew text-hunter" : "text-charcoal-soft hover:bg-well hover:text-charcoal",
+              )}
+            >
+              {n.icon}
+              {n.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="mt-auto flex flex-col gap-1 border-t border-hairline pt-4">
+        <WorldToggle />
+        {footer}
+      </div>
+    </aside>
+  );
+}
+
+/** Sidebar + content row. Content keeps using <Page>, which centres itself in the remaining width. */
+export function SideNavLayout({ side, children }: { side: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex min-h-dvh">
+      {side}
+      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------- SplitPage */
+
+/**
+ * Task screens (onboarding, checkout): a Hunter brand panel beside a focused form column.
+ * Desktop: panel left (sticky, full height), form right. Phone: the panel becomes a short top block.
+ *
+ *   <SplitPage panel={<BrandPanel eyebrow="Step 1 of 4" title={<>Your sales <Accent>vouch for you.</Accent></>} />}>
+ *     …form, ActionBar…
+ *   </SplitPage>
+ */
+export function SplitPage({ panel, children, className }: { panel: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <div className="flex flex-1 flex-col md:flex-row">
+      {panel}
+      <main
+        id="main"
+        className={cn(
+          "flex min-w-0 flex-1 justify-center px-4 pt-6 pb-10 md:px-10 md:py-14 lg:px-16",
+          "animate-[page-in_240ms_var(--ease-snappy)_both] motion-reduce:animate-none",
+          className,
+        )}
+      >
+        <div className="flex w-full max-w-[480px] flex-col gap-6 md:my-auto">{children}</div>
+      </main>
+    </div>
+  );
+}
+
+/** Lime emphasis inside a BrandPanel title. */
+export function Accent({ children }: { children: ReactNode }) {
+  return <span className="text-lime">{children}</span>;
+}
+
+/** The Hunter panel of a SplitPage: eyebrow, big headline, one line of body, the lime wave at the foot. */
+export function BrandPanel({ eyebrow, title, body, top, children }: { eyebrow?: ReactNode; title: ReactNode; body?: ReactNode; top?: ReactNode; children?: ReactNode }) {
+  return (
+    <aside className="relative flex flex-col gap-5 overflow-hidden bg-hunter px-4 pt-5 text-canvas md:sticky md:top-16 md:h-[calc(100dvh-4rem)] md:w-[44%] md:max-w-[620px] md:shrink-0 md:gap-8 md:px-12 md:pt-12 lg:px-14">
+      {top}
+      <div className="flex flex-col gap-3 md:my-auto md:gap-5">
+        {eyebrow ? <span className="font-ledger text-tag tracking-[0.1em] text-lime uppercase">{eyebrow}</span> : null}
+        <h1 className="m-0 font-display text-hero-sm text-canvas md:text-[clamp(40px,4.4vw,64px)] md:leading-[1.02]">{title}</h1>
+        {body ? <p className="m-0 hidden max-w-[46ch] font-body text-read text-honeydew md:block md:text-[17px]">{body}</p> : null}
+        {children}
+      </div>
+      <svg viewBox="0 0 720 110" preserveAspectRatio="none" aria-hidden className="-mx-4 mt-auto block h-14 w-[calc(100%+2rem)] md:-mx-12 md:h-28 md:w-[calc(100%+6rem)] lg:-mx-14 lg:w-[calc(100%+7rem)]">
+        <path d="M0 50 C90 0 180 100 270 50 S450 0 540 50 S690 100 760 50" fill="none" stroke="var(--color-lime)" strokeWidth="3" />
+        <path d="M0 76 C90 26 180 126 270 76 S450 26 540 76 S690 126 760 76" fill="none" stroke="var(--color-lime)" strokeWidth="3" opacity="0.5" />
+        <path d="M0 102 C90 52 180 152 270 102 S450 52 540 102 S690 152 760 102" fill="none" stroke="var(--color-lime)" strokeWidth="3" opacity="0.25" />
+      </svg>
+    </aside>
   );
 }

@@ -205,7 +205,7 @@ describe("lender.junior.swap (live path, fakes)", () => {
     expect(params.amountSpecified).toBe(-10_000_000n);
     expect(params.sqrtPriceLimitX96 < Q96).toBe(true);
     expect(r).toMatchObject({ tokenIn: "JAR-J", tokenOut: "USDC", amountIn: 10, amountOut: 9.978515, hookFeeUsdc: 0.030025 });
-    expect(r.steps[0]).toMatchObject({ label: "Approve JAR-J", status: "skipped" });
+    expect(r.steps[0]).toMatchObject({ label: "Approve DRIP", status: "skipped" });
     expect(r.priceAfter).toBeLessThan(r.priceBefore);
   });
 
