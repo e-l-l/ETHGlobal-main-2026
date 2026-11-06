@@ -62,7 +62,7 @@ export type LossLayerAmount = { key: LossLayerKey; amount: string; title?: strin
 export function LossWaterfall({ you, layers }: { you: LossLayerKey; layers?: readonly LossLayerAmount[] }) {
   const tiers = [
     { k: "jar", t: "Shop's jar", d: "First 10% of every sale" },
-    { k: "junior", t: "Junior (JAR-J)", d: "First loss for a 30% fee share" },
+    { k: "junior", t: "Junior (DRIP)", d: "First loss for a 30% fee share" },
     { k: "reserve", t: "Reserve", d: "Protocol buffer" },
     { k: "senior", t: "Senior vault", d: "Lenders, paid last to lose" },
   ] as const;

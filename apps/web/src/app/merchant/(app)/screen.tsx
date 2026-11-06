@@ -2,6 +2,7 @@
 
 import type { HomeView } from "@repo/sdk";
 import {
+  AgentStop,
   Card,
   Columns,
   Divider,
@@ -38,11 +39,11 @@ const SALES_POLL_MS = 4000;
 /** M10 Home: `merchant.home()` (+ `agent.status()` for the pill in live modes). */
 export function HomeScreen({ initial, lang }: { initial: HomeView | null; lang: Lang }) {
   const { data, error } = useMRA(q.home, { initial, ...(isMock ? {} : { refreshMs: SALES_POLL_MS }) });
-  const { data: agent } = useMRA(q.agentStatus, { enabled: !isMock });
+  const { data: agent, reload: reloadAgent } = useMRA(q.agentStatus);
   if (!data) return <MRAState error={error} />;
   const { shop, today, agentSummary, agentLimits, advance, sales } = data;
   const holdback = advance?.holdback ?? 0;
-  const agentOn = isMock || agent?.active === true;
+  const agentOn = agent?.active === true;
 
   return (
     <Page tabs>
@@ -119,8 +120,11 @@ export function HomeScreen({ initial, lang }: { initial: HomeView | null; lang: 
               rows={[
                 ["Last draw", agentSummary.lastDrawWhen ? `${formatMoney(agentSummary.lastDraw)} · ${agentSummary.lastDrawWhen}` : "None yet"],
                 ["This month", `${formatMoney(agentSummary.monthUsed)} of ${formatMoney(agentLimits.perMonth)}`],
+                ["Remaining allowance", agent?.remainingAllowance === undefined ? "Unavailable" : formatMoney(agent.remainingAllowance)],
+                ["Mandate expiry", agent?.expiry ? new Date(agent.expiry * 1000).toLocaleDateString() : "Unavailable"],
               ]}
             />
+            {agentOn ? <AgentStop onDone={reloadAgent} /> : null}
             <TextLink href={routes.agent.log} arrow>
               activity log
             </TextLink>

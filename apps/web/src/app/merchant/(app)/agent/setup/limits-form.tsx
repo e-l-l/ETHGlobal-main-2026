@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { AgentLimitsVM, LadderStepVM } from "@repo/sdk";
-import { ActionBar, Button, Card, Chips, Label, SettingRow, Stack, Switch, Text } from "@/final";
+import { ActionBar, Button, Card, Chips, Label, OfferDisclosure, Stack, Text } from "@/final";
 import { formatMoney } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -28,7 +28,6 @@ function LimitsFields({ view }: { view: SetupPage }) {
   const [perAdvance, setPerAdvance] = useState(String(Math.min(agentLimits.perAdvance, cap)));
   const [perMonth, setPerMonth] = useState(String(agentLimits.perMonth));
   const [purpose, setPurpose] = useState<string>(agentLimits.purpose);
-  const [supplier, setSupplier] = useState(true);
 
   // Caps above the current tier can't be picked; fall back to the tier cap.
   const pick = (v: string) => (Number(v) <= cap ? setPerAdvance(v) : undefined);
@@ -71,11 +70,6 @@ function LimitsFields({ view }: { view: SetupPage }) {
               options={purposes.map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
             />
           </Card>
-          <Card padding="sm">
-            <SettingRow title="Pay my supplier directly" hint="Advances go straight to your supplier, in pesos.">
-              <Switch checked={supplier} onCheckedChange={setSupplier} aria-label="Pay my supplier directly" />
-            </SettingRow>
-          </Card>
         </Stack>
       </PrivateMark>
       <Card tone="tint" gap="sm">
@@ -83,10 +77,12 @@ function LimitsFields({ view }: { view: SetupPage }) {
         <Text className="text-charcoal">
           Your agent can draw up to {formatMoney(Number(perAdvance))} at a time, and {formatMoney(Number(perMonth))} in a
           month, for {purpose}
-          {supplier ? ", paid straight to your supplier" : ""}. Only when your sales can repay it. It can never go past
+           to your registered payout address. The purpose is not enforced onchain. It can never go past
           these limits: the contract blocks it.
         </Text>
       </Card>
+      <Text size="note">Illustrative maximum advance at a 15% flat fee and 10% sales share; future offers may differ.</Text>
+      <OfferDisclosure principal={Number(perAdvance)} fee={Number(perAdvance) * 0.15} total={Number(perAdvance) * 1.15} holdback={10} estimates={[100, 200, 400].map((sales, i) => ({ label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!, days: Math.ceil(Number(perAdvance) * 1.15 / (sales * 0.1)) }))} />
       <ActionBar hint="One-time approval. Only you can turn the agent on.">
         <Button href={`${routes.agent.approve}?${new URLSearchParams({ perAdvance, perMonth, purpose })}`}>Approve with World</Button>
       </ActionBar>

@@ -270,7 +270,7 @@ export function MintScreen({ initial }: { initial: DepositView | null }) {
   const book = VAULT.juniorBook || 1;
   return (
     <VaultAction
-      title="JAR-J"
+      title="DRIP"
       label="Junior"
       back={routes.junior}
       backLabel="Junior"
@@ -282,21 +282,21 @@ export function MintScreen({ initial }: { initial: DepositView | null }) {
           label: "Mint",
           max: walletMax,
           maxLabel: walletMax === VAULT.walletUsdc ? `Wallet: ${usdText(VAULT.walletUsdc)} USDC` : `Test USDC: up to ${usdText(walletMax)}`,
-          quote: (n) => `${fmt(n / book, 2)} JAR-J at book ${price(VAULT.juniorBook)}`,
+          quote: (n) => `${fmt(n / book, 2)} DRIP at book ${price(VAULT.juniorBook)}`,
           live: (m, n, onStep) => m.lender.junior.deposit(n, { onStep }),
           steps: ["Approve USDC", "Mint"],
-          done: (n) => `Minted ${fmt(n / book, 2)} JAR-J`,
+          done: (n) => `Minted ${fmt(n / book, 2)} DRIP`,
           doneSub: `First loss: you take losses before senior, for ${data.vault.feeShareJunior} of every fee.`,
         },
         {
           key: "redeem",
           label: "Redeem",
           max: VAULT.walletJarJ,
-          maxLabel: `You hold ${VAULT.walletJarJ} JAR-J`,
+          maxLabel: `You hold ${VAULT.walletJarJ} DRIP`,
           quote: (n) => `${usdText(n * VAULT.juniorBook, 2)} USDC at book`,
           live: (m, n, onStep) => m.lender.junior.withdraw(n * book, { onStep }),
           steps: ["Redeem"],
-          done: (n) => `Redeemed ${fmt(n, 2)} JAR-J`,
+          done: (n) => `Redeemed ${fmt(n, 2)} DRIP`,
           doneSub: "USDC is back in your wallet.",
         },
       ]}
@@ -315,7 +315,7 @@ export function TradeScreen({ initial }: { initial: TradeView | null }) {
   return <TradeForm view={data} reload={reload} />;
 }
 
-const SWAP_STEPS = (side: "buy" | "sell") => [side === "buy" ? "Approve USDC" : "Approve JAR-J", "Swap on Uniswap v4"];
+const SWAP_STEPS = (side: "buy" | "sell") => [side === "buy" ? "Approve USDC" : "Approve DRIP", "Swap on Uniswap v4"];
 const swapFailText = (code: string) =>
   code === "insufficient_balance"
     ? "Not enough in this wallet for that amount."
@@ -348,7 +348,7 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
       setBusy(true);
       window.setTimeout(() => {
         setBusy(false);
-        setDone(side === "buy" ? `Bought ${fmt(out, 2)} JAR-J (simulated).` : `Sold for ${usdText(out, 2)} (simulated).`);
+        setDone(side === "buy" ? `Bought ${fmt(out, 2)} DRIP (simulated).` : `Sold for ${usdText(out, 2)} (simulated).`);
       }, 1100);
       return;
     }
@@ -384,19 +384,19 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
 
   return (
     <LendShell note="The pool, its price and every swap are public.">
-      <PageHead back={routes.junior} backLabel="Junior" label="Uniswap v4 · JAR-J / USDC" title="Trade JAR-J" />
+      <PageHead back={routes.junior} backLabel="Junior" label="Uniswap v4 · DRIP / USDC" title="Trade DRIP" />
       <Columns ratio="3:2">
         <Stack gap="lg">
           <Pub>
             <Card>
               <div className="flex items-center justify-between gap-3">
-                <Label>JAR-J price, 12 weeks</Label>
+                <Label>DRIP price, 12 weeks</Label>
                 <Pill tone="slow">{discount}% under book</Pill>
               </div>
               <LineChart
                 points={juniorSeries}
                 height={180}
-                label="JAR-J price over 12 weeks, dipping at the write-off"
+                label="DRIP price over 12 weeks, dipping at the write-off"
                 markers={writeOffIndex >= 0 ? [{ index: writeOffIndex, label: isMock ? "The $100 write-off" : "Latest write-off" }] : []}
                 xLabels={["12 weeks ago", "Now"]}
                 format={price}
@@ -423,8 +423,8 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
               clear();
             }}
             options={[
-              { value: "buy", label: "Buy JAR-J" },
-              { value: "sell", label: "Sell JAR-J" },
+              { value: "buy", label: "Buy DRIP" },
+              { value: "sell", label: "Sell DRIP" },
             ]}
           />
           <div className="flex flex-col items-center gap-1 text-center">
@@ -432,7 +432,7 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
               {side === "buy" ? typedUsd(value) : `${value || "0"} J`}
             </span>
             <span className="font-ledger text-ledger text-charcoal-muted">
-              {n > 0 ? (side === "buy" ? `≈ ${fmt(out, 2)} JAR-J` : `≈ ${usdText(out, 2)} USDC`) : "Enter an amount"} · hook fee to reserve
+              {n > 0 ? (side === "buy" ? `≈ ${fmt(out, 2)} DRIP` : `≈ ${usdText(out, 2)} USDC`) : "Enter an amount"} · hook fee to reserve
             </span>
           </div>
           <Keypad
@@ -448,8 +448,8 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
             <Card gap="sm">
               <Text>
                 {result.side === "buy"
-                  ? `Bought ${fmt(result.amountOut, 2)} JAR-J for ${usdText(result.amountIn, 2)}.`
-                  : `Sold ${fmt(result.amountIn, 2)} JAR-J for ${usdText(result.amountOut, 2)}.`}
+                  ? `Bought ${fmt(result.amountOut, 2)} DRIP for ${usdText(result.amountIn, 2)}.`
+                  : `Sold ${fmt(result.amountIn, 2)} DRIP for ${usdText(result.amountOut, 2)}.`}
               </Text>
               <Text size="note">
                 RiskHook fee to the reserve: ${result.hookFeeUsdc.toFixed(4)} USDC · price {price(result.priceBefore)} → {price(result.priceAfter)}
@@ -473,7 +473,7 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
           </div>
         ) : null}
         <Button loading={busy} disabled={n <= 0 || busy} onClick={trade}>
-          {side === "buy" ? "Buy JAR-J" : "Sell JAR-J"}
+          {side === "buy" ? "Buy DRIP" : "Sell DRIP"}
         </Button>
       </ActionBar>
     </LendShell>

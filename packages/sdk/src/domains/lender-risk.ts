@@ -44,7 +44,7 @@ export type RiskRaw = {
   active: { id: bigint; principal: bigint; principalRepaid: bigint; totalOwed: bigint; repaid: bigint; lastSaleAt: number }[];
   /** AdvanceBook.defaultWindow in seconds (null if the read failed). */
   defaultWindow: number | null;
-  /** RiskHook pool: ticks (price = 1.0001^tick, USDC per JAR-J). Undefined = unavailable (e.g. under 24h of history). */
+  /** RiskHook pool: ticks (price = 1.0001^tick, USDC per DRIP). Undefined = unavailable (e.g. under 24h of history). */
   ticks: { spot?: number; twap1h?: number; twap24h?: number };
   limitsChanged: { caps: bigint[]; at: number }[];
   risk: RiskStatus | null;
@@ -180,7 +180,7 @@ export function riskPanelFrom(raw: RiskRaw): RiskPanelView {
     tone: cov === undefined ? "none" : cov < 15 ? "watch" : "ok",
   };
 
-  // 5. The market's view: JAR-J on the RiskHook pool.
+  // 5. The market's view: DRIP on the RiskHook pool.
   const book = usd(snap.juniorSharePrice);
   const spot = raw.ticks.spot !== undefined ? tickPrice(raw.ticks.spot) : undefined;
   const t1 = raw.ticks.twap1h !== undefined ? tickPrice(raw.ticks.twap1h) : undefined;
@@ -196,10 +196,10 @@ export function riskPanelFrom(raw: RiskRaw): RiskPanelView {
     mkt === undefined
       ? "No trades on the pool yet, so the market has no view."
       : gap !== undefined && gap < -0.5
-        ? `Traders price JAR-J ${Math.abs(gap).toFixed(1)}% under its book value: they expect losses beyond the ${lostStr} written off so far.`
+        ? `Traders price DRIP ${Math.abs(gap).toFixed(1)}% under its book value: they expect losses beyond the ${lostStr} written off so far.`
         : gap !== undefined && gap > 0.5
-          ? `Traders price JAR-J ${gap.toFixed(1)}% over book: no losses expected beyond the ${lostStr} already booked.`
-          : `Traders price JAR-J at its book value: no losses expected beyond the ${lostStr} already booked.`;
+          ? `Traders price DRIP ${gap.toFixed(1)}% over book: no losses expected beyond the ${lostStr} already booked.`
+          : `Traders price DRIP at its book value: no losses expected beyond the ${lostStr} already booked.`;
   const market: RiskPanelView["market"] = {
     spot: spot !== undefined ? usd3(spot) : dash,
     twap1h: t1 !== undefined ? usd3(t1) : dash,
@@ -220,7 +220,7 @@ export function riskPanelFrom(raw: RiskRaw): RiskPanelView {
     read,
     tone: fired ? "risk" : gap !== undefined && gap < -5 ? "watch" : mkt === undefined ? "none" : "ok",
   };
-  if (spot === undefined && raw.ticks.twap1h === undefined) approximations.push("JAR-J price: the pool has no readable price yet.");
+  if (spot === undefined && raw.ticks.twap1h === undefined) approximations.push("DRIP price: the pool has no readable price yet.");
 
   // 6. The Risk agent: caps vs floors, recent cuts.
   const changes = [...raw.limitsChanged].sort((a, b) => a.at - b.at);
@@ -285,7 +285,7 @@ export function waterfallFrom(raw: Pick<RiskRaw, "snap" | "opened" | "splits" | 
       usd: feeLeft,
       estimated: true,
     }),
-    layer({ key: "junior", title: "Junior (JAR-J)", description: "Cash in the junior vault. Takes the first write-off.", usd: junior, estimated: false, ...(mineJ > 0 ? { yours: `Yours ${money(mineJ)}` } : {}) }),
+    layer({ key: "junior", title: "Junior (DRIP)", description: "Cash in the junior vault. Takes the first write-off.", usd: junior, estimated: false, ...(mineJ > 0 ? { yours: `Yours ${money(mineJ)}` } : {}) }),
     layer({ key: "reserve", title: "Reserve", description: "Fees and hook fees held back. Pays what junior can't.", usd: reserve, estimated: false }),
     layer({ key: "senior", title: "Senior vault", description: "Lenders. Loses only after junior and the reserve run out.", usd: senior, estimated: false, ...(mineS > 0 ? { yours: `Yours ${money(mineS)}` } : {}) }),
   ];
@@ -421,7 +421,7 @@ export async function gatherRiskRaw(
     contracts: [
       { label: "AdvanceBook", address: chain.addresses.book },
       { label: "Senior vault", address: chain.addresses.senior },
-      { label: "Junior vault (JAR-J)", address: chain.addresses.junior },
+      { label: "Junior vault (DRIP)", address: chain.addresses.junior },
       { label: "RiskHook", address: chain.addresses.hook },
     ],
     timesEstimated,

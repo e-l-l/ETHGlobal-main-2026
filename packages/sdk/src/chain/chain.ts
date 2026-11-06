@@ -132,7 +132,7 @@ export interface Chain {
   vaultLogs(tranche: "senior" | "junior", eventName: string, args?: Record<string, unknown>): Promise<LogEntry[]>;
   /** Approve `allowance` (default `amount`) unless the current allowance already covers `amount`. */
   approveUsdc(spender: Addr, amount: bigint, allowance?: bigint): Promise<Receipt | null>;
-  /** Same as approveUsdc, for any ERC-20 (e.g. the JAR-J share token). */
+  /** Same as approveUsdc, for any ERC-20 (e.g. the DRIP share token). */
   approveToken(token: Addr, spender: Addr, amount: bigint, allowance?: bigint): Promise<Receipt | null>;
   /** Any contract write through the same path as the others: retries transient pre-broadcast errors, waits, throws on revert. */
   send(label: string, params: { address: Addr; abi: readonly unknown[]; functionName: string; args: readonly unknown[] }): Promise<Receipt>;

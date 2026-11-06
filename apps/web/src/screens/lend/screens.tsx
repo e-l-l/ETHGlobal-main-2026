@@ -16,6 +16,7 @@ import {
   LossWaterfall,
   Money,
   PageHead,
+  LenderDisclosure,
   Pill,
   RowList,
   Stack,
@@ -46,6 +47,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
   const wroteOff = VAULT.writtenOff !== "$0" && VAULT.writtenOff !== "—";
   return (
     <LendShell note="Vault totals and positions are onchain. Lenders never see a shop's books or who owns it.">
+      <LenderDisclosure />
       <PageHead label="Senior vault" title="Earn">
         Lend dollars to real shops.
       </PageHead>
@@ -181,12 +183,13 @@ export function JuniorScreen({ initial, initialPanel }: { initial: JuniorView | 
   const { vault, juniorSeries, writeOffIndex } = data;
   const VAULT = vaultNumbers(vault);
   return (
-    <LendShell note="The JAR-J price, pool and coverage are public. So is every mint and trade.">
+    <LendShell note="The DRIP price, pool and coverage are public. So is every mint and trade.">
+      <LenderDisclosure />
       <PageHead
         label="First loss"
         title={
           <span className="inline-flex items-center gap-3">
-            <TokenBadge size={44} label="JAR-J" />
+            <TokenBadge size={44} label="DRIP" />
             Junior
           </span>
         }
@@ -199,7 +202,7 @@ export function JuniorScreen({ initial, initialPanel }: { initial: JuniorView | 
           </>
         }
       >
-        JAR-J takes losses before anyone else, and earns {vault.feeShareJunior} of every fee for it.
+        DRIP takes losses before anyone else, and earns {vault.feeShareJunior} of every fee for it.
       </PageHead>
       <Columns ratio="3:2">
         <Stack gap="lg">
@@ -207,7 +210,7 @@ export function JuniorScreen({ initial, initialPanel }: { initial: JuniorView | 
             <Card gap="lg">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="flex flex-col gap-1">
-                  <Label>JAR-J price</Label>
+                  <Label>DRIP price</Label>
                   <span className="font-display text-amount tabular-nums text-charcoal">{vault.juniorPrice}</span>
                 </div>
                 <span className="text-right font-ledger text-ledger text-charcoal-soft">
@@ -219,7 +222,7 @@ export function JuniorScreen({ initial, initialPanel }: { initial: JuniorView | 
               <LineChart
                 points={juniorSeries}
                 height={180}
-                label={isMock ? "JAR-J price over 12 weeks. It dips at the write-off, then recovers to 0.982." : "JAR-J price over time"}
+                label={isMock ? "DRIP price over 12 weeks. It dips at the write-off, then recovers to 0.982." : "DRIP price over time"}
                 markers={writeOffIndex >= 0 ? [{ index: writeOffIndex, label: isMock ? "The $100 write-off" : "Latest write-off" }] : []}
                 xLabels={["12 weeks ago", "Now"]}
                 format={price}
