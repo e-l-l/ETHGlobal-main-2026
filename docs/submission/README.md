@@ -12,6 +12,7 @@ ETHGlobal Mumbai (Nov 5–7, 2026), From Scratch track. Partners: **Uniswap, Wor
 | [ANON_RPC.md](ANON_RPC.md) | EF Best Use of Anon-RPC: why ZK needs network privacy, integration status |
 | [AI_USAGE.md](AI_USAGE.md) | ETHGlobal: where AI tools were used, plus the in-product judge models |
 | [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | The 4-minute live script, the video outline and the fallbacks |
+| [VIDEO.md](VIDEO.md) | Scene-by-scene video recording checklist, with live URLs and fallbacks |
 
 Paths such as `contracts/src/RiskHook.sol` are relative to the repo root.
 
