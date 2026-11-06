@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { BlockBand } from "@/blocks";
+import { BlockBand, BlockWall } from "@/blocks";
 import { BLOCKY } from "./_landing/blocky";
 import { Button, CheckIcon, JarMark, LockIcon, Reveal, ScrollProgress } from "@/final";
 import { APP_NAME } from "@/lib/brand";
@@ -16,7 +16,7 @@ import { Fog } from "./_landing/fog";
 import { FloatingNav } from "./_landing/floating-nav";
 import { PixelScene } from "./_landing/pixel-scene";
 import { IconTile, type PixelIconName } from "./_landing/pixel-icons";
-import { WeekChart } from "./_landing/week";
+import { WeekBreakdown, WeekChart } from "./_landing/week";
 
 /*
  * Marketing landing page. Copy from feat/landing-page (the first landing, now at /old-landing).
@@ -140,7 +140,7 @@ function SiteFooter() {
     ],
   ];
   return (
-    <footer className="bg-deep text-honeydew">
+    <footer className="text-honeydew" style={{ backgroundColor: SAP }}>
       <div className={cn(WRAP, "grid grid-cols-1 gap-12 py-16 md:py-20 lg:grid-cols-[1.1fr_1.6fr] lg:gap-16")}>
         <div className="flex flex-col gap-6">
           <span className="inline-flex items-center gap-4">
@@ -172,7 +172,7 @@ function SiteFooter() {
           ))}
         </nav>
       </div>
-      <div className={cn(WRAP, "flex flex-col gap-1 border-t border-honeydew/10 py-5 font-ledger text-[13px] text-honeydew/60 md:flex-row md:justify-between")}>
+      <div className={cn(WRAP, "flex flex-col gap-1 border-t border-honeydew/25 py-5 font-ledger text-[13px] text-honeydew/60 md:flex-row md:justify-between")}>
         <span>Built at ETHGlobal Mumbai · November 2026 · Open source</span>
         <span>Demo data.<ExampleRate /></span>
       </div>
@@ -271,37 +271,34 @@ const WEEK_PROMISES: [PixelIconName, string, string][] = [
 
 function BadWeek() {
   return (
-    <section aria-labelledby="week-h" className="relative overflow-hidden bg-hunter pt-28 md:pt-40">
-      <div className={cn(WIDE, "relative z-10 flex flex-col gap-12 pb-24 md:gap-16 md:pb-32")}>
-        <Reveal className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-16">
-          <div className="flex flex-col gap-5">
-            <Eyebrow tone="dark">Built for real weeks</Eyebrow>
-            <h2 id="week-h" className={cn(H2, "max-w-[16ch] text-canvas")}>
-              A slow week never costs more than 3%.
-            </h2>
-          </div>
-          <p className="m-0 max-w-[42ch] font-body text-read text-honeydew/85">
+    <section aria-labelledby="week-h" className="relative overflow-hidden bg-linear-to-br from-hunter via-hunter to-forest py-24 md:py-32">
+      <div className={cn(WIDE, "relative z-10 grid grid-cols-1 items-center gap-12 lg:grid-cols-[0.9fr_1.3fr] lg:gap-12")}>
+        <Reveal className="flex flex-col gap-6">
+          <Eyebrow tone="dark">Built for real weeks</Eyebrow>
+          <h2 id="week-h" className={cn(H2, "max-w-[11ch] text-canvas")}>
+            A slow week never costs more than <span className="whitespace-nowrap rounded-[14px] bg-lime px-3 text-deep">3%.</span>
+          </h2>
+          <p className="m-0 max-w-[40ch] font-body text-[19px] text-honeydew/85">
             Fee 0.5% per week while you owe, never more than 3%. When sales slow down, paying back slows with them.
           </p>
-        </Reveal>
-        <Reveal>
-          <WeekChart />
-        </Reveal>
-        <Reveal>
-          <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 md:grid-cols-3">
-            {WEEK_PROMISES.map(([icon, t, d]) => (
-              <li key={t} className="flex items-start gap-4 rounded-xl border border-hairline bg-surface px-5 py-5">
+          <ul className="m-0 mt-2 flex list-none flex-col gap-3 p-0">
+            {WEEK_PROMISES.map(([icon, t, d], i) => (
+              <Reveal as="li" key={t} delay={150 + i * 110} className="flex items-center gap-4 rounded-xl bg-honeydew px-5 py-4 hover:-translate-y-0.5 hover:shadow-lift">
                 <IconTile name={icon} size={52} />
                 <span className="flex flex-col">
-                  <span className="font-body text-read font-semibold text-charcoal">{t}</span>
-                  <span className="font-body text-note text-charcoal-soft">{d}</span>
+                  <span className="font-body text-[19px] font-semibold text-charcoal">{t}</span>
+                  <span className="font-body text-[16.5px] text-charcoal-soft">{d}</span>
                 </span>
-              </li>
+              </Reveal>
             ))}
           </ul>
         </Reveal>
+        <Reveal className="flex min-w-0 flex-col gap-6">
+          <WeekChart />
+          <WeekBreakdown />
+        </Reveal>
       </div>
-</section>
+    </section>
   );
 }
 
@@ -337,14 +334,14 @@ function HowItWorks() {
         </Reveal>
         <Reveal>
           <ul aria-label="What makes it different" className="m-0 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-4">
-            {DIFFERENT.map(([icon, t, d]) => (
-              <li key={t} className="flex items-start gap-4 rounded-xl border border-hairline bg-surface px-5 py-4">
+            {DIFFERENT.map(([icon, t, d], i) => (
+              <Reveal as="li" key={t} delay={i * 90} className="flex items-start gap-4 rounded-xl border border-hairline bg-surface px-5 py-4 hover:-translate-y-0.5 hover:shadow-lift">
                 <IconTile name={icon} size={52} />
                 <span className="flex flex-col">
                   <span className="font-body text-read font-semibold text-charcoal">{t}</span>
                   <span className="font-body text-note text-charcoal-soft">{d}</span>
                 </span>
-              </li>
+              </Reveal>
             ))}
           </ul>
         </Reveal>
@@ -355,10 +352,26 @@ function HowItWorks() {
 
 /* ----------------------------------------------------------------- A day */
 
+/** Block-pattern decal for a section corner: tiles dissolve toward the middle so the copy keeps a quiet ground. */
+function CornerBlocks({ className, seed, corner }: { className: string; seed: number; corner: "top right" | "bottom left" }) {
+  const mask = `radial-gradient(circle at ${corner}, #000 0%, rgb(0 0 0 / 0.55) 38%, transparent 72%)`;
+  return (
+    <div
+      aria-hidden
+      className={cn("pointer-events-none absolute -z-10 size-72 opacity-45 md:size-112", className)}
+      style={{ maskImage: mask, WebkitMaskImage: mask }}
+    >
+      <BlockWall cols={6} rows={6} fade="none" theme="night" shapes={BLOCKY} seed={seed} density={0.7} grain />
+    </div>
+  );
+}
+
 function ADay() {
   return (
-    <section id="day" aria-labelledby="day-h" className="scroll-mt-16 bg-hunter py-28 md:py-40">
-      <div className={cn(WRAP, "flex flex-col gap-14 md:gap-16")}>
+    <section id="day" aria-labelledby="day-h" className="relative isolate scroll-mt-16 overflow-hidden bg-linear-to-br from-hunter via-hunter to-forest py-24 md:py-32">
+      <CornerBlocks className="top-0 right-0" seed={13} corner="top right" />
+      <CornerBlocks className="bottom-0 left-0" seed={19} corner="bottom left" />
+      <div className={cn(WRAP, "relative flex flex-col gap-14 md:gap-16")}>
         <Reveal className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div className="flex flex-col gap-5">
             <Eyebrow tone="dark">The app</Eyebrow>
@@ -368,9 +381,7 @@ function ADay() {
           </div>
           <p className="m-0 max-w-[40ch] font-body text-read text-honeydew/85">One day of sales, and where every dollar went.</p>
         </Reveal>
-        <Reveal>
-          <DayTimeline />
-        </Reveal>
+        <DayTimeline />
       </div>
     </section>
   );
@@ -461,9 +472,11 @@ function Sponsors() {
         </Reveal>
         <Reveal>
           <ul className="m-0 grid list-none grid-cols-1 gap-6 p-0 lg:grid-cols-3 lg:gap-10">
-            {SPONSORS.map((sp) => (
-              <li
+            {SPONSORS.map((sp, si) => (
+              <Reveal
+                as="li"
                 key={sp.name}
+                delay={si * 120}
                 className={cn("flex flex-col gap-9 rounded-[24px] border p-8 md:p-12", sp.dark ? "border-charcoal bg-charcoal" : "border-hairline bg-surface")}
               >
                 <Image src={sp.logo} alt={sp.name} width={sp.w} height={sp.h} className={cn("w-auto max-w-full self-center object-contain object-center", sp.tall ? "h-20 md:h-24" : "h-16 md:h-20")} />
@@ -479,7 +492,7 @@ function Sponsors() {
                     </li>
                   ))}
                 </ul>
-              </li>
+              </Reveal>
             ))}
           </ul>
         </Reveal>
@@ -490,14 +503,17 @@ function Sponsors() {
 
 /* ----------------------------------------------------------------- Close */
 
-const BANDS = ["bg-deep", "bg-forest", "bg-hunter", "bg-fern", "bg-leaf", "bg-lime", "bg-honeydew"] as const;
+/* Sap green: the footer ground. The last band is the same colour, so the streak runs straight into the footer. */
+const SAP = "#0f2418";
+/* The spectrum, each step a touch darker than the brand token so the whole streak sits in the footer's family. */
+const BANDS = [SAP, "#173a24", "#21512f", "#2f6b42", "#559149", "#9bc76a", "#bfe3c8"] as const;
 
 /** Stepped drip bands above the footer: the whole spectrum, light to deep. */
 function Close() {
   return (
     <div aria-hidden className="flex flex-col-reverse bg-canvas">
       {BANDS.map((b, i) => (
-        <span key={b} className={cn("block", b)} style={{ height: `${22 + i * 6}px` }} />
+        <span key={b} className="block" style={{ height: `${22 + i * 6}px`, backgroundColor: b }} />
       ))}
     </div>
   );
