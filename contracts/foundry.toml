@@ -1,0 +1,23 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+# solc auto-detected: our src is ^0.8.26 (PoolManager pins 0.8.26); the bb verifier (>=0.8.27) compiles as its own unit
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+fs_permissions = [
+  { access = "read", path = "./test/fixtures" },
+  { access = "read-write", path = "../agents/deployments" }, # DeployLocal / DeployVerifier write here
+]
+
+[fuzz]
+runs = 256
+
+[invariant]
+runs = 64
+depth = 64
+fail_on_revert = false
+
+[rpc_endpoints]
+sepolia = "${SEPOLIA_RPC_URL}"

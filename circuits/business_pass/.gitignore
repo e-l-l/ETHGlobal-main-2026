@@ -1,0 +1,5 @@
+# Devnet proof inputs written by agents/src/mra_agents/bizpass.py (contain secrets): never commit.
+*.toml
+!Nargo.toml
+!Prover.toml
+!Mandate.toml
