@@ -166,7 +166,7 @@ export function FaucetScreen() {
           />
           <div className="flex flex-col gap-3 md:flex-row">
             <Button onClick={() => claim(false)} disabled={!valid || busy !== null} loading={busy === "base"}>
-              Get gas + 10 test USDC
+              Get gas + test USDC
             </Button>
             <Button variant="tonal" onClick={() => claim(true)} disabled={!valid || busy !== null} loading={busy === "drip"}>
               Also get 20 DRIP
