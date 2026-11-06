@@ -112,7 +112,7 @@ const es: typeof en = {
   },
   steps: (at: number) => `Paso ${at} de 3`,
   prove: {
-    title: "Probá el Pase de Negocio",
+    title: "Demostrá que tu kiosco es real",
     body: "Usá el portal de prueba y el verificador simulado para chequear cuatro datos.",
     weCheck: "Chequeamos",
     facts: ["País", "Banda de ventas, no el número", "6 meses o más vendiendo", "Cuenta sin suspensiones"],
