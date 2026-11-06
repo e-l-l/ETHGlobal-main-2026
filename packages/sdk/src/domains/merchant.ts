@@ -60,7 +60,7 @@ export function advanceVM(a: AdvanceOnchain, openedAt: number | undefined, purpo
     feeIfRepaidIn1Week: feeAt(1), feeIfRepaidIn2Weeks: feeAt(2),
     feeIfRepaidIn4Weeks: feeAt(4), feeIfRepaidIn6Weeks: feeAt(6),
     maxFeeBps: cap,
-    annualizedCostPercent: Math.min(cap, rate * 52) / 100,
+    annualizedCostPercent: (rate * 52) / 100,
     repaid,
     left: total,
     pct: repaid + total > 0 ? Math.round((repaid / (repaid + total)) * 100) : 0,

@@ -101,16 +101,16 @@ function SaleCard() {
       </div>
       <div className="flex flex-col gap-2">
         <div aria-hidden className="flex h-7 gap-[3px]">
-          {Array.from({ length: 10 }, (_, i) => (
-            <span key={i} className={cn("flex-1 rounded-[2px]", i < 9 ? "bg-leaf" : "bg-hunter")} />
+          {Array.from({ length: 25 }, (_, i) => (
+            <span key={i} className={cn("flex-1 rounded-[2px]", i < 23 ? "bg-leaf" : "bg-hunter")} />
           ))}
         </div>
         <div className="flex justify-between gap-3 font-body text-note">
           <span>
-            <strong className="font-semibold">$9.00</strong> <span className="text-charcoal-soft">to you, now</span>
+            <strong className="font-semibold">$9.20</strong> <span className="text-charcoal-soft">to you, now</span>
           </span>
           <span>
-            <strong className="font-semibold">$1.00</strong> <span className="text-charcoal-soft">to the advance</span>
+            <strong className="font-semibold">$0.80</strong> <span className="text-charcoal-soft">to the advance</span>
           </span>
         </div>
       </div>
@@ -118,7 +118,7 @@ function SaleCard() {
         <span className="flex justify-between">
           <Label>Advance repaid</Label>
           <span className="font-ledger text-[13px] text-charcoal tabular-nums">
-            ${advance.repaid} of ${advance.total}
+            ${advance.repaid} of ${advance.owedNow}
           </span>
         </span>
         <PixelBar value={advance.pct / 100} cells={24} className="h-2.5" />
@@ -133,7 +133,7 @@ function AgentCard() {
   const checks: [PixelIconName, string][] = [
     ["shield", "Sales look real, checked by a second agent"],
     ["lock", `Inside your $${agentLimits.perAdvance} limit`],
-    ["coin", `$${advance.fee} fee, repaid from sales`],
+    ["coin", `Fee 0.5% a week while you owe, never more than $${(advance.drawn * advance.maxFeeBps) / 10_000}`],
   ];
   return (
     <CardShell icon="agent" title="Agent proposal" meta="Today 9:12">
@@ -180,7 +180,7 @@ const PARTS: Part[] = [
     icon: "qr",
     label: "Sell",
     title: "Sell like you always do",
-    body: "Customers scan your QR and pay in the dollars they hold. Nine parts land with you, one part drips back until the advance is paid off.",
+    body: "Customers scan your QR and pay in the dollars they hold. 92% lands with you, 8% drips back until the advance is paid off.",
     points: [
       ["swap", "Any token in, dollars out"],
       ["eye", "Customers never see your advance"],

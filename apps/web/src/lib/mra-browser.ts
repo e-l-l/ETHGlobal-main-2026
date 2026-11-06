@@ -10,9 +10,25 @@
  * `@repo/sdk/browser/anon` and `@repo/sdk/browser/prover` are SDK subpaths. Until the SDK ships them,
  * next.config.ts aliases them to ./mra-fallback/*, which throw, so the try/catch below falls back.
  */
-import { DEFAULTS, IndexedDbVault, deploymentFor, loadOrCreateBurner, type AnonRpcWorkerLike, type CredentialVault, type MRAConfig, type Prover, type RpcConfig } from "@repo/sdk";
+import {
+  AgentsApi,
+  DEFAULTS,
+  IndexedDbVault,
+  deploymentFor,
+  idkitV4,
+  loadOrCreateBurner,
+  worldDeviceAgentPass,
+  type AgentPassAdapter,
+  type AnonRpcWorkerLike,
+  type CredentialVault,
+  type IdkitRequestConfig,
+  type MRAConfig,
+  type Prover,
+  type RpcConfig,
+} from "@repo/sdk";
 import { MRA_ENV, MRA_MODE } from "./mra";
 import { routes } from "./routes";
+import { WORLD_MODE, setWorldPrompt } from "./world-prompt";
 
 /** What actually got wired, for a "live" / network badge. Read after `await getMRA()`. */
 export const MRA_BROWSER_STATUS: {
@@ -117,16 +133,65 @@ async function loadWallet(vault: CredentialVault): Promise<MRAConfig["wallet"]> 
 /* ------------------------------------- INJECTION POINTS: Reclaim, Agent Pass, IDKit */
 
 /**
- * Leave these undefined to keep the SDK defaults: the issuer's /mock/proof as the Reclaim stand-in, and the
- * mock Agent Pass / IDKit payloads (the backend accepts them with WORLD_MOCK=1). For the real flows:
+ * NEXT_PUBLIC_WORLD_MODE=mock (default): leave these undefined to keep the SDK defaults, the issuer's /mock/proof as
+ * the Reclaim stand-in and the mock Agent Pass / IDKit payloads (the backend accepts them with WORLD_MOCK=1).
  *
- *   reclaim:   reclaimJsSdk({ createRequest: () => fetch("/api/reclaim").then(r => r.text()).then(ReclaimProofRequest.fromJsonString) })
- *              (the route runs ReclaimProofRequest.init with the app secret, server-side only)
- *   agentPass: worldOidcAgentPass({ authorize: (nonce) => worldSignIn({ nonce }) })   // agent_pass_nonce as the OIDC nonce
- *   idkit:     idkit({ request: (signal) => openIdkitWidget({ action: WORLD_RECOVERY_ACTION, signal }) })
+ * NEXT_PUBLIC_WORLD_MODE=real (backend WORLD_MOCK=0), per docs/FRONTEND-HANDOFF.md "World (real)":
+ *   agentPass: the OIDC device flow. The agents API starts it with the agent's manage token (from this device's vault);
+ *              `show` publishes the QR / user code / deadline to ./world-prompt for the approve screen.
+ *   idkit:     World ID 4 (IDKit) with a fresh backend-signed rp_context per verification, for recovery backup/restore.
+ *              `@worldcoin/idkit` is imported on first use only. The connector URL goes to ./world-prompt as a QR.
  */
-function worldAdapters(): Pick<MRAConfig, "reclaim" | "agentPass" | "idkit"> {
-  return {};
+function worldAdapters(vault: CredentialVault): Pick<MRAConfig, "agentPass" | "idkit"> {
+  if (WORLD_MODE !== "real") return {};
+  const apiUrl = MRA_ENV.apiUrl ?? (MRA_MODE === "local" ? DEFAULTS.local.apiUrl : undefined);
+  if (!apiUrl) return {};
+  const api = new AgentsApi({ baseUrl: apiUrl });
+
+  const device = worldDeviceAgentPass({
+    api,
+    manageToken: async (agentId) => {
+      const session = await vault.get("session");
+      if (session?.agentId !== agentId || !session.manageToken) throw new Error("Agent session missing");
+      return session.manageToken;
+    },
+    show: (prompt) => setWorldPrompt({ kind: "agent-pass", ...prompt }),
+  });
+  // Clear the prompt once World answered (or the flow failed), so the screen moves on to the next step.
+  const agentPass: AgentPassAdapter = {
+    kind: device.kind,
+    authorize: async (req) => {
+      try {
+        return await device.authorize(req);
+      } finally {
+        setWorldPrompt(undefined);
+      }
+    },
+  };
+
+  const idkit = idkitV4({
+    api,
+    run: async (cfg: IdkitRequestConfig) => {
+      const { IDKit, proofOfHuman } = await import("@worldcoin/idkit");
+      try {
+        const request = await IDKit.request({
+          app_id: cfg.app_id as `app_${string}`,
+          action: cfg.action,
+          rp_context: cfg.rp_context,
+          environment: cfg.environment as "production" | "staging" | "sandbox",
+          allow_legacy_proofs: false,
+        }).preset(proofOfHuman({}));
+        setWorldPrompt({ kind: "idkit", connectorURI: request.connectorURI });
+        const completion = await request.pollUntilCompletion({ timeout: 120_000 });
+        if (!completion.success) throw new Error(`World verification failed: ${completion.error}`);
+        return completion.result as unknown as Record<string, unknown>;
+      } finally {
+        setWorldPrompt(undefined);
+      }
+    },
+  });
+
+  return { agentPass, idkit };
 }
 
 /* -------------------------------------------------------------------------- build */
@@ -142,7 +207,7 @@ export async function browserConfig(base: MRAConfig): Promise<MRAConfig> {
   ]);
   anonRpc = anon;
 
-  const cfg: MRAConfig = { ...base, ...worldAdapters(), vault };
+  const cfg: MRAConfig = { ...base, ...worldAdapters(vault), vault };
   // The merchant QR / pay link opens C01 on this deployment: ?shop=<bytes32>&name=… is added by the SDK.
   if (!cfg.payUrl) cfg.payUrl = `${window.location.origin}${routes.pay}`;
   if (prover) {

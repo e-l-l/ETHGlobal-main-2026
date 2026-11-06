@@ -41,6 +41,15 @@ export function splitSale(total: number) {
   return { you: total - repay, repay };
 }
 
+/* --------------------------------------------------------- M07 agent setup */
+
+export const perAdvanceOptions = [
+  { value: 50 },
+  { value: 100 },
+  { value: 200, lockedReason: "$200 unlocks after 2 repaid advances" },
+  { value: 300, lockedReason: "$300 unlocks after 3 repaid advances" },
+] as const;
+
 /* ---------------------------------------------------- M11 advance arrived */
 
 export const drawReasons = [

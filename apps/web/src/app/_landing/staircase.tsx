@@ -8,7 +8,7 @@ import { IconTile, PixelIcon, type PixelIconName } from "./pixel-icons";
 
 /*
  * The limits ladder as a glowing pixel staircase: stepped columns that fade from Hunter to cream,
- * rising $50 → $500. Pick a step: its columns rise and light, the logo meter lights one band per step,
+ * rising $50 → $300. Pick a step: its columns rise and light, the logo meter lights one band per step,
  * and the panel says what that step takes. The demo shop's own step is marked.
  */
 
@@ -16,7 +16,7 @@ const SLICES = ["bg-hunter", "bg-fern", "bg-leaf", "bg-lime/70", "bg-lime", "bg-
 const HEIGHTS = [34, 54, 76, 100];
 
 const HOW: [PixelIconName, string, string][] = [
-  ["coin", "Repay an advance", "From sales, 10% at a time. No extra payment."],
+  ["coin", "Repay an advance", "From sales, 8% at a time. No extra payment."],
   ["phone", "Your Standing Pass updates", "On your phone. Nothing about it goes onchain."],
   ["stairs", "Your next limit unlocks", "Prove the new step privately and draw again."],
 ];
@@ -40,7 +40,7 @@ export function Staircase() {
             Pay back, unlock more.
           </h2>
           <p className="m-0 max-w-[50ch] font-body text-read text-honeydew/80">
-            Every advance you repay raises your next limit, from $50 up to $500. Your Standing Pass proves it without showing your history.
+            Every advance you repay raises your next limit, from $50 up to $300. Your Standing Pass proves it without showing your history.
           </p>
         </div>
 

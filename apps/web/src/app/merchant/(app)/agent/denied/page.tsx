@@ -2,16 +2,29 @@ import { ActionBar, Button, Card, Heading, KeyValue, Label, Page, Text } from "@
 import { routes } from "@/lib/routes";
 import { CardTitle } from "../../../_ui";
 
-/** M09 Agent not set up: the World approval was declined, expired or turned off. Nothing moved. */
-export default function AgentDeniedPage() {
+/**
+ * M09 Agent not set up: the World approval was declined, expired or turned off. Nothing moved.
+ * `?reason=expired`: the World request timed out before it was answered.
+ */
+export default async function AgentDeniedPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
+  const expired = (await searchParams).reason === "expired";
   return (
     <Page width="narrow" tabs className="md:justify-center">
       <div className="flex flex-col gap-2">
-        <Label className="text-caution">World approval cancelled</Label>
-        <Heading level={1}>No agent set up. Nothing will be drawn.</Heading>
+        <Label className="text-caution">{expired ? "World approval expired" : "World approval cancelled"}</Label>
+        <Heading level={1}>{expired ? "Time ran out. Try again." : "No agent set up. Nothing will be drawn."}</Heading>
         <Text>
-          The approval was declined or timed out. Nothing happened: your shop and QR still work, you just won&rsquo;t get
-          advances until the agent is on.
+          {expired ? (
+            <>
+              The World request expired before it was approved. Nothing happened: no agent, no limits. Start again and approve it in
+              World App before the timer ends.
+            </>
+          ) : (
+            <>
+              The approval was declined or timed out. Nothing happened: your shop and QR still work, you just won&rsquo;t get
+              advances until the agent is on.
+            </>
+          )}
         </Text>
       </div>
       <Card padding="lg">

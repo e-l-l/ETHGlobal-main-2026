@@ -23,7 +23,7 @@ import {
   TokenBadge,
   type LossLayerAmount,
 } from "@/final";
-import type { EarnView, JuniorView, PositionView, ProtocolView, RiskPanelView, RiskView, WaterfallView } from "@repo/sdk";
+import type { EarnView, JuniorView, KV, PositionView, ProtocolView, RiskPanelView, RiskView, WaterfallView } from "@repo/sdk";
 import { isMock } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -38,14 +38,40 @@ const usd2 = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigit
 const price = (v: number) => `$${v.toFixed(3)}`;
 const fmt = (n: number, d = 2) => n.toLocaleString("en-US", { maximumFractionDigits: d });
 
-/** "60% senior · 30% junior · 10% reserve" (the SDK's split, in contract order) → [vault, DRIP, reserve]. */
-function feeSplit(split: string): [number, number, number] {
-  const [a = 60, b = 30, c = 10] = [...split.matchAll(/([\d.]+)%/g)].map((m) => Number(m[1]));
-  return [a, b, c];
+type SplitPart = { name: string; pct: number; className: string };
+
+/** The contract's split, used until the SDK's `feeSplit` rows arrive. */
+const FEE_SPLIT_DEFAULT: KV[] = [
+  { k: "Senior", v: "40%" },
+  { k: "Junior", v: "30%" },
+  { k: "Reserve", v: "20%" },
+  { k: "Protocol", v: "10%" },
+];
+
+/** SDK row keys are contract names ("Senior", "Junior" or "Junior / DRIP", ...). Map them to what people read. */
+const FEE_SPLIT_LOOK: Record<string, { name: string; long: string; row: string; className: string }> = {
+  senior: { name: "Vault", long: "vault", row: "To the vault", className: "bg-hunter text-canvas" },
+  junior: { name: "DRIP", long: "DripCoin", row: "To DripCoin", className: "bg-charcoal text-lime" },
+  reserve: { name: "Reserve", long: "reserve", row: "To the reserve", className: "bg-honeydew text-hunter" },
+  protocol: { name: "Protocol", long: "protocol", row: "To the protocol", className: "bg-unlit text-charcoal" },
+};
+
+/** `mra.lender.earn().feeSplit` (4 rows of {k, v}) → stacked-bar parts plus a one-line label. */
+function feeSplitParts(rows: KV[] | undefined): { parts: (SplitPart & { row: string })[]; label: string } {
+  const src = rows?.length ? rows : FEE_SPLIT_DEFAULT;
+  const parts = src.map((r) => {
+    const key = r.k.trim().split(/[\s/]/)[0]?.toLowerCase() ?? "";
+    const look = FEE_SPLIT_LOOK[key] ?? { name: r.k, long: r.k, row: `To ${r.k}`, className: "bg-unlit text-charcoal" };
+    return { name: look.name, long: look.long, row: look.row, pct: Number.parseFloat(r.v) || 0, className: look.className };
+  });
+  return { parts, label: `Fee split: ${parts.map((p) => `${p.pct}% ${p.long}`).join(", ")}` };
 }
 
+/** Every advance sits on top of this much DripCoin cover. */
+const COVER_LINE = "Every advance has 20% DripCoin cover underneath it.";
+
 /** One stacked bar: who gets what. Widths from the numbers; labels inside when they fit. */
-function SplitStrip({ label, parts }: { label: string; parts: { name: string; pct: number; className: string }[] }) {
+function SplitStrip({ label, parts }: { label: string; parts: SplitPart[] }) {
   return (
     <div className="flex flex-col gap-3">
       <div role="img" aria-label={label} className="flex h-12 gap-1 overflow-hidden rounded-md">
@@ -71,8 +97,8 @@ function SplitStrip({ label, parts }: { label: string; parts: { name: string; pc
 const HOW = [
   { title: "You deposit USDC", body: "It joins the vault with other lenders." },
   { title: "Shops draw advances for stock", body: "Small amounts, inside limits that grow with good repayment." },
-  { title: "Customers pay through the QR", body: "The contract splits every payment: 10% repays the advance." },
-  { title: "Fees come back to you", body: "One flat fee per advance. Most of it goes to the vault." },
+  { title: "Customers pay through the QR", body: "The contract splits every payment: 8% repays the advance." },
+  { title: "Fees come back to you", body: "A small weekly fee on every advance (max 3%). Most of it goes to the vault." },
 ];
 
 export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null; initialRisk?: { panel: RiskPanelView; waterfall: WaterfallView } | null }) {
@@ -102,11 +128,12 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
             </>
           }
         >
-          Your deposit funds small advances for shop stock. Each advance is paid back automatically from the shop&rsquo;s customer payments, and its flat fee comes
-          back to the vault.
+          Your deposit funds small advances for shop stock. Each advance is paid back automatically from the shop&rsquo;s customer payments, and its fee
+          comes back to the vault: 0.5% a week while the shop owes, never more than 3%.
         </LendHero>
       </Pub>
       <LenderDisclosure />
+      <Text tone="strong">{COVER_LINE}</Text>
 
       <ol aria-label="How it works" className="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
         {HOW.map((s, i) => (
@@ -284,13 +311,23 @@ export function PositionScreen({ initial }: { initial: PositionView | null }) {
 }
 
 /* -------------------------------------------------------------- J01 DripCoin */
-export function DripCoinScreen({ initial, initialPanel }: { initial: JuniorView | null; initialPanel?: RiskPanelView | null }) {
+export function DripCoinScreen({
+  initial,
+  initialPanel,
+  initialEarn,
+}: {
+  initial: JuniorView | null;
+  initialPanel?: RiskPanelView | null;
+  initialEarn?: EarnView | null;
+}) {
   const { data, error } = useMRA(q.junior, { initial });
   const panel = useMRA(q.riskPanel, { initial: initialPanel ?? null });
+  /* JuniorView has no fee split; the vault view carries the 4 rows. */
+  const earn = useMRA(q.earn, { initial: initialEarn ?? null });
   if (!data) return <MRAState error={error} />;
   const { vault, juniorSeries, writeOffIndex, waterfall } = data;
   const V = vaultNumbers(vault);
-  const [toVault, toDrip, toReserve] = feeSplit(vault.feeSplit);
+  const split = feeSplitParts(earn.data?.feeSplit);
   const gap = V.juniorBook > 0 ? ((V.juniorPrice - V.juniorBook) / V.juniorBook) * 100 : 0;
   const vsBook = Math.abs(gap) < 0.05 ? "at book" : `${Math.abs(gap).toFixed(1)}% ${gap < 0 ? "under" : "over"} book`;
   /* The SDK's three tiers (first loss, reserve, vault) with live amounts, drawn in the same order. */
@@ -337,6 +374,7 @@ export function DripCoinScreen({ initial, initialPanel }: { initial: JuniorView 
         </LendHero>
       </Pub>
       <LenderDisclosure />
+      <Text tone="strong">{COVER_LINE}</Text>
 
       <Pub>
         <StatGrid
@@ -373,14 +411,11 @@ export function DripCoinScreen({ initial, initialPanel }: { initial: JuniorView 
             <Heading level={2} size="h2">
               Where each advance fee goes
             </Heading>
-            <SplitStrip
-              label={`Fee split: ${toVault}% vault, ${toDrip}% DripCoin, ${toReserve}% reserve`}
-              parts={[
-                { name: "Vault", pct: toVault, className: "bg-hunter text-canvas" },
-                { name: "DRIP", pct: toDrip, className: "bg-fern text-canvas" },
-                { name: "Reserve", pct: toReserve, className: "bg-honeydew text-hunter" },
-              ]}
-            />
+            <SplitStrip label={split.label} parts={split.parts} />
+            <Text size="note" tone="muted">
+              Fees are 0.5% a week while a shop owes, never more than 3%. A $100 advance repaid in 4 weeks pays $2: $0.80 to the vault, $0.60 to DRIP, $0.40
+              to the reserve, $0.20 to the protocol.
+            </Text>
             <Text size="note" tone="muted">
               The reserve slice builds the reserve, together with a small fee from every DRIP trade on Uniswap.
             </Text>
@@ -440,7 +475,7 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
   if (!data) return <MRAState error={error} />;
   const { vault: VAULT, tierCaps: TIER_CAPS } = data;
   const lowered = TIER_CAPS.some((t) => t.was);
-  const [toVault, toDrip, toReserve] = feeSplit(VAULT.feeSplit);
+  const split = feeSplitParts(data.feeSplit);
   return (
     <LendShell note="Everything on this screen is public. None of it names a person.">
       <PageHead label="Public dashboard · anyone can check" title="DripMoni, in real numbers.">
@@ -467,14 +502,14 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
               Every payment, split by the contract
             </Heading>
             <SplitStrip
-              label="90% to the shop, 10% to repaying its advance"
+              label="92% to the shop, 8% to repaying its advance"
               parts={[
-                { name: "To the shop", pct: 90, className: "bg-unlit text-charcoal" },
-                { name: "Advance", pct: 10, className: "bg-hunter text-canvas" },
+                { name: "To the shop", pct: 92, className: "bg-unlit text-charcoal" },
+                { name: "Advance", pct: 8, className: "bg-hunter text-canvas" },
               ]}
             />
             <Text size="note" tone="muted">
-              Shops with an open advance send 10% of each payment to pay it back. Shops without one keep 100%.
+              Shops with an open advance send 8% of each payment to pay it back: the fee first, then the advance. Shops without one keep 100%.
             </Text>
           </Card>
           <Pub>
@@ -521,13 +556,10 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
             <Heading level={2} size="h2">
               Each advance fee
             </Heading>
-            <KeyValue
-              rows={[
-                ["To the vault", `${toVault}%`],
-                ["To DripCoin", `${toDrip}%`],
-                ["To the reserve", `${toReserve}%`],
-              ]}
-            />
+            <KeyValue rows={split.parts.map((p) => [p.row, `${p.pct}%`])} />
+            <Text size="note" tone="muted">
+              0.5% a week while the shop owes, never more than 3%.
+            </Text>
           </Card>
           <RowList>
             <ListRow

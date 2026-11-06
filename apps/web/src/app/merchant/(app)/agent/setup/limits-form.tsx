@@ -4,7 +4,8 @@ import { useState } from "react";
 import type { AgentLimitsVM, LadderStepVM } from "@repo/sdk";
 import { ActionBar, Button, Card, Chips, Columns, Label, OfferDisclosure, Stack, Text } from "@/final";
 import { HeroBlock, HeroLabel } from "../../../_ui";
-import { formatMoney } from "@/lib/format";
+import { FEE_TERMS, HOLDBACK_PCT, annualizedMaxPercent, feeAfterDays, maxFee } from "@/lib/fees";
+import { formatMoney, formatPercent } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
@@ -89,19 +90,24 @@ function LimitsFields({ view }: { view: SetupPage }) {
             </div>
             <div className="flex flex-col">
               <span className="text-honeydew">Fee</span>
-              <span className="font-semibold text-canvas">One flat fee</span>
+              <span className="font-semibold text-canvas">0.5% a week, max 3%</span>
             </div>
           </div>
         </HeroBlock>
-        <Text size="note">Illustrative maximum advance at a 15% flat fee and 10% sales share; future offers may differ.</Text>
+        <Text size="note">
+          Illustrative maximum advance at the full {formatPercent(FEE_TERMS.capBps / 100)} fee and a {formatPercent(HOLDBACK_PCT)} sales
+          share; future offers may differ.
+        </Text>
         <OfferDisclosure
           principal={Number(perAdvance)}
-          fee={Number(perAdvance) * 0.15}
-          total={Number(perAdvance) * 1.15}
-          holdback={10}
+          maxFeeBps={FEE_TERMS.capBps}
+          feeIfRepaidIn2Weeks={feeAfterDays(Number(perAdvance), 14)}
+          annualizedCostPercent={annualizedMaxPercent()}
+          holdback={HOLDBACK_PCT}
           estimates={[100, 200, 400].map((sales, i) => ({
             label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!,
-            days: Math.ceil((Number(perAdvance) * 1.15) / (sales * 0.1)),
+            // Worst case: the whole advance plus the full fee, repaid from the holdback share.
+            days: Math.ceil((Number(perAdvance) + maxFee(Number(perAdvance))) / ((sales * HOLDBACK_PCT) / 100)),
           }))}
         />
         <ActionBar hint="One-time approval. Only you can turn the agent on.">
