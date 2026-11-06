@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { Hero } from "@/landing/Hero";
+import { HowItWorks } from "@/landing/HowItWorks";
+import { Partners } from "@/landing/Partners";
+import { Privacy } from "@/landing/Privacy";
+import { Split } from "@/landing/Split";
 
 /* Marketing landing page (what the company does). The web app starts at /home. */
 
@@ -12,6 +16,10 @@ export default function LandingPage() {
     <main className="min-w-0 bg-canvas text-charcoal">
       <Hero />
       <div className="h-12" />
+      <Partners />
+      <Split />
+      <HowItWorks />
+      <Privacy />
     </main>
   );
 }
