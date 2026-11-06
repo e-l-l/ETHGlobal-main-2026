@@ -75,6 +75,9 @@ export function baseConfig(): MRAConfig {
   if (MRA_ENV.rpcUrl) cfg.rpc = { url: MRA_ENV.rpcUrl };
   if (!isMock && !MRA_ENV.demoFaucet) cfg.faucet = false;
   if (MRA_ENV.payUrl) cfg.payUrl = MRA_ENV.payUrl;
+  // Reads routed through the Anon-RPC mixnet take 0.5-30 s each, and a write waits on several of them (balance check,
+  // faucet, approve, receipt). The SDK default (20 s) made the first Business Pass time out intermittently.
+  if (!isMock) cfg.timeoutMs = Number(process.env.NEXT_PUBLIC_MRA_TIMEOUT_MS || 0) || (MRA_ENV.anonRpc ? 90_000 : 45_000);
   if (isMock && MRA_ENV.mockLatencyMs) cfg.mockLatencyMs = MRA_ENV.mockLatencyMs;
   return cfg;
 }
