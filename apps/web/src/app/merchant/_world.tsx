@@ -22,10 +22,30 @@ function clock(s: number) {
 }
 
 function OpenInWorld({ href, children }: { href: string; children: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(href);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("Copy this World request link", href);
+    }
+  };
   return (
-    <a href={href} target="_blank" rel="noreferrer" className={cn(buttonVariants({ variant: "secondary" }))}>
-      {children}
-    </a>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <a href={href} target="_blank" rel="noreferrer" className={cn(buttonVariants({ variant: "secondary" }))}>
+          {children}
+        </a>
+        <button type="button" onClick={() => void copy()} className={cn(buttonVariants({ variant: "ghost" }))}>
+          {copied ? "Copied ✓" : "Copy link"}
+        </button>
+      </div>
+      <Text size="note" tone="muted">
+        On a laptop? Copy the link and paste it into World App or the World ID Simulator (&ldquo;Paste code&rdquo;).
+      </Text>
+    </div>
   );
 }
 
