@@ -395,10 +395,31 @@ export function Accent({ children }: { children: ReactNode }) {
   return <span className="text-lime">{children}</span>;
 }
 
-/** The Hunter panel of a SplitPage: eyebrow, big headline, one line of body, the lime wave at the foot. */
-export function BrandPanel({ eyebrow, title, body, top, children }: { eyebrow?: ReactNode; title: ReactNode; body?: ReactNode; top?: ReactNode; children?: ReactNode }) {
+/**
+ * The Hunter panel of a SplitPage: logo, eyebrow, big headline, one line of body, the lime wave at the foot.
+ * It carries the logo, so split screens render no AppHeader.
+ */
+export function BrandPanel({
+  eyebrow,
+  title,
+  body,
+  top,
+  home = routes.home,
+  children,
+}: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  body?: ReactNode;
+  top?: ReactNode;
+  /** Where the logo goes. */
+  home?: string;
+  children?: ReactNode;
+}) {
   return (
-    <aside className="relative flex flex-col gap-5 overflow-hidden bg-hunter px-4 pt-5 text-canvas md:sticky md:top-16 md:h-[calc(100dvh-4rem)] md:w-[44%] md:max-w-[620px] md:shrink-0 md:gap-8 md:px-12 md:pt-12 lg:px-14">
+    <aside className="relative flex flex-col gap-5 overflow-hidden bg-hunter px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] text-canvas md:sticky md:top-0 md:h-dvh md:w-[44%] md:max-w-[620px] md:shrink-0 md:gap-8 md:px-12 md:pt-10 lg:px-14">
+      <Link href={home} aria-label={`${APP_NAME} home`} className="w-fit shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime">
+        <Lockup size={28} on="dark" />
+      </Link>
       {top}
       <div className="flex flex-col gap-3 md:my-auto md:gap-5">
         {eyebrow ? <span className="font-ledger text-tag tracking-[0.1em] text-lime uppercase">{eyebrow}</span> : null}

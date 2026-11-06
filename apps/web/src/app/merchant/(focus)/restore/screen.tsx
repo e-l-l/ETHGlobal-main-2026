@@ -44,6 +44,7 @@ export function RestoreScreen() {
     <SplitPage
       panel={
         <BrandPanel
+          home={routes.merchant}
           eyebrow="New phone"
           title={
             <>

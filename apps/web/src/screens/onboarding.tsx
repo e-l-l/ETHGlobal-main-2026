@@ -22,7 +22,7 @@ import {
 import { copy, stepEyebrow } from "@/lib/copy";
 import { isFailReason, routes, type FailReason } from "@/lib/routes";
 import type { BusinessPassView } from "@repo/sdk";
-import { FailSheet, OnboardingHeader, PassFacts, StepProgress } from "./onboarding-client";
+import { FailSheet, PassFacts, StepProgress } from "./onboarding-client";
 
 function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
@@ -51,7 +51,6 @@ export function WelcomeScreen() {
   const icons = [<ShieldIcon key="s" size={22} />, <LockIcon key="l" size={22} />, <CheckIcon key="c" size={22} />];
   return (
     <>
-      <OnboardingHeader />
       <SplitPage
         panel={
           <BrandPanel
@@ -102,7 +101,6 @@ export function ProveScreen() {
   const t = c.prove;
   return (
     <>
-      <OnboardingHeader />
       <SplitPage
         panel={
           <BrandPanel
@@ -187,7 +185,6 @@ export function PassScreen({ initial }: { initial: BusinessPassView | null }) {
   const t = c.pass;
   return (
     <>
-      <OnboardingHeader />
       <SplitPage
         panel={
           <BrandPanel
@@ -237,7 +234,6 @@ export function FailedScreen({ reason }: { reason?: string }) {
   const others = (["too-new", "suspended", "revenue-low"] as FailReason[]).filter((r) => r !== reason);
   return (
     <>
-      <OnboardingHeader />
       <SplitPage
         panel={
           <BrandPanel

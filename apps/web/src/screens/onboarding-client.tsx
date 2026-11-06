@@ -6,7 +6,6 @@ import {
   Accent,
   ActionBar,
   AlertIcon,
-  AppHeader,
   Banner,
   BrandPanel,
   Button,
@@ -38,11 +37,6 @@ import { failedHref, isFailReason, routes, verifyingHref, type FailReason } from
 import { useMRA, useMRAAction } from "@/lib/use-mra";
 
 /* ---------------------------------------------------------- Shared bits */
-
-/** Onboarding header: logo goes to the /home hub. Step progress sits in the form column. */
-export function OnboardingHeader() {
-  return <AppHeader home={routes.home} />;
-}
 
 /** Step progress at the top of the form column: four bars and "Step 1 of 4". */
 export function StepProgress({ at }: { at: number }) {
@@ -160,7 +154,6 @@ export function VerifyingScreen({ outcome }: { outcome?: string }) {
 
   return (
     <>
-      <OnboardingHeader />
       <SplitPage
         panel={
           <BrandPanel
@@ -234,7 +227,6 @@ function ShopForm({ draft }: { draft: ShopDraft }) {
 
   return (
     <>
-      <OnboardingHeader />
       <SplitPage
         panel={
           <BrandPanel

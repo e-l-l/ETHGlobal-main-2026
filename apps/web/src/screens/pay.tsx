@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   ActionBar,
-  AppHeader,
   Banner,
   BrandPanel,
   Button,
@@ -44,10 +43,6 @@ function targetQuery(target: PayTarget) {
   if (target.shopId) sp.set("shop", target.shopId);
   if (target.name) sp.set("name", target.name);
   return sp;
-}
-
-function PayHeader() {
-  return <AppHeader home={routes.home} />;
 }
 
 /** Hosted-checkout trust line at the top of the brand panel. */
@@ -128,7 +123,6 @@ export function PayScreen({ initial, target }: { initial: PayShopView | null; ta
 
   return (
     <>
-      <PayHeader />
       <SplitPage
         panel={
           <BrandPanel
@@ -197,7 +191,6 @@ export function PaidScreen({
   const txUrl = explorerTxUrl(tx);
   return (
     <>
-      <PayHeader />
       <SplitPage
         panel={
           <BrandPanel
