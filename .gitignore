@@ -43,3 +43,7 @@ contracts/out/
 contracts/cache/
 contracts/broadcast/*/31337/
 circuits/**/target/
+
+# auto-deploy state on the box
+deploy/.paused
+deploy/.last-failed

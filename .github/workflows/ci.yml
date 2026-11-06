@@ -1,0 +1,58 @@
+# CI for main and pull requests. The EC2 box auto-deploys a main commit only after every check here passed
+# (deploy/autodeploy.sh reads the commit's check runs from the public GitHub API).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: contracts (forge test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: forge test
+        working-directory: contracts
+        run: forge test
+
+  agents:
+    name: agents (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: pytest
+        working-directory: agents
+        run: uv run --frozen pytest -q
+
+  web:
+    name: sdk + web (test, production build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: sdk build + test
+        run: pnpm --filter @repo/sdk build && pnpm --filter @repo/sdk test
+      - name: web production build (sepolia)
+        env:
+          NEXT_PUBLIC_MRA_MODE: sepolia
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: pnpm --filter web build

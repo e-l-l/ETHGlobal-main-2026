@@ -1,0 +1,11 @@
+[Unit]
+Description=DripMoney auto-deploy (pull origin/main after CI passes)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/mra
+ExecStart=/home/ubuntu/mra/deploy/autodeploy.sh
+TimeoutStartSec=45min

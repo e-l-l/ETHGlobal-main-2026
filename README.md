@@ -152,11 +152,10 @@ Every route lives in [`apps/web/src/lib/routes.ts`](apps/web/src/lib/routes.ts).
 ├── agents/                      Python agents service (FastAPI): underwriting, managed agents, risk, keeper, relayer
 ├── issuer/                      Node: Business Pass issuer (zkTLS proof → nullifier → signed attestation)
 ├── demo/portal/                 Standalone zkTLS seller dashboard (reference for the in-app portal screens)
-├── deploy/                      EC2: Docker Compose + Caddy, public devnet with an RPC allowlist
+├── deploy/                      EC2: Docker Compose + Caddy, public devnet; autodeploy.sh pulls CI-green main
 ├── docs/                        Architecture, privacy, agents, integration keys; docs/submission for prize write-ups
 ├── anay-docs/                   Product, architecture, economics, ZK and agent docs
-├── anay-design.md               Design source of truth (palette, type, logo, patterns, screens)
-└── work-split.md                Who builds which screens
+└── anay-design.md               Design source of truth (palette, type, logo, patterns, screens)
 ```
 
 The monorepo uses **Turborepo** and **pnpm workspaces**.

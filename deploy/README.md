@@ -351,3 +351,15 @@ bash agents/scripts/devnet.sh                              # deploys contracts, 
 | `devnet-deployer` exited 1 | `./deploy/devnet.sh logs devnet-deployer`. `seed_demo.py` refuses to run twice on one chain, so after a half-finished first boot run `./deploy/devnet.sh reset --hard`. |
 | Devnet RPC returns 429 | The per-IP rate limit. Raise `DEVNET_RPC_RATE_PER_SEC` / `DEVNET_RPC_RATE_BURST` in `compose.env`, then run `./deploy/compose.sh up -d rpc-proxy`. |
 | The scene says "waits for: ..." | It runs in order. Run the named step first, or run `scene --execute` without `--step`. |
+
+## Continuous deployment
+
+CI (`.github/workflows/ci.yml`) runs forge tests, agents pytest, SDK tests and the web production build on every push and PR. The box deploys itself: a systemd timer runs `deploy/autodeploy.sh` every 2 minutes. When `origin/main` has a new commit and every check run on it succeeded, it runs `./deploy/deploy.sh`. The box needs no inbound access and GitHub holds no secrets.
+
+```bash
+sudo cp deploy/systemd/mra-autodeploy.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now mra-autodeploy.timer
+touch deploy/.paused                 # pause auto-deploys (e.g. during a live demo); rm to resume
+./deploy/autodeploy.sh --now         # deploy origin/main now without waiting for CI
+tail -f ~/autodeploy.log
+```

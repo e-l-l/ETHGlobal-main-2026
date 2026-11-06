@@ -1,5 +1,5 @@
 /**
- * The 34 design-canvas screens (work-split.md) → route → SDK call → view-model. README renders this table.
+ * The 34 design-canvas screens → route → SDK call → view-model. README renders this table.
  * `call` is the method on the object returned by createMRA(). "—" = static screen, no data.
  */
 export type ScreenMap = { canvas: string; title: string; route: string; call: string; viewModel: string; owner: "A" | "B" };
