@@ -23,7 +23,10 @@ import {
 import { copy, stepEyebrow } from "@/lib/copy";
 import { isFailReason, routes, worldIdHref, type FailReason } from "@/lib/routes";
 import { reasonMessage, type BusinessPassView } from "@repo/sdk";
-import { PanelBlocks, litTiles } from "./panel-blocks";
+import { PanelBlocks } from "./panel-blocks";
+
+/** First `n` tiles lit (local copy: panel-blocks is a client module, so its helper can't be called from here). */
+const litTiles = (n: number) => Array.from({ length: Math.max(0, n) }, (_, i) => i);
 import { FailSheet, PassFacts, StepProgress } from "./onboarding-client";
 
 function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
