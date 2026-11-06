@@ -25,6 +25,8 @@ const routes = [
   "/merchant/cash-out",
   "/merchant/qr",
   "/merchant/world-view",
+  "/merchant/settings/backup",
+  "/merchant/restore",
   "/pay/corner-kiosk",
   "/pay/corner-kiosk/paid?amt=10.00&tok=USDT",
   "/portal/login",

@@ -18,6 +18,7 @@ import {
   ShieldIcon,
   SplitPage,
   Text,
+  TextLink,
 } from "@/final";
 import { copy, stepEyebrow, type Lang } from "@/lib/copy";
 import { isFailReason, routes, type FailReason } from "@/lib/routes";
@@ -82,6 +83,9 @@ export function WelcomeScreen({ lang }: { lang: Lang }) {
             </li>
           ))}
         </ul>
+        <TextLink href={routes.restore} arrow className="self-start text-note">
+          {t.restore}
+        </TextLink>
         <ActionBar>
           <Button href={routes.prove}>{t.cta}</Button>
           <Button href={routes.home} variant="ghost">

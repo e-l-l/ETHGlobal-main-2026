@@ -11,7 +11,7 @@ const NAV = [
 ];
 
 const PROMISES = [
-  "Flat fee, no interest",
+  "0.5% a week, never more than 3%",
   "No penalty for slow weeks",
   "Your agent, your limits",
 ];
@@ -144,8 +144,8 @@ export function Hero() {
             <span className="text-hunter">Paid back one sale at a time.</span>
           </h1>
           <p className="m-0 max-w-120 text-[18px] leading-[1.55] text-charcoal-soft">
-            No fixed instalments. 10% of each sale goes toward your advance, so
-            slow days cost you nothing extra.
+            No fixed instalments. 8% of each sale goes toward your advance. Fee
+            0.5% per week while you owe, never more than 3%.
           </p>
           <p className="m-0 inline-flex items-center gap-2.5 self-start rounded-full border border-honeydew-line bg-honeydew py-2.5 pr-4 pl-3 text-[15px] leading-[1.35] font-semibold text-hunter">
             <LockGlyph size={20} className="flex-none" />

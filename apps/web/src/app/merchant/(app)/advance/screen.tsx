@@ -37,14 +37,16 @@ export function AdvanceDetailsScreen({ initial }: { initial: AdvanceDetailsView 
         title="Your advance"
       />
 
-      <OfferDisclosure principal={advance.drawn} fee={advance.fee} total={advance.total} holdback={advance.holdback} estimates={daysLeftEstimates.map((e) => ({ ...e, label: `${e.label} (estimated total duration)`, days: e.days > 0 ? e.days + Math.max(0, repaymentCurve.points.length - 1) : 0 }))} />
+      <OfferDisclosure principal={advance.drawn} maxFeeBps={advance.maxFeeBps} feeIfRepaidIn2Weeks={advance.feeIfRepaidIn2Weeks} annualizedCostPercent={advance.annualizedCostPercent} holdback={advance.holdback} estimates={daysLeftEstimates.map((e) => ({ ...e, label: `${e.label} (estimated total duration)`, days: e.days > 0 ? e.days + Math.max(0, repaymentCurve.points.length - 1) : 0 }))} />
       <Columns ratio="3:2">
         <Stack gap="lg">
           <HeroBlock>
             <HeroLabel>Left to pay back</HeroLabel>
             <div className="flex flex-col gap-1.5">
               <BigFigure>{formatMoney(advance.left)}</BigFigure>
-              <Ledger className="text-honeydew">of {formatMoney(advance.total)}</Ledger>
+              <Ledger className="text-honeydew">
+                of {formatMoney(advance.drawn + advance.feeSoFar)} · fee so far {formatMoney(advance.feeSoFar)}
+              </Ledger>
             </div>
             <div className="flex flex-col gap-2">
               <DarkMeter value={advance.pct / 100} label="Advance paid back" />
@@ -112,16 +114,34 @@ export function AdvanceDetailsScreen({ initial }: { initial: AdvanceDetailsView 
             <KeyValue
               rows={[
                 ["Advance", formatMoney(advance.drawn)],
-                [advance.feeLabel, formatMoney(advance.fee)],
-                ["Total to pay back", formatMoney(advance.total)],
+                ["Fee", "0.5% a week while you owe"],
+                [`Max fee (${formatPercent(advance.maxFeeBps / 100)})`, formatMoney((advance.drawn * advance.maxFeeBps) / 10_000)],
+                ["Fee so far", formatMoney(advance.feeSoFar)],
+                ["Owed now", formatMoney(advance.owedNow)],
+                ["Left to pay back", formatMoney(advance.left)],
                 ["Paid from", `${formatPercent(advance.holdback)} of each payment`],
                 ["Drawn on", advance.drawnOn],
               ]}
             />
           </Card>
+          <Card padding="lg">
+            <CardTitle>Pay early, pay less</CardTitle>
+            <KeyValue
+              rows={[
+                ["If repaid in 1 week", formatMoney(advance.feeIfRepaidIn1Week)],
+                ["In 2 weeks", formatMoney(advance.feeIfRepaidIn2Weeks)],
+                ["In 4 weeks", formatMoney(advance.feeIfRepaidIn4Weeks)],
+                ["In 6 weeks or more", formatMoney(advance.feeIfRepaidIn6Weeks)],
+              ]}
+            />
+            <Text size="note" tone="muted">
+              The fee for the whole advance, by when it&rsquo;s fully paid back.
+            </Text>
+          </Card>
           <PlainWords>
-            No interest and no late fees. The fee never grows, however long it takes. If you have no payments at all for 30
-            days, the advance closes as unpaid and won&rsquo;t count toward a higher limit.
+            No late fees. The fee stops at {formatPercent(advance.maxFeeBps / 100)}. Pay early, pay less. Every 7 days, pay
+            back at least 1% of the advance plus the fee so far; if you&rsquo;re short of that for 14 days, the advance is
+            marked late.
           </PlainWords>
         </Stack>
       </Columns>

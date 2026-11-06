@@ -47,8 +47,8 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
           </div>
         </HeroBlock>
         <PlainWords>
-          A flat fee, no interest. Each advance is paid back from a small share of your payments, so a slow week just
-          takes longer.
+          A small weekly fee while you owe, capped at 3%. Each advance is paid back from a small share of your payments,
+          so a slow week just takes longer.
         </PlainWords>
       </Page>
     );

@@ -5,11 +5,11 @@ import type { Deployment } from "../chain/deployments.js";
 /** agents/deployments/sepolia.json */
 export const sepolia = {
   "chainId": 11155111,
-  "AdvanceBook": "0x873bb34ad35a66947dbd2f9482d15ba5d400d8db",
-  "BusinessPassRegistry": "0x00806c3ec1f51cd643d896ad5274d839d9e8b136",
-  "SeniorVault": "0x51892eb237ae06e85b59007270dc28142a69ff95",
-  "JuniorVault": "0x30911a69b90523fa53f2dd3e8096ac3096c61a90",
-  "RiskHook": "0x216ec669911e5e042c73de8f593397a51e00d044",
+  "AdvanceBook": "0x76424347274b1ff54efa942d9d7adf668049b884",
+  "BusinessPassRegistry": "0x3dda9f1756c762c4089c36a31de21b1d6805aab5",
+  "SeniorVault": "0x3f12864bb1cc5b9814a61bc41ad9797a4dd3ac4f",
+  "JuniorVault": "0x26c6ad44e926204cdaac0abf519ca488b9ff38f4",
+  "RiskHook": "0xd9cfcadf7ea8a753198383ce7f210070e5559044",
   "USDC": "0x6603ac3f0a1ea33f232c97655a1b4f91280e55bb",
   "PoolManager": "0xE03A1074c86CFeDd5C142C4F04F1a1536e203543",
   "PoolSwapTest": "0x9b6b46e2c869aa39918db7f52f5557fe577b6eee",
@@ -17,13 +17,13 @@ export const sepolia = {
   "HonkVerifier": "0x7764690108c612fafde5eeb1cbe2f20d80e42017",
   "BusinessPassVerifier": "0xb79d40dcda63d941a31d866028d5d6852550136a",
   "poolKey": {
-    "currency0": "0x30911a69b90523fa53f2dd3e8096ac3096c61a90",
+    "currency0": "0x26c6ad44e926204cdaac0abf519ca488b9ff38f4",
     "currency1": "0x6603ac3f0a1ea33f232c97655a1b4f91280e55bb",
     "fee": 3000,
     "tickSpacing": 60,
-    "hooks": "0x216ec669911e5e042c73de8f593397a51e00d044"
+    "hooks": "0xd9cfcadf7ea8a753198383ce7f210070e5559044"
   },
-  "deployBlock": 12070938
+  "deployBlock": 12076513
 } as const satisfies Deployment;
 
 /** agents/deployments/local.json */

@@ -50,8 +50,8 @@ export function Lenders() {
             className="text-charcoal-soft"
             tick="text-fern"
             items={[
-              "Deposit USDC, earn a share of every fee",
-              "Losses hit the Junior token before you",
+              "Deposit USDC, earn 40% of every fee",
+              "Losses hit DripCoin (DRIP) before you",
               "Withdraw what isn’t lent out, anytime",
             ]}
           />
@@ -66,7 +66,7 @@ export function Lenders() {
           bodyClassName="m-4 flex-1 gap-4 rounded-md bg-hunter p-6"
         >
           <Label className="self-start rounded-chip bg-lime px-2 py-1 text-charcoal">
-            Junior token
+            DripCoin (DRIP)
           </Label>
           <h3 className={`${CARD_TITLE} text-canvas`}>
             First loss, bigger share.
@@ -75,18 +75,18 @@ export function Lenders() {
             className="text-honeydew"
             tick="text-lime"
             items={[
-              "A larger cut of the fees",
+              "30% of every fee, on a smaller pool",
               "Absorbs losses first, protecting the vault",
               "Trades on a Uniswap v4 pool with a risk hook",
             ]}
           />
           <Button
-            href="/junior"
+            href="/dripcoin/trade"
             variant="lime"
             width="auto"
             className={`mt-auto self-start px-6 py-0 ${RING_ON_HUNTER}`}
           >
-            Buy Junior on Uniswap
+            Buy DRIP on Uniswap
           </Button>
         </WaveBand>
       </div>

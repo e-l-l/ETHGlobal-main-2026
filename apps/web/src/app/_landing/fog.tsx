@@ -13,7 +13,7 @@ import { useLive } from "./use-live";
 
 const PINS = [
   { k: "Shop name", tag: "Public", body: `A neutral name like ${shop.name} and a pseudonym, ${shop.id}. Nothing about you, nothing about the advance.` },
-  { k: "Each sale", tag: "Public", body: "Sales and the tenth that drips back are onchain. Customers never see your advance." },
+  { k: "Each sale", tag: "Public", body: "Sales and the 8% that drips back are onchain. Customers never see your advance." },
   { k: "Name and phone", tag: "Never asked", body: "No name or identity ever goes onchain. We never ask for your name, phone or contacts." },
   { k: "Your books", tag: "Stay on your phone", body: "Records stay on your phone, not our servers. A private check shares country, sales band and 6+ months. We learned nothing else." },
   { k: "Repaid advances", tag: "Proved, not shown", body: "Your Standing Pass proves how many you repaid. Not which, not where, not when." },

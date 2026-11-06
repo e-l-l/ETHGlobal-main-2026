@@ -23,8 +23,8 @@ function Tag({ children }: { children: ReactNode }) {
 
 /* The logo is the tier meter: two bands lit = tier 1, $100. */
 const LADDER = [
-  { cap: "$500", tone: "text-charcoal-muted" },
-  { cap: "$250", tone: "text-charcoal-muted" },
+  { cap: "$300", tone: "text-charcoal-muted" },
+  { cap: "$200", tone: "text-charcoal-muted" },
   { cap: "$100 · now", tone: "font-semibold text-charcoal" },
   { cap: "$50", tone: "text-charcoal" },
 ];
@@ -66,14 +66,14 @@ const STEPS: Step[] = [
     n: "03",
     icon: <QrGlyph {...ICON} />,
     title: "Sell like you always do",
-    body: "Customers scan your QR and pay in the dollars they hold. A tenth of every sale drips back on its own.",
+    body: "Customers scan your QR and pay in the dollars they hold. 8% of every sale drips back on its own.",
     foot: <Tag>Any token in, dollars out</Tag>,
   },
   {
     n: "04",
     icon: <TrendGlyph {...ICON} />,
     title: "Pay back, unlock more",
-    body: "Every advance you repay raises your next limit, from $50 up to $500. Your Standing Pass proves it without showing your history.",
+    body: "Every advance you repay raises your next limit, from $50 up to $300. Your Standing Pass proves it without showing your history.",
     foot: <Ladder />,
   },
 ];
