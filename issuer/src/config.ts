@@ -41,11 +41,23 @@ export interface Config {
 
   requireLeafCheck: boolean;
 
+  /** Public HTTPS base URL of this issuer (ISSUER_PUBLIC_URL). If set, Reclaim POSTs proofs straight to
+   *  `${publicUrl}/reclaim/callback/:sessionId`; otherwise the issuer polls Reclaim's status URL itself. */
+  publicUrl?: string;
+
   reclaim: {
     appId?: string;
     appSecret?: string;
     requireTee: boolean;
     pins: Record<Band, ReclaimBandPin>;
+    /** `getRequestUrl({ verificationMode })`: "portal" (remote browser, default) or "app" (Reclaim Verifier app / App Clip). */
+    verificationMode: "portal" | "app";
+    /** `setContext(contextAddress, commitmentHex)`. Defaults to the registry address. */
+    contextAddress: string;
+    /** How long a /reclaim/session stays usable (QR scan + login + /issue). */
+    sessionTtlSec: number;
+    /** DEBUG, demo accounts only: write each received proof to this dir (RECLAIM_PROVIDER.md "capture a fixture"). */
+    captureDir?: string;
   };
 }
 
@@ -119,6 +131,22 @@ export function loadConfig(env: Env = process.env): Config {
     if (requireTee && !opt(env, "RECLAIM_APP_SECRET")) throw new ConfigError("RECLAIM_REQUIRE_TEE=1 needs RECLAIM_APP_SECRET");
   }
 
+  const publicUrl = opt(env, "ISSUER_PUBLIC_URL")?.replace(/\/+$/, "");
+  if (publicUrl) {
+    let u: URL;
+    try {
+      u = new URL(publicUrl);
+    } catch {
+      throw new ConfigError("ISSUER_PUBLIC_URL is not a URL");
+    }
+    const local = ["localhost", "127.0.0.1"].includes(u.hostname);
+    if (u.protocol !== "https:" && !local) throw new ConfigError("ISSUER_PUBLIC_URL must be https (Reclaim posts proofs to it)");
+  }
+  const mode = (opt(env, "RECLAIM_VERIFICATION_MODE") ?? "portal").toLowerCase();
+  if (mode !== "portal" && mode !== "app") throw new ConfigError("RECLAIM_VERIFICATION_MODE must be portal or app");
+  const ctxAddr = opt(env, "RECLAIM_CONTEXT_ADDRESS");
+  if (ctxAddr && !isAddress(ctxAddr, { strict: false })) throw new ConfigError("RECLAIM_CONTEXT_ADDRESS is not an address");
+
   const pattern = opt(env, "ACCOUNT_ID_PATTERN") ?? "^acc_[0-9a-f]{32}$";
 
   return {
@@ -126,7 +154,8 @@ export function loadConfig(env: Env = process.env): Config {
     port: int(env, "PORT", 8787),
     host: opt(env, "HOST") ?? "0.0.0.0",
     trustProxy: flag(env, "TRUST_PROXY"),
-    corsOrigins: list(opt(env, "CORS_ORIGINS")),
+    // CORS_ALLOW_ORIGINS is the name shared with the agents API; CORS_ORIGINS is the older alias. "*" is never honoured.
+    corsOrigins: [...new Set([...list(opt(env, "CORS_ALLOW_ORIGINS")), ...list(opt(env, "CORS_ORIGINS"))])].filter((o) => o !== "*"),
     rateLimitMax: int(env, "RATE_LIMIT_MAX", 20),
     rateLimitWindowMs: int(env, "RATE_LIMIT_WINDOW_SEC", 60) * 1000,
     bodyLimit: int(env, "BODY_LIMIT_BYTES", 256 * 1024),
@@ -158,6 +187,11 @@ export function loadConfig(env: Env = process.env): Config {
       appSecret: opt(env, "RECLAIM_APP_SECRET"),
       requireTee,
       pins,
+      verificationMode: mode,
+      contextAddress: (ctxAddr ?? reg).toLowerCase(),
+      sessionTtlSec: int(env, "RECLAIM_SESSION_TTL_SEC", 900),
+      captureDir: mock ? undefined : opt(env, "RECLAIM_CAPTURE_FIXTURE_DIR"),
     },
+    publicUrl,
   };
 }

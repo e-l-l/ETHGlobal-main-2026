@@ -18,7 +18,8 @@ export interface VerifiedClaim {
 
 export interface ProofVerifier {
   readonly kind: "reclaim" | "mock";
-  verify(proof: ReclaimProof, band: Band): Promise<VerifiedClaim>;
+  /** `pin` (from a /reclaim/session) overrides the env pin's providerVersion: the exact version used in the session. */
+  verify(proof: ReclaimProof, band: Band, pin?: { providerId: string; providerVersion?: string }): Promise<VerifiedClaim>;
 }
 
 /** Structural check before anything touches the proof. Throws IssueError("bad_proof"). */
@@ -42,7 +43,7 @@ export function assertProofShape(p: unknown): asserts p is ReclaimProof {
   if (o.identifier.toLowerCase() !== cd.identifier.toLowerCase()) throw new IssueError("bad_proof", 400);
 }
 
-function parseContext(proof: ReclaimProof): VerifiedClaim {
+export function parseContext(proof: ReclaimProof): VerifiedClaim {
   let ctx: Record<string, unknown>;
   try {
     ctx = JSON.parse(proof.claimData.context);
@@ -58,18 +59,23 @@ export class ReclaimVerifier implements ProofVerifier {
   readonly kind = "reclaim" as const;
   constructor(private cfg: Config) {}
 
-  configFor(band: Band): VerificationConfig {
+  configFor(band: Band, session?: { providerId: string; providerVersion?: string }): VerificationConfig {
     const pin = this.cfg.reclaim.pins[band];
+    // Offline hashes win. Otherwise the env-pinned version, else the exact version Reclaim resolved for the session.
+    const version = pin.providerVersion ?? session?.providerVersion;
     const base: VerificationConfig = pin.hashes
       ? { hashes: pin.hashes }
-      : { providerId: pin.providerId!, ...(pin.providerVersion ? { providerVersion: pin.providerVersion } : {}) };
+      : { providerId: pin.providerId!, ...(version ? { providerVersion: version } : {}) };
     if (this.cfg.reclaim.requireTee) return { ...base, teeAttestation: { appSecret: this.cfg.reclaim.appSecret! } };
     return base;
   }
 
-  async verify(proof: ReclaimProof, band: Band): Promise<VerifiedClaim> {
+  async verify(proof: ReclaimProof, band: Band, session?: { providerId: string; providerVersion?: string }): Promise<VerifiedClaim> {
+    // A session created for another provider can never be verified against this band's pin.
+    const pin = this.cfg.reclaim.pins[band];
+    if (session && pin.providerId && session.providerId !== pin.providerId) throw new IssueError("wrong_provider");
     const { verifyProof } = await import("@reclaimprotocol/js-sdk");
-    const res = await verifyProof(proof, this.configFor(band));
+    const res = await verifyProof(proof, this.configFor(band, session));
     // Never surface res.error: its message may quote proof content.
     if (!res.isVerified || res.data.length !== 1) throw new IssueError("proof_not_verified");
     if (this.cfg.reclaim.requireTee && res.isTeeAttestationVerified !== true) throw new IssueError("tee_not_verified");

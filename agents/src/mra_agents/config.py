@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[2]  # agents/
@@ -46,17 +46,33 @@ class Settings(BaseSettings):
     offer_ttl_seconds: int = 15 * 60
     risk_loop_seconds: int = 300
 
+    # Browser origins allowed to call this API (comma-separated; "*" is ignored). apps/web + demo portal hosts.
+    cors_allow_origins: str = ""
+
     # Storage
     db_path: Path = ROOT / "data" / "agents.sqlite"
 
     # Managed merchant agents + World (merchant_agents.py, world.py). Secrets: never log these.
     attester_private_key: SecretStr | None = None  # signs AgentPassAttestation; holds no funds
     agent_key_encryption_key: SecretStr | None = None  # AES-256-GCM key for agent keys + backups (hex/b64/pass)
-    world_agent_pass_client_id: str | None = None
-    world_agent_pass_client_secret: SecretStr | None = None
-    world_agent_pass_issuer: str = "https://auth.world.org"  # OIDC issuer; discovery at /.well-known/...
-    world_agent_pass_redirect_uri: str | None = None
-    world_app_id: str | None = None  # IDKit rp_id / app id for /api/v4/verify/{rp_id}
+    # Aliases: deploy/env/app.env.example names these WORLD_OIDC_CLIENT_ID / _SECRET / _ISSUER.
+    world_agent_pass_client_id: str | None = Field(
+        default=None, validation_alias=AliasChoices("world_agent_pass_client_id", "world_oidc_client_id"))
+    world_agent_pass_client_secret: SecretStr | None = Field(
+        default=None, validation_alias=AliasChoices("world_agent_pass_client_secret", "world_oidc_client_secret"))
+    # OIDC issuer; discovery at /.well-known/openid-configuration. "World IdP" (auth.world.org); sandbox:
+    # https://sandbox.auth.world.org. The legacy https://id.worldcoin.org is closed to apps created after 2025-09-29.
+    world_agent_pass_issuer: str = Field(
+        default="https://auth.world.org", validation_alias=AliasChoices("world_agent_pass_issuer", "world_oidc_issuer"))
+    world_agent_pass_redirect_uri: str | None = None  # must equal a redirect registered for the OIDC client
+    world_agent_pass_client_auth: str = "client_secret_post"  # or "client_secret_basic" (auth.world.org: both)
+    world_agent_pass_acr: str | None = None  # optional comma list of required `acr` values (unset = not checked)
+    world_app_id: str | None = None  # IDKit app_id ("app_..."), passed to IDKit.request({app_id})
+    world_rp_id: str | None = None  # World ID 4.0 RP id ("rp_..."): verify URL /api/v4/verify/{rp_id} + rp_context
+    # World ID 4.0 RP signing key (Developer Portal `signing_key`, shown once). Signs IDKit rp_context. Never logged.
+    world_rp_signing_key: SecretStr | None = Field(
+        default=None, validation_alias=AliasChoices("world_rp_signing_key", "rp_signing_key", "world_signing_key"))
+    world_rp_signature_ttl_seconds: int = 300
     world_verify_base_url: str = "https://developer.world.org"
     world_environment: str = "production"  # IDKit result `environment` we accept ("staging" on testnets)
     world_recovery_action: str = "credential-recovery-v1"

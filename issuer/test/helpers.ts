@@ -2,6 +2,7 @@ import pino from "pino";
 import { buildApp, REDACT_PATHS } from "../src/app.js";
 import { loadConfig, type Config } from "../src/config.js";
 import type { ProofVerifier } from "../src/reclaim.js";
+import type { ReclaimBackend } from "../src/sessions.js";
 
 // Anvil account #0: a PUBLIC test key, never used for anything real.
 export const TEST_PK = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -25,14 +26,14 @@ export function testEnv(over: Record<string, string> = {}): Record<string, strin
   };
 }
 
-export async function makeApp(opts: { env?: Record<string, string>; verifier?: ProofVerifier; cfg?: Partial<Config> } = {}) {
+export async function makeApp(opts: { env?: Record<string, string>; verifier?: ProofVerifier; cfg?: Partial<Config>; reclaimBackend?: ReclaimBackend } = {}) {
   const lines: string[] = [];
   const logger = pino(
     { level: "trace", redact: { paths: REDACT_PATHS, censor: "[redacted]" } },
     { write: (s: string) => void lines.push(s) },
   );
   const cfg = { ...loadConfig(testEnv(opts.env)), ...opts.cfg };
-  const built = await buildApp({ cfg, logger, verifier: opts.verifier, now: () => NOW_MS });
+  const built = await buildApp({ cfg, logger, verifier: opts.verifier, reclaimBackend: opts.reclaimBackend, now: () => NOW_MS });
   return { ...built, cfg, lines };
 }
 

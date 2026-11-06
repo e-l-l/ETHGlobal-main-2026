@@ -174,10 +174,22 @@ def _clean(value):
     return value
 
 
+def cors_origins() -> list[str]:
+    """CORS_ALLOW_ORIGINS from the process env, else from agents/.env (pydantic reads .env without exporting it)."""
+    raw = os.getenv("CORS_ALLOW_ORIGINS")
+    if raw is None:
+        try:
+            from .config import get_settings
+            raw = get_settings().cors_allow_origins
+        except Exception:  # noqa: BLE001 - a bad .env must not stop the app from importing; no CORS then
+            raw = ""
+    return [x.strip().rstrip("/") for x in raw.split(",") if x.strip() and x.strip() != "*"]
+
+
 def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=None):
     app = FastAPI(debug=False)
-    origins = [x.strip() for x in os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if x.strip() and x.strip() != "*"]
-    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "PUT"], allow_headers=["Content-Type", "Authorization"])
+    app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["GET", "POST", "PUT"],
+                       allow_headers=["Content-Type", "Authorization"], max_age=600)
     limiter = _Limiter()
 
     @app.exception_handler(RequestValidationError)

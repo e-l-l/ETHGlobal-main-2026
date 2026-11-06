@@ -13,7 +13,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "vector": "tsx scripts/vector.ts",
-    "check:anvil": "bash scripts/check-digest-anvil.sh"
+    "check:anvil": "bash scripts/check-digest-anvil.sh",
+    "check:provider": "tsx scripts/check-provider.ts"
   },
   "dependencies": {
     "@aztec-foundation/bb.js": "^6.0.0",

@@ -11,6 +11,7 @@ import { businessNullifier, P, toHex32 } from "./nullifier.js";
 import { checkPredicates, IssueError } from "./predicates.js";
 import { assertProofShape, type ProofVerifier } from "./reclaim.js";
 import type { ReplayCache } from "./replay.js";
+import { isSessionRef, type ReclaimSessions } from "./sessions.js";
 
 export interface IssueResponse {
   businessNullifier: `0x${string}`;
@@ -32,6 +33,8 @@ export interface IssueDeps {
   now: () => number; // ms
   log: Log;
   leaf?: typeof bizLeaf;
+  /** Real Reclaim sessions: lets `proof` be `{reclaimSession, statusToken}` (the issuer already holds the proof). */
+  sessions?: ReclaimSessions;
 }
 
 function parseBand(b: unknown): Band {
@@ -55,6 +58,15 @@ function parseCountry(c: unknown): string {
   throw new IssueError("bad_country", 400);
 }
 
+function requestUrlOf(parametersJson: string): string | undefined {
+  try {
+    const u = (JSON.parse(parametersJson) as { url?: unknown }).url;
+    return typeof u === "string" ? u : undefined;
+  } catch {
+    throw new IssueError("bad_parameters");
+  }
+}
+
 export async function issue(body: unknown, d: IssueDeps): Promise<IssueResponse> {
   const { cfg } = d;
   if (!body || typeof body !== "object") throw new IssueError("bad_body", 400);
@@ -66,7 +78,15 @@ export async function issue(body: unknown, d: IssueDeps): Promise<IssueResponse>
   const wantLeaf = b.h !== undefined || b.country !== undefined;
   if (cfg.requireLeafCheck && !wantLeaf) throw new IssueError("leaf_inputs_required", 400);
 
-  const proof = b.proof;
+  // `proof` is either the Reclaim proof itself, or a reference to a /reclaim/session whose proof the issuer
+  // received directly from Reclaim (it never passed through the app).
+  let proof: unknown = b.proof;
+  let held: ReturnType<ReclaimSessions["take"]> | undefined;
+  if (isSessionRef(proof)) {
+    if (!d.sessions) throw new IssueError("bad_proof", 400);
+    held = d.sessions.take(proof, band, commitmentHex);
+    proof = held.proof;
+  }
   assertProofShape(proof);
 
   // Freshness: a revenue band is only as good as its date.
@@ -75,14 +95,17 @@ export async function issue(body: unknown, d: IssueDeps): Promise<IssueResponse>
   if (ts + cfg.proofMaxAgeSec < nowS) throw new IssueError("proof_too_old");
   if (ts > nowS + cfg.clockSkewSec) throw new IssueError("proof_from_future");
 
-  // Predicates are read from the attested request spec (cheap; before the network-bound verification).
+  // Cheap pre-check before the network-bound verification: the request URL pin.
+  if (cfg.expectedUrl && requestUrlOf(proof.claimData.parameters) !== cfg.expectedUrl) throw new IssueError("wrong_provider_url");
+
+  // Attestor signatures + provider pin (real) or structural parse (mock).
+  const claim = await d.verifier.verify(proof, band, held?.pin);
+
+  // Predicates, read from the attested request spec (literal regexes) or the VERIFIED extracted values (template).
   const proven = checkPredicates(proof.claimData.parameters, band, {
     allowedCountries: cfg.allowedCountries,
     expectedUrl: cfg.expectedUrl,
-  });
-
-  // Attestor signatures + provider pin (real) or structural parse (mock).
-  const claim = await d.verifier.verify(proof, band);
+  }, claim.extractedParameters);
 
   // Anti-theft binding: the proof was generated for exactly this commitment.
   if (claim.context.contextMessage !== commitmentHex) throw new IssueError("context_mismatch");
@@ -104,6 +127,7 @@ export async function issue(body: unknown, d: IssueDeps): Promise<IssueResponse>
 
   // ---- synchronous from here to the nullifier: no await between the replay claim and account_id handling.
   if (!d.replay.claim(proof.claimData.identifier)) throw new IssueError("proof_replayed", 409);
+  held?.done(); // the held proof (and its account_id) is dropped now
 
   let nullifier: bigint;
   {

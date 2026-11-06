@@ -1,0 +1,30 @@
+{
+  "_comment": "RECORDED-SHAPE fixture (synthetic, unsigned). Field layout follows @reclaimprotocol/js-sdk 5.8.3 `Proof` / `ProviderClaimData` / `Context`. Replace with a captured real proof: see issuer/RECLAIM_PROVIDER.md, 'Capture a real proof as a fixture'. __COMMITMENT__ and __TIMESTAMP__ are filled in by the test.",
+  "identifier": "0x4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f",
+  "claimData": {
+    "provider": "http",
+    "parameters": "{\"body\":\"\",\"method\":\"GET\",\"responseMatches\":[{\"type\":\"contains\",\"value\":\"\\\"status\\\":\\\"{{status}}\\\"\",\"invert\":false},{\"type\":\"contains\",\"value\":\"\\\"country\\\":\\\"{{country}}\\\"\",\"invert\":false},{\"type\":\"contains\",\"value\":\"\\\"age_ok\\\":{{age_ok}}\",\"invert\":false},{\"type\":\"contains\",\"value\":\"\\\"band_ge_2\\\":{{band_ge_2}}\",\"invert\":false},{\"type\":\"contains\",\"value\":\"\\\"account_id\\\":\\\"{{account_id}}\\\"\",\"invert\":false}],\"responseRedactions\":[{\"jsonPath\":\"$.status\",\"regex\":\"\\\"status\\\":\\\"(.*)\\\"\",\"xPath\":\"\"},{\"jsonPath\":\"$.country\",\"regex\":\"\\\"country\\\":\\\"(.*)\\\"\",\"xPath\":\"\"},{\"jsonPath\":\"$.age_ok\",\"regex\":\"\\\"age_ok\\\":(.*)\",\"xPath\":\"\"},{\"jsonPath\":\"$.band_ge_2\",\"regex\":\"\\\"band_ge_2\\\":(.*)\",\"xPath\":\"\"},{\"jsonPath\":\"$.account_id\",\"regex\":\"\\\"account_id\\\":\\\"(.*)\\\"\",\"xPath\":\"\"}],\"url\":\"https://portal.example-host.xyz/api/me/summary\"}",
+    "owner": "0x8f2c4a0d5e6b7c1d9e0f1a2b3c4d5e6f7a8b9c0d",
+    "timestampS": "__TIMESTAMP__",
+    "context": "{\"contextAddress\":\"0x5fbdb2315678afecb367f032d93f642f64180aa3\",\"contextMessage\":\"__COMMITMENT__\",\"extractedParameters\":{\"status\":\"active\",\"country\":\"AR\",\"age_ok\":\"true\",\"band_ge_2\":\"true\",\"account_id\":\"acc_18bf65eab2bc1711af938e15a335f20c\"},\"providerHash\":\"0x5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a\",\"reclaimSessionId\":\"a1b2c3d4e5\",\"attestationNonce\":\"0x7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c\",\"attestationNonceData\":{\"applicationId\":\"0xabababababababababababababababababababab\",\"sessionId\":\"a1b2c3d4e5\",\"timestamp\":\"1790000000000\",\"attestationVersion\":\"v3\"}}",
+    "identifier": "0x4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f",
+    "epoch": 1
+  },
+  "signatures": [
+    "0x111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111b"
+  ],
+  "witnesses": [
+    {
+      "id": "0x244897572368eadf65bfbc5aec98d8e5443a9072",
+      "url": "wss://attestor.reclaimprotocol.org/ws"
+    }
+  ],
+  "extractedParameterValues": {
+    "status": "active",
+    "country": "AR",
+    "age_ok": "true",
+    "band_ge_2": "true",
+    "account_id": "acc_18bf65eab2bc1711af938e15a335f20c"
+  },
+  "publicData": null
+}

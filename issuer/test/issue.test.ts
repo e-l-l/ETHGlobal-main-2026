@@ -209,7 +209,7 @@ describe("service endpoints and hardening", () => {
     expect(r.types).toEqual({ BusinessVerified: [
       { name: "businessNullifier", type: "uint256" }, { name: "commitment", type: "uint256" }, { name: "expiresAt", type: "uint64" },
     ] });
-    expect((await app.inject({ url: "/health" })).json()).toEqual({ ok: true, mode: "mock", chainId: 31337 });
+    expect((await app.inject({ url: "/health" })).json()).toEqual({ ok: true, mode: "mock", chainId: 31337, reclaimSessions: "off" });
   });
 
   it("CORS allow-list", async () => {

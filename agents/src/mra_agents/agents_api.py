@@ -23,7 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 
 from .merchant_agents import AgentError
 from .models import Address, Hex32
-from .world import MAX_BACKUP_BYTES, Limits, WorldError
+from .world import MAX_BACKUP_BYTES, Limits, WorldError, agent_pass_nonce, limits_hash
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +56,10 @@ class AgentPassIn(_In):
     code_verifier: Annotated[str, Field(min_length=43, max_length=128)] | None = None
     redirect_uri: Annotated[str, Field(max_length=512)] | None = None
     id_token: Annotated[str, Field(min_length=1, max_length=8192)] | None = None
+    # World redirected back with ?error=... (the human declined): recorded as denied, no attestation.
+    error: Annotated[str, Field(pattern=r"^[a-z_]{1,64}$")] | None = None
+    # Device flow: the session from POST /agents/{id}/agent-pass/device.
+    device_session: Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]{16,64}$")] | None = None
 
 
 class ActivateIn(_In):
@@ -147,9 +151,48 @@ def build_router(merchant, recovery) -> APIRouter:
     @r.post("/agents/{agent_id}/agent-pass")
     def agent_pass(agent_id: AgentId, body: AgentPassIn, request: Request,
                    authorization: Annotated[str | None, Header()] = None):
+        limit(request, "r" if body.device_session else "w", agent_id)
+        auth_agent(agent_id, authorization)
+        req = body.model_dump(exclude_none=True)
+        if body.device_session:
+            if getattr(merchant.verifier, "poll_device", None) is None:
+                raise HTTPException(400, "device_flow_unsupported")
+            # While the human hasn't answered, report "pending" WITHOUT recording a denial on the agent.
+            if call(merchant.verifier.poll_device, body.device_session, call(expected_nonce, agent_id)) == "pending":
+                return {"approved": False, "reason": "pending", "attestation": None}
+        return call(merchant.agent_pass, agent_id, req)
+
+    def expected_nonce(agent_id: str) -> str:
+        a = merchant.store.get(agent_id)
+        return agent_pass_nonce(a.address, limits_hash(a.limits), a.attest_nonce)
+
+    @r.post("/agents/{agent_id}/agent-pass/device")
+    def agent_pass_device(agent_id: AgentId, request: Request, authorization: Annotated[str | None, Header()] = None):
+        """Start a World sign-in the backend polls itself (OIDC device flow). Show `verification_uri` as a QR/link,
+        then poll POST /agents/{id}/agent-pass {"device_session"} until the reason is no longer "pending"."""
         limit(request, "w", agent_id)
         auth_agent(agent_id, authorization)
-        return call(merchant.agent_pass, agent_id, body.model_dump(exclude_none=True))
+        start = getattr(merchant.verifier, "start_device", None)
+        if start is None:
+            raise HTTPException(400, "device_flow_unsupported")
+        a = call(merchant.store.get, agent_id)
+        if a.status not in ("pending_approval", "denied"):
+            raise HTTPException(400, "bad_state")
+        return call(start, call(expected_nonce, agent_id))
+
+    @r.get("/agents/{agent_id}/agent-pass/device/{device_session}")
+    def agent_pass_device_status(agent_id: AgentId, request: Request,
+                                 device_session: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{16,64}$")],
+                                 authorization: Annotated[str | None, Header()] = None):
+        """Non-consuming poll: {"status": "pending" | "ready"}. When ready, POST /agents/{id}/agent-pass
+        {"device_session"} records the outcome (approved -> attestation; denied/expired -> no mandate)."""
+        limit(request, "r", agent_id)
+        auth_agent(agent_id, authorization)
+        poll = getattr(merchant.verifier, "poll_device", None)
+        if poll is None:
+            raise HTTPException(400, "device_flow_unsupported")
+        state = call(poll, device_session, call(expected_nonce, agent_id))
+        return {"status": "pending" if state == "pending" else "ready"}
 
     @r.post("/agents/{agent_id}/activate")
     def activate(agent_id: AgentId, body: ActivateIn, request: Request,
@@ -178,6 +221,12 @@ def build_router(merchant, recovery) -> APIRouter:
         return call(merchant.revoke, agent_id)
 
     # ---------------------------------------------------------------- recovery
+
+    @r.post("/recovery/rp-context")
+    def recovery_rp_context(request: Request):
+        """IDKit 4 request context signed with WORLD_RP_SIGNING_KEY (single-use nonce, 5 min). Mock: {"mock": true}."""
+        limit(request, "w")
+        return call(recovery.rp_context)
 
     @r.post("/recovery/verify")
     def recovery_verify(body: RecoveryVerifyIn, request: Request):

@@ -70,12 +70,21 @@ Anyone who can reach a mock issuer can mint Business Passes for the demo account
 | GET | `/issuer` | `{ address, chainId, registry, domain, types, primaryType, typehash, attestationTtlSec, mock }`. Pass `address` to `BusinessPassRegistry` as `issuer_` or `setIssuer`. |
 | GET | `/health` | `{ ok, mode, chainId }` |
 | POST | `/mock/proof` | Mock mode only: `{ account, commitment, band }` → `{ proof }` |
+| POST | `/reclaim/session` | Real mode: `{ commitment, band, mode?: "portal"\|"app" }` → `{ sessionId, requestUrl, statusToken, expiresAt, delivery }`. The issuer calls `ReclaimProofRequest.init(RECLAIM_APP_ID, RECLAIM_APP_SECRET, providerId[band])`, `setContext(registry, commitmentHex)` and (with `ISSUER_PUBLIC_URL`) `setAppCallbackUrl(.../reclaim/callback/<sid>/<secret>, json)`. Rate-limited. |
+| GET | `/reclaim/session/:id` | Header `Authorization: Bearer <statusToken>` → `{ sessionId, status: waiting\|proof_received\|failed\|issued, reason?, expiresAt, delivery }`. In poll delivery it reads Reclaim's status URL server-side (≥ 2 s apart). Never returns the proof. |
+| POST | `/reclaim/callback/:id/:secret` | Called **by Reclaim** with the proof (JSON, or the default urlencoded JSON). The path secret authenticates it. The proof must be bound to the session's commitment. |
+| POST | `/reclaim/cancel/:id/:secret` | Called by Reclaim when the user/provider aborts → session `failed` (`cancelled`). |
+
+**Real flow (recommended):** `POST /reclaim/session` → show `requestUrl` as a QR → poll `GET /reclaim/session/:id` → when `proof_received`, `POST /issue` with `proof: { reclaimSession, statusToken }` (plus `commitment`, `band`, `h`, `country`). The issuer runs the issue flow on the proof it holds and verifies it against the session's exact provider version. The combined proof (with `account_id`) never reaches the app. A raw `proof` object is still accepted by `/issue` (SDK `reclaimJsSdk` path, mock path). SDK: `issuerReclaim(issuerApi)`.
+
+`npm run check:provider [-- --init]` fetches the configured provider(s) from Reclaim and reports whether their matches/redactions are what this issuer accepts (and, with `--init`, that the app id/secret can create a session). See `RECLAIM_PROVIDER.md`.
 
 Errors are `{ "error": "<code>" }` and never echo input:
 
 - **400:** `bad_body`, `bad_band`, `bad_commitment`, `bad_proof`, `bad_h`, `bad_country`, `leaf_inputs_required`
 - **409:** `proof_replayed`
-- **422:** `proof_not_verified`, `tee_not_verified`, `context_mismatch`, `commitment_mismatch`, `predicate_failed:{active|age_ok|country|band_ge_N}`, `proof_too_old`, `proof_from_future`, `wrong_provider_url`, `account_id_missing`, `wrong_app`, `bad_parameters`, `bad_context`
+- **401/404/409/502/503 (sessions):** `unauthorized`, `session_not_found`, `proof_pending`, `session_not_waiting`, `reclaim_upstream`, `reclaim_not_configured`
+- **422:** `wrong_provider`, `cancelled`, `proof_generation_failed`, `proof_not_verified`, `tee_not_verified`, `context_mismatch`, `commitment_mismatch`, `predicate_failed:{active|age_ok|country|band_ge_N}`, `proof_too_old`, `proof_from_future`, `wrong_provider_url`, `account_id_missing`, `wrong_app`, `bad_parameters`, `bad_context`
 - **429:** `rate_limited`
 
 `commitment` is `uint256`. Pass it as 0x-hex (< P, nonzero). The app must call `setContext(<any address>, commitmentHex)` with **exactly** `0x` + 64 lowercase hex, and the issuer compares that exact string.
@@ -88,13 +97,17 @@ Errors are `{ "error": "<code>" }` and never echo input:
 | `ISSUER_PEPPER` | yes | Nullifier HMAC key: `0x`-hex (>= 32 bytes; `openssl rand -hex 32`) or a raw string >= 32 chars. **Never rotate it**: rotating changes every nullifier and re-opens one-pass-per-business. |
 | `CHAIN_ID` | yes | EIP-712 domain `chainId` (31337 anvil, 11155111 Sepolia) |
 | `REGISTRY_ADDRESS` | yes | EIP-712 domain `verifyingContract` (the BusinessPassRegistry) |
-| `CORS_ORIGINS` | no | Comma-separated allow-list of app origins. Empty means no CORS headers (browsers blocked). |
+| `CORS_ALLOW_ORIGINS` | no | Comma-separated allow-list of app origins (apps/web, portal). Same name as the agents API. `CORS_ORIGINS` is still read (union). `*` is ignored. Empty means no CORS headers (browsers blocked). |
+| `ISSUER_PUBLIC_URL` | real mode, recommended | Public `https://` base of this issuer. Reclaim then POSTs proofs straight here (`/reclaim/callback/...`). Unset: the issuer polls Reclaim's status URL instead, and Reclaim's backend holds the proof until then. |
+| `RECLAIM_VERIFICATION_MODE` | no | `portal` (default; Reclaim's remote browser, works on any phone) or `app` (Reclaim Verifier app / App Clip) |
+| `RECLAIM_CONTEXT_ADDRESS` | no | `setContext` address. Default: `REGISTRY_ADDRESS` (lowercase). Only `contextMessage` is checked. |
+| `RECLAIM_SESSION_TTL_SEC` | no | 900. How long a session (and a held proof) lives. |
 | `ISSUER_MOCK` | no | `1` = mock mode (above) |
 | `RECLAIM_PROVIDER_ID` | real mode | Reclaim provider id. `RECLAIM_PROVIDER_ID_BAND1/2/3` override it per band, since the demo portal has one provider per band. |
 | `RECLAIM_PROVIDER_VERSION` | no | Exact provider version to pin (`_BANDn` overrides allowed). Omitted means the SDK fetches the latest version's hash requirements. |
 | `RECLAIM_PROVIDER_HASHES` | no | Comma-separated provider hashes (`_BANDn` overrides). If set, they are used **instead of** the provider id: an offline pin with no fetch from Reclaim's backend. |
-| `RECLAIM_APP_ID` | no | If set and the proof context carries `attestationNonceData.applicationId`, they must match. |
-| `RECLAIM_APP_SECRET` | with TEE | Used only for `teeAttestation` when `RECLAIM_REQUIRE_TEE=1` |
+| `RECLAIM_APP_ID` | real sessions | Initialises sessions. Also: if the proof context carries `attestationNonceData.applicationId`, they must match. |
+| `RECLAIM_APP_SECRET` | real sessions | **Secret.** Signs session init (server-side only) and the TEE check when `RECLAIM_REQUIRE_TEE=1`. Without app id + secret, `/reclaim/session` returns 503 and only raw-proof `/issue` works. |
 | `RECLAIM_REQUIRE_TEE` | no | `1` = require the SDK's TEE attestation check |
 | `RECLAIM_EXPECTED_URL` | no | Pin `claimData.parameters.url`, e.g. `https://<portal>/api/me/summary` |
 | `ALLOWED_COUNTRIES` | no | Default `AR,NG,KE`. Every country in the proof's match must be in this list. |
@@ -147,6 +160,8 @@ Test vector (`test/eip712.test.ts`, `npx tsx scripts/vector.ts`). Signer: anvil 
 - **The pin is the primary guarantee.** `verifyProof` content-validates `parameters` against the pinned provider (hash requirements). The regex check is defence in depth, and it is how the issuer learns **which band** was proven.
 - **The values themselves are never seen.** The redacted response is not part of the proof.
 - **Where `account_id` comes from.** It is the named capture group of set 2, and arrives in `JSON.parse(claimData.context).extractedParameters.account_id`. The SDK's `verifyProof` returns it as `data[0].extractedParameters`, and the context minus it as `data[0].context`, which is where `contextMessage` is read.
+
+**Template style.** If Reclaim's provider builder emits `{{param}}` matches (for example `"status":"{{status}}"`) instead of our literal regexes, the issuer accepts a predicate when a mandatory match contains `{{name}}` **and** the *verified* extracted value is the expected one (`status`=`active`, `age_ok`=`true`, `band_ge_k`=`true`, `country` in the allow-list). Both forms are bound by the provider pin. Predicates are therefore checked after `verifyProof`, on its trusted data.
 
 **Unverified until a real proof exists:**
 

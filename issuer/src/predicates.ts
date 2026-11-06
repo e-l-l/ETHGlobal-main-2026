@@ -44,10 +44,23 @@ export interface ProvenPredicates {
   url: string;
 }
 
+/**
+ * `extracted` = the VERIFIED `extractedParameters` (from verifyProof's trusted data, never from the raw proof).
+ *
+ * A predicate holds if EITHER
+ *  1. literal mode (preferred, what demo/portal/lib/reclaim.ts specifies): a mandatory, positive match whose value
+ *     is exactly the predicate regex, e.g. `"status":"active",`; OR
+ *  2. template mode (what Reclaim's provider builder emits when you tick a field to "verify"): a mandatory,
+ *     positive match containing `{{name}}` AND the attested extracted value equals the expected value
+ *     (status = "active", age_ok = "true", band_ge_k = "true", country in the allow-list).
+ * Both are bound by the provider pin: verifyProof content-validates `parameters` against our provider's hash.
+ * Template values reach only this issuer (the proof is never sent onchain), and they are yes/no answers anyway.
+ */
 export function checkPredicates(
   parametersJson: string,
   band: Band,
   opts: { allowedCountries: string[]; expectedUrl?: string },
+  extracted: Record<string, unknown> = {},
 ): ProvenPredicates {
   let params: { url?: unknown; responseMatches?: unknown };
   try {
@@ -64,12 +77,16 @@ export function checkPredicates(
     .filter((m) => m && (m.type === "regex" || m.type === "contains") && typeof m.value === "string" && !m.invert && !m.isOptional)
     .map((m) => m.value as string);
   const has = (v: string) => proven.includes(v);
+  const templated = (name: string) => proven.some((v) => v.includes(`{{${name}}}`));
+  const tmpl = (name: string, want: string) => templated(name) && extracted[name] === want;
 
-  if (!has(PRED.active)) throw new IssueError("predicate_failed:active");
-  if (!has(PRED.age_ok)) throw new IssueError("predicate_failed:age_ok");
-  if (!has(PRED.band(band))) throw new IssueError(`predicate_failed:band_ge_${band}`);
+  if (!has(PRED.active) && !tmpl("status", "active")) throw new IssueError("predicate_failed:active");
+  if (!has(PRED.age_ok) && !tmpl("age_ok", "true")) throw new IssueError("predicate_failed:age_ok");
+  if (!has(PRED.band(band)) && !tmpl(`band_ge_${band}`, "true")) throw new IssueError(`predicate_failed:band_ge_${band}`);
 
   const sets = proven.map(parseCountryMatch).filter((s): s is string[] => s !== null);
+  const ec = extracted.country;
+  if (templated("country") && typeof ec === "string") sets.push([ec]);
   // Every country match must be within the allow-list (a match that admits a disallowed country proves nothing).
   const good = sets.filter((s) => s.length > 0 && s.every((c) => opts.allowedCountries.includes(c)));
   if (good.length === 0) throw new IssueError("predicate_failed:country");
