@@ -153,6 +153,9 @@ if [[ $DEVNET_ON == 1 ]]; then c_info "pull anvil (foundry)"; dc pull --quiet an
 c_info "up -d"
 [[ $DEVNET_ON == 1 ]] && c_info "devnet: the first boot deploys + seeds the chain (1-5 min); later boots are instant"
 if ! dc up -d --remove-orphans "${services[@]}" caddy; then
+# Caddyfile is a single-file bind mount: git pull replaces the file (new inode), so a running caddy keeps the
+# old config. Recreate it every deploy (certificates live in the caddy-data volume and are kept).
+dc up -d --force-recreate --no-deps caddy
   c_err "compose up failed. Devnet deployer? ./deploy/logs.sh devnet-deployer (fresh chain: ./deploy/devnet.sh reset --hard)"
   exit 1
 fi
