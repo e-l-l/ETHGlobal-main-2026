@@ -29,7 +29,8 @@ import {
 } from "@/final";
 import type { BusinessPassView, ProveStep } from "@repo/sdk";
 import { appUrl } from "@/lib/brand";
-import { PanelBlocks, litTiles } from "./panel-blocks";
+import { PanelBlocks } from "./panel-blocks";
+import { litTiles } from "./lit-tiles";
 import { copy, stepEyebrow } from "@/lib/copy";
 import { explorerTxUrl, isMock, withMRA } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";

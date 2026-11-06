@@ -22,7 +22,8 @@ import {
 import { copy, stepEyebrow } from "@/lib/copy";
 import { isFailReason, routes, type FailReason } from "@/lib/routes";
 import type { BusinessPassView } from "@repo/sdk";
-import { PanelBlocks, litTiles } from "./panel-blocks";
+import { PanelBlocks } from "./panel-blocks";
+import { litTiles } from "./lit-tiles";
 import { FailSheet, PassFacts, StepProgress } from "./onboarding-client";
 
 function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {

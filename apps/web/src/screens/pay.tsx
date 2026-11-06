@@ -31,7 +31,8 @@ import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useCurrency } from "@/lib/currency";
 import { useMRA } from "@/lib/use-mra";
-import { PanelBlocks, litTiles } from "./panel-blocks";
+import { PanelBlocks } from "./panel-blocks";
+import { litTiles } from "./lit-tiles";
 
 /** Checkout pays in USDC only; no token swap exists. */
 const TOKEN = "USDC";

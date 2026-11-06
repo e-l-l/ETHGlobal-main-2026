@@ -25,5 +25,3 @@ export function PanelBlocks({ seed, lit, calm }: { seed: number; lit?: number[];
   );
 }
 
-/** First `n` tiles, for a progress strip. */
-export const litTiles = (n: number) => Array.from({ length: Math.max(0, n) }, (_, i) => i);
