@@ -79,12 +79,29 @@ export type Session = {
   previousShops?: string[];
 };
 
+/**
+ * One proof generated on this device (adapters/proof-log.ts). Metadata only: no inputs, no proof bytes, no secrets,
+ * so it is safe to show on the Proof center screen. Not part of the recovery backup restore.
+ */
+export type ProofLogEntry = {
+  circuit: "business_pass" | "standing_pass";
+  ms: number;
+  proofBytes: number;
+  publicInputCount: number;
+  at: number;
+  verifiedLocally: boolean | null;
+  ok: boolean;
+  error?: string;
+  prover: string;
+};
+
 export type VaultRecords = {
   business_pass: BusinessPassSecret;
   standing_pass: StandingPassSecret;
   session: Session;
   wallet: BurnerWalletSecret;
   world_ticket: WorldTicketSecret;
+  proof_log: ProofLogEntry[];
 };
 export type VaultKey = keyof VaultRecords;
 
