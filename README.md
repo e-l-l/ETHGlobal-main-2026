@@ -148,6 +148,7 @@ Full spec: [anay-design.md](anay-design.md).
 | [privacy-architecture.md](docs/privacy-architecture.md) | The full privacy design: Business Pass, Agent Pass, Anon-RPC, who learns what |
 | [packages/sdk/README.md](packages/sdk/README.md) | How any frontend plugs in: every screen → SDK call → view-model |
 | [integration-keys.md](docs/integration-keys.md) | Every key and app id for real mode, and where to get it |
+| [LOCAL.md](docs/LOCAL.md) | Running the whole stack on your own machine (Docker or native; mock, local devnet, Sepolia) |
 | [deploy/README.md](deploy/README.md) | Running the whole stack on one EC2 box |
 | [docs/submission/](docs/submission/) | Uniswap feedback, World debrief, CROPS, Anon-RPC, AI usage, demo script, video plan |
 
@@ -159,6 +160,8 @@ Onchain and services: Solidity (Foundry) · Uniswap v4 hooks · ERC-4626 · Noir
 
 ## Running the backend
 
+**Whole stack on your machine** (macOS, Windows or Linux): see [docs/LOCAL.md](docs/LOCAL.md). `scripts/dev-up.sh` (or `.\scripts\dev-up.ps1`) brings up anvil with the contracts deployed and seeded, the agents API and worker, the issuer, the demo portal and the web app in `local` mode, with no real keys. The playbook also covers the native path, mock and Sepolia modes, the demo walkthrough and troubleshooting.
+
 | Part | Setup | Test |
 |---|---|---|
 | Contracts | `cd contracts && git submodule update --init --recursive` | `forge test` |
@@ -166,6 +169,7 @@ Onchain and services: Solidity (Foundry) · Uniswap v4 hooks · ERC-4626 · Noir
 | Agents | `cd agents && uv sync` | `uv run pytest` |
 | Issuer | `cd issuer && npm ci` | `npx vitest run` |
 | SDK | `pnpm install` | `pnpm --filter @repo/sdk test` |
+| Whole stack on your machine | see [docs/LOCAL.md](docs/LOCAL.md) | `scripts/doctor.sh`, then `scripts/dev-up.sh` runs health checks |
 | Whole stack on a server | see [deploy/README.md](deploy/README.md) | `deploy.sh` runs health checks |
 
 Secrets live in git-ignored `.env` files; each folder has a `.env.example`.
