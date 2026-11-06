@@ -28,8 +28,30 @@ function setMode(mode: "injected" | "device") {
 
 type State = { kind: "burner" | "injected" | "none"; address?: string; name?: string; wanted: "injected" | "device"; hasInjected: boolean };
 
+const CONNECT_ERRORS: Record<string, string> = {
+  rejected: "Connection rejected in your wallet.",
+  pending: "Your wallet already has a request open. Open it and approve.",
+  wrong_network: "Switch your wallet to Sepolia and try again.",
+  no_account: "No account in your wallet.",
+  no_wallet: "No browser wallet found.",
+  failed: "Couldn't connect your wallet.",
+};
+
 export function ConnectWallet({ compact, className }: { compact?: boolean; className?: string }) {
   const [s, setS] = useState<State>();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string>();
+
+  // Prompts happen here, on the click (a user gesture), never on page load.
+  const connect = async () => {
+    setBusy(true);
+    setErr(undefined);
+    const { connectInjected } = await import("@/lib/mra-browser");
+    const r = await connectInjected();
+    setBusy(false);
+    if (r.ok) setMode("injected");
+    else setErr(CONNECT_ERRORS[r.error] ?? CONNECT_ERRORS.failed);
+  };
 
   useEffect(() => {
     if (isMock) return;
@@ -98,8 +120,8 @@ export function ConnectWallet({ compact, className }: { compact?: boolean; class
     );
   }
 
-  // Device (burner) mode. If injected was asked for but failed, say so once and offer a retry.
-  const failed = s.wanted === "injected";
+  // Device (burner) mode. Injected was chosen earlier but isn't connected / on Sepolia now: offer to connect again.
+  const failed = s.wanted === "injected" && !!err;
   return (
     <span className={cn("inline-flex items-center gap-1", className)}>
       {!compact && s.address ? link(`Device ${short(s.address)}`, "Wallet on this device. Sepolia test funds only. Open on Etherscan.") : null}
@@ -108,12 +130,14 @@ export function ConnectWallet({ compact, className }: { compact?: boolean; class
           variant="secondary"
           size="sm"
           width="auto"
-          onClick={() => setMode("injected")}
-          title={failed ? "Couldn't connect your wallet last time (rejected or wrong network). Try again." : "Use MetaMask or another browser wallet on Sepolia"}
+          onClick={() => void connect()}
+          disabled={busy}
+          title={err ?? "Use MetaMask or another browser wallet on Sepolia"}
         >
-          {failed ? "Retry wallet" : "Connect wallet"}
+          {busy ? "Check your wallet…" : failed ? "Retry wallet" : "Connect wallet"}
         </Button>
       ) : null}
+      {err ? <span role="status" className="font-body text-tag text-charcoal-muted">{err}</span> : null}
       {failed ? (
         <button type="button" onClick={() => setMode("device")} className="sr-only focus:not-sr-only">
           Use device wallet

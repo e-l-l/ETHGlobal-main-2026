@@ -192,14 +192,16 @@ export function injectedName(eth: Eip1193 | undefined): string {
 
 const SEPOLIA_HEX = "0xaa36a7";
 
-/** Accounts + switch to Sepolia (adding it when the wallet doesn't know it), then a viem WalletClient over it. */
-async function loadInjectedWallet(): Promise<MRAConfig["wallet"]> {
+/**
+ * Called from the "Connect wallet" click (a user gesture): ask for accounts, then switch to Sepolia (adding it when
+ * the wallet doesn't know it). Resolves to an error code instead of throwing, so the button can say what happened.
+ */
+export async function connectInjected(): Promise<{ ok: true } | { ok: false; error: string }> {
   const eth = injectedProvider();
-  if (!eth) return undefined;
+  if (!eth) return { ok: false, error: "no_wallet" };
   try {
     const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
-    const address = accounts?.[0] as `0x${string}` | undefined;
-    if (!address) return undefined;
+    if (!accounts?.[0]) return { ok: false, error: "no_account" };
     try {
       await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SEPOLIA_HEX }] });
     } catch (e) {
@@ -217,6 +219,25 @@ async function loadInjectedWallet(): Promise<MRAConfig["wallet"]> {
         ],
       });
     }
+    const chainId = (await eth.request({ method: "eth_chainId" })) as string;
+    return chainId?.toLowerCase() === SEPOLIA_HEX ? { ok: true } : { ok: false, error: "wrong_network" };
+  } catch (e) {
+    const code = (e as { code?: number })?.code;
+    return { ok: false, error: code === 4001 ? "rejected" : code === -32002 ? "pending" : "failed" };
+  }
+}
+
+/**
+ * Page load: never prompt. Use the browser wallet only if this site is already connected and it is on Sepolia
+ * (eth_accounts / eth_chainId never open a popup); otherwise fall back to the device wallet straight away.
+ */
+async function loadInjectedWallet(): Promise<MRAConfig["wallet"]> {
+  const eth = injectedProvider();
+  if (!eth) return undefined;
+  try {
+    const accounts = (await eth.request({ method: "eth_accounts" })) as string[];
+    const address = accounts?.[0] as `0x${string}` | undefined;
+    if (!address) return undefined;
     const chainId = (await eth.request({ method: "eth_chainId" })) as string;
     if (chainId?.toLowerCase() !== SEPOLIA_HEX) return undefined;
     const wallet = injectedWallet(eth, { address, chainId: 11_155_111 });
