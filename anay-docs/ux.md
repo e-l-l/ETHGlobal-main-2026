@@ -13,7 +13,7 @@ Who we're designing for: a kiosco owner in Buenos Aires, a phone-accessory selle
 | Welcome | What the app does, plus the promise: *"We never ask for your name, phone or contacts."* |
 | Prove your business | Starts the zkTLS flow (QR or deep link) to log into the seller dashboard |
 | Verifying… | Progress while the proof is generated (2–30 s) |
-| Business Pass result | *"✅ Verified · Argentina · revenue band 2 · 6+ months: we learned nothing else."* |
+| Business Pass result | *"✅ Verified · Argentina · revenue band 2 · 6+ months: the issuer sees the account ID transiently."* |
 | Verification failed | A clear reason (too new, suspended, revenue too low) and what to do next |
 | Create your shop | Pick a shop name and get the payment QR |
 | Set up your cash-flow agent | Choose limits: max per advance, max per month, purpose |
@@ -30,7 +30,7 @@ Who we're designing for: a kiosco owner in Buenos Aires, a phone-accessory selle
 | Bad week | Repayment slowed, no penalty, reassuring copy |
 | Agent activity log | History of the agent's decisions and draws, with reasons |
 | Manage agent | Edit limits, pause, or revoke the agent |
-| Repaid / Standing Pass | *"You've repaid 1 advance, your limit is now $100, nobody can see your history."* |
+| Repaid / Standing Pass | *"You've repaid 1 advance, your limit is now $100, the proof hides which leaf you used."* |
 | Start fresh shop | Rotate to a new shop pseudonym and keep the reputation privately |
 | Cash out | Move dollars to local money or a supplier (mocked for the demo) |
 | Settings | Language (ES/EN), local currency, credential backup and export |
@@ -79,7 +79,7 @@ Seed at least one account per outcome: a pass (Argentina, band 2, 6+ months), an
 
 ## Realities the design has to handle
 
-1. **Customers hold USDT, not USDC.** People mostly hold it on Tron or BSC, inside Lemon, Belo, Binance or Yellow Card. Checkout accepts any token and swaps through Uniswap. Pitch line: *customer pays in USDT, repayment settles in USDC.*
+1. **Customers hold USDT, not USDC.** People mostly hold it on Tron or BSC, inside Lemon, Belo, Binance or Yellow Card. Live checkout accepts test USDC only; any-token checkout swaps are planned.
 2. **Merchants need local money.** The Cash out screen moves dollars to Mercado Pago, CVU or M-Pesa, mocked for the demo. Better still, **pay the supplier directly**: it matches the purpose the merchant gave the agent, and lowers the risk of someone taking the money and disappearing.
 3. **No onchain history at the start.** The Business Pass fixes cold start: the merchant proves months of offchain sales from day one, without showing their books. First limits stay small and the next limit is always visible.
 4. **Being visible is dangerous.** Neutral shop names, nothing about debt on the customer's screen, the split shown only to the merchant, and shop rotation. The "What the world sees" toggle makes this visible. See [zk-privacy.md](zk-privacy.md).
@@ -92,7 +92,7 @@ Seed at least one account per outcome: a pass (Argentina, band 2, 6+ months), an
 | Feature | Why |
 |---|---|
 | **Voice announcement on each sale**, read out by the browser's speech synthesis: *"Recibiste 10 dólares, 1 fue a tu adelanto"* | Mumbai judges know the Paytm soundbox. It's the most memorable demo moment and takes about 20 lines of code. |
-| **"We learned nothing else"** on the Business Pass result | The privacy promise in one line, at the moment it matters |
+| **"The issuer sees the account ID transiently"** on the Business Pass result | The privacy promise in one line, at the moment it matters |
 | **"Why it drew this"** on every agent draw | Makes the agent trustworthy and shows the AI doing real judgment |
 | **Denied path** for the World approval | Required by World's track, and proves nothing happens without consent |
 | **Local currency next to dollars** (ARS, NGN, KES) | Makes the case for stablecoins without explaining it |
@@ -110,7 +110,7 @@ Seed at least one account per outcome: a pass (Argentina, band 2, 6+ months), an
 | Default | "If sales stop for 30 days…" (explain plainly, in advance) |
 | Tranche, junior, senior | Not shown to merchants (lender and risk-taker views only) |
 | Gas, USDC, wallet, proof | Hidden, or "dollars" |
-| Zero-knowledge, zkTLS | "Private: we learned nothing else" / "no one can see your history" |
+| Zero-knowledge, zkTLS | "Private: the issuer sees the account ID transiently" / "the proof hides which leaf you used" |
 | Credential, nullifier | Business Pass, Standing Pass |
 | Mandate, autonomous | "Your agent," "your limits" |
 

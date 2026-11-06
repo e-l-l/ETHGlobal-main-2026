@@ -11,7 +11,7 @@ flowchart LR
   end
 
   C[Customer phone] -->|scan QR| CO[Pay screen]
-  CO -->|any token → USDC| UAPI[Uniswap API]
+  CO -->|test USDC| UAPI[Uniswap API]
   CO -->|pay shopId, amount| PR[PaymentRouter]
   PR -->|merchant share| MW[Merchant payout address]
   PR -->|repayment share| AM[AdvanceManager]
@@ -46,7 +46,7 @@ flowchart LR
 | `ShopRegistry` | Shop pseudonyms and their payout addresses. Creating a shop and rotating to a fresh one ("Start fresh shop") both go through it. Holds no identity. |
 | `PaymentRouter` | Entry point for every sale. Looks up the shop's split (0% with no advance), sends the merchant share to the payout address and the repayment share to `AdvanceManager`. Emits `Sale(shopId, amount)`. |
 | `AdvanceManager` | Tracks each advance: principal, fee, amount repaid, and a pending Standing Pass commitment. Distributes repayments across senior, junior and reserve. Marks write-offs. On full repayment, inserts the pending commitment into the `StandingPass` tree. |
-| `PolicyGuard` | The final authority, checked on every draw. Stores each shop's **agent mandate** (max per advance, max per month, purpose, active, paused or revoked) set by the merchant's one-time Agent Pass approval. Enforces: the mandate, cap per tier, one active advance per shop, fixed advance sizes, a valid offer signature from the agent service, a valid Business Pass or Standing Pass, and the current risk limits. |
+| `PolicyGuard` | The final authority, checked on every draw. Stores each shop's **agent mandate** (max per advance, max per month, recipient, expiry, active, paused or revoked) set by the merchant's one-time Agent Pass approval. Enforces: the mandate, cap per tier, one active advance per shop, fixed advance sizes, a valid offer signature from the agent service, a valid Business Pass or Standing Pass, and the current risk limits. |
 | `BusinessPass` | Verifies the zkTLS attestation (or a server-relayed attestation for the demo), records the public facts (country, revenue band, months active) against the shop, and stores a nullifier so one seller account can't onboard twice. |
 | `StandingPass` | Incremental Merkle tree of credential commitments, a nullifier set, and the generated Noir verifier. |
 | `SeniorVault` | ERC-4626 USDC vault for lenders. Funds advances and earns most of the fee. Takes losses only after junior and reserve run out. |
@@ -88,11 +88,11 @@ sequenceDiagram
     API-->>App: Reason + what to do next
   else Passes
     API->>C: BusinessPass.register(facts, nullifier)
-    App-->>M: "Verified · Argentina · band 2 · 6+ months: we learned nothing else"
+    App-->>M: "Verified · Argentina · band 2 · 6+ months: the issuer sees the account ID transiently"
   end
   M->>App: Create shop (name)
   App->>C: ShopRegistry.create(name, payoutAddr)
-  M->>App: Set agent limits (per advance, per month, purpose)
+  M->>App: Set agent limits (per advance, per month, recipient and expiry)
   App->>W: Request one-time approval
   alt Denied or expired
     W-->>App: No approval

@@ -5,7 +5,7 @@
 The original idea was AI agents issuing unsecured payday loans, with trading fees covering defaults. Research ruled that out:
 
 - **Unsecured small loans lose too much.** Divine, the closest precedent, reported about 40% defaults on first loans, even with World ID stopping repeat borrowing. The figure is company-stated and unaudited.
-- **Trading fees are too small.** At a 0.05% fee, one $100 default takes $200,000 of volume to cover.
+- **Trading fees are too small.** The pool charges 0.30%; a separate 0.30% hook fee applies only when USDC is the unspecified swap currency and goes to the reserve. Trading fees depend on volume and do not guarantee loss coverage.
 
 Advances tied to a cash flow hold up better than loans backed by a promise. Payroll-deducted advances keep losses down, and Huma advances against payment flows that turn over in days. A merchant advance doesn't need an employer to join, because the checkout link collects repayment on its own.
 

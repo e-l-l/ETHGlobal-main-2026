@@ -80,7 +80,7 @@ The model returns this through structured outputs. The service validates it agai
 - **One-time approval** activates the cash-flow agent for a shop, with the limits the merchant chose. It is the protected action for World's track.
 - **Denied, expired or cancelled:** no mandate is written and nothing can be drawn. The screen says so and offers a retry.
 - **Validated server-side** before `PolicyGuard.setMandate` is called. Client responses are never trusted.
-- **One agent per human**, which also stops a defaulter starting over. To confirm with World on site.
+- **World test mode** does not establish a unique real human or prevent repeat borrowing through other accounts.
 - **Privacy:** World's docs describe a stable per-person `sub`. We never store it or put it onchain. See [zk-privacy.md](zk-privacy.md).
 
 ## Privacy
