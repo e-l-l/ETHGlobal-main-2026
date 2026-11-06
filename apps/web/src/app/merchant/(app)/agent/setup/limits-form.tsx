@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { AgentLimitsVM, LadderStepVM } from "@repo/sdk";
-import { ActionBar, Button, Card, Chips, Columns, Label, SettingRow, Stack, Switch, Text } from "@/final";
+import { ActionBar, Button, Card, Chips, Columns, Label, OfferDisclosure, Stack, Text } from "@/final";
 import { HeroBlock, HeroLabel } from "../../../_ui";
 import { formatMoney } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
@@ -29,7 +29,6 @@ function LimitsFields({ view }: { view: SetupPage }) {
   const [perAdvance, setPerAdvance] = useState(String(Math.min(agentLimits.perAdvance, cap)));
   const [perMonth, setPerMonth] = useState(String(agentLimits.perMonth));
   const [purpose, setPurpose] = useState<string>(agentLimits.purpose);
-  const [supplier, setSupplier] = useState(true);
 
   // Caps above the current tier can't be picked; fall back to the tier cap.
   const pick = (v: string) => (Number(v) <= cap ? setPerAdvance(v) : undefined);
@@ -71,11 +70,6 @@ function LimitsFields({ view }: { view: SetupPage }) {
               onChange={setPurpose}
               options={purposes.map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
             />
-            <div className="border-t border-hairline pt-4">
-              <SettingRow title="Pay my supplier directly" hint="Advances go straight to your supplier, in pesos.">
-                <Switch checked={supplier} onCheckedChange={setSupplier} aria-label="Pay my supplier directly" />
-              </SettingRow>
-            </div>
           </Card>
         </Stack>
       </PrivateMark>
@@ -85,10 +79,9 @@ function LimitsFields({ view }: { view: SetupPage }) {
           <HeroLabel>In plain words</HeroLabel>
           <p className="m-0 font-display text-h2 text-canvas">
             Your agent can draw up to <span className="text-lime">{formatMoney(Number(perAdvance))} at a time</span> and{" "}
-            <span className="text-lime">{formatMoney(Number(perMonth))} a month</span>, for {purpose}
-            {supplier ? ", paid straight to your supplier" : ""}.
+            <span className="text-lime">{formatMoney(Number(perMonth))} a month</span>, for {purpose}, to your registered payout address.
           </p>
-          <Text className="text-honeydew">Only when your sales can repay it. The contract blocks anything past these limits.</Text>
+          <Text className="text-honeydew">The purpose is not enforced onchain. The contract blocks anything past these limits.</Text>
           <div className="grid grid-cols-2 gap-4 border-t border-honeydew/25 pt-4 font-body text-note">
             <div className="flex flex-col">
               <span className="text-honeydew">Paid back from</span>
@@ -100,6 +93,17 @@ function LimitsFields({ view }: { view: SetupPage }) {
             </div>
           </div>
         </HeroBlock>
+        <Text size="note">Illustrative maximum advance at a 15% flat fee and 10% sales share; future offers may differ.</Text>
+        <OfferDisclosure
+          principal={Number(perAdvance)}
+          fee={Number(perAdvance) * 0.15}
+          total={Number(perAdvance) * 1.15}
+          holdback={10}
+          estimates={[100, 200, 400].map((sales, i) => ({
+            label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!,
+            days: Math.ceil((Number(perAdvance) * 1.15) / (sales * 0.1)),
+          }))}
+        />
         <ActionBar hint="One-time approval. Only you can turn the agent on.">
           <Button href={`${routes.agent.approve}?${new URLSearchParams({ perAdvance, perMonth, purpose })}`} width="full">
             Approve with World

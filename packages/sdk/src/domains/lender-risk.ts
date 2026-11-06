@@ -44,7 +44,7 @@ export type RiskRaw = {
   active: { id: bigint; principal: bigint; principalRepaid: bigint; totalOwed: bigint; repaid: bigint; lastSaleAt: number }[];
   /** AdvanceBook.defaultWindow in seconds (null if the read failed). */
   defaultWindow: number | null;
-  /** RiskHook pool: ticks (price = 1.0001^tick, USDC per JAR-J). Undefined = unavailable (e.g. under 24h of history). */
+  /** RiskHook pool: ticks (price = 1.0001^tick, USDC per DRIP). Undefined = unavailable (e.g. under 24h of history). */
   ticks: { spot?: number; twap1h?: number; twap24h?: number };
   limitsChanged: { caps: bigint[]; at: number }[];
   risk: RiskStatus | null;
@@ -180,7 +180,7 @@ export function riskPanelFrom(raw: RiskRaw): RiskPanelView {
     tone: cov === undefined ? "none" : cov < 15 ? "watch" : "ok",
   };
 
-  // 5. The market's view: JAR-J on the RiskHook pool.
+  // 5. The market's view: DRIP on the RiskHook pool.
   const book = usd(snap.juniorSharePrice);
   const spot = raw.ticks.spot !== undefined ? tickPrice(raw.ticks.spot) : undefined;
   const t1 = raw.ticks.twap1h !== undefined ? tickPrice(raw.ticks.twap1h) : undefined;

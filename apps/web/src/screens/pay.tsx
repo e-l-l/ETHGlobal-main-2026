@@ -11,6 +11,7 @@ import {
   Card,
   CheckIcon,
   CopyHash,
+  DemoBadge,
   Heading,
   Keypad,
   KeyValue,
@@ -168,6 +169,7 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
           </BrandPanel>
         }
       >
+        <DemoBadge>Faucet-funded test dollars · test USDC</DemoBadge>
         <WorldMark kind="pub" show={wv}>
           <div className="flex flex-col items-center gap-1 py-1 text-center md:items-start md:text-left">
             <Label>{t.amount}</Label>

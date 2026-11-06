@@ -16,12 +16,12 @@ const en = {
     eyebrow: "For shops in Buenos Aires",
     title: "Dollars for stock,",
     accent: "today.",
-    body: "A small dollar advance for your stock, paid back automatically with 10% of every sale. Repay on time and your limit grows.",
+    body: "A small dollar advance for your stock. While it's active, a slice of each sale repays it; the demo uses 10%. Repay on time and your limit grows.",
     heading: "How it works",
     promises: [
       { title: "Prove the shop, not you", body: "Four facts from your seller account. Never your name, phone or contacts." },
       { title: "You set the limits", body: "Your agent only draws stock inside them." },
-      { title: "Slow week? No extra fee", body: "Repayment is 10% of each sale, so it slows when sales do." },
+      { title: "Slow week? No extra fee", body: "Repayment is a slice of each sale, so it slows when sales do." },
     ],
     cta: "Prove your business",
     back: "Back",
@@ -31,9 +31,9 @@ const en = {
   prove: {
     title: "Your sales already",
     accent: "vouch for you.",
-    panel: "Months of selling on your seller app are your credit history. We check them on this phone and keep only four facts.",
+    panel: "Months of selling on your seller app are your credit history. A demo attestor checks them and we keep only four facts.",
     heading: "Log in to your seller account",
-    body: "We open your seller dashboard and read four facts, privately on this phone.",
+    body: "Use the demo seller portal and mock attestor to check four facts. The issuer sees the account ID transiently.",
     whereSell: "Where you sell",
     sources: [
       { name: "Demo seller portal", sub: "Stands in for Mercado Pago in this demo" },
@@ -59,12 +59,12 @@ const en = {
   verifying: {
     title: "Checking your record",
     accent: "privately.",
-    panel: "The check runs on this phone. Nobody, including us, sees your numbers while it works.",
+    panel: "The demo uses a mock attestor; the issuer sees the account ID transiently.",
     heading: "Almost there",
     body: "Usually 5 to 30 seconds. You can keep this screen open.",
     steps: ["Reading the seller portal", "Checking the four facts on this phone", "Saving your Business Pass"],
     cancel: "Cancel",
-    world: "The portal data stays on this phone. Only the result will be saved.",
+    world: "The issuer sees the account ID transiently and holds a secret pepper.",
   },
   pass: {
     title: "You're verified.",
@@ -78,10 +78,10 @@ const en = {
       { k: "Revenue band", v: "Band 2" },
       { k: "Selling for", v: "6+ months" },
     ],
-    learned: "We learned nothing else.",
+    learned: "The issuer sees the account ID transiently.",
     next: "Your first limit starts small. It grows each time you repay.",
     cta: "Create your shop",
-    world: "Only a commitment is onchain. The pass details stay here.",
+    world: "The commitment is onchain; other transactions expose shop and payment data.",
   },
   failed: {
     eyebrow: "Verification",
@@ -130,7 +130,7 @@ const en = {
     qr: "Payment QR",
     cta: "Set up your agent",
     preview: "Preview the checkout",
-    world: "The shop name and QR address are public. Your Business Pass is not linked to them.",
+    world: "Shop owner and payout addresses are public. Metadata may link activity.",
     empty: "Add a name to continue",
   },
 };
@@ -140,12 +140,12 @@ const es: typeof en = {
     eyebrow: "Para kioscos de Buenos Aires",
     title: "Dólares para el stock,",
     accent: "hoy.",
-    body: "Un adelanto chico en dólares para tu stock, que se devuelve solo con el 10% de cada venta. Si pagás a tiempo, tu límite crece.",
+    body: "Un adelanto chico en dólares para tu stock. Mientras esté activo, una parte de cada venta lo paga; la demo usa el 10%. Si pagás a tiempo, tu límite crece.",
     heading: "Cómo funciona",
     promises: [
       { title: "Probás el kiosco, no a vos", body: "Cuatro datos de tu cuenta de ventas. Nunca tu nombre, tu teléfono ni tus contactos." },
       { title: "Vos ponés los límites", body: "Tu agente solo compra stock dentro de ellos." },
-      { title: "¿Semana floja? Sin recargo", body: "Pagás el 10% de cada venta, así que baja cuando bajan las ventas." },
+      { title: "¿Semana floja? Sin recargo", body: "Pagás una parte de cada venta, así que baja cuando bajan las ventas." },
     ],
     cta: "Probá tu negocio",
     back: "Volver",
@@ -155,9 +155,9 @@ const es: typeof en = {
   prove: {
     title: "Tus ventas ya",
     accent: "hablan por vos.",
-    panel: "Los meses vendiendo en tu app de ventas son tu historial. Los chequeamos en este teléfono y solo guardamos cuatro datos.",
+    panel: "Los meses vendiendo en tu app de ventas son tu historial. Un verificador de prueba los chequea y solo guardamos cuatro datos.",
     heading: "Entrá a tu cuenta de ventas",
-    body: "Abrimos tu panel de ventas y leemos cuatro datos, en privado, en este teléfono.",
+    body: "Usá el portal de prueba y el verificador simulado para chequear cuatro datos. El emisor ve el ID de cuenta temporalmente.",
     whereSell: "Dónde vendés",
     sources: [
       { name: "Portal de ventas de prueba", sub: "Hace de Mercado Pago en esta demo" },
@@ -183,12 +183,12 @@ const es: typeof en = {
   verifying: {
     title: "Chequeando tu historial",
     accent: "en privado.",
-    panel: "El chequeo corre en este teléfono. Nadie, ni nosotros, ve tus números mientras trabaja.",
+    panel: "La demo usa un verificador simulado; el emisor ve el ID de cuenta temporalmente.",
     heading: "Ya casi",
     body: "Suele tardar entre 5 y 30 segundos. Podés dejar esta pantalla abierta.",
     steps: ["Leyendo el portal de ventas", "Chequeando los cuatro datos en este teléfono", "Guardando tu Pase de Negocio"],
     cancel: "Cancelar",
-    world: "Los datos del portal quedan en este teléfono. Solo se guarda el resultado.",
+    world: "El emisor ve el ID de cuenta temporalmente y guarda una clave secreta.",
   },
   pass: {
     title: "Estás verificado.",
@@ -202,10 +202,10 @@ const es: typeof en = {
       { k: "Banda de ventas", v: "Banda 2" },
       { k: "Vendiendo hace", v: "6+ meses" },
     ],
-    learned: "No supimos nada más.",
+    learned: "El emisor ve el ID de cuenta temporalmente.",
     next: "Tu primer límite es chico. Crece cada vez que pagás.",
     cta: "Creá tu kiosco",
-    world: "En la cadena solo hay un compromiso. Los datos del pase quedan acá.",
+    world: "El compromiso está en la cadena; otras transacciones muestran datos del kiosco y pagos.",
   },
   failed: {
     eyebrow: "Verificación",
@@ -254,7 +254,7 @@ const es: typeof en = {
     qr: "QR de cobro",
     cta: "Configurá tu agente",
     preview: "Ver la pantalla de pago",
-    world: "El nombre y la dirección del QR son públicos. Tu Pase de Negocio no está ligado a ellos.",
+    world: "El dueño y la dirección de cobro son públicos. Los metadatos pueden vincular actividad.",
     empty: "Poné un nombre para seguir",
   },
 };
@@ -269,7 +269,7 @@ const payEn = {
   accepted: "Accepted here",
   amount: "Amount",
   youPay: "You pay with",
-  swap: (tok: string) => (tok === "USDC" ? "Arrives as dollars. Network fee covered." : `${tok} swaps to dollars through Uniswap. Network fee covered.`),
+  swap: (tok: string) => (tok === "USDC" ? "Arrives as dollars. Network fee covered." : `${tok} checkout swaps are planned; use test USDC.`),
   pay: (amt: string) => `Pay ${amt}`,
   enter: "Enter an amount",
   exampleRate: "example rate",
@@ -289,7 +289,7 @@ const payEn = {
   ref: "Reference",
   done: "Done",
   shopPhone: "See the shop's phone",
-  world: "The payment and the shop pseudonym are onchain. Who paid is not linked to you by name.",
+  world: "The payer address, amount and shop are public onchain.",
 };
 const payEs: typeof payEn = {
   verified: "Estás pagando a",
@@ -298,7 +298,7 @@ const payEs: typeof payEn = {
   accepted: "Se acepta acá",
   amount: "Monto",
   youPay: "Pagás con",
-  swap: (tok: string) => (tok === "USDC" ? "Llega en dólares. La comisión de red la ponemos nosotros." : `${tok} se cambia a dólares con Uniswap. La comisión de red la ponemos nosotros.`),
+  swap: (tok: string) => (tok === "USDC" ? "Llega en dólares. La comisión de red la ponemos nosotros." : `El cambio de ${tok} está previsto; usá USDC de prueba.`),
   pay: (amt: string) => `Pagar ${amt}`,
   enter: "Ingresá un monto",
   exampleRate: "cambio de ejemplo",
@@ -318,7 +318,7 @@ const payEs: typeof payEn = {
   ref: "Referencia",
   done: "Listo",
   shopPhone: "Ver el teléfono del kiosco",
-  world: "El pago y el seudónimo del kiosco están en la cadena. Quién pagó no queda ligado a tu nombre.",
+  world: "La dirección de quien paga, el monto y el kiosco son públicos en la cadena.",
 };
 export const payCopy: Record<Lang, typeof payEn> = { en: payEn, es: payEs };
 

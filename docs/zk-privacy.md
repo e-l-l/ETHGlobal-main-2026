@@ -79,7 +79,7 @@ The scheme also guarantees two things:
 
 **Toolchain:** nargo **1.0.0-rc.3** + bb **6.0.0**, the pair shipped together in Aztec v6.0.0. `bbup -nv 1.0.0` has no map entry yet. For browser proving use `@aztec-foundation/bb.js@6.0.0` (new scope).
 
-**Demo:** a merchant repays, opens a fresh wallet, proves tier 1 and unlocks a higher limit. The explorer shows no link between the two wallets.
+**Demo:** a merchant repays, opens a fresh wallet, proves tier 1 and unlocks a higher limit. Public metadata may correlate the two wallets.
 
 ### ethskills `noir` rules we must follow
 
@@ -102,7 +102,7 @@ The merchant proves their Mercado Pago, M-Pesa or Paystack statement shows sales
 
 ### Level 3: shielded jar (roadmap)
 
-Every shop sends 10% of each sale into a dollar jar, **whether or not it has an advance**. Private state decides whether the jar is savings or repayment, so nobody can tell who owes. This needs a shielded pool: EF's Kohaku SDK (Privacy Pools, Railgun) or a privacy chain such as Aztec. It also turns the product into automatic dollar savings with credit built in.
+A shielded repayment design is a future research idea, not the current product. Today the repayment slice applies only while an advance is active, and sales and advances are public.
 
 ## Known limitations (be honest in the pitch)
 

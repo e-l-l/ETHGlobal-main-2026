@@ -68,7 +68,8 @@ class FaucetSettings(BaseSettings):
     demo_faucet_txs: int = 10
     demo_faucet_gas_per_tx: int = 250_000
     demo_faucet_fee_cap_gwei: float = 0.1
-    demo_faucet_per_ip_per_day: int = 5
+    demo_faucet_per_ip_per_day: int = 3
+    demo_faucet_relayer_min_eth: float = 0.001
 
 
 class FaucetError(RuntimeError):
@@ -89,6 +90,7 @@ class FaucetChain(Protocol):
     def fees(self) -> tuple[int, int]: ...  # (baseFeePerGas, maxPriorityFeePerGas)
     def balance(self, addr: str) -> int: ...
     def usdc_balance(self, addr: str) -> int: ...
+    def relayer_balance(self) -> int: ...
     def estimate_eth(self, to: str, value: int) -> int: ...
     def estimate_mint(self, to: str, amount: int) -> int: ...
     def estimate_approve_from(self, owner: str) -> int: ...
@@ -161,6 +163,12 @@ class DemoFaucet:
             q.popleft()
         return len(q) < self.cfg.demo_faucet_per_ip_per_day
 
+    def status(self) -> dict:
+        spent = self._spent_24h(int(self.now()))
+        budget = int(self.cfg.demo_faucet_max_eth_per_day * ETHER)
+        return {"spent_wei": str(spent), "budget_wei": str(budget),
+                "budget_alarm": spent * 5 >= budget * 4}
+
     # ------------------------------------------------------------ sizing
 
     def plan(self, addr: str) -> Plan:
@@ -200,6 +208,13 @@ class DemoFaucet:
             except Exception:  # noqa: BLE001 - RPC trouble: never leak details
                 raise FaucetError("chain_unavailable", 502) from None
             cost = p.eth_wei + p.own_cost_wei
+            try:
+                if self.chain.relayer_balance() - cost < int(self.cfg.demo_faucet_relayer_min_eth * ETHER):
+                    raise FaucetError("relayer_balance_low", 503)
+            except FaucetError:
+                raise
+            except Exception:  # noqa: BLE001 - fail closed on RPC failure
+                raise FaucetError("chain_unavailable", 502) from None
             budget = int(self.cfg.demo_faucet_max_eth_per_day * ETHER)
             if self._spent_24h(int(now)) + cost > budget:
                 raise FaucetError("daily_budget", 429)
@@ -221,7 +236,7 @@ class DemoFaucet:
             ok = False
         with self._db() as db:
             db.execute("UPDATE faucet_claims SET status = ?, eth_tx = ?, usdc_tx = ? WHERE address = ?",
-                       ("done" if ok else "failed", eth_tx, usdc_tx, addr.lower()))
+                       ("done" if ok else ("uncertain" if eth_tx or usdc_tx else "failed"), eth_tx, usdc_tx, addr.lower()))
         if not ok:
             log.warning("faucet send failed address=%s eth_tx=%s usdc_tx=%s", addr, eth_tx, usdc_tx)
             raise FaucetError("send_failed", 502)
@@ -274,6 +289,9 @@ class Web3FaucetChain:
 
     def balance(self, addr: str) -> int:
         return int(self.w3.eth.get_balance(addr))
+
+    def relayer_balance(self) -> int:
+        return self.balance(self._acct().address)
 
     def usdc_balance(self, addr: str) -> int:
         return int(self.usdc.functions.balanceOf(addr).call())

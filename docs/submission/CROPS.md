@@ -78,7 +78,7 @@ Identity never touches the chain or our servers. Only ZK yes/no answers and pseu
 - **Draws under one mandate are linkable to each other.** They are bounded by rotating the mandate per cycle.
 - **We see the payout address at request time.** A planned recipient commitment `H(recipient, salt)` is not built.
 - **Owner is a single key**, not a multisig.
-- **Anon-RPC is not wired yet.** The backend's Sepolia profile uses a Tenderly gateway. Support for Sepolia is unconfirmed.
+- **Anon-RPC is wired in the app:** 26/26 SDK reads were routed in a Chrome measurement. The backend Sepolia profile uses a Tenderly gateway.
 - **World and Reclaim have run in mock mode only.** The demo seller portal ("PagoSur") is a fictional stand-in, shown as such.
 - **Bedrock (AWS) is a third party that sees underwriting features.** These are numbers only, but AWS is still a party.
 - Not private from the law: a production launch needs licensing and selective disclosure (roadmap).

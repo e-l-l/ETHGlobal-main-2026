@@ -433,11 +433,17 @@ class OIDCAgentPass:
                 raise WorldError("rate_limited")
             self._devices[sid] = _DeviceSession(body["device_code"], expected_nonce, now,
                                                 now + min(int(ttl), self.device_ttl_cap), max(1, int(interval)))
-        uri = body.get("verification_uri_complete") or body.get("verification_uri")
+        uri = body.get("verification_uri")
+        complete = body.get("verification_uri_complete")
+        if not isinstance(uri, str):
+            uri = complete
         if not isinstance(uri, str) or not uri.startswith("https://"):
             raise WorldError("upstream_error")
-        return {"device_session": sid, "verification_uri": uri,
+        if not isinstance(complete, str) or not complete.startswith("https://"):
+            complete = uri
+        return {"device_session": sid, "verification_uri": uri, "verification_uri_complete": complete,
                 "user_code": body.get("user_code") if isinstance(body.get("user_code"), str) else None,
+                "expires_in": min(int(ttl), self.device_ttl_cap),
                 "expires_at": now + min(int(ttl), self.device_ttl_cap), "interval": max(1, int(interval))}
 
     def poll_device(self, sid: object, expected_nonce: str) -> str:

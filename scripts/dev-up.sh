@@ -89,7 +89,8 @@ fi
 if [[ $MOCK == 1 ]]; then
   export DEV_MRA_MODE=mock
   c_info "web app in mock mode (no chain, no backend)"
-  dc up -d ${NO_BUILD:+} $([[ $NO_BUILD == 1 ]] && echo --no-build || echo --build) --no-deps app
+  build_flag=--build; [[ $NO_BUILD == 1 ]] && build_flag=--no-build
+  dc up -d "$build_flag" --no-deps app
   echo
   echo "app  http://localhost:${DEV_APP_PORT:-3000}/home   (mock data; build again without --mock for local mode)"
   exit 0
@@ -151,13 +152,12 @@ c_info "waiting for health checks (up to 5 minutes)"
 deadline=$((SECONDS + 300))
 while :; do
   pending=""
-  while read -r svc health state; do
+  while IFS='|' read -r svc health state; do
     [[ -z "$svc" ]] && continue
     if [[ "$state" != running ]]; then pending="$pending $svc($state)"
     elif [[ -n "$health" && "$health" != healthy ]]; then pending="$pending $svc($health)"
     fi
-  done < <(dc ps -a --format '{{.Service}} {{.Health}} {{.State}}' "${services[@]}" 2>/dev/null \
-             | awk 'NF==2 {print $1, "", $2; next} {print}')
+  done < <(dc ps -a --format '{{.Service}}|{{.Health}}|{{.State}}' "${services[@]}" 2>/dev/null | tr -d '\r')
   [[ -z "$pending" ]] && break
   if [[ $SECONDS -ge $deadline ]]; then
     c_err "not healthy after 5 minutes:$pending"
@@ -169,11 +169,13 @@ done
 c_ok "all services healthy"
 
 # ------------------------------------------------------------------------------------------ smoke checks
-check() { # name url
-  if have curl && curl -fsS -m 10 -o /dev/null "$2"; then c_ok "$1 $2"; else c_warn "$1 $2 did not answer (yet)"; fi
+check() { # name url [curl args...]
+  local name="$1" url="$2"; shift 2
+  if have curl && curl -fsS -m 10 -o /dev/null "$@" "$url"; then c_ok "$name $url"; else c_warn "$name $url did not answer (yet)"; fi
 }
 echo
-check "rpc   " "http://127.0.0.1:${DEV_RPC_PORT:-8545}" 2>/dev/null || true # anvil answers GET with 200 too
+check "rpc   " "http://127.0.0.1:${DEV_RPC_PORT:-8545}" -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'
 check "api   " "http://localhost:${DEV_API_PORT:-8000}/health"
 check "issuer" "http://localhost:${DEV_ISSUER_PORT:-8787}/health"
 check "portal" "http://localhost:${DEV_PORTAL_PORT:-3001}/api/health"
@@ -189,10 +191,8 @@ DripMoni local stack is up (compose project mra-dev).
   portal       http://localhost:${DEV_PORTAL_PORT:-3001}
   chain RPC    http://127.0.0.1:${DEV_RPC_PORT:-8545}      (chain id 31337)
 
-  default scene   scripts/dev-compose.sh stop agents-worker-devnet   # optional: so the scene does the write-off
-                  scripts/dev-scene.sh --execute
-  time warp       scripts/dev-compose.sh exec anvil cast rpc --rpc-url http://127.0.0.1:8545 evm_increaseTime 2678400
-                  scripts/dev-compose.sh exec anvil cast rpc --rpc-url http://127.0.0.1:8545 evm_mine
+  default scene   scripts/dev-devnet.sh scene              (dry run)   then: scripts/dev-devnet.sh scene --execute
+  time warp       scripts/dev-devnet.sh warp 31d           chain status: scripts/dev-devnet.sh status
   logs            scripts/dev-compose.sh logs -f agents-api-devnet
   stop            scripts/dev-down.sh            (keeps the chain)   scripts/dev-down.sh --reset   (wipes it)
 

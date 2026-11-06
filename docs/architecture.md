@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
   C[Customer phone] -->|scan QR| CO[Checkout web page]
-  CO -->|any token → USDC| UAPI[Uniswap API]
+  CO -->|test USDC| UAPI[Uniswap API]
   CO -->|pay shopId, amount| PR[AdvanceBook.pay]
   PR -->|merchant share| MW[Merchant payout address]
   PR -->|repayment share| AM[AdvanceBook advances]
@@ -42,7 +42,7 @@ Following the ethskills `ship` guideline (at most 3 custom contracts for an MVP)
 | ↳ `Policy` | module | EIP-712 agent offers, tier caps, fixed sizes, exposure cap, World ID nullifier, risk limits (the Risk agent can only lower them) |
 | ↳ `StandingPassTree` | module | Depth-16 Poseidon2 Merkle tree of credentials, every historical root accepted |
 | ↳ core | | `pay` splits every sale; `drawFirst` and `drawWithPass` open advances; fee and loss waterfalls; permissionless `writeOff` with bounty; `claimStandingPass` |
-| `TrancheVault` ×2 | OpenZeppelin ERC-4626 | **Senior:** lends principal, earns 60% of fees, loses last. **Junior:** first-loss buffer, earns 30% of fees. **Its share token is the junior token** that trades on Uniswap. Withdrawals are limited so junior always covers 10% of senior's outstanding loans. |
+| `TrancheVault` ×2 | OpenZeppelin ERC-4626 | **Senior:** lends principal, earns 60% of fees, loses last. **Junior:** first-loss buffer, earns 30% of fees. **Its share token is the junior token** that trades on Uniswap. Withdrawals are constrained by 10% of senior outstanding; draws do not enforce coverage. |
 | `RiskHook` | custom | Uniswap v4 hook on junior/USDC. Takes a USDC-only fee for the reserve (`flush()`), and records a 64-slot TWAP that the Risk agent reads instead of the spot price. |
 | `HonkVerifier` | generated | `circuits/standing_pass/build.sh`, then `src/verifier/HonkVerifier.sol` (18KB, under the 24KB limit). Compiles as its own unit (solc ≥0.8.27). Never import it; use `IVerifier`. |
 | Poseidon2 | existing | `0xB2542195Ad96AcfBC962C48A97D7640A9F5386D2` on Sepolia (zemse/poseidon2-evm). Verified against Noir. |
@@ -74,7 +74,7 @@ Following the ethskills `ship` guideline (at most 3 custom contracts for an MVP)
 | Service | Responsibility |
 |---|---|
 | Merchant app (Next.js mobile web) | Onboarding, offers, approvals, live sales, Standing Pass proving in the browser (Noir, bb.js). Shows local currency next to dollars. |
-| Checkout page | QR target. Takes the customer's token, swaps through the Uniswap API, calls `AdvanceBook.pay`. |
+| Checkout page | QR target. Takes test USDC and calls `AdvanceBook.pay`; any-token swaps are planned. |
 | Agent service (Python, `agents/`) | Underwriter, Critic and Risk agents, keeper and relayer. Calls the judge models (Bedrock: Mistral Large 3, Kimi K2.5, Qwen3; Claude is a drop-in) with structured outputs, and signs offers that pass the Critic. Holds an offer-signing key only, never funds. |
 | API routes (Vercel) | Server-side World ID proof validation, offer relay, **relayer for draws and credential claims**, gas sponsorship for the demo. |
 | Tree mirror (in the app) | Rebuilds the Standing Pass tree from `LeafInserted` events to produce Merkle paths. It must be **fixed depth 16, padded with zeros, using Poseidon2 from `@aztec/bb.js`**. Not `@zk-kit/lean-imt`, whose roots differ. |

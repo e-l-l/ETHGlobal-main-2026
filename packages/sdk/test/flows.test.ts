@@ -67,8 +67,8 @@ describe("mock-mode flows (the demo path)", () => {
   it("world view varies by step; 'advance' is the canvas default", async () => {
     const mra = createMRA({ mode: "mock" });
     expect((await mra.world.publicView("onboarding")).public).toEqual([]);
-    expect((await mra.world.publicView("advance")).public).toHaveLength(5);
-    expect((await mra.world.publicView("fresh-shop")).public[0]!.v).toMatch(/unlinked/);
+    expect((await mra.world.publicView("advance")).public).toHaveLength(6);
+    expect((await mra.world.publicView("fresh-shop")).public[0]!.v).toMatch(/links may be inferred/);
   });
 
   it("mockLatencyMs delays mock responses (spinners)", async () => {

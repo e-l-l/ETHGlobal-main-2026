@@ -12,6 +12,7 @@ import {
   LineChart,
   LossWaterfall,
   PageHead,
+  LenderDisclosure,
   Pill,
   RowList,
   ListRow,
@@ -105,6 +106,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
           back to the vault.
         </LendHero>
       </Pub>
+      <LenderDisclosure />
 
       <ol aria-label="How it works" className="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
         {HOW.map((s, i) => (
@@ -334,6 +336,7 @@ export function DripCoinScreen({ initial, initialPanel }: { initial: JuniorView 
           anything.
         </LendHero>
       </Pub>
+      <LenderDisclosure />
 
       <Pub>
         <StatGrid

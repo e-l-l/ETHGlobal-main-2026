@@ -198,7 +198,7 @@ export type LenderKey = (typeof lenderLinks)[number]["key"];
  * Lender risk panel + live loss waterfall (SDK-only mock: apps/web reads it through `lender.riskPanel()` /
  * `lender.waterfall()`). Every overlapping number matches VAULT / TIER_CAPS above (test/lender-risk.test.ts checks):
  * junior $42,000 + reserve $8,400 against $248,000 outstanding = 20.3% coverage; $1,100 written off; 23 write-offs
- * of 1,284 advances = the "1.8%" count rate on Earn; JAR-J $0.982 spot, $0.986 TWAP against a $1.000 book.
+ * of 1,284 advances = the "1.8%" count rate on Earn; DRIP $0.982 spot, $0.986 TWAP against a $1.000 book.
  * ---------------------------------------------------------------------------------------------------------------- */
 
 const SEPOLIA_SCAN = "https://sepolia.etherscan.io/address/";

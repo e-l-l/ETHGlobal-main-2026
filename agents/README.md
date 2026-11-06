@@ -45,7 +45,7 @@ cold-start offer offchain whose signature must recover to the onchain `offerSign
 varied-cents sales each; and 2 wash-trader payers whose gas ETH **and** USDC come from the shop's own payout
 address, so the circular-funding red line fires. `--with-business-pass` also issues a Business Pass for
 chai-stall (Python `Issuer` over a **mock** zkTLS claim → relayer `BusinessPassRegistry.issue`) for the
-cold-start demo. A real Reclaim proof replaces the mock later by swapping `mock_verify_zktls` for the SDK verifier.
+cold-start demo. The demo uses a mock attestor; the real Reclaim path is built and tested.
 
 ```bash
 set -a; . ./.env; . scripts/sepolia.env; set +a

@@ -157,7 +157,7 @@ Notes:
 
 ### Anon-RPC (`@repo/sdk/browser/anon`)
 
-Every chain read goes through [Anon-RPC](https://github.com/ethereum/anon-rpc) via the real `@anon-rpc/browser-harness` 0.4 (spec 0.4.0): the network's hash-pinned client runs in a Web Worker inside a null-origin iframe, and viem's `fetchFn` is its anonymized `fetch`. Writes go through the relayer or the wallet.
+When configured for Anon-RPC, app chain reads go through [Anon-RPC](https://github.com/ethereum/anon-rpc) via the real `@anon-rpc/browser-harness` 0.4 (spec 0.4.0): the network's hash-pinned client runs in a Web Worker inside a null-origin iframe, and viem's `fetchFn` is its anonymized `fetch`. Writes go through the relayer or the wallet.
 
 ```ts
 import { createAnonRpc } from "@repo/sdk/browser/anon";
@@ -217,7 +217,7 @@ Verified: proofs from this code path (Node WASM, the browser main thread, and th
 | Pay | Simulated receipt | **Real** USDC `approve` + `AdvanceBook.pay`; the split comes from the `Sale` event |
 | Lender / junior views | apps/web values | **Real chain**: ERC-4626 totals, share price, reserve, caps, fee bps, RiskHook TWAP, position, Deposit / Withdraw logs, v4 `Swap` logs |
 | Lender deposit / withdraw / mint / redeem | Simulated steps | **Real** wallet transactions |
-| Junior swap (J03 buy/sell button) | Not provided | **Not implemented.** The view is real; the swap needs a v4 router. |
+| Junior swap (J03 buy/sell button) | Not provided | **Implemented and live on Sepolia:** `lender.junior.swap` uses the v4 PoolSwapTest router and RiskHook; the mock simulates it. |
 | Protocol stats / explorer | apps/web values | **Real chain** logs |
 | Lender risk panel / loss waterfall (`lender.riskPanel()`, `lender.waterfall()`) | SDK mock (`RISK_PANEL`, `WATERFALL`), consistent with the VAULT numbers | **Real chain**, aggregate only: `AdvanceOpened` / `RepaymentSplit` / `AdvanceRepaid` / `AdvanceWrittenOff` / `LimitsChanged` logs, `getAdvance` for open advances, `defaultWindow`, vault totals, reserve, RiskHook `consult` (1h, 24h) and pool `slot0`; `/risk/status` when it answers. The shops' holdback layer is an estimate (fees still owed), labelled as such. |
 | Risk | apps/web values | **Real** `GET /risk/status` + `LimitsChanged` logs |

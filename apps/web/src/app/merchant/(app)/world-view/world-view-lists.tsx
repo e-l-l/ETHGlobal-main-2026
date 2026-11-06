@@ -16,7 +16,6 @@ export function WorldViewLists({ initial }: { initial: WorldView | null }) {
   const wv = useWorldView();
   const { data, error } = useMRA(q.world, { initial });
   if (!data) return <MRAState error={error} />;
-  const { shop } = data;
   return (
     <Stack gap="lg">
       <Columns className="items-stretch">
@@ -46,7 +45,7 @@ export function WorldViewLists({ initial }: { initial: WorldView | null }) {
           </DarkBlock>
         </WorldMark>
       </Columns>
-      <Banner>No one can link {shop.pseudonym} to you, your phone, or your seller account.</Banner>
+      <Banner>Public transactions can be linked through addresses, timing and payment flows. The issuer sees seller account details during the demo attestation.</Banner>
     </Stack>
   );
 }

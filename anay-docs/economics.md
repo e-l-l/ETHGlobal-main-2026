@@ -1,67 +1,38 @@
 # Economics
 
-## The advance
+The merchant receives a fixed advance and repays principal plus a flat fee from sales routed through DripMoni while an advance is active. There is no holdback without an active advance. The contract permits factors of 1.10–1.50 and repayment slices of 5–20%; 1.15 and 10% are demo examples. Diversion of sales to other channels can prevent repayment.
 
-A merchant cash advance, not a loan with interest. The merchant receives an amount, repays it times a fixed **factor** through a **holdback** share of each sale, and pays **one flat fee, shown upfront**. There are no rollovers and no late fees.
+## A $100 offer
 
-Published merchant cash advance ranges: holdback of about 5–20%, factor of 1.1–1.5.
+At factor 1.15 the merchant receives $100 and owes $115: $100 principal plus a $15 fee. A 10% repayment slice requires $1,150 in captured sales for full repayment. Illustrative simple annualized cost is 15% × 365 / days, not an APR derived from actual cash flows:
 
-### Worked example (illustrative, larger than hackathon tier caps)
+| Captured sales per day | Repayment per day | Estimated days | Simple annualized cost |
+|---:|---:|---:|---:|
+| $50 (slow) | $5 | 23 | 238% |
+| $100 (normal) | $10 | 11.5 | 476% |
+| $200 (busy) | $20 | 5.75 | 952% |
 
-| Input | Value |
-|---|---|
-| Advance | $1,000 |
-| Factor | 1.15 |
-| Merchant daily sales | $200 |
-| Holdback | 10% |
+These are estimates assuming constant captured sales; actual payment timing and effective APR differ. There are no real loss data for this testnet prototype.
 
-| Result | Value |
-|---|---|
-| Total repaid | $1,150 |
-| Flat fee | $150 |
-| Repaid per day | $20 |
-| Days to repay | about 58 |
-| Break-even default rate | 13.0% (fee ÷ total repaid) |
+## Fee and loss waterfall
 
-Break-even assumes a default loses the whole advance and earns nothing. Partial repayments before a default raise it. These numbers are arithmetic and don't predict performance. We have no real loss data for stablecoin merchant advances.
+On full repayment of $100 at 1.15, the $15 fee currently goes 60/30/10: **$9 senior, $4.50 junior, $1.50 reserve; protocol operating revenue is $0**. Payments split principal and fee pro rata. Reserve is loss capital, not revenue. A proposed split is **$8 senior, $4 junior, $1.50 reserve, $1.50 protocol**; this is proposed, contract change pending. A write-off covers unpaid principal from junior, then reserve, then senior; a caller may receive up to $5 from reserve remaining after coverage. Senior is not guaranteed.
 
-**A bad week:** if sales halve, repayment halves and nothing else changes. That's why a sales share fits economies with sharp devaluations better than fixed installments.
+DripCoin (DRIP): junior, takes losses first. Junior withdrawals are constrained by 10% of senior outstanding, but new draws do not enforce that ratio; losses can also reduce coverage. Outstanding principal is valued at face value until write-off. Idle liquidity limits withdrawals.
 
-**Fairness note:** a flat fee means a faster repayment costs more per day. Show the merchant the estimated days for a slow, normal and busy pace, and never present it as an interest rate.
+The v4 pool charges a **0.30% LP fee** and a separate **0.30% hook fee only when USDC is the unspecified swap currency**; hook proceeds go to reserve. Pool LPs face inventory and adverse-selection risk and do not earn advance fees merely by supplying USDC. Thin seeded pool prices can reflect liquidity needs or manipulation, not just credit risk; the Risk agent's TWAP trigger can tighten credit.
 
-## Capital stack
+### Illustrative break-even default rates
 
-| Piece | Held by | Earns | Takes losses |
-|---|---|---|---|
-| Senior vault (ERC-4626) | USDC lenders | Most of each fee, plus yield on idle funds | Only after junior and reserve run out |
-| Junior token (minted and redeemed against USDC) | Risk takers | A larger share of fees for its size | First, on any default |
-| Reserve | Protocol | A slice of fees, plus the Uniswap hook fee | Tops up junior losses |
-| Uniswap v4 pool | LPs and traders | Pool trading fees | Market risk on the junior token |
+For equal $100 advances, full repayment or immediate total loss, no recoveries, operating costs or time value: whole book **13.04%**, junior absorbing each default in full **4.31%**, senior with no protection **8.26%**, and senior with a hypothetical aggregate junior buffer of 10% of original principal plus reserve funded only by successful advances approximately **10.45%**. These are loss-frequency illustrations, not forecasts or APYs. Timing, concentrations, partial repayment, idle capital, costs and bounties change outcomes.
 
-**Fee split (starting point, to tune):** of each fee, 60% to senior, 30% to junior, 10% to reserve.
+## Tier caps
 
-**Why the junior token trades:** its price is a live market estimate of the pool's risk. The Risk agent reads it and tightens limits when it falls. People trade the risk of the advance book, and merchants never have to trade.
+| Tier | Maximum |
+|---|---:|
+| 0 | $50 |
+| 1 | $100 |
+| 2 | $250 |
+| 3+ | $500 |
 
-**Why not trading fees alone:** at a 0.05% fee, covering one $100 default takes $200,000 of volume. Advance fees carry the economics, and hook fees are a small top-up.
-
-## Limits ladder
-
-| Tier | Requirement | Max advance, revenue band 1 | Max advance, band 2+ |
-|---|---|---|---|
-| 0 | Business Pass (zkTLS) + activated agent | $50 | $100 |
-| 1 | Standing Pass, 1 repaid | $100 | $250 |
-| 2 | Standing Pass, 2 repaid | $250 | $500 |
-| 3+ | Standing Pass, 3+ repaid | $500 | $500 |
-
-Each draw is the lowest of four limits: this ladder, the merchant's own mandate (max per advance and max per month), the Underwriter's offer based on onchain sales, and the current risk limits (the Risk agent).
-
-The Business Pass replaces the old "two weeks of sales through the link" wait: the merchant proves offchain history on day one, so the first advance can come right after onboarding.
-
-## What each user sees
-
-| Screen | Numbers shown |
-|---|---|
-| Advance details (merchant) | Amount, flat fee, total to repay, repaid so far, estimated days left |
-| Earn overview (lender) | Vault APY, total lent, default rate, and how losses are covered (junior first) |
-| Junior vault (risk taker) | Fee share, coverage ratio (junior + reserve as a share of outstanding advances), live price |
-| Protocol dashboard (public) | Total outstanding, repayments, write-offs, reserve, junior TWAP price, current limits |
+Actual offers are further limited by revenue band, mandate, underwriting and risk limits. The demo Business Pass uses a mock attestor; a genuine external revenue figure would still not establish future captured sales. A settlement-integrated payment-provider partnership is a distribution hypothesis, not a validated channel.

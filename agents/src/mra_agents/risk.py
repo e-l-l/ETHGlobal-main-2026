@@ -167,6 +167,7 @@ def risk_signals(
     default_window: int = DEFAULT_WINDOW_SECONDS,
     expected_days_for: Callable[[AdvanceState], float | None] | None = None,
     default_expected_days: float = 60,
+    min_pool_liquidity: int = 1,
 ) -> dict:
     """Compute every SPEC risk trigger. Pure code, JSON-safe output; ``result["triggers"]`` lists fired ones.
 
@@ -187,6 +188,18 @@ def risk_signals(
     twap: dict[str, Any] = {"short_seconds": TWAP_SHORT_SECONDS, "long_seconds": TWAP_LONG_SECONDS,
                             "junior_is_token0": junior_is_token0, "fired": False}
     try:
+        if not callable(getattr(reader, "junior_oracle_observation_count", None)) or not callable(
+                getattr(reader, "junior_pool_liquidity", None)):
+            raise TypeError("oracle_data_unavailable")
+        observations = int(reader.junior_oracle_observation_count())
+        twap["observation_count"] = observations
+        if observations < 2:
+            raise ValueError("insufficient_observations")
+        liquidity = int(reader.junior_pool_liquidity())
+        twap["liquidity"] = liquidity
+        twap["min_liquidity"] = min_pool_liquidity
+        if liquidity < min_pool_liquidity:
+            raise ValueError("insufficient_liquidity")
         t1 = int(reader.junior_twap_tick(TWAP_SHORT_SECONDS))
         t24 = int(reader.junior_twap_tick(TWAP_LONG_SECONDS))
         d = t1 - t24
@@ -202,7 +215,9 @@ def risk_signals(
         twap["price_ratio_1h_vs_24h"] = ratio
         twap["fired"] = twap_drop_fires(ratio)
     except Exception as e:  # noqa: BLE001 - e.g. RiskHook InsufficientHistory right after deploy
-        errors.append(f"twap: {type(e).__name__}")
+        reason = str(e) if str(e) in ("insufficient_liquidity", "insufficient_observations", "oracle_data_unavailable") else type(e).__name__
+        twap["unavailable_reason"] = reason
+        errors.append(f"twap: {reason}")
     out["twap"] = twap
     if twap["fired"]:
         triggers.append(TRIGGER_TWAP)
@@ -362,6 +377,7 @@ class RiskAgent:
             default_window=self.default_window,
             expected_days_for=self.expected_days_for,
             default_expected_days=self.settings.max_days_to_repay,
+            min_pool_liquidity=self.settings.risk_min_pool_liquidity,
         )
         return {"signals": signals, "triggers": signals["triggers"], "last_tick": self.last}
 
@@ -375,6 +391,7 @@ class RiskAgent:
             default_window=self.default_window,
             expected_days_for=self.expected_days_for,
             default_expected_days=self.settings.max_days_to_repay,
+            min_pool_liquidity=self.settings.risk_min_pool_liquidity,
         )
         record: dict[str, Any] = {"at": now, "signals": signals, "triggers": signals["triggers"],
                                   "proposal": None, "source": None, "enforced": None,

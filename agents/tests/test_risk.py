@@ -57,6 +57,12 @@ class FakeReader:
     def advances(self):
         return list(self._advances)
 
+    def junior_pool_liquidity(self):
+        return 100
+
+    def junior_oracle_observation_count(self):
+        return 2
+
     def junior_twap_tick(self, seconds_ago):
         if self.twap_error:
             raise self.twap_error

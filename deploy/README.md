@@ -1,5 +1,7 @@
 # Deploying the demo on one EC2 instance
 
+> **Running locally instead?** Use [docs/LOCAL.md](../docs/LOCAL.md). `scripts/dev-up.sh` (or `.\scripts\dev-up.ps1`) runs the same compose file with the dev overlay `docker-compose.dev.yml`: no Caddy, no domain, an anvil devnet with the contracts deployed and seeded, and only public anvil keys. This page is about the EC2 box.
+
 Everything runs on one EC2 box in **ap-south-1 (Mumbai)**, under Docker Compose. **Caddy** sits in front and gets HTTPS certificates automatically. We have no domain, so hostnames come from [sslip.io](https://sslip.io): `app.13-233-45-67.sslip.io` resolves to `13.233.45.67`.
 
 | URL | Service | Container port |
@@ -18,6 +20,7 @@ Here `<suffix>` is `<ip-with-dashes>.sslip.io`. Only Caddy publishes ports (80 a
 deploy/
   docker-compose.yml        services, healthchecks, volumes, network
   docker-compose.local.yml  laptop fallback overlay (no Caddy, localhost ports, host anvil)
+  docker-compose.dev.yml    local dev overlay: devnet in Docker, web app in local mode (scripts/dev-up.sh, docs/LOCAL.md)
   Caddyfile                 hostnames from {$HOST_SUFFIX}, HTTPS, security headers
   bootstrap-ec2.sh          one-time host setup (Docker, compose, swap, clone)
   deploy.sh                 pull, build, up -d, health checks, print URLs (also how you update)
@@ -31,6 +34,7 @@ deploy/
   devnet/                   anvil-entry.sh (anvil + clock fix), bootstrap.sh (deploy + seed), rpc_proxy.py
                             (public RPC allowlist) + tests/, Dockerfile (devnet tools image)
   env/*.env.example         templates; the real *.env files are git-ignored
+                            (issuer-devnet.env.example: the local dev stack's issuer, public anvil key 4)
 ```
 
 ## Instance sizing
@@ -285,6 +289,8 @@ NOFOLLOW=1 TAIL=50 ./deploy/logs.sh agents-worker   # recent risk/keeper ticks, 
 - The box is down: run the laptop fallback below.
 
 ### Backup plan: Wi-Fi or EC2 fails, run everything on the laptop
+
+For a fully self-contained laptop stack with no Sepolia keys and the devnet in Docker, `scripts/dev-up.sh` ([docs/LOCAL.md](../docs/LOCAL.md)) is the simpler option. The steps below are the older fallback: a host anvil plus your Sepolia `agents.env`.
 
 It uses the same compose file with `docker-compose.local.yml` layered on top. That overlay drops Caddy, publishes plain HTTP on localhost, and points the agents at **anvil** on the host.
 

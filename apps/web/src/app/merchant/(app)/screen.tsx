@@ -3,6 +3,7 @@
 import type { HomeView } from "@repo/sdk";
 import {
   Button,
+  AgentStop,
   Card,
   EyeIcon,
   JarMark,
@@ -38,13 +39,13 @@ const SALES_POLL_MS = 4000;
  */
 export function HomeScreen({ initial }: { initial: HomeView | null }) {
   const { data, error } = useMRA(q.home, { initial, ...(isMock ? {} : { refreshMs: SALES_POLL_MS }) });
-  const { data: agent } = useMRA(q.agentStatus, { enabled: !isMock });
+  const { data: agent, reload: reloadAgent } = useMRA(q.agentStatus);
   const { data: cash } = useMRA(q.cashOut);
   const { data: week } = useMRA(q.week, { enabled: data?.advance != null });
   if (!data) return <MRAState error={error} />;
   const { shop, today, agentSummary, agentLimits, advance, sales, limitsLadder, currentTier } = data;
   const holdback = advance?.holdback ?? 0;
-  const agentOn = isMock || agent?.active === true;
+  const agentOn = agent?.active === true;
   const toYou = Math.max(0, today.soldUsd - today.toRepayment);
   const available = cash?.available;
   const cap = limitsLadder[currentTier]?.cap;
@@ -233,6 +234,19 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
               </div>
               <ProgressBar value={agentLimits.perMonth > 0 ? agentSummary.monthUsed / agentLimits.perMonth : 0} label="Monthly limit used" />
             </div>
+            <div className="flex items-center justify-between gap-3 font-body text-read">
+              <span className="text-charcoal-muted">Remaining allowance</span>
+              <span className="text-right font-semibold text-charcoal tabular-nums">
+                {agent?.remainingAllowance === undefined ? "Unavailable" : formatMoney(agent.remainingAllowance)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 font-body text-read">
+              <span className="text-charcoal-muted">Mandate expiry</span>
+              <span className="text-right font-semibold text-charcoal tabular-nums">
+                {agent?.expiry ? new Date(agent.expiry * 1000).toLocaleDateString() : "Unavailable"}
+              </span>
+            </div>
+            {agentOn ? <AgentStop onDone={reloadAgent} /> : null}
           </Card>
 
           {cap !== undefined ? (

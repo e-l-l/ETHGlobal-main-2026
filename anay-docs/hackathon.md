@@ -73,10 +73,10 @@ ETHGlobal allows three partners, and all of a partner's tracks count as one.
 | Time | Scene |
 |---|---|
 | 0:00–0:25 | **Problem.** A kiosco owner in Buenos Aires needs dollars for stock today, and the sales that would pay for it arrive next week. Loan apps would want her contacts. Welcome screen: *"We never ask for your name, phone or contacts."* |
-| 0:25–1:10 | **Private onboarding.** She logs into the demo seller portal through zkTLS. *"✅ Verified · Argentina · revenue band 2 · 6+ months: we learned nothing else."* She creates her shop and sets agent limits. First approval is declined: *"No agent set up, nothing will be drawn."* She retries and approves with World. Flip the "What the world sees" toggle. |
+| 0:25–1:10 | **Private onboarding.** She logs into the demo seller portal through zkTLS. *"✅ Verified · Argentina · revenue band 2 · 6+ months: the issuer sees the account ID transiently."* She creates her shop and sets agent limits. First approval is declined: *"No agent set up, nothing will be drawn."* She retries and approves with World. Flip the "What the world sees" toggle. |
 | 1:10–1:50 | **Agent and live sale.** The agent draws: *"Your agent drew $100 for stock,"* with its reason. A judge scans the QR and pays in a test token, with no mention of the advance. The phone announces *"Recibiste 10 dólares, 1 fue a tu adelanto"*. Repaid-so-far rises. |
 | 1:50–2:25 | **Attack.** A second merchant's agent asks for a draw on wash-traded sales with an injection string. The Critic rejects it, and a forced draw above the mandate reverts at the contract. |
-| 2:25–3:10 | **Standing Pass.** The repaid merchant sees *"your limit is now $100, nobody can see your history,"* starts a fresh shop and proves "1 repaid" in ZK. The explorer shows no link. |
-| 3:10–4:00 | **Default and the market.** A merchant stops selling. The junior token absorbs the loss, its Uniswap price falls, and the Risk agent cuts limits live with its reasoning on the Risk status screen. The lender's Earn overview shows senior untouched. |
+| 2:25–3:10 | **Standing Pass.** The repaid merchant sees *"your limit is now $100, the proof hides which leaf you used,"* starts a fresh shop and proves "1 repaid" in ZK. Public metadata may correlate activity. |
+| 3:10–4:00 | **Default and the market.** A merchant stops selling. The junior token absorbs the loss, a separate scripted sell moves the seeded Uniswap pool price, and the Risk agent cuts limits live with its reasoning on the Risk status screen. The lender's Earn overview shows senior untouched. |
 
 Judges allow 4 minutes for the demo and 3 for questions.

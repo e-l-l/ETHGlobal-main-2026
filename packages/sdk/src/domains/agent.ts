@@ -158,9 +158,20 @@ export function agentDomain(ctx: Ctx) {
       agentLimits: limitsVM(a.limits, s.purpose ?? "stock"),
       agentId: a.id,
       mandateVerified: a.mandate_verified,
+      expiry: a.limits.expiry,
       source: "api",
     };
-    if (a.mandate_id) view.mandateId = a.mandate_id;
+    if (a.mandate_id) {
+      view.mandateId = a.mandate_id;
+      try {
+        const mandate = await ctx.chain().mandate(BigInt(a.mandate_id));
+        const used = ctx.now() >= Number(mandate.periodStart) + Number(mandate.period) ? 0n : BigInt(mandate.drawnInPeriod);
+        view.remainingAllowance = usd(Number(BigInt(mandate.maxPerPeriod) - used));
+        view.expiry = Number(mandate.expiry);
+      } catch {
+        // A chain read failure must not turn an estimate into a mandate balance.
+      }
+    }
     return view;
   }
 
@@ -191,8 +202,8 @@ export function agentDomain(ctx: Ctx) {
 
     /** M08 Approve dialog content. */
     async approveView(limits?: SetupLimits): Promise<AgentApproveView> {
-      if (isMock || !limits) return ctx.mocked({ advance: { ...S.advance }, agentLimits: { ...S.agentLimits }, source: "mock" as const });
-      const fee = Math.round(limits.perAdvance * 0.15);
+      if (!limits) return ctx.mocked({ advance: { ...S.advance }, agentLimits: { ...S.agentLimits }, source: "mock" as const });
+      const fee = Math.round(limits.perAdvance * 15) / 100;
       return {
         advance: { ...S.advance, purpose: limits.purpose ?? "stock", drawn: limits.perAdvance, fee, total: limits.perAdvance + fee, repaid: 0, left: limits.perAdvance + fee, pct: 0 },
         agentLimits: { perAdvance: limits.perAdvance, perMonth: limits.perMonth, purpose: limits.purpose ?? "stock" },

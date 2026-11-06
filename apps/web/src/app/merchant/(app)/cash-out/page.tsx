@@ -1,4 +1,4 @@
-import { Page, PageHead } from "@/final";
+import { DemoBadge, Page, PageHead, Text } from "@/final";
 import { serverView } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { routes } from "@/lib/routes";
@@ -10,6 +10,8 @@ export default async function CashOutPage() {
   return (
     <Page tabs>
       <PageHead back={routes.merchant} backLabel="Home" title="Cash out" />
+      <DemoBadge>Simulated cash-out</DemoBadge>
+      <Text>No local money is sent.</Text>
       <CashOutForm initial={initial} />
     </Page>
   );

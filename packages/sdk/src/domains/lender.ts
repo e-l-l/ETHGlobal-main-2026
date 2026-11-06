@@ -194,7 +194,7 @@ async function tradeRows(ctx: Ctx): Promise<TradeRowVM[]> {
 }
 
 export type JuniorSwapOptions = {
-  /** "buy": spend `amount` USDC on JAR-J. "sell": sell `amount` JAR-J for USDC. */
+  /** "buy": spend `amount` USDC on DRIP. "sell": sell `amount` DRIP for USDC. */
   side: SwapSide;
   amount: number;
   /** Price tolerance on top of the quoted price move. Default 100 (1%). */
@@ -209,9 +209,9 @@ const FEE_DENOMINATOR = 1_000_000n;
 /**
  * One real Uniswap v4 swap through Uniswap's PoolSwapTest router on the RiskHook pool, from the connected wallet.
  * Both directions are sized so the unspecified side is USDC, so the RiskHook takes its USDC fee on each:
- *  - sell: exact-in `amount` JAR-J -> USDC (hook fee comes out of the USDC received)
- *  - buy: exact-out of the JAR-J that `amount` USDC buys (quoted by simulating), so the USDC paid ≈ `amount`,
- *    fee included (an exact-in buy would leave JAR-J unspecified and the hook would take nothing)
+ *  - sell: exact-in `amount` DRIP -> USDC (hook fee comes out of the USDC received)
+ *  - buy: exact-out of the DRIP that `amount` USDC buys (quoted by simulating), so the USDC paid ≈ `amount`,
+ *    fee included (an exact-in buy would leave DRIP unspecified and the hook would take nothing)
  * Slippage: the swap carries a v4 sqrtPriceLimit; past it the swap fills partially, never at a worse price.
  */
 async function juniorSwap(ctx: Ctx, o: JuniorSwapOptions): Promise<SwapResult> {
@@ -289,16 +289,16 @@ async function juniorSwap(ctx: Ctx, o: JuniorSwapOptions): Promise<SwapResult> {
     return decodeBalanceDelta(r.result as bigint);
   };
   const open = (zeroForOne: boolean) => (zeroForOne ? 4295128740n : 1461446703485210103287273052203988822378723970341n);
-  const zeroForOne = !buy; // currency0 = JAR-J, so selling JAR-J is zeroForOne
+  const zeroForOne = !buy; // currency0 = DRIP, so selling DRIP is zeroForOne
   let amountSpecified: bigint;
   if (buy) {
     // Pool input such that input + hook fee ≈ the USDC budget (2 units of rounding headroom).
     const poolIn = (base * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feePips) - 2n;
     const q = await sim(false, -poolIn, open(false));
     if (q.amount0 <= 0n) throw new MRAError("bad_state", "the pool quoted zero DRIP for this amount");
-    amountSpecified = q.amount0; // exact output of JAR-J
+    amountSpecified = q.amount0; // exact output of DRIP
   } else {
-    amountSpecified = -base; // exact input of JAR-J
+    amountSpecified = -base; // exact input of DRIP
   }
   const quote = await sim(zeroForOne, amountSpecified, open(zeroForOne));
   const qJ = Number(quote.amount0 < 0n ? -quote.amount0 : quote.amount0);
@@ -340,8 +340,8 @@ async function juniorSwap(ctx: Ctx, o: JuniorSwapOptions): Promise<SwapResult> {
     steps,
     simulated: false,
     side: o.side,
-    tokenIn: buy ? "USDC" : "JAR-J",
-    tokenOut: buy ? "JAR-J" : "USDC",
+    tokenIn: buy ? "USDC" : "DRIP",
+    tokenOut: buy ? "DRIP" : "USDC",
     amountIn: usd(fill.amountIn),
     amountOut: usd(fill.amountOut),
     hookFeeUsdc: usd(fill.hookFee),
@@ -351,7 +351,7 @@ async function juniorSwap(ctx: Ctx, o: JuniorSwapOptions): Promise<SwapResult> {
   };
 }
 
-/** Mock swap: same shape, priced off the mock JAR-J price with the 0.3% LP fee and 0.3% hook fee. */
+/** Mock swap: same shape, priced off the mock DRIP price with the 0.3% LP fee and 0.3% hook fee. */
 function mockSwap(o: JuniorSwapOptions): SwapResult {
   const p = Number(L.VAULT.juniorPrice.replace(/[^0-9.]/g, "")) || 1;
   const buy = o.side === "buy";
@@ -371,8 +371,8 @@ function mockSwap(o: JuniorSwapOptions): SwapResult {
     steps,
     simulated: true,
     side: o.side,
-    tokenIn: buy ? "USDC" : "JAR-J",
-    tokenOut: buy ? "JAR-J" : "USDC",
+    tokenIn: buy ? "USDC" : "DRIP",
+    tokenOut: buy ? "DRIP" : "USDC",
     amountIn: o.amount,
     amountOut: Math.round(amountOut * 1e6) / 1e6,
     hookFeeUsdc: Math.round(hookFeeUsdc * 1e6) / 1e6,
@@ -457,7 +457,7 @@ export function lenderDomain(ctx: Ctx) {
       return { vault: s.vault, juniorSeries: series, writeOffIndex, tradeRows: rows, source: "chain" };
     },
     /**
-     * J03 Swap JAR-J ⇄ USDC for real: Uniswap v4 PoolSwapTest → PoolManager → RiskHook (fee + TWAP), from the
+     * J03 Swap DRIP ⇄ USDC for real: Uniswap v4 PoolSwapTest → PoolManager → RiskHook (fee + TWAP), from the
      * connected (burner) wallet. Approves the router once, waits for the receipt. Mock mode simulates.
      */
     async swap(opts: JuniorSwapOptions): Promise<SwapResult> {
@@ -495,7 +495,7 @@ export function lenderDomain(ctx: Ctx) {
       return { vault: s.vault, positionRows: rows, positionActivity: rows.map((r) => ({ when: r.when, what: r.action, amount: r.amount })), seniorSeries: series, source: "chain" };
     },
     /**
-     * L01 / J01 "Risk, in public": default rate, repayment buckets, cohort curve, coverage, the market's view of JAR-J
+     * L01 / J01 "Risk, in public": default rate, repayment buckets, cohort curve, coverage, the market's view of DRIP
      * and the Risk agent's caps. Public chain data only (plus the agents API's public /risk/status when it answers).
      * Aggregate: no shop id or pseudonym anywhere in the result.
      */

@@ -5,7 +5,7 @@
 <h1 align="center">DripMoni</h1>
 
 <p align="center">
-  <b>QR payments for small shops. Every payment pays back 10% of a small dollar advance for stock, and nobody can tell who owes.</b>
+  <b>A shop gets an advance and repays a slice of sales while it is active. ZK proofs protect credential details; transactions remain public.</b>
 </p>
 
 <p align="center">
@@ -14,15 +14,23 @@
 
 ---
 
+## What is live vs simulated
+
+| Live | Simulated or planned |
+|---|---|
+| Sepolia contracts; browser-generated ZK proofs verified onchain; Bedrock AI underwriting; managed agents and Risk agent; test-USDC payments; v4 DripCoin swap via RiskHook; Anon-RPC app reads | Mock zkTLS attestor and fictional seller portal; World test-mode stub (real OIDC/IDKit built and tested, pending keys); cash-out; any-token checkout; testnet money |
+
+DripCoin (DRIP): junior, takes losses first. The deployed contract still uses Junior/JNR until redeploy. The demo pool is seeded; its price is not a validated credit oracle. See [privacy architecture](docs/privacy-architecture.md) for public data and trust boundaries and [economics](docs/economics.md) for fees and risks.
+
 ## What it is
 
 DripMoni is a private **merchant cash advance** for small shops in dollar-short economies, such as a kiosco in Buenos Aires, a phone-accessory stall in Lagos or a duka in Nairobi.
 
 1. **Prove the business, not the person.** The merchant proves with zkTLS that their seller dashboard shows a country, a revenue band and 6+ months of activity. That becomes a **Business Pass**. We never ask for a name, phone number or contacts.
-2. **Get paid in stablecoins.** Customers scan the shop's QR and pay in any token. It swaps through Uniswap to USDC, and a contract splits every payment: 90% to the shop, 10% to repaying its open advance.
-3. **An agent draws stock on credit.** The merchant sets limits (max per advance, max per month, purpose) and approves them once with a **World Agent Pass**. The cash-flow agent draws small advances to pay suppliers, and `PolicyGuard` enforces the limits onchain.
+2. **Get paid in stablecoins.** Customers scan the shop's QR and pay in test USDC. While an advance is active, a repayment slice goes toward it: 10% in the demo, 5–20% in the contract. Without an advance there is no holdback. Any-token checkout swaps are planned.
+3. **An agent draws stock on credit.** The merchant sets limits (max per advance, max per month, recipient and expiry) and approves them once with a **test-mode World Agent Pass**. The cash-flow agent draws small advances to pay suppliers, and `PolicyGuard` enforces the limits onchain.
 4. **Repay through sales, build a private record.** Repayment comes out of the 10% split automatically. There's one flat fee, and no interest, late fees or penalties. A fully repaid advance mints a **Standing Pass**, a Noir zero-knowledge credential that raises the merchant's limit without revealing their history.
-5. **Lenders fund it.** An ERC-4626 USDC vault earns most of the fee. A first-loss token, **DripCoin (DRIP)**, earns more for taking losses first, and trades on a Uniswap v4 pool with a `RiskHook`.
+5. **Lenders fund it.** A senior ERC-4626 USDC vault earns most of the fee. A junior first-loss token (DripCoin (DRIP)) earns more for taking losses first, and trades on a Uniswap v4 pool with a `RiskHook`.
 
 The **World view** toggle on every screen shows exactly which data is onchain and which stays on the device.
 
@@ -36,8 +44,8 @@ The **World view** toggle on every screen shows exactly which data is onchain an
 | Contracts (Foundry): AdvanceBook, BusinessPassRegistry, vault and DripCoin ERC-4626 tranches, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 152 tests |
 | Noir circuits: `standing_pass`, `business_pass` | ✅ Proofs made in the browser verify on the deployed verifiers |
 | Agents service (Python): Underwriter, Critic, managed cash-flow agents, Risk agent, keeper, relayer | ✅ Running on EC2, 406 tests |
-| Business Pass issuer (zkTLS → attestation) | ✅ Running; mock attestor until the Reclaim provider is live |
-| `@repo/sdk`: the one integration layer every screen uses | ✅ Anon-RPC transport, in-browser prover, burner wallet + demo faucet |
+| Business Pass issuer (zkTLS → attestation) | ✅ Running; demo uses a mock attestor; the real Reclaim path is built and tested |
+| `@repo/sdk`: the one integration layer every screen uses | ✅ Anon-RPC wired in the app (26/26 reads routed in a Chrome measurement), in-browser prover, burner wallet + demo faucet |
 | World Agent Pass + IDKit | 🟡 Built and tested; test mode until the World app keys are added |
 | Live demo | https://app.65-1-36-70.sslip.io (public devnet for the default scene: `rpc.` / `api-devnet.`) |
 
@@ -75,7 +83,7 @@ No other secrets are needed today. All data comes from `apps/web/src/lib/mock`.
 |---|---|---|
 | Merchant, new | `/onboarding` | Welcome → Prove business (zkTLS) → Verifying → Business Pass → Create shop |
 | Merchant, signed up | `/merchant` | Home and live sales · advance details · bad week · agent log, setup, approve and manage · repaid / Standing Pass · cash out · my QR · World view |
-| Customer | `/pay/corner-kiosk` | Pay with any token → receipt. The advance is never mentioned. |
+| Customer | `/pay/corner-kiosk` | Pay with test USDC → receipt. The advance is never mentioned. |
 | Demo seller portal | `/portal/login` | The page the zkTLS proof reads from (stand-in for Mercado Pago) |
 | Lender | `/earn` | Vault: overview, deposit / withdraw, position |
 | Risk taker | `/dripcoin` | DripCoin (DRIP): overview, mint / redeem, trade on Uniswap v4 |
@@ -148,6 +156,7 @@ Full spec: [anay-design.md](anay-design.md).
 | [privacy-architecture.md](docs/privacy-architecture.md) | The full privacy design: Business Pass, Agent Pass, Anon-RPC, who learns what |
 | [packages/sdk/README.md](packages/sdk/README.md) | How any frontend plugs in: every screen → SDK call → view-model |
 | [integration-keys.md](docs/integration-keys.md) | Every key and app id for real mode, and where to get it |
+| [LOCAL.md](docs/LOCAL.md) | Running the whole stack on your own machine (Docker or native; mock, local devnet, Sepolia) |
 | [deploy/README.md](deploy/README.md) | Running the whole stack on one EC2 box |
 | [docs/submission/](docs/submission/) | Uniswap feedback, World debrief, CROPS, Anon-RPC, AI usage, demo script, video plan |
 
@@ -159,6 +168,8 @@ Onchain and services: Solidity (Foundry) · Uniswap v4 hooks · ERC-4626 · Noir
 
 ## Running the backend
 
+**Whole stack on your machine** (macOS, Windows or Linux): see [docs/LOCAL.md](docs/LOCAL.md). `scripts/dev-up.sh` (or `.\scripts\dev-up.ps1`) brings up anvil with the contracts deployed and seeded, the agents API and worker, the issuer, the demo portal and the web app in `local` mode, with no real keys. The playbook also covers the native path, mock and Sepolia modes, the demo walkthrough and troubleshooting.
+
 | Part | Setup | Test |
 |---|---|---|
 | Contracts | `cd contracts && git submodule update --init --recursive` | `forge test` |
@@ -166,6 +177,7 @@ Onchain and services: Solidity (Foundry) · Uniswap v4 hooks · ERC-4626 · Noir
 | Agents | `cd agents && uv sync` | `uv run pytest` |
 | Issuer | `cd issuer && npm ci` | `npx vitest run` |
 | SDK | `pnpm install` | `pnpm --filter @repo/sdk test` |
+| Whole stack on your machine | see [docs/LOCAL.md](docs/LOCAL.md) | `scripts/doctor.sh`, then `scripts/dev-up.sh` runs health checks |
 | Whole stack on a server | see [deploy/README.md](deploy/README.md) | `deploy.sh` runs health checks |
 
 Secrets live in git-ignored `.env` files; each folder has a `.env.example`.

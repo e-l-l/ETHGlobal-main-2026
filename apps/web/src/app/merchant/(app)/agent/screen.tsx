@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentLogView, AgentStatusView } from "@repo/sdk";
-import { Banner, Button, Card, Columns, Heading, KeyValue, Label, Page, PageHead, Pill, Stack, StatGrid, Text, TextLink } from "@/final";
+import { AgentStop, Banner, Button, Card, Columns, Heading, KeyValue, Label, Page, PageHead, Pill, Stack, StatGrid, Text, TextLink } from "@/final";
 import { capitalize, formatMoney } from "@/lib/format";
 import { isMock } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
@@ -103,6 +103,7 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
           )}
         </Stack>
         <Stack gap="lg">
+          {status.active ? <AgentStop onDone={reload} /> : null}
           {!isMock && status.active ? <RunAgentNow onDone={reload} /> : null}
           <PrivateMark>
             <Card padding="lg">
@@ -112,6 +113,8 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
                   ["Per advance", formatMoney(agentLimits.perAdvance)],
                   ["Per month", formatMoney(agentLimits.perMonth)],
                   ["For", capitalize(agentLimits.purpose)],
+                  ["Remaining allowance", status.remainingAllowance === undefined ? "Unavailable" : formatMoney(status.remainingAllowance)],
+                  ["Mandate expiry", status.expiry ? new Date(status.expiry * 1000).toLocaleDateString() : "Unavailable"],
                 ]}
               />
             </Card>
