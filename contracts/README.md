@@ -15,7 +15,7 @@ Foundry project for DripMoney. The full spec is in [SPEC.md](SPEC.md), and the a
 
 ```bash
 forge build
-FOUNDRY_OFFLINE=true forge test      # 152 tests incl. 2 invariants and real-proof E2Es. Offline avoids a macOS proxy-lookup panic.
+FOUNDRY_OFFLINE=true forge test      # 170 tests incl. 2 invariants and real-proof E2Es. Offline avoids a macOS proxy-lookup panic.
 ```
 
 Poseidon2 is the deployed `zemse/poseidon2-evm` contract (`0xB2542195Ad96AcfBC962C48A97D7640A9F5386D2` on Sepolia). Tests etch its bytecode from `test/fixtures/`.
@@ -49,7 +49,7 @@ Deployer: `0x071735B4e14e601681fc4A82768842c041CC139a` (funded, 2 Sepolia ETH). 
 
 **Demo USDC:** we can't mint Circle's Sepolia USDC freely (only through Circle's faucet, in small amounts), so the demo seeds vaults with a **MockUSDC** we deploy. Using real Sepolia USDC is a config switch (`USDC=` env).
 
-## Live on Sepolia (deployed 2026-11-05)
+## Live on Sepolia (deployed 2026-11-06, deploy block 12076910)
 
 Addresses are in [`agents/deployments/sepolia.json`](../agents/deployments/sepolia.json), and the app and agents service read that file.
 

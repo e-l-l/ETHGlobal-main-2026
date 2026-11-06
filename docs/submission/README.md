@@ -16,7 +16,7 @@ ETHGlobal Mumbai (Nov 5–7, 2026), From Scratch track. Partners: **Uniswap, Wor
 
 Paths such as `contracts/src/RiskHook.sol` are relative to the repo root.
 
-## Live on Sepolia (chain 11155111, deployed 2026-11-05)
+## Live on Sepolia (chain 11155111, deployed 2026-11-06, deploy block 12076910)
 
 Source: [`contracts/README.md`](../../contracts/README.md), "Live on Sepolia", and `agents/deployments/sepolia.json` (deploy block 12076910).
 
@@ -58,7 +58,7 @@ The vaults are seeded with a MockUSDC we deploy, because Circle's Sepolia USDC c
 | Live | Demo stand-in, simulated or roadmap |
 |---|---|
 | Sepolia contracts (deploy block 12076910) | Business Pass evidence: a **demo seller portal and a mock attestor** in the live demo. The real Reclaim path is built and tested ([`docs/zktls-spike.md`](../zktls-spike.md), `issuer/src/reclaim.ts`). |
-| **Real World IDKit and Agent Pass, wired live** on the hosted app (`WORLD_MOCK=0`, `NEXT_PUBLIC_WORLD_MODE=real`). World ID comes first, before any business step. | World **test mode** stays available as a fallback, and the simulator uses it for unattended runs. |
+| **Real World IDKit and Agent Pass, wired live** on the hosted app (`WORLD_MOCK=0`, `NEXT_PUBLIC_WORLD_MODE=real`). World ID comes first, before any business step. | World **test mode** stays available as a fallback, and the simulator uses it for unattended runs. At this event, World's Agent Pass proofs use fake identities (per World's prize page), and IDKit testing uses World's staging environment and simulator. |
 | Browser-generated ZK proofs (Business Pass, Standing Pass) verified onchain; the proof center at `/proof` decodes them | Testnet money: MockUSDC, not Circle USDC |
 | Bedrock AI underwriting (Underwriter, Critic), managed cash-flow agents, Risk agent, keeper | The simulator (`/simulator`) runs on our public devnet with real proofs, real AI and real devnet txs, but **time is fast-forwarded** |
 | USDC checkout with the 92/8 split; v4 DripCoin (DRIP) swap through RiskHook | **Paying in any token via Uniswap is roadmap.** Checkout is USDC only. |
@@ -80,10 +80,10 @@ DripCoin (DRIP) is the junior, first-loss tranche share (ERC-4626). The deployed
 
 | Piece | Status |
 |---|---|
-| Contracts and Uniswap v4 hook | Live on Sepolia; 152 Foundry tests; unaudited hackathon code |
+| Contracts and Uniswap v4 hook | Live on Sepolia; 170 Foundry tests (offline suite); unaudited hackathon code |
 | Agents (Underwriter, Critic, Risk, keeper, relayer) | Running; offline test suite; read-only Sepolia smoke test passes 24/24 |
 | Business Pass issuer and demo seller portal | Live with a **mock attestor**; the real Reclaim path is built and tested |
-| World ID (IDKit) and Agent Pass | **Real mode, wired live** on the hosted app; test mode as fallback (and in the simulator) |
+| World ID (IDKit) and Agent Pass | **Real mode, wired live** on the hosted app; test mode as fallback (and in the simulator). At this event, World's Agent Pass proofs use fake identities (per World's prize page), and IDKit testing uses World's staging environment and simulator. |
 | Anon-RPC | Browser reads through Nox by default; a Chrome measurement routed 26/26 SDK reads |
 | Proof center (`/proof`) and simulator (`/simulator`) | Live |
 | Uniswap API checkout swaps | Roadmap; checkout takes USDC only |

@@ -1,6 +1,6 @@
 # The full picture: a private, ZK-based, trustworthy lending platform
 
-**Scope:** ZK proofs hide credential details, not public transaction history. On the hosted app, real World IDKit and Agent Pass are wired live (test mode remains available as a fallback, and the simulator uses it for unattended runs). The live demo proves the business with a demo seller portal and a mock attestor; the real Reclaim path is built and tested ([zktls-spike.md](zktls-spike.md), `issuer/src/reclaim.ts`).
+**Scope:** ZK proofs hide credential details, not public transaction history. On the hosted app, real World IDKit and Agent Pass are wired live (test mode remains available as a fallback, and the simulator uses it for unattended runs). At this event, World's Agent Pass proofs use fake identities (per World's prize page), and IDKit testing uses World's staging environment and simulator. The live demo proves the business with a demo seller portal and a mock attestor; the real Reclaim path is built and tested ([zktls-spike.md](zktls-spike.md), `issuer/src/reclaim.ts`).
 
 This doc ties together the pieces we've built and the pieces we still need. Each layer has a status:
 - ✅ built and tested
@@ -88,7 +88,7 @@ uniqueness: businessNullifier = HMAC(issuerPepper, accountId) stored as "used": 
 
 ## 3. Where World fits: at human moments, never in the credit decision ✅
 
-**Status:** real World IDKit and Agent Pass are wired live on the hosted app (`WORLD_MOCK=0`, app built with `NEXT_PUBLIC_WORLD_MODE=real`). Test mode remains available as a fallback, and the simulator uses it for unattended runs.
+**Status:** real World IDKit and Agent Pass are wired live on the hosted app (`WORLD_MOCK=0`, app built with `NEXT_PUBLIC_WORLD_MODE=real`). Test mode remains available as a fallback, and the simulator uses it for unattended runs. At this event, World's Agent Pass proofs use fake identities (per World's prize page), and IDKit testing uses World's staging environment and simulator.
 
 **In the demo, credit can be automatic within a mandate.** Agents underwrite, code clamps, the contract decides, and no human is in the loop on any draw. World sits only where a genuinely *human* question exists:
 

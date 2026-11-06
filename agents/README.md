@@ -4,7 +4,7 @@ Underwriting (features, red lines, Claude Underwriter + Critic, clamp, EIP-712 s
 
 ```bash
 uv sync
-uv run pytest -q                                   # 256 offline tests (fake model, fake chain)
+uv run pytest -q                                   # 554 offline tests (fake model, fake chain)
 
 # Local devnet: anvil, full deploy (real ZK verifier, Uniswap v4 pool + hook), 3 seeded merchants
 anvil --chain-id 31337 &                           # or let devnet.sh start it

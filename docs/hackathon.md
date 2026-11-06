@@ -6,14 +6,24 @@ Thu Nov 5, 21:00 IST to Sat Nov 7, 09:00 IST submission. From Scratch track: no 
 
 ETHGlobal allows three partners, and all of a partner's tracks count as one.
 
+Partner totals (per the partner prize pages). "Continuity-only" prizes are for the Continuity track, so this From Scratch project can't win them.
+
+| Partner | Partner total | Open to us (From Scratch) | Continuity-only |
+|---|---|---|---|
+| Uniswap Foundation | $15,000 | $10,000 | $5,000 |
+| World | $12,500 | $7,500 (Agent Pass $5,000 + IDKit $2,500) | Continuity-only versions of the World tracks |
+| Ethereum Foundation | $15,000 | Several tracks, including Anon-RPC $5,000 and CROPS $3,500; one EF prize per project | |
+
+The tracks we target:
+
 | Partner | Track | Pool | Split | Best case |
 |---|---|---|---|---|
-| Uniswap Foundation | Build with Uniswap | $10,000 | $4k / $3k / $2k / $1k | $4,000 |
-| World | World ID Agent Pass | $5,000 | $2.5k / $1.5k / $1k | $2,500 |
-| World | Best Use of IDKit | $2,500 | $1,250 for up to 2 teams | $1,250 |
+| Uniswap Foundation | Build with Uniswap (open) | $10,000 | $4k / $3k / $2k / $1k | $4,000 |
+| World | World ID Agent Pass (open) | $5,000 | $2.5k / $1.5k / $1k | $2,500 |
+| World | Best Use of IDKit (open) | $2,500 | $1,250 for up to 2 teams | $1,250 |
 | Ethereum Foundation | Best Use of Anon-RPC | $5,000 | $2.5k / $1.5k / $1k | $2,500 |
 | Ethereum Foundation | Best CROPS App | $3,500 | $2k / $1k / $500 | (one EF prize per project) |
-| **Total** | | **$26,000** | | **$10,250** |
+| **Total of targeted pools** | | **$26,000** | | **$10,250** |
 
 - **Realistic target:** $3.5k–7.5k (our estimate).
 - **Unconfirmed:** that one project can win both World tracks. Ask World on site. If not, the best case is $9,000.

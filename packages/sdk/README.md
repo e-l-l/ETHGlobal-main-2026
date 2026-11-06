@@ -265,7 +265,7 @@ Everything thrown is an `MRAError` with `code`:
 
 ## Tests
 
-`pnpm --filter @repo/sdk test` runs 46 tests; `test/setup.ts` blocks `fetch`, so nothing touches the network:
+`pnpm --filter @repo/sdk test` runs 145 tests; `test/setup.ts` blocks `fetch`, so nothing touches the network:
 
 - `mock-parity`: mock mode equals apps/web for home, advance, week, repaid, earn, position, junior, trade, protocol, risk, explorer, world view, cash out, QR and setup options
 - `api-client`: request paths, methods, Bearer headers, exact bigint JSON, error-code mapping, timeouts, and real-mode agent view-models over a mocked fetch

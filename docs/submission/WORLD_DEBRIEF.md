@@ -2,7 +2,7 @@
 
 Tracks: **World ID Agent Pass** and **Best Use of IDKit**.
 
-Status: **real World IDKit and Agent Pass are wired live** on the hosted app (`WORLD_MOCK=0`; the app is built with `NEXT_PUBLIC_WORLD_MODE=real`). Test mode remains available as a fallback, and the simulator uses it for unattended runs. The first real end-to-end phone test is under way at the time of writing.
+Status: **real World IDKit and Agent Pass are wired live** on the hosted app (`WORLD_MOCK=0`; the app is built with `NEXT_PUBLIC_WORLD_MODE=real`). Test mode remains available as a fallback, and the simulator uses it for unattended runs. The first real end-to-end phone test is under way at the time of writing. At this event, World's Agent Pass proofs use fake identities (per World's prize page), and IDKit testing uses World's staging environment and simulator.
 
 > **`TODO(team): paste time-to-first-success and result of the first real run`** (date/time, elapsed time from first attempt, pass/fail, anything that broke).
 

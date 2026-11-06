@@ -39,8 +39,8 @@ For the EF Best CROPS App track. Every claim links to its source, and the gaps a
 
 - **License: MIT** ([LICENSE](../../LICENSE)). The Solidity sources already carry `SPDX-License-Identifier: MIT`.
 - Builds from the repo alone:
-  - `forge build && FOUNDRY_OFFLINE=true forge test`: 152 tests
-  - `uv run pytest -q` in `agents/`: 256 offline tests
+  - `forge build && FOUNDRY_OFFLINE=true forge test`: 170 tests
+  - `uv run pytest -q` in `agents/`: 554 offline tests
   - `npm test` in `issuer/` and `demo/portal/`: 61 portal tests
   - a full local devnet with `agents/scripts/devnet.sh`, or the whole stack with no real keys via [`docs/LOCAL.md`](../LOCAL.md)
 

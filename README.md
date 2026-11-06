@@ -41,12 +41,12 @@ The **World view** toggle on every screen shows exactly which data is onchain an
 | Web app: every screen for merchant, customer, lender, DripCoin holder and public users | ✅ Built, responsive (390px phone, 1440px desktop). Reads through `@repo/sdk`: mock by default, live on Sepolia with `NEXT_PUBLIC_MRA_MODE=sepolia` |
 | Design system (`/final/components`) | ✅ Built |
 | Demo seller portal | ✅ Built (inside the web app, deliberately unbranded) |
-| Contracts (Foundry): AdvanceBook, BusinessPassRegistry, vault and DripCoin ERC-4626 tranches, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 152 tests |
+| Contracts (Foundry): AdvanceBook, BusinessPassRegistry, vault and DripCoin ERC-4626 tranches, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 170 Foundry tests (offline suite) |
 | Noir circuits: `standing_pass`, `business_pass` | ✅ Proofs made in the browser verify on the deployed verifiers |
-| Agents service (Python): Underwriter, Critic, managed cash-flow agents, Risk agent, keeper, relayer | ✅ Running on EC2, 406 tests |
+| Agents service (Python): Underwriter, Critic, managed cash-flow agents, Risk agent, keeper, relayer | ✅ Running on EC2, 554 offline tests |
 | Business Pass issuer (zkTLS → attestation) | ✅ Running; demo uses a mock attestor; the real Reclaim path is built and tested |
-| `@repo/sdk`: the one integration layer every screen uses | ✅ Anon-RPC wired in the app (26/26 reads routed in a Chrome measurement), in-browser prover, burner wallet + demo faucet |
-| World ID (IDKit) + Agent Pass | ✅ Real mode wired live on the hosted app (`WORLD_MOCK=0`, `NEXT_PUBLIC_WORLD_MODE=real`); test mode as a fallback and in the simulator |
+| `@repo/sdk`: the one integration layer every screen uses | ✅ Anon-RPC wired in the app (26/26 reads routed in a Chrome measurement), in-browser prover, burner wallet + demo faucet; 145 offline tests |
+| World ID (IDKit) + Agent Pass | ✅ Real mode wired live on the hosted app (`WORLD_MOCK=0`, `NEXT_PUBLIC_WORLD_MODE=real`); test mode as a fallback and in the simulator. At this event, World's Agent Pass proofs use fake identities (per World's prize page), and IDKit testing uses World's staging environment and simulator. |
 | Proof center and simulator | ✅ `/proof` decodes onchain ZK proofs, txs and AI decisions; `/simulator` runs real proofs, AI and devnet txs with time fast-forwarded |
 | Live demo | https://app.65-1-36-70.sslip.io (public devnet for the default scene: `rpc.` / `api-devnet.`) |
 
@@ -58,6 +58,25 @@ The **World view** toggle on every screen shows exactly which data is onchain an
 - **S (security):** the contract enforces tier caps, the exposure cap, mandate limits and 20% junior cover. Agents only propose signed offers, and the Risk agent can only lower limits, never below the floors. This is **unaudited hackathon code**.
 
 Details and honest gaps: [docs/submission/CROPS.md](docs/submission/CROPS.md).
+
+## Uniswap v4: RiskHook and the DRIP/USDC pool
+
+DRIP (the junior, first-loss tranche) trades on a Uniswap v4 pool whose hook does two jobs: it takes a USDC-side fee for the reserve, and it keeps a TWAP that the Risk agent reads as an early-warning signal.
+
+| What | Where |
+|---|---|
+| Hook permissions | [`contracts/src/RiskHook.sol#L86`](contracts/src/RiskHook.sol#L86) `getHookPermissions` |
+| USDC-side fee on every swap | [`contracts/src/RiskHook.sol#L101`](contracts/src/RiskHook.sol#L101) `_afterSwap` |
+| Fee payout (anyone can call) | [`contracts/src/RiskHook.sol#L129`](contracts/src/RiskHook.sol#L129) `flush` |
+| TWAP ring buffer | [`contracts/src/RiskHook.sol#L153`](contracts/src/RiskHook.sol#L153) `_recordObservation`, [`#L174`](contracts/src/RiskHook.sol#L174) `consult` |
+| Address mining and pool init | [`contracts/script/Deploy.s.sol#L70`](contracts/script/Deploy.s.sol#L70) `HookMiner.find`, [`#L76`](contracts/script/Deploy.s.sol#L76) `manager.initialize` |
+| App swap (PoolSwapTest → PoolManager → RiskHook) | [`packages/sdk/src/domains/lender.ts#L466`](packages/sdk/src/domains/lender.ts#L466) `junior.swap` (implementation [`#L220`](packages/sdk/src/domains/lender.ts#L220)); pool key, slot0 and price helpers in [`packages/sdk/src/chain/swap.ts`](packages/sdk/src/chain/swap.ts) |
+| Risk agent reads the TWAP and lowers limits | [`agents/src/mra_agents/risk.py#L204`](agents/src/mra_agents/risk.py#L204) (`consult` over 1h and 24h), [`#L217`](agents/src/mra_agents/risk.py#L217) `twap_drop_fires`, [`#L319`](agents/src/mra_agents/risk.py#L319) `enforce_down_only` |
+| Tests | [`contracts/test/RiskHook.t.sol`](contracts/test/RiskHook.t.sol): fee direction, flush, TWAP, HookMiner address, only-PoolManager |
+
+**Live on Sepolia:** RiskHook [`0xf5174b8f8642aef786e6bb1c1facac6d0f201044`](https://sepolia.etherscan.io/address/0xf5174b8f8642aef786e6bb1c1facac6d0f201044); the DRIP/USDC pool is on PoolManager [`0xE03A1074c86CFeDd5C142C4F04F1a1536e203543`](https://sepolia.etherscan.io/address/0xE03A1074c86CFeDd5C142C4F04F1a1536e203543). Try it in the app at `/dripcoin/trade`.
+
+**Honest limitations:** the pool is seeded by the team, so its price is a signal, not a validated credit oracle. The hook accepts any pool key that initializes with it; it is not locked to the DRIP/USDC pool. Paying a shop in any token through a Uniswap swap is roadmap: checkout is USDC only today.
 
 ## Quick start
 
@@ -191,6 +210,10 @@ Onchain and services: Solidity (Foundry) · Uniswap v4 hooks · ERC-4626 · Noir
 | Whole stack on a server | see [deploy/README.md](deploy/README.md) | `deploy.sh` runs health checks |
 
 Secrets live in git-ignored `.env` files; each folder has a `.env.example`.
+
+## Development history
+
+This repository was assembled on 6 Nov from the team's working repo; full commit history: TODO(team): link the original repository.
 
 ## License
 

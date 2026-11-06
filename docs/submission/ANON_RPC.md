@@ -38,3 +38,11 @@ The app downloads whole trees and builds paths locally. The measured 26 reads do
 ## Fallback
 
 If Anon-RPC is unavailable on stage, the app falls back to direct reads (strict mode is off by default), or you can build with `NEXT_PUBLIC_ANON_RPC=0`. Either way, **say so out loud**. Don't claim privacy that isn't running.
+
+## Intentional tradeoffs
+
+These are deliberate choices for the hackathon build, not oversights.
+
+- **Backend reads go to Tenderly directly.** Anon-RPC protects a *person*: it hides which merchant or lender is reading which state, and from where. The backend services (keeper, relayer, Risk agent, issuer) are ours and run on our server; routing their reads through a mixnet would hide nothing from us, and would only hide our server's IP from Tenderly while they read public contract state. It would also add mixnet latency and a failure mode to timed jobs such as the keeper and the Risk agent. So the Sepolia profile points `RPC_URL` at a Tenderly gateway (`agents/scripts/sepolia.env`). Tenderly can see the backend's reads; it never sees a user's browser.
+- **Strict mode is off by default.** With `NEXT_PUBLIC_ANON_RPC_STRICT` unset, a mixnet that fails to come up falls back to direct reads, so the demo keeps working instead of showing a blank screen. That fallback is never silent: the **"Private reads" chip** in the app header shows the live state and the routed vs direct read counts for the current session (`PrivateReadsChip` in [`apps/web/src/screens/lend/shell.tsx`](../../apps/web/src/screens/lend/shell.tsx)), or "Private reads: off (direct RPC)" after a fallback. Set `NEXT_PUBLIC_ANON_RPC_STRICT=1` to fail closed instead.
+- **Writes are public transactions.** Anon-RPC covers reads only. Every `pay`, `repay`, draw, swap and deposit is an ordinary Sepolia transaction, visible onchain with its sender. The privacy for writes comes from the design (shop pseudonyms, ZK passes, no identity onchain), not from the network layer.
