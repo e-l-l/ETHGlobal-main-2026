@@ -15,6 +15,9 @@ REPO_SLUG="${AUTODEPLOY_REPO:-e-l-l/ETHGlobal-main-2026}"
 LOG="${AUTODEPLOY_LOG:-$HOME/autodeploy.log}"
 LOCK="/tmp/mra-autodeploy.lock"
 NOW=0; [[ "${1:-}" == "--now" ]] && NOW=1
+# 1 = deploy only CI-green commits. 0 = deploy every new main commit; a failing build still stops deploy.sh before
+# any container is replaced, so the running site stays up.
+REQUIRE_CI="${AUTODEPLOY_REQUIRE_CI:-1}"
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >> "$LOG"; }
 
@@ -29,7 +32,7 @@ local_sha="$(git rev-parse HEAD)"
 remote_sha="$(git rev-parse origin/main)"
 [[ "$local_sha" == "$remote_sha" ]] && exit 0
 
-if [[ $NOW == 0 ]]; then
+if [[ $NOW == 0 && $REQUIRE_CI == 1 ]]; then
   # Gate on CI: all check runs for this commit completed and none failed. Public repo: no token needed.
   verdict="$(curl -fsS -m 20 -H 'Accept: application/vnd.github+json' \
     "https://api.github.com/repos/$REPO_SLUG/commits/$remote_sha/check-runs?per_page=100" | python3 -c '

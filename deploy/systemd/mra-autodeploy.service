@@ -7,5 +7,8 @@ Wants=network-online.target
 Type=oneshot
 User=ubuntu
 WorkingDirectory=/home/ubuntu/mra
+# GitHub Actions can't run while the repo owner's account has a billing lock (Nov 2026): deploy without the CI gate.
+# Set to 1 once CI runs again.
+Environment=AUTODEPLOY_REQUIRE_CI=0
 ExecStart=/home/ubuntu/mra/deploy/autodeploy.sh
 TimeoutStartSec=45min
