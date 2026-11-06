@@ -95,6 +95,11 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
     uint16 public constant MIN_REPAY_BPS = 100; // 1%
     uint64 public constant REPAY_WINDOW = 7 days;
     uint64 public constant MAX_MANDATE_DURATION = 180 days;
+    /// @dev Late-fee step-up: while an advance is behind the minimum-repayment clock (no window met for more
+    ///      than REPAY_WINDOW since `lastSaleAt`), an extra fee accrues on principal at this rate, capped
+    ///      separately. 100% of it goes to the reserve. Contract constants so the signed `Offer` is unchanged.
+    uint16 public constant LATE_FEE_RATE_BPS_PER_WEEK = 50;
+    uint16 public constant LATE_FEE_CAP_BPS = 300;
 
     bytes32 public constant MANDATE_TYPEHASH = keccak256(
         "Mandate(bytes32 shopId,address agentKey,address recipient,uint256 maxPerDraw,uint256 maxPerPeriod,uint64 period,uint64 expiry,uint8 tier,uint8 band)"
@@ -139,6 +144,8 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         uint256 pendingCommitment;
         uint64 windowStart; // v2: start of the current minimum-repayment window
         uint256 windowRepaid; // v2: repaid within the current window (not yet enough to reset the clock)
+        uint64 lateSecs; // seconds spent behind, settled each time the minimum is met (lastSaleAt resets)
+        uint256 lateFeePaid; // late fee paid so far (all of it went to the reserve)
     }
 
     struct Mandate {
@@ -196,6 +203,8 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
     event RepaymentSplit(
         uint256 indexed advanceId, uint256 principalPart, uint256 seniorFee, uint256 juniorFee, uint256 reserveFee, uint256 protocolFee
     );
+    /// Late fee paid on a repayment; credited 100% to `reserve` (on top of RepaymentSplit.reserveFee).
+    event LateFeePaid(uint256 indexed advanceId, uint256 amount);
     event AdvanceOpened(
         uint256 indexed id, bytes32 indexed shopId, uint256 amount, uint256 totalOwed, uint16 holdbackBps, uint8 tier
     );
@@ -313,37 +322,14 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
 
         _pullExact(msg.sender, amount);
 
-        uint256 rep = s.activeAdvanceId == 0 ? 0 : _applySaleRepayment(s, shopId, amount);
+        uint256 id = s.activeAdvanceId;
+        uint256 rep;
+        if (id != 0) {
+            rep = Math.min(amount * advances[id].holdbackBps / BPS, owedOf(id));
+            if (rep > 0) _settle(id, shopId, rep);
+        }
         emit Sale(shopId, msg.sender, amount, rep);
         if (amount > rep) usdc.safeTransfer(payout, amount - rep);
-    }
-
-    function _applySaleRepayment(Shop storage s, bytes32 shopId, uint256 amount) internal returns (uint256 rep) {
-        uint256 id = s.activeAdvanceId;
-        Advance storage a = advances[id];
-        rep = Math.min(amount * a.holdbackBps / BPS, owedOf(id));
-        if (rep == 0) return 0;
-        uint256 feeDue = accruedFee(a) - a.feePaid;
-        uint256 fee = Math.min(rep, feeDue);
-        a.feePaid += fee;
-        uint256 principalPart = Math.min(rep - fee, a.principal - a.principalRepaid);
-        a.repaid += rep;
-        a.principalRepaid += principalPart;
-        _noteRepayment(a, rep);
-        uint256 sFee = Math.mulDiv(fee, seniorFeeBps, BPS);
-        uint256 jFee = Math.mulDiv(fee, juniorFeeBps, BPS);
-        uint256 pFee = Math.mulDiv(fee, protocolFeeBps, BPS);
-        uint256 rFee = fee - sFee - jFee - pFee;
-        reserve += rFee;
-        emit RepaymentSplit(id, principalPart, sFee, jFee, rFee, pFee);
-        if (a.principalRepaid == a.principal) {
-            a.status = Status.Repaid;
-            s.activeAdvanceId = 0;
-            emit AdvanceRepaid(id, shopId);
-        }
-        if (principalPart + sFee > 0) { usdc.safeTransfer(address(senior), principalPart + sFee); if (principalPart > 0) senior.principalReturned(principalPart); }
-        if (jFee > 0) usdc.safeTransfer(address(junior), jFee);
-        if (pFee > 0) usdc.safeTransfer(treasury, pFee);
     }
 
     // ---------------------------------------------------------------- draws
@@ -632,16 +618,48 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         return advances[advanceId];
     }
 
-    /// @notice Amount still owed on an advance (0 unless Active).
+    /// @notice Amount still owed on an advance (0 unless Active): principal left + unpaid fee + unpaid late fee.
     function owedOf(uint256 advanceId) public view returns (uint256) {
         Advance storage a = advances[advanceId];
-        return a.status == Status.Active ? a.principal - a.principalRepaid + accruedFee(a) - a.feePaid : 0;
+        return a.status == Status.Active
+            ? a.principal - a.principalRepaid + accruedFee(a) - a.feePaid + _lateFee(a) - a.lateFeePaid
+            : 0;
+    }
+
+    /// @notice Late fee accrued so far (paid + unpaid). Frozen at what was paid once the advance is not Active.
+    function lateFeeOf(uint256 advanceId) external view returns (uint256) {
+        Advance storage a = advances[advanceId];
+        return a.status == Status.Active ? _lateFee(a) : a.lateFeePaid;
+    }
+
+    /// @notice True while an Active advance is behind the minimum: no REPAY_WINDOW met for more than
+    ///         REPAY_WINDOW since `lastSaleAt`. The late fee accrues exactly while this is true.
+    function isBehind(uint256 advanceId) external view returns (bool) {
+        Advance storage a = advances[advanceId];
+        return a.status == Status.Active && _behindSecs(a) > 0;
     }
 
     function accruedFee(Advance storage a) internal view returns (uint256) {
-        uint256 raw = Math.mulDiv(a.principal, uint256(a.feeRateBpsPerWeek) * (block.timestamp - a.drawnAt), uint256(BPS) * 7 days);
-        uint256 cap = Math.mulDiv(a.principal, a.feeCapBps, BPS);
         if (a.principalRepaid == a.principal) return a.feePaid;
+        return _feeFor(a.principal, a.feeRateBpsPerWeek, block.timestamp - a.drawnAt, a.feeCapBps);
+    }
+
+    /// @dev Late fee = settled behind-seconds plus the still-open behind stretch, at the late rate and cap.
+    function _lateFee(Advance storage a) internal view returns (uint256) {
+        if (a.principalRepaid == a.principal) return a.lateFeePaid;
+        return _feeFor(a.principal, LATE_FEE_RATE_BPS_PER_WEEK, a.lateSecs + _behindSecs(a), LATE_FEE_CAP_BPS);
+    }
+
+    /// @dev Seconds past the minimum-repayment deadline (lastSaleAt + REPAY_WINDOW), 0 if not behind.
+    function _behindSecs(Advance storage a) internal view returns (uint256) {
+        uint256 due = uint256(a.lastSaleAt) + REPAY_WINDOW;
+        return block.timestamp > due ? block.timestamp - due : 0;
+    }
+
+    /// @dev min(principal * rateBpsPerWeek * secs / (1e4 * 1 week), principal * capBps / 1e4).
+    function _feeFor(uint256 principal, uint256 rate, uint256 secs, uint256 capBps) internal pure returns (uint256) {
+        uint256 raw = Math.mulDiv(principal, rate * secs, uint256(BPS) * 7 days);
+        uint256 cap = Math.mulDiv(principal, capBps, BPS);
         return raw < cap ? raw : cap;
     }
 
@@ -744,7 +762,9 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
             credentialClaimed: false,
             pendingCommitment: pending,
             windowStart: uint64(block.timestamp),
-            windowRepaid: 0
+            windowRepaid: 0,
+            lateSecs: 0,
+            lateFeePaid: 0
         });
         shops[o.shopId].activeAdvanceId = id;
         emit AdvanceOpened(id, o.shopId, o.amount, o.amount + Math.mulDiv(o.amount, o.feeCapBps, BPS), o.holdbackBps, o.tier);
@@ -763,6 +783,7 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         if (nowTs < a.windowStart + REPAY_WINDOW) acc += a.windowRepaid;
         else a.windowStart = nowTs;
         if (acc >= minWindowRepayment(a.principal + accruedFee(a))) {
+            a.lateSecs += uint64(_behindSecs(a)); // settle the behind stretch before the clock restarts
             a.lastSaleAt = nowTs;
             a.windowStart = nowTs;
             a.windowRepaid = 0;
@@ -771,7 +792,8 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         }
     }
 
-    /// @notice Repay an active advance directly; fee accrued to this timestamp is paid before principal.
+    /// @notice Repay an active advance directly; fee (and any late fee) accrued to this timestamp is paid
+    ///         before principal.
     function repay(uint256 advanceId, uint256 amount) external nonReentrant {
         Advance storage a = advances[advanceId];
         if (a.status != Status.Active) revert AdvanceNotActive(advanceId);
@@ -779,24 +801,36 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         uint256 owed = owedOf(advanceId);
         if (amount > owed) amount = owed;
         _pullExact(msg.sender, amount);
-        uint256 feeDue = accruedFee(a) - a.feePaid;
-        uint256 fee = amount < feeDue ? amount : feeDue;
+        _settle(advanceId, a.shopId, amount);
+    }
+
+    /// @dev Shared by pay() and repay(). `amount` <= owedOf(id). Order: normal fee, then late fee, then principal.
+    ///      Normal fee splits senior/junior/reserve/protocol; the late fee goes 100% to the reserve.
+    function _settle(uint256 id, bytes32 shopId, uint256 amount) internal {
+        Advance storage a = advances[id];
+        uint256 fee = Math.min(amount, accruedFee(a) - a.feePaid);
+        uint256 late = Math.min(amount - fee, _lateFee(a) - a.lateFeePaid);
+        uint256 principalPart = amount - fee - late;
         a.feePaid += fee;
-        uint256 principalPart = amount - fee;
-        if (principalPart > a.principal - a.principalRepaid) principalPart = a.principal - a.principalRepaid;
+        a.lateFeePaid += late;
         a.principalRepaid += principalPart;
         a.repaid += amount;
         _noteRepayment(a, amount);
-        uint256 toSenior = principalPart + Math.mulDiv(fee, seniorFeeBps, BPS);
-        uint256 toJunior = Math.mulDiv(fee, juniorFeeBps, BPS);
-        uint256 toProtocol = Math.mulDiv(fee, protocolFeeBps, BPS);
-        uint256 toReserve = fee - (toSenior - principalPart) - toJunior - toProtocol;
-        reserve += toReserve;
-        emit RepaymentSplit(advanceId, principalPart, toSenior - principalPart, toJunior, toReserve, toProtocol);
-        if (toSenior > 0) { usdc.safeTransfer(address(senior), toSenior); if (principalPart > 0) senior.principalReturned(principalPart); }
-        if (toJunior > 0) usdc.safeTransfer(address(junior), toJunior);
-        if (toProtocol > 0) usdc.safeTransfer(treasury, toProtocol);
-        if (a.principalRepaid == a.principal) { a.status = Status.Repaid; shops[a.shopId].activeAdvanceId = 0; emit AdvanceRepaid(advanceId, a.shopId); }
+        uint256 sFee = Math.mulDiv(fee, seniorFeeBps, BPS);
+        uint256 jFee = Math.mulDiv(fee, juniorFeeBps, BPS);
+        uint256 pFee = Math.mulDiv(fee, protocolFeeBps, BPS);
+        uint256 rFee = fee - sFee - jFee - pFee;
+        reserve += rFee + late;
+        emit RepaymentSplit(id, principalPart, sFee, jFee, rFee, pFee);
+        if (late > 0) emit LateFeePaid(id, late);
+        if (a.principalRepaid == a.principal) {
+            a.status = Status.Repaid;
+            shops[shopId].activeAdvanceId = 0;
+            emit AdvanceRepaid(id, shopId);
+        }
+        if (principalPart + sFee > 0) { usdc.safeTransfer(address(senior), principalPart + sFee); if (principalPart > 0) senior.principalReturned(principalPart); }
+        if (jFee > 0) usdc.safeTransfer(address(junior), jFee);
+        if (pFee > 0) usdc.safeTransfer(treasury, pFee);
     }
 
     /// @dev Pull exactly `amount` from `from`; rejects fee-on-transfer or otherwise short transfers.
