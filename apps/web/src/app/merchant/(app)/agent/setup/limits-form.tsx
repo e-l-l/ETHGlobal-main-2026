@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { AgentLimitsVM, LadderStepVM } from "@repo/sdk";
 import { ActionBar, Button, Card, Chips, Columns, Label, OfferDisclosure, Stack, Text } from "@/final";
-import { HeroBlock, HeroLabel } from "../../../_ui";
+import { BlockPanel } from "@/blocks";
+import { HeroLabel } from "../../../_ui";
 import { FEE_RULE, FEE_TERMS, HOLDBACK_PCT, annualizedMaxPercent, feeAfterDays, maxFee } from "@/lib/fees";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
@@ -36,8 +37,8 @@ function LimitsFields({ view }: { view: SetupPage }) {
   return (
     <Columns ratio="3:2">
       <div>
-        <Stack gap="md">
-          <Card padding="lg">
+        <Stack gap="md" className="lg:gap-3">
+          <Card padding="md">
             <Label>Max per advance</Label>
             <Chips
               label="Max per advance"
@@ -53,7 +54,8 @@ function LimitsFields({ view }: { view: SetupPage }) {
               {formatMoney(cap)} today.
             </Text>
           </Card>
-          <Card padding="lg">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
+          <Card padding="md">
             <Label>Max per month</Label>
             <Chips
               label="Max per month"
@@ -62,7 +64,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
               options={perMonthOptions.map((v) => ({ value: String(v), label: formatMoney(v) }))}
             />
           </Card>
-          <Card padding="lg">
+          <Card padding="md">
             <Label>What it can draw for</Label>
             <Chips
               label="Purpose"
@@ -71,11 +73,29 @@ function LimitsFields({ view }: { view: SetupPage }) {
               options={purposes.map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
             />
           </Card>
+          </div>
+          <Text size="note">
+            Illustrative maximum advance at the full {formatPercent(FEE_TERMS.capBps / 100)} fee and a {formatPercent(HOLDBACK_PCT)} sales
+            share; future offers may differ.
+          </Text>
+          <OfferDisclosure
+            principal={Number(perAdvance)}
+            maxFeeBps={FEE_TERMS.capBps}
+            feeIfRepaidIn2Weeks={feeAfterDays(Number(perAdvance), 14)}
+            annualizedCostPercent={annualizedMaxPercent()}
+            holdback={HOLDBACK_PCT}
+            feeRule={FEE_RULE}
+            estimates={[100, 200, 400].map((sales, i) => ({
+              label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!,
+              // Worst case: the whole advance plus the full fee, repaid from the holdback share.
+              days: Math.ceil((Number(perAdvance) + maxFee(Number(perAdvance))) / ((sales * HOLDBACK_PCT) / 100)),
+            }))}
+          />
         </Stack>
       </div>
 
       <Stack gap="md" className="md:sticky md:top-24">
-        <HeroBlock rule={false}>
+        <BlockPanel seed={4} dim={78} cols={6} rows={6} bodyClassName="gap-4 p-5 md:gap-5 md:p-7">
           <HeroLabel>In plain words</HeroLabel>
           <p className="m-0 font-display text-h2 text-canvas">
             Your agent can draw up to <span className="text-lime">{formatMoney(Number(perAdvance))} at a time</span> and{" "}
@@ -92,24 +112,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
               <span className="font-semibold text-canvas">0.5% a week, max 3%</span>
             </div>
           </div>
-        </HeroBlock>
-        <Text size="note">
-          Illustrative maximum advance at the full {formatPercent(FEE_TERMS.capBps / 100)} fee and a {formatPercent(HOLDBACK_PCT)} sales
-          share; future offers may differ.
-        </Text>
-        <OfferDisclosure
-          principal={Number(perAdvance)}
-          maxFeeBps={FEE_TERMS.capBps}
-          feeIfRepaidIn2Weeks={feeAfterDays(Number(perAdvance), 14)}
-          annualizedCostPercent={annualizedMaxPercent()}
-          holdback={HOLDBACK_PCT}
-          feeRule={FEE_RULE}
-          estimates={[100, 200, 400].map((sales, i) => ({
-            label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!,
-            // Worst case: the whole advance plus the full fee, repaid from the holdback share.
-            days: Math.ceil((Number(perAdvance) + maxFee(Number(perAdvance))) / ((sales * HOLDBACK_PCT) / 100)),
-          }))}
-        />
+        </BlockPanel>
         <ActionBar hint="One-time approval. Only you can turn the agent on.">
           <Button href={`${routes.agent.approve}?${new URLSearchParams({ perAdvance, perMonth, purpose })}`} width="full">
             Approve with World

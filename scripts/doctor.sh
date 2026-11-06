@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Check the local toolchain against the versions DripMoni pins (docs/LOCAL.md). macOS, Linux and WSL2.
+# Check the local toolchain against the versions DripMoney pins (docs/LOCAL.md). macOS, Linux and WSL2.
 # Read-only: it installs nothing, needs no sudo, and only prints versions, paths and fix hints.
 #
 #   scripts/doctor.sh          everything (Path A: Docker, Path B: native)
@@ -55,7 +55,7 @@ hint() { # mac-hint linux-hint
   case "$PLAT" in mac) echo "$1" ;; *) echo "$2" ;; esac
 }
 
-echo "${B}DripMoni doctor${N}  ($OS / $PLAT, repo $REPO_DIR)"
+echo "${B}DripMoney doctor${N}  ($OS / $PLAT, repo $REPO_DIR)"
 echo
 printf '%-5s %-14s %-28s %-22s\n' "" "tool" "found" "wanted"
 

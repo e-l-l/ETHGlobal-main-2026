@@ -1,7 +1,7 @@
 "use client";
 
 import type { AdvanceArrivedView } from "@repo/sdk";
-import { Button, Card, Columns, KeyValue, Page, Stack, Text, TextLink } from "@/final";
+import { Button, Card, Columns, CountUp, KeyValue, Page, Reveal, Stack, Text, TextLink } from "@/final";
 import { useCurrency } from "@/lib/currency";
 import { etaKnown } from "@/lib/estimate";
 import { formatDays, formatMoney, formatPercent } from "@/lib/format";
@@ -19,13 +19,13 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
   const { advance, drawReasons } = data;
 
   return (
-    <Page tabs>
+    <Page tabs dense>
       <BackLink href={routes.advance.details}>Your advance</BackLink>
 
-      <HeroBlock>
+      <HeroBlock seed={7}>
         <HeroLabel>Your agent drew an advance{advance.drawnAt ? ` · ${advance.drawnAt}` : ""}</HeroLabel>
         <BigFigure as="h1" className="text-balance">
-          {formatMoney(advance.drawn)} <span className="text-lime">for {advance.purpose}</span>
+          <CountUp value={advance.drawn} from={0} ms={900} format={formatMoney} /> <span className="text-lime">for {advance.purpose}</span>
         </BigFigure>
         <Text className="max-w-[60ch] text-honeydew md:text-[17px]">
           {cur.dollarsOnly ? "" : `${cur.approx(advance.drawn)}. `}You pay it back with{" "}
@@ -34,7 +34,8 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
       </HeroBlock>
 
       <Columns ratio="3:2">
-        <Card padding="lg">
+        <Reveal>
+        <Card padding="lg" gap="sm" className="lg:p-4">
           <CardTitle>Why it drew this</CardTitle>
           {drawReasons.length > 0 ? (
             <CheckList label="Reasons" items={drawReasons.map((r) => ({ text: r }))} />
@@ -45,9 +46,10 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
             Full activity log
           </TextLink>
         </Card>
+        </Reveal>
 
         <Stack>
-          <Card padding="lg">
+          <Card padding="lg" gap="sm" className="lg:p-4">
             <CardTitle>What you pay back</CardTitle>
             <KeyValue
               rows={[
@@ -63,12 +65,14 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
               No late fee if you pay on time. Pay early, pay less.
             </Text>
           </Card>
-          <Button href={routes.advance.details} width="full">
-            See your advance
-          </Button>
-          <Button href={routes.cashOut} variant="secondary" width="full">
-            Send to my supplier
-          </Button>
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-2">
+            <Button href={routes.advance.details} width="full">
+              See your advance
+            </Button>
+            <Button href={routes.cashOut} variant="secondary" width="full">
+              Send to my supplier
+            </Button>
+          </div>
         </Stack>
       </Columns>
     </Page>

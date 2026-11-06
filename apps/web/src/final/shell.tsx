@@ -10,6 +10,7 @@ import { routes } from "@/lib/routes";
 import { Lockup } from "./brand";
 import { ChevronLeftIcon, CrossIcon } from "./icons";
 import { Heading, Label, Text } from "./text";
+import { ScrollProgress } from "./reveal";
 
 /*
  * App chrome for every screen. One header, one page container, one action bar.
@@ -61,8 +62,8 @@ export function AppHeader({
           hideFrom === "lg" && "lg:hidden",
         )}
       >
-        <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center gap-4 px-4 md:px-8">
-          <Link href={home} aria-label={`${APP_NAME} home`} className="shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal">
+        <div className="mx-auto flex h-16 w-full max-w-280 items-center gap-4 px-4 md:px-8">
+          <Link href={home} aria-label={`${APP_NAME} home`} className="inline-flex min-h-11 shrink-0 items-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal">
             <Lockup size={28} />
           </Link>
           <div className="flex min-w-0 flex-1 justify-center">
@@ -89,6 +90,7 @@ export function AppHeader({
             {end}
           </div>
         </div>
+        <ScrollProgress />
       </header>
       {nav ? <TabBar nav={nav} current={current} /> : null}
     </>
@@ -143,10 +145,13 @@ export function StepDots({ at, of, label }: { at: number; of: number; label: str
 export function Page({
   width = "wide",
   tabs,
+  dense,
   className,
   children,
 }: {
   width?: "wide" | "narrow";
+  /** Desktop (lg+): tighter gaps and padding so a dashboard fits one screen. Phones are unchanged. */
+  dense?: boolean;
   /** Set when the header has nav, so content clears the phone tab bar. */
   tabs?: boolean;
   className?: string;
@@ -157,8 +162,9 @@ export function Page({
       id="main"
       className={cn(
         "mx-auto flex w-full flex-1 flex-col gap-6 px-4 pt-6 pb-10 md:px-8 md:pt-10 md:pb-16",
-        width === "narrow" ? "max-w-[560px] md:px-0" : "max-w-[1120px]",
+        width === "narrow" ? "max-w-140 md:px-0" : "max-w-280",
         tabs && "pb-28 md:pb-16",
+        dense && "lg:gap-4 lg:pt-6 lg:pb-8",
         "animate-[page-in_240ms_var(--ease-snappy)_both] motion-reduce:animate-none",
         className,
       )}
@@ -384,7 +390,7 @@ export function SplitPage({ panel, children, className }: { panel: ReactNode; ch
           className,
         )}
       >
-        <div className="flex w-full max-w-[480px] flex-col gap-6 md:my-auto">{children}</div>
+        <div className="flex w-full max-w-120 flex-col gap-6 md:my-auto">{children}</div>
       </main>
     </div>
   );

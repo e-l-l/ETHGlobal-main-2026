@@ -8,6 +8,7 @@ import type {
   AgentStatusResponse,
   BackupResponse,
   BindHumanResponse,
+  HumanCheckResponse,
   CreateAgentRequest,
   CreateAgentResponse,
   Decision,
@@ -132,6 +133,18 @@ export class AgentsApi {
    */
   bindHuman(shopId: Hex32, ownerAuth: string, idkit: Record<string, unknown>) {
     return this.http.request<BindHumanResponse>("POST", shopPath(shopId, "/human"), { body: { idkit }, authorization: ownerAuth });
+  }
+  /**
+   * POST /shops/{shopId}/human with the ticket from `checkHuman` (no second World ID scan). Owner auth as above; the
+   * ticket's owner must be the shop's onchain owner. 400 ticket_expired | ticket_invalid, 403 ticket_owner_mismatch,
+   * 409 ticket_used (it already bound another shop) | shop_bound_to_other_human.
+   */
+  bindHumanTicket(shopId: Hex32, ownerAuth: string, ticket: string) {
+    return this.http.request<BindHumanResponse>("POST", shopPath(shopId, "/human"), { body: { ticket }, authorization: ownerAuth });
+  }
+  /** POST /world/borrower/check: World ID before any shop. `owner` = the wallet that will own the shop. */
+  checkHuman(owner: string, idkit: Record<string, unknown>) {
+    return this.http.request<HumanCheckResponse>("POST", "/world/borrower/check", { body: { idkit, owner } });
   }
   /** GET /shops/{shopId}/human: `{ verified }`; with owner auth also `banned` and the gradual-unlock status for `tier`. */
   humanStatus(shopId: Hex32, ownerAuth?: string, tier?: 0 | 1 | 2 | 3 | number) {

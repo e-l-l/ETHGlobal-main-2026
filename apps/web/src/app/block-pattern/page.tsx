@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
   description: `The ${APP_NAME} block pattern: square tiles of brand greens, each carrying one flat shape. Tones, shapes, rules and ready-made compositions.`,
 };
 
-const WRAP = "mx-auto w-full max-w-[1200px] px-4 md:px-8";
+const WRAP = "mx-auto w-full max-w-300 px-4 md:px-8";
 
 const TONE_HEX: Record<Tone, string> = {
   lime: "#c6f28c",
@@ -60,6 +61,7 @@ const GALLERY: [Tone, Tone][] = [
 ];
 
 export default function BlockPatternPage() {
+  if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_SHOW_KIT !== "1") notFound();
   return (
     <div className="min-h-dvh bg-canvas text-charcoal">
       <Header />
@@ -186,7 +188,7 @@ function Anatomy() {
   return (
     <Section id="anatomy" n="01 · Anatomy" title="A tile is four choices" lead="Background tone, one shape, the shape's tone, and a quarter-turn rotation. Nothing else: no outlines, no gradients, no shadows.">
       <div className="grid items-center gap-8 md:grid-cols-[280px_1fr]">
-        <div className="relative w-full max-w-[280px]">
+        <div className="relative w-full max-w-70">
           <Tile spec={spec} className="rounded-lg" />
         </div>
         <div className="flex flex-col gap-4">
@@ -383,7 +385,7 @@ function Compositions() {
   <BlockWall seed={3} theme="night" cols={12} rows={4} fade="radial" />
 </div>`}
       >
-        <div className="relative isolate grid min-h-[320px] place-items-center overflow-hidden rounded-[20px] bg-deep p-8 text-center">
+        <div className="relative isolate grid min-h-80 place-items-center overflow-hidden rounded-[20px] bg-deep p-8 text-center">
           <div className="absolute inset-0 -z-10">
             <BlockWall seed={3} theme="night" cols={12} rows={4} fade="radial" />
           </div>

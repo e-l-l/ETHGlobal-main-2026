@@ -92,7 +92,7 @@ const MOSAIC: [number, number, boolean][] = Array.from({ length: 8 * 8 }, (_, i)
 /* --------------------------------------------------------------- PixelDune */
 
 /** Columns = days of sales. 4px squares on a 6px pitch. Real data only. Today in Hunter. */
-export function PixelDune({ days, rows = 10, className }: { days: number[]; rows?: number; className?: string }) {
+export function PixelDune({ days, rows = 10, className, rise }: { days: number[]; rows?: number; className?: string; /** Columns build up left to right once on mount (35ms apart). */ rise?: boolean }) {
   const max = Math.max(...days, 1);
   const total = days.reduce((a, b) => a + b, 0);
   return (
@@ -104,11 +104,21 @@ export function PixelDune({ days, rows = 10, className }: { days: number[]; rows
     >
       {days.map((d, x) => {
         const on = Math.max(d > 0 ? 1 : 0, Math.round((d / max) * rows));
-        return Array.from({ length: rows }, (_, y) => {
+        const col = Array.from({ length: rows }, (_, y) => {
           const lit = rows - y <= on;
           const fill = !lit ? "fill-hairline" : x === days.length - 1 ? "fill-hunter" : "fill-leaf";
           return <rect key={`${x}-${y}`} x={x * 6} y={y * 6} width={4} height={4} className={fill} />;
         });
+        if (!rise) return col;
+        return (
+          <g
+            key={x}
+            className="origin-bottom motion-safe:animate-[rise_500ms_var(--ease-snappy)_both]"
+            style={{ transformBox: "fill-box", animationDelay: `${x * 35}ms` }}
+          >
+            {col}
+          </g>
+        );
       })}
     </svg>
   );
@@ -117,18 +127,21 @@ export function PixelDune({ days, rows = 10, className }: { days: number[]; rows
 /* ---------------------------------------------------------------- SplitBar */
 
 /** Every sale: the holdback (8% by default) against the rest, 3px gap. The shop's share is quiet so the drip is what you see. */
-export function SplitBar({ className, legend = true, holdback = 8 }: { className?: string; legend?: boolean; holdback?: number }) {
+export function SplitBar({ className, legend = true, holdback = 8, flash }: { className?: string; legend?: boolean; holdback?: number; /** The drip segment pops lime once: for a payment that just landed. */ flash?: boolean }) {
   const keep = 100 - holdback;
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex h-2 gap-0.75" aria-hidden>
-        <span className="rounded-[2px] bg-unlit" style={{ flexGrow: keep, flexBasis: 0 }} />
-        <span className="rounded-[2px] bg-hunter" style={{ flexGrow: holdback, flexBasis: 0 }} />
+        <span className="rounded-xs bg-unlit" style={{ flexGrow: keep, flexBasis: 0 }} />
+        <span
+          className={cn("origin-left rounded-xs bg-hunter", flash && "motion-safe:animate-[drip-pop_900ms_var(--ease-snappy)_200ms_both]")}
+          style={{ flexGrow: holdback, flexBasis: 0 }}
+        />
       </div>
       {legend ? (
         <div className="flex flex-wrap gap-x-4 gap-y-1 font-ledger text-[12px] text-charcoal-soft">
-          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-unlit" />{keep}% to you</span>
-          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-hunter" />{holdback}% to your advance</span>
+          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-xs bg-unlit" />{keep}% to you</span>
+          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-xs bg-hunter" />{holdback}% to your advance</span>
         </div>
       ) : null}
     </div>

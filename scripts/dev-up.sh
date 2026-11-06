@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the whole DripMoni stack locally in Docker (docs/LOCAL.md, Path A). macOS, Linux and WSL2.
+# Start the whole DripMoney stack locally in Docker (docs/LOCAL.md, Path A). macOS, Linux and WSL2.
 #
 #   scripts/dev-up.sh               env files (if missing) -> build -> anvil + deploy + seed -> API, worker,
 #                                   issuer, portal, web app in local mode -> health checks -> URLs
@@ -183,7 +183,7 @@ check "portal" "http://localhost:${DEV_PORTAL_PORT:-3001}/api/health"
 
 cat <<EOF
 
-DripMoni local stack is up (compose project mra-dev).
+DripMoney local stack is up (compose project mra-dev).
 
   web app      http://localhost:${DEV_APP_PORT:-3000}/home     $([[ $NO_APP == 1 ]] && echo "(not started: --no-app)")
   agents API   http://localhost:${DEV_API_PORT:-8000}/health

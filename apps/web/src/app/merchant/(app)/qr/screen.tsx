@@ -2,6 +2,7 @@
 
 import type { MyQrView } from "@repo/sdk";
 import { Card, Columns, Ledger, Page, PageHead, Pill, QRCode, Stack } from "@/final";
+import { BlockPanel } from "@/blocks";
 import { CardTitle, NumberedList, PlainWords } from "../../_ui";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -21,7 +22,7 @@ export function MyQrScreen({ initial }: { initial: MyQrView | null }) {
   const { shop, today, payLink, howToPay } = data;
 
   return (
-    <Page tabs>
+    <Page tabs dense>
       <PageHead
         label="Your checkout"
         title="My QR"
@@ -34,23 +35,23 @@ export function MyQrScreen({ initial }: { initial: MyQrView | null }) {
 
       <Columns ratio="3:2">
         <Stack>
-          <section className="flex flex-col items-center rounded-lg bg-hunter px-5 pt-8 pb-8 md:px-6">
-            <div className="flex w-full max-w-[340px] flex-col items-center gap-4 rounded-lg bg-surface p-5 text-center">
-              <QRCode value={payLink} size={232} label={`QR code to pay ${shop.name}`} className="border-0 p-0" />
+          <BlockPanel seed={7} cols={8} rows={6} dim={74} bodyClassName="items-center gap-0 px-5 py-8 md:px-6 lg:py-5">
+            <div className="flex w-full max-w-85 flex-col items-center gap-4 rounded-lg bg-surface p-5 text-center">
+              <QRCode value={payLink} size={208} label={`QR code to pay ${shop.name}`} className="border-0 p-0" />
               <div className="flex min-w-0 max-w-full flex-col gap-0.5">
                 <strong className="font-display text-h1-sm text-charcoal">{shop.name}</strong>
                 <span className="font-body text-note text-charcoal-muted">Scan to pay · any token</span>
               </div>
             </div>
-          </section>
+          </BlockPanel>
           <QrActions payLink={payLink} />
           <Ledger className="rounded-md bg-well px-3.5 py-3 [overflow-wrap:anywhere]" title={payLink}>
             {shop.pseudonym} · {shortLink(payLink)}
           </Ledger>
         </Stack>
 
-        <Stack gap="lg">
-          <Card padding="lg">
+        <Stack gap="md">
+          <Card padding="md">
             <CardTitle>How customers pay</CardTitle>
             <NumberedList label="How customers pay" items={howToPay} />
           </Card>

@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 /* ----------------------------------------------------------------- Wrap */
 
 /** Content width and gutters for every section. Full-bleed bands sit outside it. */
-export const WRAP = "mx-auto w-full max-w-[1200px] px-4 md:px-8";
+export const WRAP = "mx-auto w-full max-w-300 px-4 md:px-8";
 
 export function Wrap({ className, ...props }: ComponentPropsWithoutRef<"div">) {
   return <div className={cn(WRAP, className)} {...props} />;
@@ -117,14 +117,14 @@ export function SectionHeading({
   }
   if (layout === "center") {
     return (
-      <div className={cn("mx-auto flex max-w-[720px] flex-col items-center gap-5 text-center", className)}>
+      <div className={cn("mx-auto flex max-w-180 flex-col items-center gap-5 text-center", className)}>
         {heading}
         {lede ? <p className={cn(ledeClass, "max-w-[52ch]")}>{lede}</p> : null}
       </div>
     );
   }
   return (
-    <div className={cn("flex max-w-[680px] flex-col gap-5", className)}>
+    <div className={cn("flex max-w-170 flex-col gap-5", className)}>
       {heading}
       {lede ? <p className={cn(ledeClass, "max-w-[52ch]")}>{lede}</p> : null}
     </div>

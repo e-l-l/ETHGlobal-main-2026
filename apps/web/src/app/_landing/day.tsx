@@ -85,9 +85,9 @@ export function DayTimeline() {
                   <span className={cn("grid size-5 place-items-center rounded-[3px] font-ledger text-[12px] font-semibold", moment >= 0 ? "bg-lime text-charcoal" : "invisible")}>
                     {moment + 1}
                   </span>
-                  <div className="flex h-[136px] w-full flex-col-reverse gap-[3px]">
+                  <div className="flex h-34 w-full flex-col-reverse gap-0.75">
                     {Array.from({ length: blocks }, (_, b) => (
-                      <span key={b} className={cn("h-[10px] w-full rounded-[1px]", b === blocks - 1 ? "bg-hunter" : moment >= 0 ? "bg-leaf" : "bg-unlit")} />
+                      <span key={b} className={cn("h-2.5 w-full rounded-[1px]", b === blocks - 1 ? "bg-hunter" : moment >= 0 ? "bg-leaf" : "bg-unlit")} />
                     ))}
                   </div>
                   <span className="font-ledger text-[12px] text-charcoal-muted">{hourLabel(h)}</span>

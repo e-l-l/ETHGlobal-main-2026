@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { routes, verifyingHref, type FailReason } from "@/lib/routes";
 
 /*
- * Demo seller portal (S01–S02). A fictional third-party marketplace, deliberately NOT DripMoni:
+ * Demo seller portal (S01–S02). A fictional third-party marketplace, deliberately NOT DripMoney:
  * plain neutral header, no logo, no brand colours. It stands in for the site the private check reads from.
  */
 
@@ -96,7 +96,7 @@ const neutralButton = "bg-charcoal hover:bg-charcoal-soft";
 function PortalHeader({ back, end }: { back?: boolean; end?: ReactNode }) {
   return (
     <header className="border-b border-hairline bg-surface">
-      <div className="mx-auto flex h-14 w-full max-w-[1120px] items-center justify-between gap-4 px-4 md:px-8">
+      <div className="mx-auto flex h-14 w-full max-w-280 items-center justify-between gap-4 px-4 md:px-8">
         <span className="font-body text-read font-bold text-charcoal">{PORTAL}</span>
         <div className="flex items-center gap-2">
           {back ? (

@@ -6,6 +6,8 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%; /* no font inflation in landscape */
+    text-size-adjust: 100%;
   }
   html,
   body {
@@ -13,8 +15,28 @@
   }
   a,
   button,
-  [role="tab"] {
+  summary,
+  label,
+  [role="tab"],
+  [role="button"],
+  [role="radio"],
+  [role="switch"] {
     touch-action: manipulation;
+  }
+  /* Controls are not content: no long-press text selection or callout. Body text stays selectable. */
+  button,
+  [role="tab"],
+  [role="button"],
+  [role="switch"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* iOS zooms the page on focus when an input is under 16px. Never disable zoom; keep the floor instead. */
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
   }
   /* Safe areas are padded by the app chrome (header, action bar, tab bar), so it paints edge to edge. */
 }

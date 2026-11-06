@@ -5,6 +5,9 @@ import { jarFonts } from "@/final/fonts";
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
+  applicationName: APP_NAME,
+  appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "default" },
+  formatDetection: { telephone: false },
   description: "QR payments for small shops. Advances paid back by every sale. Lenders fund the advances and earn the fee.",
 };
 

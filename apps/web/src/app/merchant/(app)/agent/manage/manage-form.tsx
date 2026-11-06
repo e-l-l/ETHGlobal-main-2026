@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentStatusView } from "@repo/sdk";
+import { BlockCluster } from "@/blocks";
 import { ActionBar, Banner, Button, Card, Columns, KeyValue, SettingRow, Stack, Switch, Text, TextLink } from "@/final";
 import { CardTitle } from "../../../_ui";
 import { capitalize, formatMoney } from "@/lib/format";
@@ -24,18 +25,23 @@ export function ManageForm({ initial }: { initial: AgentStatusView | null }) {
 
   return (
     <Columns ratio="3:2">
-      <Stack gap="lg">
-        <Card padding="lg">
+      <Stack gap="md">
+        <Card padding="md">
+          <div className="flex items-center gap-4">
+          <BlockCluster seed={12} cols={2} rows={2} grain={false} className="size-14 overflow-hidden rounded-md" />
+          <div className="min-w-0 flex-1">
           <SettingRow
             title={paused ? "Agent is paused" : "Agent is on"}
             hint={paused ? "No new draws. Your current advance keeps repaying." : "It can draw advances inside your limits."}
           >
             <Switch checked={!paused} onCheckedChange={(on) => setPaused(!on)} aria-label="Agent on" />
           </SettingRow>
+          </div>
+          </div>
         </Card>
         {paused ? <Banner tone="caution">Paused. Save to stop new draws.</Banner> : null}
         <div>
-          <Card padding="lg">
+          <Card padding="md">
             <CardTitle
               end={
                 <TextLink href={routes.agent.setup} arrow>
@@ -62,7 +68,7 @@ export function ManageForm({ initial }: { initial: AgentStatusView | null }) {
         </ActionBar>
       </Stack>
 
-      <section className="flex flex-col gap-3 rounded-lg bg-risk-tint p-5 md:p-6">
+      <section className="flex flex-col gap-3 rounded-lg bg-risk-tint p-5 md:p-6 lg:self-start">
         <h2 className="m-0 font-display text-h2 text-risk">Turn off for good</h2>
         <Text size="note" className="text-charcoal-soft">
           Stops all future advances. Your current advance still gets paid back from payments as usual. Setting it up again

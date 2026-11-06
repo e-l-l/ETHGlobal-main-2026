@@ -31,6 +31,7 @@ import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useCurrency } from "@/lib/currency";
 import { useMRA } from "@/lib/use-mra";
+import { PanelBlocks, litTiles } from "./panel-blocks";
 
 /** Checkout pays in USDC only; no token swap exists. */
 const TOKEN = "USDC";
@@ -126,7 +127,12 @@ export function PayScreen({ initial, target }: { initial: PayShopView | null; ta
       <SplitPage
         panel={
           <BrandPanel
-            top={<Secured />}
+            top={
+              <>
+                <PanelBlocks seed={31} />
+                <Secured />
+              </>
+            }
             eyebrow={t.verified}
             title={
               <span className="flex items-center gap-4">
@@ -194,11 +200,17 @@ export function PaidScreen({
       <SplitPage
         panel={
           <BrandPanel
-            top={<Secured />}
+            top={
+              <>
+                {/* Paid: the whole strip lit, once. */}
+                <PanelBlocks seed={37} lit={litTiles(6)} />
+                <Secured />
+              </>
+            }
             eyebrow={t.paidEyebrow}
             title={
               <span className="flex items-center gap-4">
-                <span aria-hidden className="grid size-14 shrink-0 place-items-center rounded-full bg-lime text-hunter md:size-18">
+                <span aria-hidden className="grid size-14 shrink-0 place-items-center rounded-full bg-lime text-hunter motion-safe:animate-[page-in_600ms_var(--ease-snappy)_both] md:size-18">
                   <CheckIcon size={32} strokeWidth={3} />
                 </span>
                 <span className="min-w-0 [overflow-wrap:anywhere]">{t.paidTitle(usd)}</span>
@@ -215,7 +227,7 @@ export function PaidScreen({
         <Text className="md:hidden">
           {t.paidTo(shop.name)} · <span suppressHydrationWarning>{time}</span>
         </Text>
-        <Card as="section" aria-labelledby="receipt-title" padding="lg">
+        <Card as="section" aria-labelledby="receipt-title" padding="lg" className="motion-safe:animate-[page-in_500ms_var(--ease-snappy)_250ms_both]">
           <Heading level={2} size="h2" id="receipt-title">
             {t.receipt}
           </Heading>

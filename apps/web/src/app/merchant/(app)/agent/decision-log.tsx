@@ -19,7 +19,7 @@ export function DecisionLog({ decisions }: { decisions: Decision[] }) {
       <Card padding="sm" gap="sm" className="p-0">
         <ul aria-label="Agent decisions" className="m-0 flex list-none flex-col p-0">
           {decisions.map((d) => (
-            <li key={d.id} className="flex gap-3.5 border-t border-hairline px-5 py-4 first:border-t-0 md:px-6">
+            <li key={d.id} className="flex gap-3.5 border-t border-hairline px-5 py-4 first:border-t-0 md:px-6 lg:py-3">
               <span aria-hidden className={cn("mt-1.5 size-3 shrink-0 rounded-full", DOT[d.kind])} />
               <details className="group min-w-0 flex-1">
                 <summary className="flex cursor-pointer list-none flex-col gap-1.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal [&::-webkit-details-marker]:hidden">

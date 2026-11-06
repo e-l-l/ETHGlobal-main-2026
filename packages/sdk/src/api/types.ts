@@ -277,8 +277,18 @@ export type RpContextResponse = IdkitRequestConfig | IdkitMockConfig;
  * Header `Authorization: Owner <issuedAt>:<signature>` (see `ownerAuthHeader`). The backend keeps only an HMAC of
  * the World nullifier and never returns it.
  */
-export type BindHumanRequest = { idkit: Record<string, unknown> };
+export type BindHumanRequest = { idkit: Record<string, unknown> } | { ticket: string };
 export type BindHumanResponse = { verified: true };
+
+/**
+ * POST /world/borrower/check: World ID FIRST, before any business step or shop. Body `{ idkit, owner }` where `owner`
+ * is the wallet that will own the shop (this device's burner). Eligible → an opaque ticket (AES-GCM, server key)
+ * good for 30 minutes and ONE shop bind; never the nullifier. Not eligible → the red line that stops the person.
+ */
+export type HumanCheckRequest = { idkit: Record<string, unknown>; owner: string };
+export type HumanCheckResponse =
+  | { eligible: true; ticket: string; expires_at: number }
+  | { eligible: false; reason: "human_banned" | "human_has_open_advance" | (string & {}) };
 
 /** One step of the gradual unlock: at `pct`% of the limit, `amount_usd` (an allowed size) can be drawn. */
 export type UnlockStepWire = { pct: number; amount_usd: number; unlocked: boolean };
@@ -344,6 +354,10 @@ export const AGENTS_API_ERROR_CODES = [
   "bad_backup_size",
   "unknown_or_used_nonce",
   "shop_bound_to_other_human",
+  "ticket_expired",
+  "ticket_invalid",
+  "ticket_used",
+  "ticket_owner_mismatch",
 ] as const;
 
 /* -------------------------------------------------------------- issuer (Node) */

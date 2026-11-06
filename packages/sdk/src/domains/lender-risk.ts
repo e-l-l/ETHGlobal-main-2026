@@ -14,7 +14,7 @@ import type { RiskStatus } from "../api/types.js";
 import type { Addr, Chain, ProtocolSnapshot } from "../chain/chain.js";
 import { decodeSlot0, poolIdOf, poolKeyOf, poolManagerAbi, poolSlots } from "../chain/swap.js";
 import type { CohortPointVM, RepaymentBucketVM, RiskPanelView, RiskTone, WaterfallLayerVM, WaterfallView } from "../viewmodels.js";
-import { clock, coveragePct, coverageStr, money, pctStr, shortDate, triggerName, usd } from "./util.js";
+import { clock, coveragePct, coverageStr, money, pctStr, shortDate, triggerName, usd, etherscanFor } from "./util.js";
 
 const DAY = 86_400;
 /** Sepolia's slot time. Used only to place an event in time when there are too many blocks to fetch one by one. */
@@ -60,7 +60,6 @@ export type RiskRaw = {
 const tickPrice = (tick: number) => Math.pow(1.0001, tick);
 const usd3 = (n: number) => `$${n.toFixed(3)}`;
 const signedPct = (n: number, digits = 1) => `${n >= 0 ? "+" : "−"}${Math.abs(n).toFixed(digits)}%`;
-const etherscanFor = (chainId: number) => (chainId === 11_155_111 ? "https://sepolia.etherscan.io" : chainId === 1 ? "https://etherscan.io" : undefined);
 const daysWord = (s: number) => {
   const d = s / DAY;
   if (d >= 1) return `${Math.round(d)} day${Math.round(d) === 1 ? "" : "s"}`;

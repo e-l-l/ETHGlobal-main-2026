@@ -29,7 +29,7 @@ export function Waffle({
   const total = cols * rows;
   const lit = Math.round(Math.max(0, Math.min(1, value)) * total);
   return (
-    <div role="img" aria-label={label} className={cn("grid gap-[3px]", className)} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+    <div role="img" aria-label={label} className={cn("grid gap-0.75", className)} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
       {Array.from({ length: total }, (_, i) => {
         const row = rows - 1 - Math.floor(i / cols);
         const idx = row * cols + (i % cols);
@@ -55,7 +55,7 @@ export function PixelBar({
 }) {
   const lit = Math.round(Math.max(0, Math.min(1, value)) * cells);
   return (
-    <div aria-hidden className={cn("flex gap-[3px]", className)}>
+    <div aria-hidden className={cn("flex gap-0.75", className)}>
       {Array.from({ length: cells }, (_, i) => (
         <span key={i} className={cn("h-full flex-1 rounded-[1px]", i < lit ? on : off)} />
       ))}

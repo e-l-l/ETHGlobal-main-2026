@@ -14,4 +14,5 @@ export * from "./icons";
 export * from "./disclosures";
 export * from "./agent-stop";
 export * from "./reveal";
+export * from "./count";
 export * from "./layout";

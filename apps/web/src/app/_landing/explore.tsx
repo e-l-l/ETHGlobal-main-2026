@@ -101,9 +101,9 @@ function SaleCard() {
         <LocalAmount usd={10} className="pb-1 font-ledger text-[13px] text-charcoal-muted" />
       </div>
       <div className="flex flex-col gap-2">
-        <div aria-hidden className="flex h-7 gap-[3px]">
+        <div aria-hidden className="flex h-7 gap-0.75">
           {Array.from({ length: 25 }, (_, i) => (
-            <span key={i} className={cn("flex-1 rounded-[2px]", i < 23 ? "bg-leaf" : "bg-hunter")} />
+            <span key={i} className={cn("flex-1 rounded-xs", i < 23 ? "bg-leaf" : "bg-hunter")} />
           ))}
         </div>
         <div className="flex justify-between gap-3 font-body text-note">
@@ -248,8 +248,8 @@ export function Explore() {
               </span>
               <div
                 className={cn(
-                  "absolute top-[13%] z-10 mx-auto max-w-[580px] transition-transform duration-500 ease-snappy",
-                  "[transform:perspective(1400px)_rotateX(22deg)_rotateZ(-9deg)] group-hover:[transform:perspective(1400px)_rotateX(8deg)_rotateZ(-3deg)_translateY(-6px)]",
+                  "absolute top-[13%] z-10 mx-auto max-w-145 transition-transform duration-500 ease-snappy",
+                  "transform-[perspective(1400px)_rotateX(22deg)_rotateZ(-9deg)] group-hover:transform-[perspective(1400px)_rotateX(8deg)_rotateZ(-3deg)_translateY(-6px)]",
                   "motion-reduce:transition-none",
                   flip ? "inset-x-[6%] md:right-[9%] md:left-[5%]" : "inset-x-[6%] md:right-[5%] md:left-[9%]",
                 )}

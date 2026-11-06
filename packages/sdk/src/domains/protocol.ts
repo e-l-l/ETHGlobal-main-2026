@@ -2,8 +2,9 @@ import type { RiskStatus } from "../api/types.js";
 import type { LogEntry } from "../chain/chain.js";
 import type { Ctx } from "../context.js";
 import * as L from "../mock/lend.js";
-import type { ExplorerEventVM, ExplorerShopVM, ExplorerView, LossTier, ProtocolView, RiskLogVM, RiskView, SignalVM, TierCapVM } from "../viewmodels.js";
+import type { ExplorerEventVM, ExplorerShopVM, ExplorerView, LossTier, ProofCenterOptions, ProofCenterView, ProtocolView, RiskLogVM, RiskView, SignalVM, TierCapVM } from "../viewmodels.js";
 import { lenderSnapshot } from "./lender.js";
+import { proofCenter } from "./proofs.js";
 import { ago, clock, coveragePct, coverageStr, money, pseudonymOf, shortDate, triggerName, usd } from "./util.js";
 
 const BLOCKS_PER_DAY = 7_200n;
@@ -62,9 +63,24 @@ export function riskLogFrom(status: RiskStatus): RiskLogVM[] {
   return items;
 }
 
-const EXPLORER_EVENTS = ["Sale", "AdvanceOpened", "StandingPassClaimed", "ShopRegistered", "AdvanceWrittenOff", "LimitsChanged"] as const;
+export const EXPLORER_EVENTS = ["Sale", "AdvanceOpened", "StandingPassClaimed", "ShopRegistered", "AdvanceWrittenOff", "LimitsChanged"] as const;
 
-function explorerVM(name: string, e: LogEntry): Omit<ExplorerEventVM, "when"> {
+/** One raw explorer event: `n` is the AdvanceBook event name, or "Pass" for a registry LeafInserted. */
+export type ExplorerLog = { n: string; e: LogEntry };
+
+/** The raw logs behind explorer(): AdvanceBook's public events + Business Pass leaves, in [from, latest]. Shared with proofCenter(). */
+export async function explorerLogs(ctx: Ctx, from: bigint, latest: bigint, extra: readonly string[] = []): Promise<ExplorerLog[]> {
+  const chain = ctx.chain();
+  const [book, passes] = await Promise.all([
+    Promise.all([...EXPLORER_EVENTS, ...extra].map(async (n) => (await chain.bookLogs(n, undefined, from, latest).catch(() => [])).map((e) => ({ n, e })))),
+    chain.registryLogs("LeafInserted", from).catch(() => []),
+  ]);
+  return [...book.flat(), ...passes.map((e) => ({ n: "Pass", e }))].sort((a, b) => Number(b.e.blockNumber - a.e.blockNumber) || b.e.logIndex - a.e.logIndex);
+}
+
+export const PASS_EXPLORER_VM = { kind: "Pass", title: "Business Pass issued", detail: "Commitment only. No name, no sales figures" } as const;
+
+export function explorerVM(name: string, e: LogEntry): Omit<ExplorerEventVM, "when"> {
   const a = e.args;
   switch (name) {
     case "Sale":
@@ -132,18 +148,15 @@ export function protocolDomain(ctx: Ctx) {
       const latest = await chain.blockNumber();
       const from = latest - BigInt(opts.days ?? 2) * BLOCKS_PER_DAY;
       const now = ctx.now();
-      const [book, passes] = await Promise.all([
-        Promise.all(EXPLORER_EVENTS.map(async (n) => (await chain.bookLogs(n, undefined, from, latest).catch(() => [])).map((e) => ({ n, e })))),
-        chain.registryLogs("LeafInserted", from).catch(() => []),
-      ]);
-      const all = [...book.flat(), ...passes.map((e) => ({ n: "Pass", e }))].sort((a, b) => Number(b.e.blockNumber - a.e.blockNumber)).slice(0, opts.limit ?? 20);
+      const raw = await explorerLogs(ctx, from, latest);
+      const all = raw.slice(0, opts.limit ?? 20);
       const events: ExplorerEventVM[] = await Promise.all(
         all.map(async ({ n, e }) => {
-          const base = n === "Pass" ? { kind: "Pass", title: "Business Pass issued", detail: "Commitment only. No name, no sales figures", hash: e.transactionHash } : explorerVM(n, e);
+          const base = n === "Pass" ? { ...PASS_EXPLORER_VM, hash: e.transactionHash } : explorerVM(n, e);
           return { ...base, when: ago(await chain.blockTime(e.blockNumber), now) };
         }),
       );
-      const shopEvs = book.flat().filter((x) => x.n === "ShopRegistered");
+      const shopEvs = raw.filter((x) => x.n === "ShopRegistered").reverse();
       const shops: ExplorerShopVM[] = shopEvs.slice(-10).reverse().map(({ e }) => ({
         id: pseudonymOf(e.args.shopId),
         name: "active",
@@ -152,6 +165,15 @@ export function protocolDomain(ctx: Ctx) {
         note: "A pseudonym and a payout address. No name attached.",
       }));
       return { events, shops, source: "chain" };
+    },
+
+    /**
+     * Proof center / "Verify it yourself": contracts (with live code size), onchain ZK proofs decoded from tx input,
+     * proofs generated on this device, recent transactions, AI decisions, privacy facts and live ✅/❌ checks.
+     * Read-only; works in mock, local and sepolia. See docs/FRONTEND-HANDOFF.md "Proof center screen".
+     */
+    proofCenter(opts: ProofCenterOptions = {}): Promise<ProofCenterView> {
+      return proofCenter(ctx, opts);
     },
   };
 }

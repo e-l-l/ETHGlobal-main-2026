@@ -143,6 +143,8 @@ export interface Chain {
   bookLogs(eventName: string, args?: Record<string, unknown>, fromBlock?: bigint, toBlock?: bigint): Promise<LogEntry[]>;
   registryLogs(eventName: string, fromBlock?: bigint): Promise<LogEntry[]>;
   vaultLogs(tranche: "senior" | "junior", eventName: string, args?: Record<string, unknown>): Promise<LogEntry[]>;
+  /** Any contract's events, with the same chunking / head-lag handling (e.g. PoolManager Swap for our pool). */
+  contractLogs(address: Addr, abi: readonly unknown[], eventName: string, args?: Record<string, unknown>, fromBlock?: bigint, toBlock?: bigint): Promise<LogEntry[]>;
   /** Approve `allowance` (default `amount`) unless the current allowance already covers `amount`. */
   approveUsdc(spender: Addr, amount: bigint, allowance?: bigint): Promise<Receipt | null>;
   /** Same as approveUsdc, for any ERC-20 (e.g. the DRIP share token). */
@@ -446,6 +448,8 @@ export function createChain(opts: ChainOptions): Chain {
     registryLogs: (eventName: string, fromBlock?: bigint) => logs(A.registry, businessPassRegistryAbi, eventName, undefined, fromBlock),
     vaultLogs: (tranche: "senior" | "junior", eventName: string, args?: Record<string, unknown>) =>
       logs(tranche === "senior" ? A.senior : A.junior, trancheVaultAbi, eventName, args),
+    contractLogs: (address: Addr, abi: readonly unknown[], eventName: string, args?: Record<string, unknown>, fromBlock?: bigint, toBlock?: bigint) =>
+      logs(address, abi, eventName, args, fromBlock, toBlock),
 
     /* ------------------------------------------------------------- writes */
 

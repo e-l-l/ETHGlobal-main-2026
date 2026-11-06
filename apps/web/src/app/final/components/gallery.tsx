@@ -224,7 +224,7 @@ const UPD_PAGE: [string, string][] = [
 ];
 
 const UPD_NAME: [string, string][] = [
-  ["Name", "DripMoni. Read from APP_NAME in src/lib/brand.ts, never typed."],
+  ["Name", "DripMoney. Read from APP_NAME in src/lib/brand.ts, never typed."],
   ["The old name", "The previous product word is gone from all user-facing copy. Use drip: Your drip, Shop's drip, drip balance. Component names that still carry it are internal only."],
   ["Junior token", "DripCoin (DRIP), on every screen."],
   ["Dollar", "Dollar is a description of the advance (dollar advances, dollars for stock), never part of the name."],
@@ -286,7 +286,7 @@ export function FinalGallery() {
   return (
     <>
       <div className="sticky top-0 z-10 border-b border-hairline bg-canvas/85 backdrop-blur-lg motion-reduce:backdrop-blur-none">
-        <div className="mx-auto flex max-w-[1120px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2">
+        <div className="mx-auto flex max-w-280 flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2">
           <Lockup size={28} />
           <nav aria-label="Sections" className="flex flex-wrap gap-1">
             {NAV.map(([id, l]) => (
@@ -298,7 +298,7 @@ export function FinalGallery() {
         </div>
       </div>
 
-      <main className="mx-auto flex max-w-[1120px] flex-col gap-12 px-4 pt-10 pb-24">
+      <main className="mx-auto flex max-w-280 flex-col gap-12 px-4 pt-10 pb-24">
         <header className="flex flex-col gap-4">
           <Pill tone="saving">Final kit · light</Pill>
           <Heading level={1} size="hero">Greens on white.</Heading>
@@ -374,7 +374,7 @@ export function FinalGallery() {
             </Spec>
             <Spec name="Mark sizes · 64 · 40 · 24 · 20 (solid)">
               <div className="flex items-end gap-4">
-                <JarMark size={64} label="DripMoni" />
+                <JarMark size={64} label="DripMoney" />
                 <JarMark size={40} />
                 <JarMark size={24} />
                 <JarMark size={20} />
@@ -412,7 +412,7 @@ export function FinalGallery() {
             </Spec>
             <Spec name="Gradient hero · one per screen">
               <GradientHero>
-                <Heading size="h2" level={3}>Welcome to DripMoni</Heading>
+                <Heading size="h2" level={3}>Welcome to DripMoney</Heading>
                 <Text size="note">Gradient on top, text below on solid white.</Text>
               </GradientHero>
             </Spec>
@@ -575,7 +575,7 @@ export function FinalGallery() {
 
         {/* ------------------------------------------------------------ screen */}
         <Section id="screen" label="10 · Screen" title="Home, composed">
-          <div className="mx-auto flex w-full max-w-[390px] flex-col overflow-hidden rounded-[36px] border border-hairline bg-canvas">
+          <div className="mx-auto flex w-full max-w-97.5 flex-col overflow-hidden rounded-[36px] border border-hairline bg-canvas">
             <div className="flex items-center justify-between px-4 pt-4">
               <Lockup size={26} />
               <Pill tone="saving" dot>Live</Pill>
@@ -637,7 +637,7 @@ export function FinalGallery() {
               </div>
             </Spec>
             <Spec name="Pixel notch · hero panel">
-              <div className="bg-hunter p-[3px]" style={PIXEL_NOTCH}>
+              <div className="bg-hunter p-0.75" style={PIXEL_NOTCH}>
                 <div className="bg-surface p-5 font-body text-note text-charcoal-soft" style={PIXEL_NOTCH}>
                   Stepped corners, 8px cut in 4px steps.
                 </div>
@@ -719,7 +719,7 @@ export function FinalGallery() {
         >
           <div className={grid}>
             <Spec name="Floating nav · static copy">
-              <div className="mx-auto flex h-14 w-full max-w-[880px] items-center gap-4 rounded-2xl border border-hairline bg-canvas/80 px-4 shadow-lift backdrop-blur-xl">
+              <div className="mx-auto flex h-14 w-full max-w-220 items-center gap-4 rounded-2xl border border-hairline bg-canvas/80 px-4 shadow-lift backdrop-blur-xl">
                 <span className="inline-flex shrink-0 items-center gap-2">
                   <JarMark size={28} />
                   <span className="font-display text-[20px] leading-none font-extrabold tracking-[-0.02em] text-charcoal">{APP_NAME}</span>
@@ -742,7 +742,7 @@ export function FinalGallery() {
                     <span key={i} className={cn("aspect-square", ["bg-hunter", "bg-forest", "bg-fern", "bg-leaf", "bg-lime", "bg-deep"][(i * 7 + (i >> 2)) % 6])} />
                   ))}
                 </div>
-                <div aria-hidden className="absolute inset-0 bg-linear-to-r from-canvas/92 via-canvas/70 to-transparent backdrop-blur-[2px] [mask-image:linear-gradient(to_right,black_40%,transparent)]" />
+                <div aria-hidden className="absolute inset-0 bg-linear-to-r from-canvas/92 via-canvas/70 to-transparent backdrop-blur-[2px] mask-[linear-gradient(to_right,black_40%,transparent)]" />
                 <span className="absolute inset-y-0 left-4 flex flex-col justify-center gap-1.5">
                   <span className="inline-flex items-center gap-2">
                     <JarMark size={36} />
@@ -788,7 +788,7 @@ export function FinalGallery() {
               <div className="relative h-20 overflow-hidden rounded-md bg-well" aria-hidden>
                 <span className="absolute top-6 left-8 h-3.5 w-20 bg-honeydew-line" />
                 <span className="absolute top-4 left-11 h-2.5 w-10 bg-honeydew-line" />
-                <span className="absolute top-2.5 left-[3.75rem] h-3.5 w-6 bg-honeydew-line" />
+                <span className="absolute top-2.5 left-15 h-3.5 w-6 bg-honeydew-line" />
                 {[0, 1, 2, 3].map((d) => (
                   <span key={d} className="absolute w-0.5 bg-lime" style={{ left: `${44 + d * 16}px`, top: `${46 + (d % 2) * 8}px`, height: 6 }} />
                 ))}

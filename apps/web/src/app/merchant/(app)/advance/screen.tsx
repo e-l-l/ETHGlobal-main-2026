@@ -1,7 +1,7 @@
 "use client";
 
 import type { AdvanceDetailsView } from "@repo/sdk";
-import { Button, Card, Columns, KeyValue, Label, Ledger, Page, PageHead, Stack, Text } from "@/final";
+import { Button, Card, KeyValue, Label, Ledger, LineChart, OfferDisclosure, Page, Stack, Text } from "@/final";
 import { cn } from "@/lib/cn";
 import { useCurrency } from "@/lib/currency";
 import { etaKnown } from "@/lib/estimate";
@@ -13,8 +13,14 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
-import { BigFigure, CardTitle, DarkMeter, HeroBlock, HeroLabel, PlainWords } from "../../_ui";
+import { BigFigure, CardTitle, DarkMeter, HeroBlock, HeroLabel, PlainWords, ScreenHead } from "../../_ui";
 import { BehindNotice, UnlockMeter } from "../../_unlock";
+
+/** "Day 0 · Day n/2 · Day n" for a curve with one point per day. */
+function dayLabels(points: number[]) {
+  const last = Math.max(0, points.length - 1);
+  return last < 2 ? ["Day 0", `Day ${last}`] : ["Day 0", `Day ${Math.round(last / 2)}`, `Day ${last}`];
+}
 
 /** M12 Advance details: `merchant.advance()`. Owed now, pay early pay less, the gradual unlock, the terms. */
 export function AdvanceDetailsScreen({ initial, demo }: { initial: AdvanceDetailsView | null; demo?: string }) {
@@ -22,7 +28,7 @@ export function AdvanceDetailsScreen({ initial, demo }: { initial: AdvanceDetail
   const cur = useCurrency();
   if (!raw) return <MRAState error={error} />;
   const data = isMock && isBehindDemo(demo) ? withBehind(raw) : raw;
-  const { advance, daysLeftEstimates } = data;
+  const { advance, repaymentCurve, daysLeftEstimates } = data;
   const behind = advance.isBehind;
   const usual = daysLeftEstimates.find((e) => e.label === "Normal");
   const maxFee = (advance.drawn * advance.maxFeeBps) / 10_000;
@@ -33,24 +39,37 @@ export function AdvanceDetailsScreen({ initial, demo }: { initial: AdvanceDetail
     ["6 weeks or more", advance.feeIfRepaidIn6Weeks],
   ];
 
+  const disclosure = (
+    <OfferDisclosure principal={advance.drawn} maxFeeBps={advance.maxFeeBps} feeIfRepaidIn2Weeks={advance.feeIfRepaidIn2Weeks} annualizedCostPercent={advance.annualizedCostPercent} holdback={advance.holdback} feeRule={advance.feeRule} estimates={daysLeftEstimates.map((e) => ({ ...e, label: `${e.label} (estimated total duration)`, days: e.days > 0 ? e.days + Math.max(0, repaymentCurve.points.length - 1) : 0 }))} />
+  );
+
   return (
-    <Page tabs>
-      <PageHead back={routes.merchant} backLabel="Home" label={`For ${advance.purpose} · drawn ${advance.drawnOn}`} title="Your advance" />
+    <Page tabs dense>
+      <ScreenHead
+        back={routes.merchant}
+        backLabel="Home"
+        label={`For ${advance.purpose} · drawn ${advance.drawnOn}`}
+        title="Your advance"
+      />
 
       {behind ? <BehindNotice advance={advance} /> : null}
 
-      <Columns ratio="3:2">
-        <Stack gap="lg">
-          <HeroBlock>
-            <HeroLabel>Owed now</HeroLabel>
-            <div className="flex flex-col gap-1.5">
-              <BigFigure>{formatMoney(advance.owedNow)}</BigFigure>
+      {/* Phones and tablets: the cost first, then the advance. Desktop shows it in the middle column. */}
+      <div className="lg:hidden">{disclosure}</div>
+
+      {/* Desktop: three columns so the advance, the chart and the terms share one view. */}
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[3fr_2fr] lg:grid-cols-3 lg:gap-4">
+        <Stack gap="lg" className="lg:gap-4">
+          <HeroBlock seed={5}>
+            <HeroLabel>Left to pay back</HeroLabel>
+            <div className="flex flex-col gap-1.5 lg:gap-1">
+              <BigFigure>{formatMoney(advance.left)}</BigFigure>
               <Ledger className="text-honeydew">
                 left of {formatMoney(advance.drawn + advance.feeSoFar + advance.lateFee)} · fee so far {formatMoney(advance.feeSoFar)}
                 {advance.lateFee > 0 ? ` · late fee ${formatMoney(advance.lateFee)}` : cur.dollarsOnly ? "" : ` · ${cur.approx(advance.owedNow)}`}
               </Ledger>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 lg:gap-1.5">
               <DarkMeter value={advance.pct / 100} label="Advance paid back" />
               <div className="flex flex-col gap-0.5 font-body text-note text-honeydew sm:flex-row sm:justify-between sm:gap-4">
                 <span>
@@ -61,7 +80,7 @@ export function AdvanceDetailsScreen({ initial, demo }: { initial: AdvanceDetail
             </div>
           </HeroBlock>
 
-          <Card padding="lg">
+          <Card padding="lg" gap="sm" className="lg:p-4">
             <div className="flex flex-col gap-1">
               <CardTitle>Pay early, pay less</CardTitle>
               <Text size="note" tone="muted">
@@ -87,6 +106,7 @@ export function AdvanceDetailsScreen({ initial, demo }: { initial: AdvanceDetail
             </Text>
           </Card>
 
+
           {data.limit > 0 ? (
             <Card padding="lg">
               <CardTitle>Your limit</CardTitle>
@@ -100,22 +120,31 @@ export function AdvanceDetailsScreen({ initial, demo }: { initial: AdvanceDetail
             </Card>
           ) : null}
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button href={routes.advance.arrived} variant="secondary" className="sm:flex-1">
-              Why your agent drew this
-            </Button>
-            <Button href={routes.week} variant="secondary" className="sm:flex-1">
-              What if I have a slow week?
-            </Button>
-          </div>
+          <PlainWords className="lg:p-4">
+            <p className="m-0">{advance.feeRule}</p>
+            <p className="m-0 pt-2">The minimum is 1% of the advance plus the fee, every 7 days. Your sales usually cover it on their own.</p>
+            <p className="m-0 pt-2 text-note">≈{formatPercent(Math.round(advance.annualizedCostPercent))}/yr maximum (simple, not an APR).</p>
+          </PlainWords>
         </Stack>
 
-        <Stack gap="lg">
-          <Card padding="lg">
+        <Stack gap="lg" className="lg:gap-4">
+          <div className="hidden lg:block">{disclosure}</div>
+          <Card padding="lg" gap="sm" className="lg:p-4">
+            <CardTitle end={<Label>{formatPercent(advance.holdback)} of each payment</Label>}>Paid back so far</CardTitle>
+            <LineChart
+              points={[...repaymentCurve.points]}
+              label={repaymentCurve.ariaLabel}
+              format={(v) => formatMoney(v)}
+              xLabels={isMock ? ["Day 0", "Day 5", "Day 9"] : dayLabels(repaymentCurve.points)}
+            />
+          </Card>
+        </Stack>
+
+        <Stack gap="lg" className="lg:gap-4">
+          <Card padding="lg" gap="sm" className="lg:p-4">
             <CardTitle>The terms</CardTitle>
             <KeyValue
               rows={[
-                ["Advance", formatMoney(advance.drawn)],
                 ["Fee", "0.5% a week while you owe"],
                 [`Max fee (${formatPercent(advance.maxFeeBps / 100)})`, formatMoney(maxFee)],
                 ["Fee so far", formatMoney(advance.feeSoFar)],
@@ -126,15 +155,16 @@ export function AdvanceDetailsScreen({ initial, demo }: { initial: AdvanceDetail
               ]}
             />
           </Card>
-          <PlainWords>
-            <p className="m-0">{advance.feeRule}</p>
-            <p className="m-0 pt-2">The minimum is 1% of the advance plus the fee, every 7 days. Your sales usually cover it on their own.</p>
-            <p className="m-0 pt-2 text-note">
-              ≈{formatPercent(Math.round(advance.annualizedCostPercent))}/yr maximum (simple, not an APR).
-            </p>
-          </PlainWords>
+          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:gap-2">
+            <Button href={routes.advance.arrived} variant="secondary" className="sm:flex-1">
+              Why your agent drew this
+            </Button>
+            <Button href={routes.week} variant="secondary" className="sm:flex-1">
+              What if I have a slow week?
+            </Button>
+          </div>
         </Stack>
-      </Columns>
+      </div>
     </Page>
   );
 }

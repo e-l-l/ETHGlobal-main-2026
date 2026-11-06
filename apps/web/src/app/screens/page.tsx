@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { AppHeader, Label, Ledger, ListRow, Page, PageHead, RowList } from "@/final";
 import { failedHref, routes, verifyingHref } from "@/lib/routes";
 
@@ -73,6 +74,7 @@ const GROUPS: { group: string; screens: Item[] }[] = [
 ];
 
 export default function Page_() {
+  if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_SHOW_KIT !== "1") notFound();
   return (
     <>
       <AppHeader home={routes.home} />

@@ -52,6 +52,20 @@ export type BurnerWalletSecret = {
   createdAt: number;
 };
 
+/**
+ * World ID FIRST: the opaque ticket from POST /world/borrower/check, kept until the shop exists and is bound
+ * (then deleted). Short-lived (30 min) and single-use; it holds no nullifier. Not restored by `import()`.
+ */
+export type WorldTicketSecret = {
+  kind: "world_ticket";
+  ticket: string;
+  /** The wallet the ticket is bound to (lowercase): the shop must be registered from it. */
+  owner: string;
+  /** unix seconds */
+  expiresAt: number;
+  chainId: number;
+};
+
 export type Session = {
   shopId?: string;
   pseudonym?: string;
@@ -65,11 +79,29 @@ export type Session = {
   previousShops?: string[];
 };
 
+/**
+ * One proof generated on this device (adapters/proof-log.ts). Metadata only: no inputs, no proof bytes, no secrets,
+ * so it is safe to show on the Proof center screen. Not part of the recovery backup restore.
+ */
+export type ProofLogEntry = {
+  circuit: "business_pass" | "standing_pass";
+  ms: number;
+  proofBytes: number;
+  publicInputCount: number;
+  at: number;
+  verifiedLocally: boolean | null;
+  ok: boolean;
+  error?: string;
+  prover: string;
+};
+
 export type VaultRecords = {
   business_pass: BusinessPassSecret;
   standing_pass: StandingPassSecret;
   session: Session;
   wallet: BurnerWalletSecret;
+  world_ticket: WorldTicketSecret;
+  proof_log: ProofLogEntry[];
 };
 export type VaultKey = keyof VaultRecords;
 

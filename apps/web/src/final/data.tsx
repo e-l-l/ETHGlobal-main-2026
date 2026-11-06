@@ -1,6 +1,44 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { cn } from "@/lib/cn";
+
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/**
+ * Play-once entrance for charts. "idle": the server, no-JS, reduced motion, or nothing to do: fully drawn.
+ * "hidden": armed after mount, only when the element starts below the fold. "play": it scrolled in, run once.
+ * Above-the-fold elements go straight to "play" so they draw on load.
+ */
+export function useEnterOnce<T extends HTMLElement | SVGElement>(): [RefObject<T | null>, "idle" | "hidden" | "play"] {
+  const ref = useRef<T | null>(null);
+  const [phase, setPhase] = useState<"idle" | "hidden" | "play">("idle");
+
+  useIsoLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    setPhase(el.getBoundingClientRect().top < window.innerHeight * 0.92 ? "play" : "hidden");
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "hidden") return;
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e?.isIntersecting) return;
+        setPhase("play");
+        io.disconnect();
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.15 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [phase]);
+
+  return [ref, phase];
+}
 import { ChevronRightIcon } from "./icons";
 import { Label, Ledger } from "./text";
 
@@ -90,9 +128,10 @@ export function LineChart({
   const line = points.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
   const area = `${line} L${x(points.length - 1)},${H} L${x(0)},${H} Z`;
   const last = points[points.length - 1] ?? 0;
+  const [svgRef, phase] = useEnterOnce<SVGSVGElement>();
   return (
     <figure className={cn("m-0 flex flex-col gap-2", className)}>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`${label}. From ${format(points[0] ?? 0)} to ${format(last)}.`} className="block h-auto w-full" style={{ aspectRatio: `${W} / ${H}` }}>
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`${label}. From ${format(points[0] ?? 0)} to ${format(last)}.`} className={cn("block h-auto w-full", phase !== "idle" && "[transition:clip-path_1100ms_var(--ease-snappy)]", phase === "hidden" ? "[clip-path:inset(0_100%_0_0)]" : "[clip-path:inset(0_0_0_0)]")} style={{ aspectRatio: `${W} / ${H}` }}>
         <path d={area} className="fill-honeydew" />
         <path d={line} fill="none" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" className="stroke-hunter" />
         {markers?.map((m) => (
@@ -203,7 +242,7 @@ export function ActivityList({ items, label }: { items: Activity[]; label: strin
   return (
     <ol aria-label={label} className="m-0 flex list-none flex-col p-0">
       {items.map((a) => (
-        <li key={a.id} className="relative flex gap-3 pb-5 pl-5 last:pb-0 before:absolute before:top-2 before:bottom-0 before:left-[4px] before:w-px before:bg-hairline last:before:hidden">
+        <li key={a.id} className="relative flex gap-3 pb-5 pl-5 last:pb-0 before:absolute before:top-2 before:bottom-0 before:left-1 before:w-px before:bg-hairline last:before:hidden">
           <span aria-hidden className="absolute top-1.5 left-0 size-2.5 rounded-full bg-hunter ring-4 ring-honeydew" />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <div className="flex flex-wrap items-center justify-between gap-2">

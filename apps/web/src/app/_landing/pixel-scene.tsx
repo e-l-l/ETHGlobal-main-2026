@@ -601,6 +601,8 @@ export function PixelScene() {
     }
 
     function draw() {
+      /* A zero-sized layer (wrapper not laid out yet, or collapsed) can't be drawn. */
+      if (!back.width || !back.height || !mid.width || !mid.height || !front.width || !front.height) return;
       main!.setTransform(1, 0, 0, 1, 0, 0);
       main!.clearRect(0, 0, canvas!.width, canvas!.height);
       main!.drawImage(back, 0, 0);
@@ -623,6 +625,7 @@ export function PixelScene() {
     }
 
     function size() {
+      if (!wrap!.clientWidth || !wrap!.clientHeight) return;
       L = layout(wrap!.clientWidth, wrap!.clientHeight);
       for (const cv of [canvas!, back, mid, front]) {
         cv.width = L.cols * S;

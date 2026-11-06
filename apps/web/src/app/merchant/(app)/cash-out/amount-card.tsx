@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { CashOutView } from "@repo/sdk";
 import { ActionBar, Button, Card, Columns, KeyValue, Label, Ledger, Stack, Text, TextField } from "@/final";
-import { CardTitle, DarkBlock, HeroLabel } from "../../_ui";
+import { BlockPanel } from "@/blocks";
+import { CardTitle, HeroLabel } from "../../_ui";
 import { cn } from "@/lib/cn";
 import { useCurrency } from "@/lib/currency";
 import { formatMoney } from "@/lib/format";
@@ -56,12 +57,12 @@ function CashOutFields({ view }: { view: CashOutView }) {
 
   return (
     <Columns ratio="3:2">
-      <Stack gap="lg">
-        <DarkBlock>
+      <Stack gap="md">
+        <BlockPanel seed={11} dim={78} cols={8} rows={3} bodyClassName="gap-1 p-5 md:p-6">
           <HeroLabel>Ready to cash out</HeroLabel>
           <span className="font-display text-hero-sm tabular-nums md:text-[52px] md:leading-none">{formatMoney(available)}</span>
           {cur.dollarsOnly ? null : <Ledger className="text-honeydew">{cur.approx(available)} · example rate</Ledger>}
-        </DarkBlock>
+        </BlockPanel>
 
         <div className="flex flex-col gap-2">
           <TextField
@@ -83,15 +84,15 @@ function CashOutFields({ view }: { view: CashOutView }) {
 
         <Stack gap="sm">
           <Label id="send-to">Send it to</Label>
-          <div role="radiogroup" aria-labelledby="send-to" className="flex flex-col gap-3">
+          <div role="radiogroup" aria-labelledby="send-to" className="flex flex-col gap-2 lg:gap-2.5">
             {destinations.map((d) => {
               const on = dest === d.value;
               return (
                 <label
                   key={d.value}
                   className={cn(
-                    "flex min-h-16 cursor-pointer items-center gap-3.5 rounded-lg border p-4 transition-colors duration-150",
-                    "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-charcoal",
+                    "flex min-h-16 cursor-pointer items-center gap-3.5 rounded-lg border p-4 lg:min-h-14 lg:p-3 transition-colors duration-150",
+                    "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-charcoal",
                     on ? "border-hunter bg-honeydew" : "border-hairline bg-surface hover:border-control",
                   )}
                 >
@@ -113,8 +114,8 @@ function CashOutFields({ view }: { view: CashOutView }) {
         </Stack>
       </Stack>
 
-      <Stack gap="lg">
-        <Card padding="lg">
+      <Stack gap="md">
+        <Card padding="md">
           <CardTitle>Summary</CardTitle>
           <KeyValue
             rows={[

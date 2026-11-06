@@ -33,7 +33,7 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
-import { DarkCard, LendShell } from "./shell";
+import { DarkCard, LendShell, PublicBand } from "./shell";
 import { num, vaultNumbers } from "./vault";
 
 /** The demo faucet sends a fresh burner this much test USDC on its first write (agents DEMO_FAUCET_USDC). */
@@ -770,6 +770,7 @@ function ExplorerList({ explorerEvents }: { explorerEvents: Ev[] }) {
       <PageHead label="Pseudonyms only · no names anywhere" title="Explorer">
         Every payment, advance and pass, newest first.
       </PageHead>
+      <PublicBand seed={17}>No names. Pseudonyms only</PublicBand>
       <div className="flex flex-col gap-4 md:flex-row md:items-end">
         <div className="md:w-96">
           <TextField

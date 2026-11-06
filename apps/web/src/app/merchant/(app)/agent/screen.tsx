@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentLogView, AgentStatusView } from "@repo/sdk";
+import { BlockPanel } from "@/blocks";
 import { AgentStop, Banner, Button, Card, Columns, Heading, KeyValue, Label, Page, PageHead, Pill, Stack, StatGrid, Text, TextLink } from "@/final";
 import { capitalize, formatMoney } from "@/lib/format";
 import { isMock } from "@/lib/mra";
@@ -10,7 +11,7 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA, useMRAAction } from "@/lib/use-mra";
-import { BigFigure, CardTitle, HeroBlock, HeroLabel, PlainWords } from "../../_ui";
+import { BigFigure, CardTitle, HeroLabel, PlainWords } from "../../_ui";
 import { DecisionLog } from "./decision-log";
 import { decisions as demoDecisions, decisionsFrom } from "./_data";
 
@@ -32,8 +33,8 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
 
   if (!log) {
     return (
-      <Page tabs>
-        <HeroBlock>
+      <Page tabs dense>
+        <BlockPanel seed={3} dim={76} cols={8} rows={5} bodyClassName="gap-4 p-5 md:gap-5 md:p-7">
           <HeroLabel>Cash-flow agent</HeroLabel>
           <BigFigure as="h1">No agent yet.</BigFigure>
           <Text className="max-w-[56ch] text-honeydew md:text-[17px]">
@@ -44,7 +45,7 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
               Set up your agent
             </Button>
           </div>
-        </HeroBlock>
+        </BlockPanel>
         <PlainWords>
           A small weekly fee while you owe, capped at 3%. Each advance is paid back from a small share of your payments,
           so a slow week just takes longer.
@@ -60,7 +61,7 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
   const { agentLimits } = log;
 
   return (
-    <Page tabs>
+    <Page tabs dense>
       <PageHead
         label="Cash-flow agent"
         title="Every decision, with its reason."
@@ -92,7 +93,9 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
             Decisions
           </Heading>
           {decisions.length > 0 ? (
-            <DecisionLog decisions={decisions} />
+            <div className="lg:max-h-[calc(100vh-22rem)] lg:overflow-auto lg:rounded-lg">
+              <DecisionLog decisions={decisions} />
+            </div>
           ) : (
             <Card>
               <Text size="note" tone="muted">
@@ -101,11 +104,11 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
             </Card>
           )}
         </Stack>
-        <Stack gap="lg">
+        <Stack gap="md">
           {status.active ? <AgentStop onDone={reload} /> : null}
           {!isMock && status.active ? <RunAgentNow onDone={reload} /> : null}
           <div>
-            <Card padding="lg">
+            <Card padding="md">
               <CardTitle end={<TextLink href={routes.agent.setup}>Edit</TextLink>}>Your limits</CardTitle>
               <KeyValue
                 rows={[
@@ -138,7 +141,7 @@ function RunAgentNow({ onDone }: { onDone: () => void }) {
   const [summary, setSummary] = useState<string | undefined>();
   const run = useMRAAction((m) => m.agent.trigger({ runNow: true }));
   return (
-    <Card tone="well" gap="sm" padding="lg">
+    <Card tone="well" gap="sm" padding="md">
       <Label>Demo</Label>
       <CardTitle>Run the agent now</CardTitle>
       <Text size="note">It normally checks on a schedule. This asks it to decide right away, inside the same limits.</Text>

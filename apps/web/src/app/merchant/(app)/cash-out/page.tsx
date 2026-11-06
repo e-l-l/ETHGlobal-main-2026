@@ -8,9 +8,8 @@ import { CashOutForm } from "./amount-card";
 export default async function CashOutPage() {
   const initial = await serverView(q.cashOut);
   return (
-    <Page tabs>
-      <PageHead back={routes.merchant} backLabel="Home" title="Cash out" />
-      <Text>No local money is sent.</Text>
+    <Page tabs dense>
+      <PageHead back={routes.merchant} backLabel="Home" title="Cash out" actions={<Text size="note">No local money is sent.</Text>} />
       <CashOutForm initial={initial} />
     </Page>
   );
