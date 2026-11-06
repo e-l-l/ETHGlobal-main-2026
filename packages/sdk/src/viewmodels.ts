@@ -381,6 +381,8 @@ export type PayReceipt = {
 /** Display strings, exactly like apps/web's VAULT. */
 export type VaultVM = {
   apy: string;
+  /** Days since the vault was deployed: `apy` annualizes share-price growth over this window. Absent in mock. */
+  ageDays?: number;
   totalLent: string;
   tvl: string;
   senior: string;

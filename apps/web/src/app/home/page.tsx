@@ -82,7 +82,7 @@ export default function Page_() {
                 href={routes.welcome}
                 icon={<JarMark size={28} on="dark" lit={2} />}
                 title="I run a shop"
-                body="Take payments by QR in any token. Get small dollar advances for stock, paid back from your sales."
+                body="Take payments by QR in dollars (USDC). Get small dollar advances for stock, paid back from your sales."
                 cta="Start as a merchant"
               />
               <RoleCard
@@ -109,7 +109,7 @@ export default function Page_() {
             <ol className="m-0 flex list-none flex-col items-start gap-2 p-0 md:flex-row md:flex-wrap md:items-center">
               <FlowStep>Customer scans the QR</FlowStep>
               <Arrow />
-              <FlowStep>Any token swapped to USDC</FlowStep>
+              <FlowStep>Customer pays in USDC</FlowStep>
               <Arrow />
               <FlowStep>Contract splits it</FlowStep>
               <Arrow />

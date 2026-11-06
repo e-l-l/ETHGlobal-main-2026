@@ -129,7 +129,7 @@ function LedgerStrip({ ledger, before, live }: { ledger: SimLedger | null; befor
     },
   ];
   return (
-    <section aria-label="Live ledger" className="flex flex-col gap-3 rounded-lg bg-charcoal p-4 text-canvas md:p-5">
+    <section aria-label={SIM_DEMO ? "Ledger" : "Live ledger"} className="flex flex-col gap-3 rounded-lg bg-charcoal p-4 text-canvas md:p-5">
       <div className="flex items-center gap-2">
         <span aria-hidden className={cn("size-2 rounded-full bg-lime", live && "animate-pulse motion-reduce:animate-none")} />
         <Label className="text-lime">{SIM_DEMO ? "Ledger · demo" : "Live ledger · devnet"}</Label>
@@ -432,9 +432,19 @@ export function SimulatorScreen() {
   if (view.kind === "pick") {
     return (
       <LendShell>
-        <LendHero label={SIM_DEMO ? "Simulator · demo" : "Simulator · public devnet"} title="Watch DripMoney run, live on our devnet.">
-          Pick a shop. You&rsquo;ll see a real ZK proof, the AI underwriter, and money moving between the shop, the vault, DripCoin and the reserve. Each run takes under a minute.
+        <LendHero
+          label={SIM_DEMO ? "Simulator · scripted demo" : "Simulator · public devnet"}
+          title={SIM_DEMO ? "Watch DripMoney run: a scripted demo." : "Watch DripMoney run, live on our devnet."}
+        >
+          {SIM_DEMO
+            ? "Scripted demo: pick a shop to replay the ZK proof, the AI underwriter, and money moving between the shop, the vault, DripCoin and the reserve. Nothing here touches a chain."
+            : <>Pick a shop. You&rsquo;ll see a real ZK proof, the AI underwriter, and money moving between the shop, the vault, DripCoin and the reserve. Each run takes under a minute.</>}
         </LendHero>
+        {SIM_DEMO ? null : (
+          <Text size="note" tone="muted">
+            Public test chain; time is fast-forwarded (days pass in seconds). Identity steps use World test mode.
+          </Text>
+        )}
         <LedgerStrip ledger={stateLedger} live={!SIM_DEMO} />
         <section aria-labelledby="pick-h" className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">

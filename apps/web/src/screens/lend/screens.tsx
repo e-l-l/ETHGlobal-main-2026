@@ -33,7 +33,7 @@ import { useMRA } from "@/lib/use-mra";
 import { DarkCard, LendHero, LendShell, PublicBand } from "./shell";
 import { DepositPanel, PositionCard } from "./client";
 import { LiveWaterfall, MarketView, RiskInPublic, RiskLoading } from "./risk";
-import { reasonLines, vaultNumbers } from "./vault";
+import { apyView, reasonLines, vaultNumbers } from "./vault";
 
 const usd2 = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const price = (v: number) => `$${v.toFixed(3)}`;
@@ -118,6 +118,8 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
   const series = data.seniorSeries;
   const split = feeSplitParts(data.feeSplit);
   const last = series.at(-1) ?? 100;
+  const APY = apyView(VAULT);
+  const flat = !isMock && series.every((v) => v === series[0]);
   return (
     <LendShell>
       <div>
@@ -131,9 +133,11 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
           }
           aside={
             <>
-              <Label className="text-canvas">Current APY</Label>
-              <span className="font-display text-[64px] leading-none font-extrabold tracking-[-0.04em] tabular-nums text-canvas md:text-[80px]">{VAULT.apy}</span>
-              <span className="font-body text-note text-canvas">From advance fees, after losses. Not promised.</span>
+              <Label className="text-canvas">{APY.fresh ? "New vault · target per year" : "APY since deployment"}</Label>
+              <span className="font-display text-[64px] leading-none font-extrabold tracking-[-0.04em] tabular-nums text-canvas md:text-[80px]">{APY.value}</span>
+              <span className="font-body text-note text-canvas">
+                {APY.fresh ? "A target, not promised. No fee history yet." : "From advance fees, after losses. Illustrative, not promised."}
+              </span>
             </>
           }
         >
@@ -182,13 +186,19 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
                 </Heading>
                 <span className="font-display text-h2 tabular-nums text-fern">{usd2(last)}</span>
               </div>
-              <LineChart
-                points={series}
-                height={220}
-                label={isMock ? "Value of $100 rising steadily over 12 weeks, flat through the write-off" : "Value of $100 deposited over time"}
-                xLabels={["12 weeks ago", "Now"]}
-                format={usd2}
-              />
+              {flat ? (
+                <Text size="note" tone="muted">
+                  Chart starts after the first fees.
+                </Text>
+              ) : (
+                <LineChart
+                  points={series}
+                  height={220}
+                  label={isMock ? "Value of $100 rising steadily over 12 weeks, flat through the write-off" : "Value of $100 deposited over time"}
+                  xLabels={["12 weeks ago", "Now"]}
+                  format={usd2}
+                />
+              )}
             </Card>
           </div>
           </Reveal>
@@ -515,7 +525,7 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
             { label: "Repaid, 30 days", value: VAULT.repaid30d },
             { label: "Written off", value: VAULT.writtenOff, sub: "all time" },
             { label: "Shops active", value: VAULT.shopsActive, sub: "pseudonyms" },
-            { label: "Vault APY", value: VAULT.apy },
+            { label: "Vault APY", value: apyView(VAULT).fresh ? "New vault" : VAULT.apy, sub: apyView(VAULT).fresh ? "target 8–10%/yr, not promised" : "since deployment, illustrative" },
             { label: "Loss rate", value: VAULT.defaultRate },
             { label: "DRIP price (TWAP)", value: VAULT.juniorTwap },
             { label: "Coverage", value: VAULT.coverage, sub: "DRIP cover · 20% rule" },
@@ -625,6 +635,9 @@ export function RiskScreen({ initial }: { initial: RiskView | null }) {
         Signals and every limit change, with the reasons. Limits only move down on their own.
       </PageHead>
       <PublicBand seed={13}>Every limit change is public</PublicBand>
+      <Text size="note" tone="muted">
+        Testnet pool seeded by the DripMoney team; its price is an early-warning signal, not a proven credit oracle.
+      </Text>
       <Columns ratio="3:2">
         <Stack gap="lg">
           <div>

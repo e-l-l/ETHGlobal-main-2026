@@ -12,8 +12,8 @@ import { useLive } from "./use-live";
  */
 
 const PINS = [
-  { k: "Shop name", tag: "Public", body: `A neutral name like ${shop.name} and a pseudonym, ${shop.id}. Nothing about you, nothing about the advance.` },
-  { k: "Each sale", tag: "Public", body: "Sales and the 8% that drips back are onchain. Customers never see your advance." },
+  { k: "Shop name", tag: "Public", body: `A neutral name like ${shop.name} and a pseudonym, ${shop.id}. Nothing about you; nobody can tie it to you without your other data.` },
+  { k: "Each sale", tag: "Public", body: "Sales, the advance and the 8% that drips back are public onchain under your shop ID. The checkout never shows your advance." },
   { k: "Name and phone", tag: "Never asked", body: "No name or identity ever goes onchain. We never ask for your name, phone or contacts." },
   { k: "Your books", tag: "Stay on your phone", body: "Records stay on your phone, not our servers. A private check shares country, sales band and 6+ months. We learned nothing else." },
   { k: "Repaid advances", tag: "Proved, not shown", body: "Your Standing Pass proves how many you repaid. Not which, not where, not when." },
@@ -136,10 +136,10 @@ export function Fog() {
               Private by default
             </span>
             <h2 id="privacy-h" className="m-0 max-w-[14ch] font-display text-[44px] leading-[1.02] font-bold tracking-[-0.035em] text-charcoal md:text-[64px]">
-              Your books stay closed. <span className="block text-hunter">Even onchain.</span>
+              Your books stay closed. <span className="block text-hunter">Your name stays off the chain.</span>
             </h2>
             <p className="m-0 max-w-[44ch] font-body text-read text-charcoal-soft">
-              Being seen with debt is risky. Your records live on your phone, and the chain only ever sees a nameless shop. Pick a pin and look for yourself.
+              Being seen with debt is risky. We never learn your name, phone or contacts, and your passes stay on this phone. Sales and the advance are public under a pseudonymous shop ID. Pick a pin and look for yourself.
             </p>
           </div>
           <div

@@ -74,9 +74,9 @@ const en = {
   pass: {
     title: "You're verified.",
     accent: "We learned nothing else.",
-    panel: "Your Business Pass lives on this phone. It proves your shop is real without showing who you are.",
+    panel: "Your Business Pass lives on this phone. It proves your shop's facts without showing who you are (demo attestor in this build).",
     heading: "Your Business Pass",
-    body: "Kept on this phone. Nothing else leaves it.",
+    body: "Kept on this phone, not on our servers.",
     onPhone: "On this phone",
     facts: [
       { k: "Country", v: "Argentina" },
@@ -124,9 +124,9 @@ const en = {
   shop: {
     panelTitle: "Get your",
     accent: "payment QR.",
-    panel: "Customers scan it and pay in any token. You get dollars, and the contract splits each payment for you.",
+    panel: "Customers scan it and pay in digital dollars (USDC); on this testnet demo it's test USDC. The contract splits each payment for you.",
     title: "Name your shop",
-    body: "Customers see this name on the QR and checkout. Never your own name, and never anything about an advance.",
+    body: "Customers see this name on the QR and checkout, never your own name. Sales and any advance are public onchain under a pseudonymous shop ID.",
     label: "Shop name",
     hint: "Keep it ordinary. Not your own name.",
     ideas: "Ideas",
@@ -190,7 +190,7 @@ export const copy = en;
 const payEn = {
   verified: "You are paying",
   secured: (app: string) => `Secured by ${app}`,
-  panel: "Pay with any token. The shop gets dollars.",
+  panel: "Pay in digital dollars (USDC). Paying in other tokens via Uniswap is next.",
   amount: "Amount",
   hint: "Arrives as dollars. Network fee covered.",
   pay: (amt: string) => `Pay ${amt}`,

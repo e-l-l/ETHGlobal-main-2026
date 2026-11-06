@@ -423,8 +423,8 @@ function InContext() {
           <BlockBand seed={21} cols={8} theme="brand" />
           <div className="flex flex-col gap-2 p-5">
             <Caption>Feature card · band header</Caption>
-            <h3 className="m-0 font-display text-h2">Paid in any token</h3>
-            <p className="m-0 font-body text-note text-charcoal-soft">Swapped to dollars through Uniswap the moment a customer pays.</p>
+            <h3 className="m-0 font-display text-h2">Paid in dollars</h3>
+            <p className="m-0 font-body text-note text-charcoal-soft">Customers pay in USDC. Other tokens via Uniswap are next.</p>
           </div>
         </article>
 

@@ -34,7 +34,7 @@ import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
 import { DarkCard, LendShell, PublicBand } from "./shell";
-import { num, vaultNumbers } from "./vault";
+import { apyView, vaultNumbers } from "./vault";
 
 /** The demo faucet sends a fresh burner this much test USDC on its first write (agents DEMO_FAUCET_USDC). */
 const FAUCET_USDC = 50;
@@ -292,7 +292,7 @@ const usdQuick = (max: number) => [
 
 function vaultSides(vault: VaultVM): [Side, Side] {
   const V = vaultNumbers(vault);
-  const apy = num(vault.apy);
+  const apy = apyView(vault).rate;
   const walletMax = fundable(V.walletUsdc);
   const sp = V.sharePrice || 1;
   return [
@@ -388,7 +388,7 @@ export function DepositScreen({ side, initial }: { side?: string; initial: Depos
             <Label>Vault right now</Label>
             <KeyValue
               rows={[
-                ["APY", data.vault.apy],
+                ["APY", apyView(data.vault).short],
                 ["Share price", data.vault.sharePrice],
                 ["Out in advances", data.vault.outstanding],
                 ["Available to withdraw", data.vault.availableToWithdraw],
@@ -621,6 +621,9 @@ function TradeForm({ view, reload }: { view: TradeView; reload?: () => void }) {
           </div>
         }
       />
+      <Text size="note" tone="muted">
+        Testnet pool seeded by the DripMoney team; its price is an early-warning signal, not a proven credit oracle.
+      </Text>
       <Columns ratio="3:2">
         <Stack gap="lg">
           <div>

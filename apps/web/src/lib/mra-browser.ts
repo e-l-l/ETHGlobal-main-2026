@@ -48,6 +48,9 @@ type AnonRpcLike = AnonRpcWorkerLike & {
   rpcConfig(): RpcConfig & { url: string };
   status(): AnonStatus;
   onStatus(fn: (s: AnonStatus) => void): () => void;
+  /** Request counters (SDK AnonRpcStats). Optional: the build-time stub has none. */
+  stats?(): { routed: number; direct: number };
+  onStats?(fn: (s: { routed: number; direct: number }) => void): () => void;
 };
 type AnonModule = {
   createAnonRpc: (opts: {

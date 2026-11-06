@@ -50,8 +50,8 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
           Your limit is now <span className="text-lime">{formatMoney(cap)}.</span>
         </BigFigure>
         <Text className="max-w-[56ch] text-honeydew md:text-[17px]">
-          You&rsquo;ve repaid {advances}. From today, all of each payment is yours. Nobody can see your history, not even
-          us.
+          You&rsquo;ve repaid {advances}. From today, all of each payment is yours. Your Standing Pass proves it on a new
+          shop without showing which shops.
         </Text>
       </HeroBlock>
 
