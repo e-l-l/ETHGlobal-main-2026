@@ -22,6 +22,23 @@ def mark_cold_start(features, band: int):
     return features.model_copy(update={"proven_revenue_band": band, "cold_start": thin})
 
 
+def apply_cold_start(features, tier: int, min_revenue_band: int = 0):
+    """Which thin-history shops are underwritten as a cold start instead of rejected for "not enough data".
+
+    - tier 0 with a zkTLS-proven revenue band (Business Pass; band enforced onchain at draw).
+    - tier >= 1: such an offer can only be redeemed onchain with a verified Standing Pass proof (a tier >= 1 mandate is
+      registered with one; drawWithPass checks one; nullifier enforced), i.e. proof that this merchant fully repaid
+      before. Moving to a fresh shop to stay unlinkable is the point of the design, so the new shop's thin history is
+      not a red flag: it is judged as a cold start on the lowest proven floor. Hard red lines still apply, and the
+      contract's tier cap still bounds the amount.
+    """
+    if tier == 0 and 0 < min_revenue_band <= MAX_REVENUE_BAND:
+        return mark_cold_start(features, min_revenue_band)
+    if tier >= 1:
+        return mark_cold_start(features, min_revenue_band if 0 < min_revenue_band <= MAX_REVENUE_BAND else 1)
+    return features
+
+
 def _build_features(*args, **kwargs):
     from .features import build_features
     return build_features(*args, **kwargs)
@@ -57,8 +74,7 @@ class UnderwritingPipeline:
         payout = self.reader.shop_payout(shop_id)
         features = self.build_features(shop_id, sales, funders, payout, now,
                                        self.settings.payer_hash_key.get_secret_value().encode())
-        if tier == 0 and 0 < min_revenue_band <= MAX_REVENUE_BAND:
-            features = mark_cold_start(features, min_revenue_band)
+        features = apply_cold_start(features, tier, min_revenue_band)
         decision = Decision(decision_id=str(uuid.uuid4()), created_at=now, shop_id=shop_id, tier=tier,
                             features_hash=features_hash(features), redline_hits=[], draft=None, verdict=None,
                             clamp_changes=[], result="error", model=self.settings.anthropic_model)

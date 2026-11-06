@@ -127,3 +127,27 @@ def test_critic_sees_only_the_red_lines_the_code_enforces_on_cold_start():
     assert set(red_lines_payload(thin())) == {"unique_payers_30d", "top_payer_share_30d", "funded_by_shop_share",
                                               "days_active_30d", "spike_ratio"}
     assert json.dumps(red_lines_payload())  # no-arg form unchanged
+
+
+def test_standing_pass_tier_is_a_cold_start_on_a_fresh_shop():
+    """After repaying, the merchant moves to a fresh shop (unlinkable). Its thin history must not block tier 1."""
+    from mra_agents.pipeline import apply_cold_start
+
+    f = apply_cold_start(thin(), tier=1)
+    assert f.cold_start and f.proven_revenue_band == 1
+    assert redlines.check(f) == []
+
+
+def test_standing_pass_tier_still_hits_hard_red_lines():
+    from mra_agents.pipeline import apply_cold_start
+
+    f = apply_cold_start(thin(funded_by_shop_share=0.9), tier=1)
+    assert redlines.CIRCULAR_FUNDING in redlines.check(f)
+
+
+def test_tier0_without_band_is_not_a_cold_start():
+    from mra_agents.pipeline import apply_cold_start
+
+    f = apply_cold_start(thin(), tier=0)
+    assert not f.cold_start
+    assert {redlines.FEW_PAYERS, redlines.FEW_ACTIVE_DAYS} <= set(redlines.check(f))
