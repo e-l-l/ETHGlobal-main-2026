@@ -218,3 +218,7 @@ This repository was assembled on 6 Nov from the team's working repo; full commit
 ## License
 
 [MIT](LICENSE)
+
+## Future work
+
+What's not done yet (privacy gaps, any-token checkout, audits, real seller data), with designs and sizes: [docs/FUTURE.md](docs/FUTURE.md).

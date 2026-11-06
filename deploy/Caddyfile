@@ -16,10 +16,7 @@
 		-Server
 		-X-Powered-By
 	}
-	log {
-		output stdout
-		format console
-	}
+	# No access log: we don't keep visitors' IP addresses. Caddy still logs its own errors.
 }
 
 # Pages that should never be framed. The portal is left frameable on purpose (Reclaim may load it

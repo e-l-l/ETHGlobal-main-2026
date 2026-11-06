@@ -18,6 +18,8 @@ import type { Band } from "./config.js";
 export const REDACT_PATHS = [
   "req.body", "body", "proof", "*.proof", "account_id", "*.account_id", "accountId", "*.accountId",
   "extractedParameters", "*.extractedParameters", "req.headers.authorization", "req.headers.cookie",
+  // No client IPs in logs.
+  "req.remoteAddress", "req.remotePort", "req.headers[\"x-forwarded-for\"]", "req.headers[\"x-real-ip\"]",
 ];
 
 export interface AppOptions {

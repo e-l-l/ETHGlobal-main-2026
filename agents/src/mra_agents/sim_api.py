@@ -27,6 +27,17 @@ class SimMount(NamedTuple):
     isolate: bool = False  # run each scenario in a killable child process
 
 
+import hashlib as _hashlib
+import secrets as _secrets
+
+_IP_SALT = _secrets.token_bytes(16)  # per process: the rate limit only needs equality, never the address
+
+
+def _ip_tag(ip: str) -> str:
+    """A salted hash of the client IP, so the run store never holds an IP address."""
+    return _hashlib.sha256(_IP_SALT + ip.encode()).hexdigest()[:24]
+
+
 def build_router(store: SimStore, executor, ledger, *, timeout_seconds: int = 240, isolate: bool = False):
     router = APIRouter(prefix='/sim')
     worker = SimWorker(store, executor, timeout_seconds=timeout_seconds, isolate=isolate)
@@ -38,7 +49,7 @@ def build_router(store: SimStore, executor, ledger, *, timeout_seconds: int = 24
     @router.post('/runs')
     def create(body: RunRequest, request: Request):
         try:
-            run_id = store.create(body.archetype, request.client.host if request.client else 'unknown')
+            run_id = store.create(body.archetype, _ip_tag(request.client.host if request.client else 'unknown'))
         except RateLimited:
             raise HTTPException(429, 'Rate limit exceeded') from None
         except ValueError:

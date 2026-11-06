@@ -294,3 +294,7 @@ A customer who pays at the stall learns its **pseudonym**, and can then see that
 | — | Shielded settlement, OPRF nullifiers, association sets, selective disclosure | 🔭 | The pitch's north star |
 
 **What wins it:** the demo shows a merchant proving "real business, real human, real revenue" with **zero personal data**, getting an AI-underwritten advance, repaying at the till, and coming back under a **new pseudonym with their reputation intact**, while judges see public metadata and the limits of unlinkability.
+
+## Server logs
+
+We don't keep visitors' IP addresses: Caddy access logs are off, the agents API runs without an access log, the issuer redacts client IPs, and the simulator's rate limiter stores a salted hash. The faucet and API rate limits are in memory only. Remaining gaps and their designs: [FUTURE.md](FUTURE.md).

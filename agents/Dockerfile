@@ -33,4 +33,4 @@ USER agents
 EXPOSE 8787
 # --proxy-headers: Caddy is the only client that can reach this port, so trust its X-Forwarded-For
 # (the API rate limiter keys on the client IP).
-CMD ["uvicorn", "mra_agents.api:app", "--host", "0.0.0.0", "--port", "8787", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["uvicorn", "mra_agents.api:app", "--host", "0.0.0.0", "--port", "8787", "--proxy-headers", "--forwarded-allow-ips", "*", "--no-access-log"]
