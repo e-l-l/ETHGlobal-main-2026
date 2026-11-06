@@ -54,7 +54,7 @@ const GROUPS: { group: string; screens: { id: string; title: string; href: strin
   {
     group: "Merchant app (Person A)",
     screens: [
-      { id: "M07", title: "Agent setup", href: routes.agentSetup },
+      { id: "M07", title: "Agent setup", href: routes.agent.setup },
       { id: "M10", title: "Home", href: routes.home },
       { id: "P01", title: "World view", href: routes.worldView },
     ],

@@ -32,10 +32,24 @@ export const routes = {
   kit: "/dev/components",
   kit2: "/dev2/components",
 
-  /** Person A. Linked before those screens exist. */
-  agentSetup: "/agent/setup",
+  /* Person A: merchant app */
   home: "/home",
+  advance: {
+    details: "/advance",
+    arrived: "/advance/arrived",
+  },
+  week: "/week",
+  agent: {
+    log: "/agent",
+    manage: "/agent/manage",
+    setup: "/agent/setup",
+    approve: "/agent/approve",
+    denied: "/agent/denied",
+  },
+  repaid: "/repaid",
+  cashOut: "/cash-out",
   worldView: "/world-view",
+  myQr: "/qr",
 } as const;
 
 export type FailReason = "too-new" | "suspended" | "revenue-low";

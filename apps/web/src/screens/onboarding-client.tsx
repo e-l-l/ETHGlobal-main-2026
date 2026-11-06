@@ -192,7 +192,7 @@ export function ShopScreen({ lang }: { lang: Lang }) {
       </Main>
       <ActionBar>
         {clean.length >= 2 ? (
-          <LinkButton href={routes.agentSetup}>{t.cta}</LinkButton>
+          <LinkButton href={routes.agent.setup}>{t.cta}</LinkButton>
         ) : (
           <Button block disabled>
             {t.empty}

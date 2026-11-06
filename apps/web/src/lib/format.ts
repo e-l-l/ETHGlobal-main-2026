@@ -31,8 +31,28 @@ export function formatLocal(amount: number, currency: string, locale = "en-US"):
   return `≈ ${formatMoney(amount, currency, locale)}`;
 }
 
+/** "13,500": plain grouped number, no currency. */
+export function formatNumber(value: number, locale = "en-US"): string {
+  return numberFormat(locale, Number.isInteger(value) ? 0 : 2).format(value);
+}
+
+/** "40%". */
+export function formatPercent(value: number): string {
+  return `${value}%`;
+}
+
+/** "~23 days". */
+export function formatDays(days: number): string {
+  return `~${days} ${days === 1 ? "day" : "days"}`;
+}
+
 /** "0x7a3e…91c2". Short strings (pseudonyms like "shop_7f3a") pass through unchanged. */
 export function truncateAddress(address: string, head = 6, tail = 4): string {
   if (address.length <= head + tail + 1) return address;
   return `${address.slice(0, head)}…${address.slice(-tail)}`;
+}
+
+/** "stock" → "Stock". */
+export function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

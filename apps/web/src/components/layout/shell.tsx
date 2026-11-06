@@ -182,25 +182,27 @@ export function PageHeader({ eyebrow, title, description, aside, className, ...p
 export type TwoColumnProps = Omit<ComponentPropsWithoutRef<"div">, "children"> & {
   main: ReactNode;
   side: ReactNode;
-  ratio?: "3:2" | "1:1";
+  ratio?: "3:2" | "2:3" | "1:1";
   mobileOrder?: "main-first" | "side-first";
 };
 
+const WIDE = "grow-[3] basis-[380px]";
+const NARROW = "grow-[2] basis-[280px]";
+const EVEN = "grow basis-[380px]";
+/** [main, side] column sizing per ratio. */
+const RATIO_CLASSES = { "3:2": [WIDE, NARROW], "2:3": [NARROW, WIDE], "1:1": [EVEN, EVEN] } as const;
+
 export function TwoColumn({ main, side, ratio = "3:2", mobileOrder = "main-first", className, ...props }: TwoColumnProps) {
+  const [mainClass, sideClass] = RATIO_CLASSES[ratio];
   return (
     <div className={cn("flex flex-wrap gap-6", className)} {...props}>
-      <div
-        className={cn(
-          "flex min-w-0 flex-col gap-6",
-          ratio === "3:2" ? "grow-[3] basis-[380px]" : "grow basis-[380px]",
-        )}
-      >
+      <div className={cn("flex min-w-0 flex-col gap-6", mainClass)}>
         {main}
       </div>
       <div
         className={cn(
           "flex min-w-0 flex-col gap-6",
-          ratio === "3:2" ? "grow-[2] basis-[280px]" : "grow basis-[380px]",
+          sideClass,
           mobileOrder === "side-first" && "max-md:order-first",
         )}
       >
