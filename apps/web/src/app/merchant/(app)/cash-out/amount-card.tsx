@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { CashOutView } from "@repo/sdk";
 import { ActionBar, Button, Card, Columns, KeyValue, Label, Ledger, Stack, Text, TextField } from "@/final";
+import { CardTitle, DarkBlock, HeroLabel } from "../../_ui";
 import { cn } from "@/lib/cn";
 import { formatLocal, formatMoney } from "@/lib/format";
 import { isMock } from "@/lib/mra";
@@ -28,34 +29,58 @@ function CashOutFields({ view }: { view: CashOutView }) {
   const value = Number(amount) || 0;
   const over = value > available;
 
+  const chosen = destinations.find((d) => d.value === dest);
+  const local = formatLocal(value * shop.usdToLocal, shop.localCurrency);
+
+  const sendButton = isMock ? (
+    <Button href={routes.merchant} width="full" disabled={over || value <= 0}>
+      Cash out {formatMoney(value)}
+    </Button>
+  ) : (
+    <Button
+      width="full"
+      loading={send.pending}
+      disabled={over || value <= 0}
+      onClick={() => {
+        send.run(value, dest).then(
+          () => router.push(routes.merchant),
+          () => undefined,
+        );
+      }}
+    >
+      Cash out {formatMoney(value)}
+    </Button>
+  );
+
   return (
-    <>
-      <Columns ratio="2:3">
-        <Card>
+    <Columns ratio="3:2">
+      <Stack gap="lg">
+        <DarkBlock>
+          <HeroLabel>Ready to cash out</HeroLabel>
+          <span className="font-display text-hero-sm tabular-nums md:text-[52px] md:leading-none">{formatMoney(available)}</span>
+          <Ledger className="text-honeydew">{formatLocal(available * shop.usdToLocal, shop.localCurrency)} · example rate</Ledger>
+        </DarkBlock>
+
+        <div className="flex flex-col gap-2">
           <TextField
             label="Amount"
             prefix="$"
             inputMode="decimal"
             value={amount}
+            className="font-display text-h1"
             error={over ? `You have ${formatMoney(available)} available` : undefined}
             onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
           />
-          <div>
-            <Button type="button" variant="tonal" size="sm" onClick={() => setAmount(String(available))}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Ledger>{local} at today&rsquo;s rate</Ledger>
+            <Button type="button" variant="tonal" size="sm" width="auto" onClick={() => setAmount(String(available))}>
               Max
             </Button>
           </div>
-          <Ledger>{formatLocal(value * shop.usdToLocal, shop.localCurrency)} at today&rsquo;s rate</Ledger>
-          <KeyValue
-            rows={[
-              ["Available", formatMoney(available)],
-              ["Fee", "None"],
-            ]}
-          />
-        </Card>
+        </div>
 
         <Stack gap="sm">
-          <Label id="send-to">Send to</Label>
+          <Label id="send-to">Send it to</Label>
           <div role="radiogroup" aria-labelledby="send-to" className="flex flex-col gap-3">
             {destinations.map((d) => {
               const on = dest === d.value;
@@ -63,44 +88,45 @@ function CashOutFields({ view }: { view: CashOutView }) {
                 <label
                   key={d.value}
                   className={cn(
-                    "flex min-h-16 cursor-pointer flex-col justify-center gap-0.5 rounded-lg border p-4 transition-colors duration-150",
+                    "flex min-h-16 cursor-pointer items-center gap-3.5 rounded-lg border p-4 transition-colors duration-150",
                     "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-charcoal",
                     on ? "border-hunter bg-honeydew" : "border-hairline bg-surface hover:border-control",
                   )}
                 >
                   <input type="radio" name="dest" value={d.value} checked={on} onChange={() => setDest(d.value)} className="sr-only" />
-                  <span className="font-body text-read font-semibold text-charcoal">{d.title}</span>
-                  <span className="font-body text-note text-charcoal-muted">{d.description}</span>
+                  <span
+                    aria-hidden
+                    className={cn("grid size-5 shrink-0 place-items-center rounded-full border-2", on ? "border-hunter" : "border-control")}
+                  >
+                    {on ? <span className="size-2.5 rounded-full bg-hunter" /> : null}
+                  </span>
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="font-body text-read font-semibold text-charcoal">{d.title}</span>
+                    <span className="font-body text-note text-charcoal-soft">{d.description}</span>
+                  </span>
                 </label>
               );
             })}
           </div>
-          <Text size="note" tone="muted">
-            demo: transfers are simulated
-          </Text>
         </Stack>
-      </Columns>
+      </Stack>
 
-      <ActionBar>
-        {isMock ? (
-          <Button href={routes.merchant} disabled={over || value <= 0}>
-            Send {formatMoney(value)}
-          </Button>
-        ) : (
-          <Button
-            loading={send.pending}
-            disabled={over || value <= 0}
-            onClick={() => {
-              send.run(value, dest).then(
-                () => router.push(routes.merchant),
-                () => undefined,
-              );
-            }}
-          >
-            Send {formatMoney(value)}
-          </Button>
-        )}
-      </ActionBar>
-    </>
+      <Stack gap="lg">
+        <Card padding="lg">
+          <CardTitle>Summary</CardTitle>
+          <KeyValue
+            rows={[
+              ["You send", formatMoney(value)],
+              [`${chosen?.title.split(" · ").pop() ?? "They"} gets`, chosen?.value === "usd" ? formatMoney(value) : local],
+              ["Fee", <span key="fee" className="text-fern">None</span>],
+            ]}
+          />
+        </Card>
+        <ActionBar hint="Demo: transfers are simulated.">{sendButton}</ActionBar>
+        <Text size="note" tone="muted">
+          Your advance isn&rsquo;t touched. Only the share of each payment that&rsquo;s already yours can be cashed out.
+        </Text>
+      </Stack>
+    </Columns>
   );
 }

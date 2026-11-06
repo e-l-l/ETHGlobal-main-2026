@@ -92,7 +92,7 @@ const CONTRAST: [string, string, string, string][] = [
   ["bg-canvas text-charcoal-soft", "Charcoal soft on canvas", "9.0", "Body copy"],
   ["bg-canvas text-charcoal-muted", "Muted on canvas", "5.9", "Labels"],
   ["bg-hunter text-canvas", "Canvas on Hunter", "7.6", "Primary button"],
-  ["bg-hunter text-lime", "Lime on Hunter", "6.3", "Jar figure"],
+  ["bg-hunter text-lime", "Lime on Hunter", "6.3", "Repaid figure"],
   ["bg-lime text-charcoal", "Charcoal on lime", "11.0", "Lime button on panels"],
   ["bg-surface text-fern", "Fern on white", "4.9", "Success text"],
   ["bg-surface text-lime", "Lime on white", "1.2", "Never"],
@@ -210,7 +210,7 @@ export function FinalGallery() {
         <Section id="type" label="02 · Type" title="Urbanist, Figtree, JetBrains Mono" note="dev2 typography only. Money is always tabular, dollars first, local amount underneath in mono.">
           <div className={grid}>
             <Spec name="Hero · Urbanist 700 · 56 / 40 phone">
-              <Heading size="hero">Your jar is growing.</Heading>
+              <Heading size="hero">Every sale pays it back.</Heading>
             </Spec>
             <Spec name="Amount · Urbanist 700 · 40">
               <Money usd={86.4} rate={1010} />
@@ -220,7 +220,7 @@ export function FinalGallery() {
               <Heading size="h2" level={3}>About 12 days at your usual pace</Heading>
             </Spec>
             <Spec name="Body · Figtree 16 · Note 14">
-              <Text>Every sale puts 10% in your dollar jar. Nobody can tell who owes.</Text>
+              <Text>Every sale sends 10% to your advance. Nobody can tell who owes.</Text>
               <Text size="note" tone="muted">No penalty, no extra fee.</Text>
             </Spec>
             <Spec name="Label · Mono 11 · Ledger · Mono 13">
@@ -252,7 +252,7 @@ export function FinalGallery() {
             </Spec>
             <Spec name="Token badge · app icons">
               <div className="flex items-center gap-4">
-                <TokenBadge size={44} label="DRIP" />
+                <TokenBadge size={44} label="DripCoin (DRIP)" />
                 <AppIcon size={64} />
                 <AppIcon size={64} tone="charcoal" />
               </div>
@@ -282,13 +282,13 @@ export function FinalGallery() {
             </Spec>
             <Spec name="Gradient hero · one per screen">
               <GradientHero>
-                <Heading size="h2" level={3}>Welcome to your jar</Heading>
+                <Heading size="h2" level={3}>Welcome to DripMoni</Heading>
                 <Text size="note">Gradient on top, text below on solid white.</Text>
               </GradientHero>
             </Spec>
             <Spec name="Ledger grid · hero, lender page">
               <LedgerGrid>
-                <Label className="text-honeydew/80">Senior vault</Label>
+                <Label className="text-honeydew/80">The vault</Label>
                 <span className="font-display text-h1 text-canvas">8.4% APY</span>
                 <span className="font-body text-note text-honeydew/85">$412,000 lent to 1,204 shops</span>
               </LedgerGrid>
@@ -300,9 +300,9 @@ export function FinalGallery() {
             <Spec name="Split bar · every sale">
               <SplitBar />
             </Spec>
-            <Spec name="Jar band strip · divider decal">
+            <Spec name="Band strip · divider decal">
               <JarBandStrip />
-              <Text size="note" tone="muted">The mirrored jar gradient as a 6px rule. Use once per screen at most.</Text>
+              <Text size="note" tone="muted">The mirrored brand gradient as a 6px rule. Use once per screen at most.</Text>
             </Spec>
           </div>
         </Section>
@@ -369,7 +369,7 @@ export function FinalGallery() {
             <Spec name="Pills">
               <div className="flex flex-wrap gap-2">
                 <Pill tone="saving" dot>Saving</Pill>
-                <Pill tone="locked">Jar locked</Pill>
+                <Pill tone="locked">Locked</Pill>
                 <Pill tone="repaying">Repaying</Pill>
                 <Pill tone="slow">Slow</Pill>
                 <Pill tone="risk">Written off</Pill>
@@ -432,7 +432,7 @@ export function FinalGallery() {
         {/* ------------------------------------------------------------ domain */}
         <Section id="domain" label="09 · Domain" title="Product pieces">
           <div className={grid}>
-            <Spec name="Jar card">
+            <Spec name="Repaid card">
               <JarCard usd={86.4} rate={1010} goal={150} />
             </Spec>
             <Spec name="Live sales">
@@ -441,8 +441,8 @@ export function FinalGallery() {
                 <SaleRow item="Bread, milk" amount={4.75} time="13:48" />
               </ul>
             </Spec>
-            <Spec name="Loss waterfall · viewer is junior">
-              <LossWaterfall you="junior" />
+            <Spec name="Loss waterfall · viewer holds DRIP">
+              <LossWaterfall you="dripcoin" />
             </Spec>
             <Spec name="World view overlay">
               <WorldMark kind="pub" show={world}>

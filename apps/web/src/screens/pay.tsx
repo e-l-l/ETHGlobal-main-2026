@@ -6,6 +6,7 @@ import {
   ActionBar,
   AppHeader,
   Banner,
+  BrandPanel,
   Button,
   Card,
   CheckIcon,
@@ -17,14 +18,15 @@ import {
   LangToggle,
   Label,
   Ledger,
-  Page,
+  LockIcon,
   Segmented,
+  SplitPage,
   Text,
   TextLink,
   typedUsd,
-  WaveBand,
   WorldMark,
 } from "@/final";
+import { APP_NAME } from "@/lib/brand";
 import type { PayShopView } from "@repo/sdk";
 import { formatMoney } from "@/lib/format";
 import { payCopy, type Lang } from "@/lib/copy";
@@ -33,7 +35,6 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { toLocal } from "@/lib/mock/shop";
-import { SALES_CHANNEL, type SaleMessage } from "@/lib/sale-voice";
 import { useMRA } from "@/lib/use-mra";
 import { useWorldView } from "@/lib/world-view";
 
@@ -57,6 +58,35 @@ function targetQuery(target: PayTarget) {
 
 function PayHeader({ lang }: { lang: Lang }) {
   return <AppHeader home={routes.home} end={<LangToggle lang={lang} />} />;
+}
+
+/** Hosted-checkout trust line at the top of the brand panel. */
+function Secured({ lang }: { lang: Lang }) {
+  return (
+    <span className="inline-flex w-fit items-center gap-2 font-body text-note font-semibold text-honeydew">
+      <LockIcon size={16} />
+      {payCopy[lang].secured(APP_NAME)}
+    </span>
+  );
+}
+
+/** The same trust line under the receipt, on the light column. */
+function SecuredLine({ lang }: { lang: Lang }) {
+  return (
+    <p className="m-0 inline-flex items-center justify-center gap-2 font-body text-note text-charcoal-muted md:justify-start">
+      <LockIcon size={16} />
+      {payCopy[lang].secured(APP_NAME)}
+    </p>
+  );
+}
+
+/** The shop's initials badge, lime on the Hunter panel. */
+function ShopBadge({ initials }: { initials: string }) {
+  return (
+    <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-lg bg-lime font-display text-[20px] font-bold text-charcoal md:size-16 md:text-[26px]">
+      {initials}
+    </span>
+  );
 }
 
 /*
@@ -96,12 +126,6 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
         }),
       );
       await beat;
-      // Same-browser merchant tab (mock demo): Home speaks the sale.
-      if (typeof BroadcastChannel !== "undefined") {
-        const ch = new BroadcastChannel(SALES_CHANNEL);
-        ch.postMessage({ amountUsd: receipt.amount, toAdvanceUsd: receipt.toRepayment } satisfies SaleMessage);
-        ch.close();
-      }
       const sp = new URLSearchParams({ amt: receipt.amount.toFixed(2), tok: token });
       targetQuery(target).forEach((v, k) => sp.set(k, v));
       if (receipt.source !== "mock") sp.set("tx", receipt.txHash);
@@ -116,24 +140,39 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
   return (
     <>
       <PayHeader lang={lang} />
-      <Page width="narrow">
+      <SplitPage
+        panel={
+          <BrandPanel
+            top={<Secured lang={lang} />}
+            eyebrow={t.verified}
+            title={
+              <span className="flex items-center gap-4">
+                <ShopBadge initials={shop.initials} />
+                <span className="min-w-0 [overflow-wrap:anywhere]">{shop.name}</span>
+              </span>
+            }
+            body={t.panel}
+          >
+            <WorldMark kind="pub" show={wv} className="w-fit">
+              <Ledger className="text-honeydew">{shop.id}</Ledger>
+            </WorldMark>
+            <div className="hidden flex-col gap-2 md:flex">
+              <span className="font-ledger text-tag tracking-[0.1em] text-honeydew uppercase">{t.accepted}</span>
+              <div className="flex flex-wrap gap-2">
+                {TOKENS.map((k) => (
+                  <span key={k} className="rounded-chip border border-honeydew/40 px-3 py-1 font-ledger text-ledger font-semibold text-canvas">
+                    {k}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </BrandPanel>
+        }
+      >
         <DemoBadge>Faucet-funded test dollars · test USDC</DemoBadge>
         <WorldMark kind="pub" show={wv}>
-          <WaveBand>
-            <Label className="text-honeydew/80">{t.verified}</Label>
-            <div className="flex items-center gap-3">
-              <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-lime font-display text-read font-bold text-charcoal">
-                {shop.initials}
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className="font-display text-h2 [overflow-wrap:anywhere]">{shop.name}</span>
-                <Ledger className="text-honeydew/85">{shop.id}</Ledger>
-              </span>
-            </div>
-          </WaveBand>
-        </WorldMark>
-        <WorldMark kind="pub" show={wv}>
-          <div className="flex flex-col items-center gap-1 py-1 text-center">
+          <div className="flex flex-col items-center gap-1 py-1 text-center md:items-start md:text-left">
+            <Label>{t.amount}</Label>
             <span
               aria-live="polite"
               aria-atomic
@@ -141,25 +180,22 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
             >
               {typedUsd(value)}
             </span>
-            <Ledger className="text-charcoal-muted">{amount > 0 ? `${formatMoney(Math.round(toLocal(amount)), "ARS")} · example rate` : t.enter}</Ledger>
+            <Ledger className="text-charcoal-muted">{amount > 0 ? `≈ ${formatMoney(Math.round(toLocal(amount)), "ARS")} · ${t.exampleRate}` : t.enter}</Ledger>
           </div>
         </WorldMark>
         <div className="flex flex-col gap-2">
           <Label>{t.youPay}</Label>
           <Segmented label={t.youPay} value={token} onChange={setToken} options={TOKENS.map((k) => ({ value: k, label: k }))} />
-          <Text size="note" tone="muted">
-            {isMock ? t.swap(token) : t.testUsdc}
-          </Text>
         </div>
         <Keypad value={value} onChange={setValue} />
         {failed ? <Banner tone="caution">{t.failed(failed)}</Banner> : null}
         {paying && funding ? <Ledger role="status">{t.funding}</Ledger> : null}
-        <ActionBar>
-          <Button onClick={() => void pay()} loading={paying} disabled={amount <= 0 || paying}>
+        <ActionBar hint={isMock ? t.swap(token) : t.testUsdc}>
+          <Button width="full" onClick={() => void pay()} loading={paying} disabled={amount <= 0 || paying}>
             {amount > 0 ? t.pay(formatMoney(amount)) : t.enter}
           </Button>
         </ActionBar>
-      </Page>
+      </SplitPage>
     </>
   );
 }
@@ -191,24 +227,39 @@ export function PaidScreen({
   return (
     <>
       <PayHeader lang={lang} />
-      <Page width="narrow">
-        <div className="flex flex-col items-center gap-2.5 pt-4 text-center">
-          <span className="grid size-22 place-items-center rounded-full bg-hunter text-lime">
-            <CheckIcon size={44} strokeWidth={3} />
-          </span>
-          <Heading level={1} size="hero">
-            {t.paidTitle(usd)}
+      <SplitPage
+        panel={
+          <BrandPanel
+            top={<Secured lang={lang} />}
+            eyebrow={t.paidEyebrow}
+            title={
+              <span className="flex items-center gap-4">
+                <span aria-hidden className="grid size-14 shrink-0 place-items-center rounded-full bg-lime text-hunter md:size-18">
+                  <CheckIcon size={32} strokeWidth={3} />
+                </span>
+                <span className="min-w-0 [overflow-wrap:anywhere]">{t.paidTitle(usd)}</span>
+              </span>
+            }
+            body={
+              <>
+                {t.paidTo(shop.name)} · <span suppressHydrationWarning>{time}</span>
+              </>
+            }
+          />
+        }
+      >
+        <Text className="md:hidden">
+          {t.paidTo(shop.name)} · <span suppressHydrationWarning>{time}</span>
+        </Text>
+        <Card as="section" aria-labelledby="receipt-title" padding="lg">
+          <Heading level={2} size="h2" id="receipt-title">
+            {t.receipt}
           </Heading>
-          <Text>
-            {t.paidTo(shop.name)} · <span suppressHydrationWarning>{time}</span>
-          </Text>
-        </div>
-        <Card as="section" aria-label={t.receipt}>
           <KeyValue
             rows={[
               [t.sent, `${amount.toFixed(2)} ${token}`],
               [
-                t.received,
+                t.received(shop.name),
                 <WorldMark key="r" kind="pub" show={wv}>
                   {usd}
                 </WorldMark>,
@@ -232,7 +283,8 @@ export function PaidScreen({
           <Button href={again ? `${routes.pay}?${again}` : routes.pay}>{t.done}</Button>
           <TextLink href={routes.merchant}>{t.shopPhone}</TextLink>
         </ActionBar>
-      </Page>
+        <SecuredLine lang={lang} />
+      </SplitPage>
     </>
   );
 }

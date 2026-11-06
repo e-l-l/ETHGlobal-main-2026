@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { AgentLimitsVM, LadderStepVM } from "@repo/sdk";
-import { ActionBar, Button, Card, Chips, Label, OfferDisclosure, Stack, Text } from "@/final";
+import { ActionBar, Button, Card, Chips, Columns, Label, OfferDisclosure, Stack, Text } from "@/final";
+import { HeroBlock, HeroLabel } from "../../../_ui";
 import { formatMoney } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -33,10 +34,10 @@ function LimitsFields({ view }: { view: SetupPage }) {
   const pick = (v: string) => (Number(v) <= cap ? setPerAdvance(v) : undefined);
 
   return (
-    <Stack gap="lg">
+    <Columns ratio="3:2">
       <PrivateMark>
         <Stack gap="md">
-          <Card>
+          <Card padding="lg">
             <Label>Max per advance</Label>
             <Chips
               label="Max per advance"
@@ -52,7 +53,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
               {formatMoney(cap)} today.
             </Text>
           </Card>
-          <Card>
+          <Card padding="lg">
             <Label>Max per month</Label>
             <Chips
               label="Max per month"
@@ -61,7 +62,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
               options={perMonthOptions.map((v) => ({ value: String(v), label: formatMoney(v) }))}
             />
           </Card>
-          <Card>
+          <Card padding="lg">
             <Label>What it can draw for</Label>
             <Chips
               label="Purpose"
@@ -72,20 +73,43 @@ function LimitsFields({ view }: { view: SetupPage }) {
           </Card>
         </Stack>
       </PrivateMark>
-      <Card tone="tint" gap="sm">
-        <Label>In plain words</Label>
-        <Text className="text-charcoal">
-          Your agent can draw up to {formatMoney(Number(perAdvance))} at a time, and {formatMoney(Number(perMonth))} in a
-          month, for {purpose}
-           to your registered payout address. The purpose is not enforced onchain. It can never go past
-          these limits: the contract blocks it.
-        </Text>
-      </Card>
-      <Text size="note">Illustrative maximum advance at a 15% flat fee and 10% sales share; future offers may differ.</Text>
-      <OfferDisclosure principal={Number(perAdvance)} fee={Number(perAdvance) * 0.15} total={Number(perAdvance) * 1.15} holdback={10} estimates={[100, 200, 400].map((sales, i) => ({ label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!, days: Math.ceil(Number(perAdvance) * 1.15 / (sales * 0.1)) }))} />
-      <ActionBar hint="One-time approval. Only you can turn the agent on.">
-        <Button href={`${routes.agent.approve}?${new URLSearchParams({ perAdvance, perMonth, purpose })}`}>Approve with World</Button>
-      </ActionBar>
-    </Stack>
+
+      <Stack gap="md" className="md:sticky md:top-24">
+        <HeroBlock rule={false}>
+          <HeroLabel>In plain words</HeroLabel>
+          <p className="m-0 font-display text-h2 text-canvas">
+            Your agent can draw up to <span className="text-lime">{formatMoney(Number(perAdvance))} at a time</span> and{" "}
+            <span className="text-lime">{formatMoney(Number(perMonth))} a month</span>, for {purpose}, to your registered payout address.
+          </p>
+          <Text className="text-honeydew">The purpose is not enforced onchain. The contract blocks anything past these limits.</Text>
+          <div className="grid grid-cols-2 gap-4 border-t border-honeydew/25 pt-4 font-body text-note">
+            <div className="flex flex-col">
+              <span className="text-honeydew">Paid back from</span>
+              <span className="font-semibold text-canvas">A share of each sale</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-honeydew">Fee</span>
+              <span className="font-semibold text-canvas">One flat fee</span>
+            </div>
+          </div>
+        </HeroBlock>
+        <Text size="note">Illustrative maximum advance at a 15% flat fee and 10% sales share; future offers may differ.</Text>
+        <OfferDisclosure
+          principal={Number(perAdvance)}
+          fee={Number(perAdvance) * 0.15}
+          total={Number(perAdvance) * 1.15}
+          holdback={10}
+          estimates={[100, 200, 400].map((sales, i) => ({
+            label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!,
+            days: Math.ceil((Number(perAdvance) * 1.15) / (sales * 0.1)),
+          }))}
+        />
+        <ActionBar hint="One-time approval. Only you can turn the agent on.">
+          <Button href={`${routes.agent.approve}?${new URLSearchParams({ perAdvance, perMonth, purpose })}`} width="full">
+            Approve with World
+          </Button>
+        </ActionBar>
+      </Stack>
+    </Columns>
   );
 }
