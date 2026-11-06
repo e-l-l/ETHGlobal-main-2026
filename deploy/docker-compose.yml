@@ -101,6 +101,8 @@ services:
         NEXT_PUBLIC_ANON_NETWORK: ${NEXT_PUBLIC_ANON_NETWORK:-nox}
         NEXT_PUBLIC_ANON_RPC_STRICT: ${NEXT_PUBLIC_ANON_RPC_STRICT:-}
         NEXT_PUBLIC_LENDER_ACCOUNT: ${NEXT_PUBLIC_LENDER_ACCOUNT:-}
+        # real = World IDKit + Agent Pass for real (pair with WORLD_MOCK=0 in env/agents.env); mock = test mode
+        NEXT_PUBLIC_WORLD_MODE: ${NEXT_PUBLIC_WORLD_MODE:-mock}
     image: mra-app:local
     init: true
     env_file:
