@@ -18,9 +18,9 @@ We put repayment **inside the payment itself**. A merchant takes stablecoin paym
     Uniswap swaps to USDC)          sale)           └──► 10% repayment ──► Senior vault / Junior / Reserve
 ```
 
-1. **Prove you're one human, privately.** The merchant verifies with World ID. The zero-knowledge proof shows "unique human" and reveals nothing else. We never ask for a phone number, contacts or ID documents.
+1. **Prove the business is real, privately.** The merchant logs into their payments dashboard and a zkTLS proof (Reclaim) shows only yes/no facts: active, over 6 months old, revenue band, country. They get a **Business Pass**, a ZK credential with no link back to the account. We never ask for a phone number, contacts or ID documents.
 2. **Agents make an offer.** The Underwriter agent reads the shop's sales and proposes an amount. The Critic agent looks for wash trading and challenges the proposal.
-3. **The contract decides.** `AdvanceBook` enforces hard caps. The merchant approves the draw with World Agent Pass, and USDC arrives at a fresh address.
+3. **The contract decides.** `AdvanceBook` enforces hard caps. The merchant delegates **once** to a managed cash-flow agent we host for them, with World Agent Pass and an onchain mandate. After that, credit is fully automatic: no human approves any draw, and USDC arrives at a fresh address.
 4. **Every sale repays a slice** until the advance is cleared.
 5. **Repaying earns a private Standing Pass**, a ZK credential. Next time the merchant proves "I've repaid N advances" and gets a higher limit. Their history is never revealed.
 6. **Risk is priced in public.** A junior token takes the first loss on defaults and trades on a Uniswap v4 pool. If its price falls, the Risk agent tightens limits.
@@ -35,7 +35,7 @@ On most lending apps, being safe to borrow from depends on trusting the lender. 
 
 | Who | What they could learn | What stops it |
 |---|---|---|
-| Us, lenders, AI agents | Your identity, phone, contacts | We collect none of it. **World ID** proves uniqueness with a ZK proof. |
+| Us, lenders, AI agents | Your identity, phone, contacts | We collect none of it. The **Business Pass** (zkTLS + Noir) proves the business is real; World is used only for the one-time agent delegation and for credential recovery (IDKit). |
 | Lenders and agents | Your full borrowing history | **Standing Pass** (Noir circuit). You prove a tier, not a history. |
 | Lenders and agents | Your offchain books (stretch) | **zkTLS** proof of a Mercado Pago or M-Pesa statement that reveals only a threshold |
 | RPC providers | Which shop the app keeps querying | All reads go through **Anon-RPC** |
@@ -93,7 +93,7 @@ Details and checklists: [docs/hackathon.md](docs/hackathon.md).
 
 - **Censorship resistant:** contracts are permissionless once deployed. If our frontend or server goes away, merchants can still be paid and can repay through the contracts directly. *TODO: document the direct-contract path.*
 - **Open source:** licensed under *TODO (MIT or GPL-3.0)*. Everything builds from this repo alone.
-- **Private:** our server learns nothing that identifies a merchant. World ID proofs reveal only uniqueness. Standing Pass proofs reveal only a tier. RPC reads go through Anon-RPC, so providers don't learn which shop is querying. The agents see only public onchain data and proven facts. There are no third-party trackers or analytics in the client.
+- **Private:** our server learns nothing that identifies a merchant. Business Pass proofs reveal only yes/no business facts, and World proofs only that one human set up the agent. Standing Pass proofs reveal only a tier. RPC reads go through Anon-RPC, so providers don't learn which shop is querying. The agents see only public onchain data and proven facts. There are no third-party trackers or analytics in the client.
 - **Secure:** Standing Pass secrets and proofs are generated and kept on the merchant's device. Agents can't move funds. `AdvanceBook` hard limits bound every advance. Operator powers are listed in [docs/architecture.md](docs/architecture.md#operator-powers-named-for-crops): the offer signer can refuse new advances, but nobody can touch funds, upgrade or pause.
 
 ---

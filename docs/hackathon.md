@@ -28,7 +28,7 @@ ETHGlobal allows three partners, and all of a partner's tracks count as one.
 - [ ] README links to the relevant contracts and lines
 
 **World**
-- [ ] Full journey from request to protected action (Agent Pass approval of each draw)
+- [ ] Full journey from request to protected action (one-time Agent Pass delegation → mandate → automatic draws, no human approving credit)
 - [ ] Denied path where the draw doesn't happen
 - [ ] Server-side proof validation
 - [ ] Integration debrief
@@ -70,7 +70,7 @@ ETHGlobal allows three partners, and all of a partner's tracks count as one.
 | Time | Scene |
 |---|---|
 | 0:00–0:30 | **Problem.** A kiosco owner in Buenos Aires needs dollars for stock today, and the sales that would pay for it arrive next week. Loan apps would want her contacts. |
-| 0:30–1:15 | **Private onboarding.** World ID proves she's one human. That's all we learn. The agents make an offer in plain words, she approves with Agent Pass, and USDC arrives. |
+| 0:30–1:15 | **Private onboarding.** A zkTLS proof from her payments dashboard gives her a Business Pass: the business is real, and that's all we learn. She delegates once to her managed agent with Agent Pass; from then on the agent draws automatically and USDC arrives. |
 | 1:15–2:00 | **Live sale.** A judge scans the QR and pays in a test token. The phone announces *"You received 10 dollars, 1 went to your advance"*. The balance falls. |
 | 2:00–2:40 | **Attack.** A second merchant applies with wash-traded sales and an injection string. The Critic rejects it, and a forced oversized draw reverts at the contract. |
 | 2:40–3:20 | **Standing Pass.** The repaid merchant opens a fresh wallet, proves "1 repaid" in ZK and unlocks a higher limit. The explorer shows no link. |
