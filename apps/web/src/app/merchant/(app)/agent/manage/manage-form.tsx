@@ -11,7 +11,6 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA, useMRAAction } from "@/lib/use-mra";
-import { PrivateMark } from "../_parts";
 
 /** M15: `agent.status()`. "Turn off agent" is `agent.revoke()` in live modes. Pause has no SDK call yet: UI only. */
 export function ManageForm({ initial }: { initial: AgentStatusView | null }) {
@@ -35,7 +34,7 @@ export function ManageForm({ initial }: { initial: AgentStatusView | null }) {
           </SettingRow>
         </Card>
         {paused ? <Banner tone="caution">Paused. Save to stop new draws.</Banner> : null}
-        <PrivateMark>
+        <div>
           <Card padding="lg">
             <CardTitle
               end={
@@ -54,7 +53,7 @@ export function ManageForm({ initial }: { initial: AgentStatusView | null }) {
               ]}
             />
           </Card>
-        </PrivateMark>
+        </div>
         <Text size="note" tone="muted">
           Lowering a limit works right away. Raising one needs a new approval with World.
         </Text>

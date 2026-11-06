@@ -14,7 +14,6 @@ import {
   Heading,
   Keypad,
   KeyValue,
-  LangToggle,
   Label,
   Ledger,
   LockIcon,
@@ -22,19 +21,17 @@ import {
   Text,
   TextLink,
   typedUsd,
-  WorldMark,
 } from "@/final";
 import { APP_NAME } from "@/lib/brand";
 import type { PayShopView } from "@repo/sdk";
 import { formatMoney } from "@/lib/format";
-import { payCopy, type Lang } from "@/lib/copy";
+import { payCopy } from "@/lib/copy";
 import { errorCode, explorerTxUrl, isMock, withMRA } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useCurrency } from "@/lib/currency";
 import { useMRA } from "@/lib/use-mra";
-import { useWorldView } from "@/lib/world-view";
 
 /** Checkout pays in USDC only; no token swap exists. */
 const TOKEN = "USDC";
@@ -49,26 +46,26 @@ function targetQuery(target: PayTarget) {
   return sp;
 }
 
-function PayHeader({ lang }: { lang: Lang }) {
-  return <AppHeader home={routes.home} end={<LangToggle lang={lang} />} />;
+function PayHeader() {
+  return <AppHeader home={routes.home} />;
 }
 
 /** Hosted-checkout trust line at the top of the brand panel. */
-function Secured({ lang }: { lang: Lang }) {
+function Secured() {
   return (
     <span className="inline-flex w-fit items-center gap-2 font-body text-note font-semibold text-honeydew">
       <LockIcon size={16} />
-      {payCopy[lang].secured(APP_NAME)}
+      {payCopy.secured(APP_NAME)}
     </span>
   );
 }
 
 /** The same trust line under the receipt, on the light column. */
-function SecuredLine({ lang }: { lang: Lang }) {
+function SecuredLine() {
   return (
     <p className="m-0 inline-flex items-center justify-center gap-2 font-body text-note text-charcoal-muted md:justify-start">
       <LockIcon size={16} />
-      {payCopy[lang].secured(APP_NAME)}
+      {payCopy.secured(APP_NAME)}
     </p>
   );
 }
@@ -87,10 +84,9 @@ function ShopBadge({ initials }: { initials: string }) {
  * pay; the contract splits the sale). The customer's phone: the shop, the amount, the token. Nothing about an advance,
  * a fee or a balance. A keypad, not the system keyboard, so the amount and the button stay in view.
  */
-export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayShopView | null; target: PayTarget }) {
-  const t = payCopy[lang];
+export function PayScreen({ initial, target }: { initial: PayShopView | null; target: PayTarget }) {
+  const t = payCopy;
   const router = useRouter();
-  const wv = useWorldView();
   const cur = useCurrency();
   const { data: shop, error } = useMRA(q.payShop(target.shopId, target.name), { initial });
   const [value, setValue] = useState("10");
@@ -132,11 +128,11 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
 
   return (
     <>
-      <PayHeader lang={lang} />
+      <PayHeader />
       <SplitPage
         panel={
           <BrandPanel
-            top={<Secured lang={lang} />}
+            top={<Secured />}
             eyebrow={t.verified}
             title={
               <span className="flex items-center gap-4">
@@ -146,13 +142,13 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
             }
             body={t.panel}
           >
-            <WorldMark kind="pub" show={wv} className="w-fit">
+            <div className="w-fit">
               <Ledger className="text-honeydew">{shop.id}</Ledger>
-            </WorldMark>
+            </div>
           </BrandPanel>
         }
       >
-        <WorldMark kind="pub" show={wv}>
+        <div>
           <div className="flex flex-col items-center gap-1 py-1 text-center md:items-start md:text-left">
             <Label>{t.amount}</Label>
             <span
@@ -164,7 +160,7 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
             </span>
             <Ledger className="text-charcoal-muted">{amount === 0 ? t.enter : cur.dollarsOnly ? "\u00a0" : `${cur.approx(amount)} · ${t.exampleRate}`}</Ledger>
           </div>
-        </WorldMark>
+        </div>
         <Keypad value={value} onChange={setValue} />
         {failed ? <Banner tone="caution">{t.failed(failed)}</Banner> : null}
         {paying && funding ? <Ledger role="status">{t.funding}</Ledger> : null}
@@ -180,35 +176,32 @@ export function PayScreen({ lang, initial, target }: { lang: Lang; initial: PayS
 
 /* C02 Payment success: the receipt of `pay.pay(...)` (amount, tx in the URL) plus `pay.shop()` for the name. */
 export function PaidScreen({
-  lang,
   amount,
   token,
   initial,
   target,
   tx,
 }: {
-  lang: Lang;
   amount: number;
   token: string;
   initial: PayShopView | null;
   target: PayTarget;
   tx?: string | undefined;
 }) {
-  const t = payCopy[lang];
-  const wv = useWorldView();
+  const t = payCopy;
   const { data: shop, error } = useMRA(q.payShop(target.shopId, target.name), { initial });
-  const [time] = useState(() => new Date().toLocaleTimeString(lang === "es" ? "es-AR" : "en-GB", { hour: "2-digit", minute: "2-digit" }));
+  const [time] = useState(() => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));
   const usd = formatMoney(Number(amount.toFixed(2)));
   if (!shop) return <MRAState error={error} />;
   const again = targetQuery(target).toString();
   const txUrl = explorerTxUrl(tx);
   return (
     <>
-      <PayHeader lang={lang} />
+      <PayHeader />
       <SplitPage
         panel={
           <BrandPanel
-            top={<Secured lang={lang} />}
+            top={<Secured />}
             eyebrow={t.paidEyebrow}
             title={
               <span className="flex items-center gap-4">
@@ -238,16 +231,16 @@ export function PaidScreen({
               [t.sent, `${amount.toFixed(2)} ${token}`],
               [
                 t.received(shop.name),
-                <WorldMark key="r" kind="pub" show={wv}>
+                <div key="r">
                   {usd}
-                </WorldMark>,
+                </div>,
               ],
               [t.fee, t.covered],
               [
                 t.ref,
-                <WorldMark key="f" kind="pub" show={wv}>
+                <div key="f">
                   <CopyHash value={tx ?? shop.wallet} short />
-                </WorldMark>,
+                </div>,
               ],
             ]}
           />
@@ -261,7 +254,7 @@ export function PaidScreen({
           <Button href={again ? `${routes.pay}?${again}` : routes.pay}>{t.done}</Button>
           <TextLink href={routes.merchant}>{t.shopPhone}</TextLink>
         </ActionBar>
-        <SecuredLine lang={lang} />
+        <SecuredLine />
       </SplitPage>
     </>
   );

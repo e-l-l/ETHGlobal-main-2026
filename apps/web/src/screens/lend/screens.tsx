@@ -29,7 +29,7 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
-import { DarkCard, LendHero, LendShell, Pub } from "./shell";
+import { DarkCard, LendHero, LendShell } from "./shell";
 import { DepositPanel, PositionCard } from "./client";
 import { LiveWaterfall, MarketView, RiskInPublic, RiskLoading } from "./risk";
 import { reasonLines, vaultNumbers } from "./vault";
@@ -110,8 +110,8 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
   const series = data.seniorSeries;
   const last = series.at(-1) ?? 100;
   return (
-    <LendShell note="Vault totals and positions are onchain. Lenders never see a shop's books or who owns it.">
-      <Pub>
+    <LendShell>
+      <div>
         <LendHero
           sweep
           label="DripMoni vault · USDC"
@@ -131,7 +131,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
           Your deposit funds small advances for shop stock. Each advance is paid back automatically from the shop&rsquo;s customer payments, and its fee
           comes back to the vault: 0.5% a week while the shop owes, never more than 3%.
         </LendHero>
-      </Pub>
+      </div>
       <LenderDisclosure />
       <Text tone="strong">{COVER_LINE}</Text>
 
@@ -151,7 +151,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
 
       <Columns ratio="3:2">
         <Stack gap="lg">
-          <Pub>
+          <div>
             <StatGrid
               className="md:grid-cols-3"
               items={[
@@ -163,8 +163,8 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
                 { label: "Loss rate", value: VAULT.defaultRate },
               ]}
             />
-          </Pub>
-          <Pub>
+          </div>
+          <div>
             <Card padding="lg">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <Heading level={2} size="h2">
@@ -180,7 +180,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
                 format={usd2}
               />
             </Card>
-          </Pub>
+          </div>
           {isMock ? (
             <Banner>A shop stopped selling. DripCoin took the $100 loss. The vault was not touched.</Banner>
           ) : wroteOff ? (
@@ -221,11 +221,11 @@ export function PositionScreen({ initial }: { initial: PositionView | null }) {
   const V = vaultNumbers(vault);
   const principal = V.positionValue - V.positionEarned;
   return (
-    <LendShell note="Your shares are onchain under this wallet. Nothing ties the wallet to your name.">
+    <LendShell>
       <PageHead back={routes.earn} backLabel="Vault" label="The vault · USDC" title="My position" />
       <Columns ratio="3:2">
         <Stack gap="lg">
-          <Pub>
+          <div>
             <DarkCard label="Vault position" className="gap-5 md:p-8">
               <Label className="text-lime">Vault position</Label>
               <div className="flex flex-col gap-2">
@@ -244,8 +244,8 @@ export function PositionScreen({ initial }: { initial: PositionView | null }) {
                 </Button>
               </div>
             </DarkCard>
-          </Pub>
-          <Pub>
+          </div>
+          <div>
             <Card padding="lg">
               <div className="flex items-center justify-between gap-3">
                 <Heading level={2} size="h2">
@@ -261,10 +261,10 @@ export function PositionScreen({ initial }: { initial: PositionView | null }) {
                 format={(v) => `$${(v / 100).toFixed(3)}`}
               />
             </Card>
-          </Pub>
+          </div>
         </Stack>
         <Stack gap="lg">
-          <Pub>
+          <div>
             <Card>
               <Heading level={2} size="h2">
                 Details
@@ -278,7 +278,7 @@ export function PositionScreen({ initial }: { initial: PositionView | null }) {
                 ]}
               />
             </Card>
-          </Pub>
+          </div>
           <Text size="note" tone="muted">
             Money out in advances comes back as shops&rsquo; customers pay. It can be withdrawn once it&rsquo;s back.
           </Text>
@@ -337,8 +337,8 @@ export function DripCoinScreen({
     { key: "senior", amount: waterfall[2].amount },
   ];
   return (
-    <LendShell note="The DRIP price, pool and coverage are public. So is every mint and trade.">
-      <Pub>
+    <LendShell>
+      <div>
         <LendHero
           label="DripCoin · DRIP"
           title={
@@ -372,11 +372,11 @@ export function DripCoinScreen({
           DRIP is the first-loss layer under the vault. It earns {vault.feeShareJunior} of every advance fee and covers write-offs before vault lenders lose
           anything.
         </LendHero>
-      </Pub>
+      </div>
       <LenderDisclosure />
       <Text tone="strong">{COVER_LINE}</Text>
 
-      <Pub>
+      <div>
         <StatGrid
           items={[
             { label: "Price", value: vault.juniorPrice, sub: "Uniswap v4" },
@@ -385,11 +385,11 @@ export function DripCoinScreen({
             { label: "Coverage", value: vault.coverage, sub: "DRIP + reserve vs advances out" },
           ]}
         />
-      </Pub>
+      </div>
 
       <Columns ratio="3:2">
         <Stack gap="lg">
-          <Pub>
+          <div>
             <Card padding="lg" gap="lg">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Heading level={2} size="h2">
@@ -406,7 +406,7 @@ export function DripCoinScreen({
                 format={price}
               />
             </Card>
-          </Pub>
+          </div>
           <Card padding="lg">
             <Heading level={2} size="h2">
               Where each advance fee goes
@@ -420,14 +420,14 @@ export function DripCoinScreen({
               The reserve slice builds the reserve, together with a small fee from every DRIP trade on Uniswap.
             </Text>
           </Card>
-          <Pub>
+          <div>
             <Card padding="lg">
               <Heading level={2} size="h2">
                 Who covers a loss, in order
               </Heading>
               <LossWaterfall you="dripcoin" layers={layers} />
             </Card>
-          </Pub>
+          </div>
         </Stack>
         <Stack gap="lg">
           <section aria-label="Know the risk" className="flex flex-col gap-2 rounded-lg bg-caution-tint p-5">
@@ -440,7 +440,7 @@ export function DripCoinScreen({
               See risk status
             </TextLink>
           </section>
-          <Pub>
+          <div>
             <Card>
               <Label>You hold</Label>
               <div className="flex items-center gap-3">
@@ -459,7 +459,7 @@ export function DripCoinScreen({
                 </Button>
               </div>
             </Card>
-          </Pub>
+          </div>
           {panel.data ? <MarketView panel={panel.data} /> : <RiskLoading what="What the market thinks" error={panel.error} />}
         </Stack>
       </Columns>
@@ -477,11 +477,11 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
   const lowered = TIER_CAPS.some((t) => t.was);
   const split = feeSplitParts(data.feeSplit);
   return (
-    <LendShell note="Everything on this screen is public. None of it names a person.">
+    <LendShell>
       <PageHead label="Public dashboard · anyone can check" title="DripMoni, in real numbers.">
         Read straight from the contracts. No shop is named anywhere.
       </PageHead>
-      <Pub>
+      <div>
         <StatGrid
           items={[
             { label: "Out in advances", value: VAULT.outstanding, sub: `${VAULT.advancesOut} advances made` },
@@ -494,7 +494,7 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
             { label: "Coverage", value: VAULT.coverage, sub: "DRIP + reserve" },
           ]}
         />
-      </Pub>
+      </div>
       <Columns ratio="3:2">
         <Stack gap="lg">
           <Card padding="lg">
@@ -512,7 +512,7 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
               Shops with an open advance send 8% of each payment to pay it back: the fee first, then the advance. Shops without one keep 100%.
             </Text>
           </Card>
-          <Pub>
+          <div>
             <Card padding="lg" as="section" aria-label="Current advance limits">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Heading level={2} size="h2">
@@ -534,10 +534,10 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
                 ])}
               />
             </Card>
-          </Pub>
+          </div>
         </Stack>
         <Stack gap="lg">
-          <Pub>
+          <div>
             <Card>
               <Heading level={2} size="h2">
                 Capital
@@ -551,7 +551,7 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
                 ]}
               />
             </Card>
-          </Pub>
+          </div>
           <Card>
             <Heading level={2} size="h2">
               Each advance fee
@@ -589,7 +589,7 @@ export function RiskScreen({ initial }: { initial: RiskView | null }) {
   const latestDown = riskLog[0] ? logKind(riskLog[0].kind) === "down" : false;
   const watching = signals.some((s) => s.state === "watch");
   return (
-    <LendShell note="Signals and every limit change are public, with the Risk agent's reasons.">
+    <LendShell>
       <PageHead
         label="Watched by the Risk agent"
         title="Risk status"
@@ -599,7 +599,7 @@ export function RiskScreen({ initial }: { initial: RiskView | null }) {
       </PageHead>
       <Columns ratio="3:2">
         <Stack gap="lg">
-          <Pub>
+          <div>
             <Card padding="lg" as="section" aria-label="Signals">
               <Heading level={2} size="h2">
                 Signals
@@ -619,8 +619,8 @@ export function RiskScreen({ initial }: { initial: RiskView | null }) {
                 ))}
               </ul>
             </Card>
-          </Pub>
-          <Pub>
+          </div>
+          <div>
             <Card padding="lg" as="section" aria-label="What the Risk agent did">
               <Heading level={2} size="h2">
                 What the Risk agent did
@@ -653,14 +653,14 @@ export function RiskScreen({ initial }: { initial: RiskView | null }) {
                 </Text>
               )}
             </Card>
-          </Pub>
+          </div>
         </Stack>
         <Stack gap="lg">
           <section aria-label="The rule" className="flex flex-col gap-2 rounded-lg border border-honeydew-line bg-honeydew p-5">
             <Label className="text-hunter">The rule</Label>
             <Text tone="strong">The agent can only lower limits, inside a preset band. Raising them back always needs a person.</Text>
           </section>
-          <Pub>
+          <div>
             <Card as="section" aria-label="Limit per advance">
               <Heading level={2} size="h2">
                 Limit per advance
@@ -675,7 +675,7 @@ export function RiskScreen({ initial }: { initial: RiskView | null }) {
                 ])}
               />
             </Card>
-          </Pub>
+          </div>
           <RowList>
             <ListRow href={routes.dripcoin} title="DripCoin" sub="The price the agent watches" />
             <ListRow href={routes.protocol} title="Protocol" sub="Public totals" />

@@ -2,7 +2,6 @@
 
 import { Card, Label, Pill, Text } from "@/final";
 import { cn } from "@/lib/cn";
-import { PrivateMark } from "./_parts";
 import { decisionLabel, decisionTone, type Decision, type DecisionKind } from "./_data";
 
 const DOT: Record<DecisionKind, string> = {
@@ -16,7 +15,7 @@ const DOT: Record<DecisionKind, string> = {
 /** The agent's decisions, newest first, in one card. Each opens to the limits it stayed inside. */
 export function DecisionLog({ decisions }: { decisions: Decision[] }) {
   return (
-    <PrivateMark>
+    <div>
       <Card padding="sm" gap="sm" className="p-0">
         <ul aria-label="Agent decisions" className="m-0 flex list-none flex-col p-0">
           {decisions.map((d) => (
@@ -58,6 +57,6 @@ export function DecisionLog({ decisions }: { decisions: Decision[] }) {
           ))}
         </ul>
       </Card>
-    </PrivateMark>
+    </div>
   );
 }

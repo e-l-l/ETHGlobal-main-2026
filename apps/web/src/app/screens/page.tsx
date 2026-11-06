@@ -75,7 +75,7 @@ const GROUPS: { group: string; screens: Item[] }[] = [
 export default function Page_() {
   return (
     <>
-      <AppHeader home={routes.home} world={false} />
+      <AppHeader home={routes.home} />
       <Page>
         <PageHead back={routes.home} label="Dev" title="All screens">
           Every route with its canvas ID.

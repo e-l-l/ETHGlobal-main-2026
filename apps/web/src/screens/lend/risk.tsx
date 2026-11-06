@@ -8,7 +8,6 @@
 import { BarChart, Card, Divider, KeyValue, Label, LossWaterfall, Pill, Spinner, StatGrid, Text, TextLink, type LossViewer } from "@/final";
 import type { RiskPanelView, RiskTone, WaterfallView } from "@repo/sdk";
 import { routes } from "@/lib/routes";
-import { Pub } from "./shell";
 
 const tonePill: Record<RiskTone, "saving" | "slow" | "risk" | "locked"> = { ok: "saving", watch: "slow", risk: "risk", none: "locked" };
 const triggerPill = {
@@ -81,7 +80,7 @@ export function LiveWaterfall({ waterfall, you }: { waterfall: WaterfallView; yo
 export function RiskInPublic({ panel }: { panel: RiskPanelView }) {
   const { defaultRate, repayment, cohort, coverage, market, agent } = panel;
   return (
-    <Pub>
+    <div>
       <Card as="section" aria-label="Risk, in public" gap="lg">
         <div className="flex flex-col gap-2">
           <Label>Risk, in public</Label>
@@ -185,7 +184,7 @@ export function RiskInPublic({ panel }: { panel: RiskPanelView }) {
           </ul>
         ) : null}
       </Card>
-    </Pub>
+    </div>
   );
 }
 
@@ -224,10 +223,10 @@ export function MarketView({ panel, bare }: { panel: RiskPanelView; bare?: boole
   );
   if (bare) return body;
   return (
-    <Pub>
+    <div>
       <Card as="section" aria-label="What the market thinks">
         {body}
       </Card>
-    </Pub>
+    </div>
   );
 }

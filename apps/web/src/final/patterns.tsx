@@ -135,33 +135,3 @@ export function SplitBar({ className, legend = true, holdback = 8 }: { className
   );
 }
 
-/* ------------------------------------------------------------- WorldMark */
-
-/** World view overlay (section 9) in utilities: dashed ONCHAIN outline, or a striped PRIVATE cover. */
-export function WorldMark({ kind, show, children, className }: { kind: "pub" | "priv"; show: boolean; children: ReactNode; className?: string }) {
-  return (
-    <div className={cn("relative", className)}>
-      {children}
-      <span
-        aria-hidden={!show}
-        className={cn(
-          "pointer-events-none absolute transition-opacity duration-200",
-          show ? "opacity-100" : "opacity-0",
-          kind === "pub"
-            ? "-inset-1 rounded-[10px] border-[1.5px] border-dashed border-hunter"
-            : "-inset-0.5 z-1 rounded-[10px] bg-[repeating-linear-gradient(-45deg,var(--color-well)_0_6px,var(--color-surface)_6px_12px)] opacity-[.97]",
-          !show && "opacity-0",
-        )}
-      />
-      <span
-        className={cn(
-          "pointer-events-none absolute z-2 rounded-chip px-1.5 py-0.5 font-ledger text-[10px] font-semibold tracking-[0.1em] whitespace-nowrap transition-opacity duration-200",
-          show ? "opacity-100" : "opacity-0",
-          kind === "pub" ? "-top-3 right-1.5 bg-hunter text-canvas" : "top-1/2 left-1/2 -translate-1/2 bg-charcoal text-canvas",
-        )}
-      >
-        {kind === "pub" ? "ONCHAIN" : "ON DEVICE · PRIVATE"}
-      </span>
-    </div>
-  );
-}

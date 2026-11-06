@@ -56,7 +56,6 @@ import {
   TierMeter,
   TokenBadge,
   WaveBand,
-  WorldMark,
 } from "@/final";
 
 const NAV = [
@@ -276,7 +275,6 @@ export function FinalGallery() {
   const [chip, setChip] = useState<"50" | "100" | "200">("100");
   const [pace, setPace] = useState<"slow" | "usual" | "busy">("usual");
   const [voice, setVoice] = useState(true);
-  const [world, setWorld] = useState(false);
   const [busy, setBusy] = useState(false);
   const [amount, setAmount] = useState("");
 
@@ -549,10 +547,6 @@ export function FinalGallery() {
               <SettingRow title="Voice announcements" hint="Read each sale aloud">
                 <Switch checked={voice} onCheckedChange={setVoice} aria-label="Voice announcements" />
               </SettingRow>
-              <Divider />
-              <SettingRow title="World view" hint="Show what's public">
-                <Switch checked={world} onCheckedChange={setWorld} aria-label="World view" />
-              </SettingRow>
             </Spec>
             <Spec name="Text fields">
               <TextField label="Amount" prefix="$" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} hint="Up to $200 at your tier" />
@@ -575,15 +569,6 @@ export function FinalGallery() {
             </Spec>
             <Spec name="Loss waterfall · viewer holds DRIP">
               <LossWaterfall you="dripcoin" />
-            </Spec>
-            <Spec name="World view overlay">
-              <WorldMark kind="pub" show={world}>
-                <Card padding="sm"><Ledger>shop · 0x7a3f…c91e</Ledger></Card>
-              </WorldMark>
-              <WorldMark kind="priv" show={world}>
-                <Card padding="sm"><Text size="note">Business Pass · band 2 · Argentina</Text></Card>
-              </WorldMark>
-              <Text size="note" tone="muted">Toggle “World view” in Forms.</Text>
             </Spec>
           </div>
         </Section>

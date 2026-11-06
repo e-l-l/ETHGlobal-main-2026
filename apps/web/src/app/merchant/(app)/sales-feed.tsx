@@ -1,11 +1,10 @@
 "use client";
 
 import type { SaleVM } from "@repo/sdk";
-import { Ledger, SplitBar, Text, WorldMark } from "@/final";
+import { Ledger, SplitBar, Text } from "@/final";
 import { cn } from "@/lib/cn";
 import { useCurrency } from "@/lib/currency";
 import { formatMoney } from "@/lib/format";
-import { useWorldView } from "@/lib/world-view";
 
 /**
  * Today's payments (`merchant.home().sales`, local currency, newest first), shown in dollars with each one's split
@@ -24,7 +23,6 @@ export function SalesFeed({
   holdback: number;
   className?: string;
 }) {
-  const wv = useWorldView();
   const cur = useCurrency();
   if (sales.length === 0) {
     return (
@@ -34,7 +32,7 @@ export function SalesFeed({
     );
   }
   return (
-    <WorldMark kind="pub" show={wv} className={className}>
+    <div className={className}>
       <ul aria-label="Today's payments" className="m-0 flex list-none flex-col p-0">
         {sales.map((s) => {
           const usd = s.total / usdToLocal;
@@ -63,6 +61,6 @@ export function SalesFeed({
           );
         })}
       </ul>
-    </WorldMark>
+    </div>
   );
 }

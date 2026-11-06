@@ -1,15 +1,9 @@
 /**
- * Merchant onboarding and customer pay copy, EN and rioplatense ES (vos).
+ * Merchant onboarding and customer pay copy.
  * Voice rules: anay-design.md section 10 and anay-docs/ux.md "Words to use and avoid".
  * Short sentences that translate cleanly. No loan, interest, APR, gas, wallet or proof words.
  * Brand panel titles come in two parts: `title` plus the lime `accent` phrase.
  */
-
-export type Lang = "en" | "es";
-
-export function langFrom(value: string | undefined): Lang {
-  return value === "es" ? "es" : "en";
-}
 
 const en = {
   welcome: {
@@ -55,7 +49,6 @@ const en = {
     showFail: "Show a failed check",
     failTitle: "Pick an outcome",
     failBody: "Each one is a seeded portal account.",
-    world: "Nothing is onchain yet.",
   },
   verifying: {
     title: "Checking your record",
@@ -65,7 +58,6 @@ const en = {
     body: "Usually 5 to 30 seconds. You can keep this screen open.",
     steps: ["Reading the seller portal", "Checking the four facts on this phone", "Saving your Business Pass"],
     cancel: "Cancel",
-    world: "The issuer sees the account ID transiently and holds a secret pepper.",
   },
   pass: {
     title: "You're verified.",
@@ -82,7 +74,6 @@ const en = {
     learned: "The issuer sees the account ID transiently.",
     next: "Your first limit starts small. It grows each time you repay.",
     cta: "Create your shop",
-    world: "The commitment is onchain; other transactions expose shop and payment data.",
   },
   failed: {
     eyebrow: "Verification",
@@ -117,7 +108,6 @@ const en = {
     },
     retry: "Try another account",
     start: "Back to start",
-    world: "Nothing was written onchain.",
   },
   shop: {
     panelTitle: "Get your",
@@ -131,137 +121,11 @@ const en = {
     qr: "Payment QR",
     cta: "Set up your agent",
     preview: "Preview the checkout",
-    world: "Shop owner and payout addresses are public. Metadata may link activity.",
     empty: "Add a name to continue",
   },
 };
 
-const es: typeof en = {
-  welcome: {
-    eyebrow: "Para kioscos de Buenos Aires",
-    title: "Dólares para el stock,",
-    accent: "hoy.",
-    body: "Un adelanto chico en dólares para tu stock. Mientras esté activo, una parte de cada venta lo paga; la demo usa el 8%. Si pagás a tiempo, tu límite crece.",
-    heading: "Cómo funciona",
-    promises: [
-      { title: "Probás el kiosco, no a vos", body: "Cuatro datos de tu cuenta de ventas. Nunca tu nombre, tu teléfono ni tus contactos." },
-      { title: "Vos ponés los límites", body: "Tu agente solo compra stock dentro de ellos." },
-      { title: "¿Semana floja? Sin recargo por atraso", body: "Pagás una parte de cada venta, así que baja cuando bajan las ventas." },
-    ],
-    cta: "Probá tu negocio",
-    back: "Volver",
-    restore: "¿Celular nuevo? Recuperá tu kiosco con World ID",
-  },
-  steps: (at: number) => `Paso ${at} de 4`,
-  stepNames: ["Probá tu negocio", "Verificando", "Pase de Negocio", "Tu kiosco"],
-  prove: {
-    title: "Tus ventas ya",
-    accent: "hablan por vos.",
-    panel: "Los meses vendiendo en tu app de ventas son tu historial. Un verificador de prueba los chequea y solo guardamos cuatro datos.",
-    heading: "Entrá a tu cuenta de ventas",
-    body: "Usá el portal de prueba y el verificador simulado para chequear cuatro datos. El emisor ve el ID de cuenta temporalmente.",
-    whereSell: "Dónde vendés",
-    sources: [
-      { name: "Portal de ventas de prueba", sub: "Hace de Mercado Pago en esta demo" },
-      { name: "Otras apps de ventas", sub: "Muy pronto" },
-    ],
-    weCheck: "Leemos",
-    facts: [
-      { k: "País", v: "Dónde vendés" },
-      { k: "Banda de ventas", v: "Un rango, no un número" },
-      { k: "Vendiendo hace", v: "6+ meses" },
-      { k: "Estado", v: "Cuenta activa" },
-    ],
-    neverTitle: "Nunca vemos",
-    never: ["Tu nombre", "Tu teléfono", "Cada venta", "Tus clientes"],
-    time: "Unos 30 segundos. El chequeo corre en este teléfono.",
-    cta: "Abrir el portal de ventas",
-    demoShop: "Usar el kiosco de prueba",
-    showFail: "Ver un chequeo rechazado",
-    failTitle: "Elegí un resultado",
-    failBody: "Cada uno es una cuenta de prueba del portal.",
-    world: "Todavía no hay nada en la cadena.",
-  },
-  verifying: {
-    title: "Chequeando tu historial",
-    accent: "en privado.",
-    panel: "La demo usa un verificador simulado; el emisor ve el ID de cuenta temporalmente.",
-    heading: "Ya casi",
-    body: "Suele tardar entre 5 y 30 segundos. Podés dejar esta pantalla abierta.",
-    steps: ["Leyendo el portal de ventas", "Chequeando los cuatro datos en este teléfono", "Guardando tu Pase de Negocio"],
-    cancel: "Cancelar",
-    world: "El emisor ve el ID de cuenta temporalmente y guarda una clave secreta.",
-  },
-  pass: {
-    title: "Estás verificado.",
-    accent: "No supimos nada más.",
-    panel: "Tu Pase de Negocio vive en este teléfono. Prueba que tu kiosco es real sin mostrar quién sos.",
-    heading: "Tu Pase de Negocio",
-    body: "Guardado en este teléfono. Nada más sale de acá.",
-    onPhone: "En este teléfono",
-    facts: [
-      { k: "País", v: "Argentina" },
-      { k: "Banda de ventas", v: "Banda 2" },
-      { k: "Vendiendo hace", v: "6+ meses" },
-    ],
-    learned: "El emisor ve el ID de cuenta temporalmente.",
-    next: "Tu primer límite es chico. Crece cada vez que pagás.",
-    cta: "Creá tu kiosco",
-    world: "El compromiso está en la cadena; otras transacciones muestran datos del kiosco y pagos.",
-  },
-  failed: {
-    eyebrow: "Verificación",
-    title: "Todavía no.",
-    accent: "Esto es lo que podés hacer.",
-    panel: "No guardamos nada de este chequeo. Podés probar de nuevo cuando quieras.",
-    notVerified: "Sin verificar",
-    others: "Otros motivos por los que un chequeo falla",
-    "too-new": {
-      tag: "Muy nuevo",
-      title: "Tu kiosco es muy nuevo",
-      body: "Hacen falta 6 meses de ventas en el portal.",
-      next: "Seguí vendiendo y volvé. No guardamos nada de este chequeo.",
-    },
-    suspended: {
-      tag: "Suspendida",
-      title: "Esta cuenta está suspendida",
-      body: "El portal dice que la cuenta está suspendida.",
-      next: "Resolvelo con el portal y probá de nuevo. No guardamos tu ingreso.",
-    },
-    "revenue-low": {
-      tag: "Ventas bajas",
-      title: "Las ventas están bajo la primera banda",
-      body: "La banda 1 arranca cerca de 500 dólares al mes. Solo supimos que la cuenta está debajo, no el número.",
-      next: "Probá de nuevo cuando crezcan las ventas. No guardamos nada.",
-    },
-    generic: {
-      tag: "Sin verificar",
-      title: "No pudimos verificar esta cuenta",
-      body: "El portal no devolvió los cuatro datos.",
-      next: "Probá de nuevo, o usá otra cuenta.",
-    },
-    retry: "Probar otra cuenta",
-    start: "Volver al inicio",
-    world: "No se escribió nada en la cadena.",
-  },
-  shop: {
-    panelTitle: "Tu",
-    accent: "QR de cobro.",
-    panel: "Te escanean y pagan con cualquier token. Vos recibís dólares, y el contrato divide cada pago por vos.",
-    title: "Ponele nombre a tu kiosco",
-    body: "Quien paga ve este nombre en el QR y al pagar. Nunca tu nombre, y nunca nada de un adelanto.",
-    label: "Nombre del kiosco",
-    hint: "Que sea común. No uses tu nombre.",
-    ideas: "Ideas",
-    qr: "QR de cobro",
-    cta: "Configurá tu agente",
-    preview: "Ver la pantalla de pago",
-    world: "El dueño y la dirección de cobro son públicos. Los metadatos pueden vincular actividad.",
-    empty: "Poné un nombre para seguir",
-  },
-};
-
-export const copy: Record<Lang, typeof en> = { en, es };
+export const copy = en;
 
 /* Customer pay. The payer never sees an advance, a fee or a balance. */
 const payEn = {
@@ -289,39 +153,10 @@ const payEn = {
   ref: "Reference",
   done: "Done",
   shopPhone: "See the shop's phone",
-  world: "The payer address, amount and shop are public onchain.",
 };
-const payEs: typeof payEn = {
-  verified: "Estás pagando a",
-  secured: (app: string) => `Protegido por ${app}`,
-  panel: "Pagá con cualquier token. El kiosco recibe dólares.",
-  amount: "Monto",
-  hint: "Llega en dólares. La comisión de red la ponemos nosotros.",
-  pay: (amt: string) => `Pagar ${amt}`,
-  enter: "Ingresá un monto",
-  exampleRate: "cambio de ejemplo",
-  paying: "Pagando",
-  funding: "Consiguiendo tus dólares de prueba…",
-  testUsdc: "Testnet: pagás con USDC de prueba. La comisión de red la ponemos nosotros.",
-  failed: (code: string) => `El pago no salió (${code}). No se cobró nada.`,
-  etherscan: "Verlo en Etherscan",
-  paidEyebrow: "Pago listo",
-  paidTitle: (amt: string) => `Pagaste ${amt}`,
-  paidTo: (shop: string) => `a ${shop}`,
-  receipt: "Comprobante",
-  sent: "Mandaste",
-  received: (shop: string) => `Recibió ${shop}`,
-  fee: "Comisión de red",
-  covered: "Sin costo",
-  ref: "Referencia",
-  done: "Listo",
-  shopPhone: "Ver el teléfono del kiosco",
-  world: "La dirección de quien paga, el monto y el kiosco son públicos en la cadena.",
-};
-export const payCopy: Record<Lang, typeof payEn> = { en: payEn, es: payEs };
+export const payCopy = payEn;
 
 /** Brand panel eyebrow for an onboarding step, e.g. "Step 1 of 4 · Prove your business". */
-export function stepEyebrow(lang: Lang, at: number) {
-  const c = copy[lang];
-  return `${c.steps(at)} · ${c.stepNames[at - 1] ?? ""}`;
+export function stepEyebrow(at: number) {
+  return `${copy.steps(at)} · ${copy.stepNames[at - 1] ?? ""}`;
 }

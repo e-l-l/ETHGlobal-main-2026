@@ -10,7 +10,6 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
-import { PrivateMark } from "../_parts";
 import { perMonthOptions, purposes } from "../_data";
 
 type SetupPage = { agentLimits: AgentLimitsVM; limitsLadder: LadderStepVM[]; currentTier: number };
@@ -36,7 +35,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
 
   return (
     <Columns ratio="3:2">
-      <PrivateMark>
+      <div>
         <Stack gap="md">
           <Card padding="lg">
             <Label>Max per advance</Label>
@@ -73,7 +72,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
             />
           </Card>
         </Stack>
-      </PrivateMark>
+      </div>
 
       <Stack gap="md" className="md:sticky md:top-24">
         <HeroBlock rule={false}>
