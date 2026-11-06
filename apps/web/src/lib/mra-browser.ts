@@ -193,45 +193,59 @@ export function injectedName(eth: Eip1193 | undefined): string {
 const SEPOLIA_HEX = "0xaa36a7";
 
 /**
- * Called from the "Connect wallet" click (a user gesture): ask for accounts, then switch to Sepolia (adding it when
- * the wallet doesn't know it). Resolves to an error code instead of throwing, so the button can say what happened.
- */
-export async function connectInjected(): Promise<{ ok: true } | { ok: false; error: string }> {
-  const eth = injectedProvider();
-  if (!eth) return { ok: false, error: "no_wallet" };
-  try {
-    const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
-    if (!accounts?.[0]) return { ok: false, error: "no_account" };
-    try {
-      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SEPOLIA_HEX }] });
-    } catch (e) {
-      if ((e as { code?: number })?.code !== 4902) throw e;
-      await eth.request({
-        method: "wallet_addEthereumChain",
-        params: [
-          {
-            chainId: SEPOLIA_HEX,
-            chainName: "Sepolia",
-            nativeCurrency: { name: "Sepolia ETH", symbol: "ETH", decimals: 18 },
-            rpcUrls: ["https://sepolia.gateway.tenderly.co"],
-            blockExplorerUrls: ["https://sepolia.etherscan.io"],
-          },
-        ],
-      });
-    }
-    const chainId = (await eth.request({ method: "eth_chainId" })) as string;
-    return chainId?.toLowerCase() === SEPOLIA_HEX ? { ok: true } : { ok: false, error: "wrong_network" };
-  } catch (e) {
-    const code = (e as { code?: number })?.code;
-    return { ok: false, error: code === 4001 ? "rejected" : code === -32002 ? "pending" : "failed" };
-  }
-}
-
-/**
  * Page load: never prompt. Use the browser wallet only if this site is already connected and it is on Sepolia
  * (eth_accounts / eth_chainId never open a popup); otherwise fall back to the device wallet straight away.
  */
 async function loadInjectedWallet(): Promise<MRAConfig["wallet"]> {
+  return (await loadWagmiWallet()) ?? (await loadWindowEthereumWallet());
+}
+
+/**
+ * The wallet RainbowKit connected (components/connect-wallet.tsx), through the shared wagmi config. wagmi's
+ * reconnect only re-uses a connection the wallet already authorized: no popup. Waits at most a few seconds.
+ */
+async function loadWagmiWallet(): Promise<MRAConfig["wallet"]> {
+  try {
+    const [{ wagmiConfig, sepolia }, { getAccount, reconnect }] = await Promise.all([
+      import("./wagmi-config"),
+      import("wagmi/actions"),
+    ]);
+    const settled = () => {
+      const st = wagmiConfig.state.status;
+      return st === "connected" || st === "disconnected";
+    };
+    const waitSettled = () =>
+      new Promise<void>((resolve) => {
+        if (settled()) return resolve();
+        const t = setTimeout(done, 4000);
+        const unsub = wagmiConfig.subscribe((x) => x.status, () => settled() && done());
+        function done() {
+          clearTimeout(t);
+          unsub();
+          resolve();
+        }
+      });
+    await waitSettled();
+    if (wagmiConfig.state.status === "disconnected") {
+      await Promise.race([reconnect(wagmiConfig), new Promise((r) => setTimeout(r, 4000))]);
+      await waitSettled();
+    }
+    const account = getAccount(wagmiConfig);
+    if (account.status !== "connected" || account.chainId !== sepolia.id || !account.connector) return undefined;
+    const provider = await account.connector.getProvider();
+    if (!provider) return undefined;
+    const wallet = injectedWallet(provider, { address: account.address, chainId: sepolia.id });
+    MRA_BROWSER_STATUS.address = account.address;
+    MRA_BROWSER_STATUS.walletName = account.connector.name;
+    usingInjected = true;
+    return wallet as MRAConfig["wallet"];
+  } catch {
+    return undefined;
+  }
+}
+
+/** Fallback: window.ethereum, if this site is already connected (eth_accounts never prompts) and on Sepolia. */
+async function loadWindowEthereumWallet(): Promise<MRAConfig["wallet"]> {
   const eth = injectedProvider();
   if (!eth) return undefined;
   try {
