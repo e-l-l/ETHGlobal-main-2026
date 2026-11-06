@@ -4,7 +4,7 @@ import type { Ctx } from "../context.js";
 import * as L from "../mock/lend.js";
 import type { ExplorerEventVM, ExplorerShopVM, ExplorerView, LossTier, ProtocolView, RiskLogVM, RiskView, SignalVM, TierCapVM } from "../viewmodels.js";
 import { lenderSnapshot } from "./lender.js";
-import { ago, clock, coveragePct, coverageStr, money, pseudonymOf, shortDate, usd } from "./util.js";
+import { ago, clock, coveragePct, coverageStr, money, pseudonymOf, shortDate, triggerName, usd } from "./util.js";
 
 const BLOCKS_PER_DAY = 7_200n;
 
@@ -24,10 +24,10 @@ export function signalsFrom(status: RiskStatus, coveragePct?: number): SignalVM[
   if (t) {
     const ratio = t.price_ratio_1h_vs_24h;
     out.push({
-      name: "Junior price (TWAP)",
+      name: "DRIP price (TWAP)",
       value: ratio !== undefined ? `${ratio >= 1 ? "+" : "−"}${Math.abs((ratio - 1) * 100).toFixed(1)}% 1h vs 24h` : "—",
       state: t.fired ? "watch" : "ok",
-      note: t.fired ? "Junior fell fast against its 24h average" : "Steady against its 24h average",
+      note: t.fired ? "DRIP fell fast against its 24h average" : "Steady against its 24h average",
     });
   }
   const p = sig.repayment_pace;
@@ -40,7 +40,7 @@ export function signalsFrom(status: RiskStatus, coveragePct?: number): SignalVM[
     });
   }
   out.push({
-    name: "Junior coverage",
+    name: "Coverage",
     value: coverageStr(coveragePct),
     state: coveragePct !== undefined && coveragePct < 20 ? "watch" : "ok",
     note: coveragePct === undefined ? "No advances outstanding" : coveragePct < 20 ? "Below the 20% cover ratio" : "At or above the 20% cover ratio",
@@ -53,9 +53,9 @@ export function riskLogFrom(status: RiskStatus): RiskLogVM[] {
   if (!tick) return [];
   const items: RiskLogVM[] = [];
   if (tick.enforced && tick.tx_hash) {
-    items.push({ time: clock(tick.at), title: "Lowered limits", kind: "down", reason: tick.proposal?.rationale ?? `Triggered by ${tick.triggers.join(", ")}. Limits only move down.` });
+    items.push({ time: clock(tick.at), title: "Lowered limits", kind: "down", reason: tick.proposal?.rationale ?? `Triggered by ${tick.triggers.map(triggerName).join(", ")}. Limits only move down.` });
   } else if (tick.triggers.length) {
-    items.push({ time: clock(tick.at), title: "Watching risk signals", kind: "warn", reason: `${tick.triggers.join(", ")}${tick.skipped ? ` (${tick.skipped.replace(/_/g, " ")})` : ""}` });
+    items.push({ time: clock(tick.at), title: "Watching risk signals", kind: "warn", reason: `${tick.triggers.map(triggerName).join(", ")}${tick.skipped ? ` (${tick.skipped.replace(/_/g, " ")})` : ""}` });
   } else {
     items.push({ time: clock(tick.at), title: "All signals calm", kind: "neutral", reason: "No trigger fired. No limit change." });
   }
@@ -68,7 +68,7 @@ function explorerVM(name: string, e: LogEntry): Omit<ExplorerEventVM, "when"> {
   const a = e.args;
   switch (name) {
     case "Sale":
-      return { kind: "Sale", title: `${money(usd(a.amount))} to ${pseudonymOf(a.shopId)}`, detail: `${money(usd(a.amount - a.repayment))} to the shop · ${money(usd(a.repayment))} to its jar`, hash: e.transactionHash };
+      return { kind: "Sale", title: `${money(usd(a.amount))} to ${pseudonymOf(a.shopId)}`, detail: `${money(usd(a.amount - a.repayment))} to the shop · ${money(usd(a.repayment))} to its advance`, hash: e.transactionHash };
     case "AdvanceOpened":
       return { kind: "Draw", title: `Vault → ${pseudonymOf(a.shopId)}, ${money(usd(a.amount))}`, detail: `Tier ${a.tier}. Paid to the shop's payout, not to a person`, hash: e.transactionHash };
     case "StandingPassClaimed":
@@ -76,7 +76,7 @@ function explorerVM(name: string, e: LogEntry): Omit<ExplorerEventVM, "when"> {
     case "ShopRegistered":
       return { kind: "Shop", title: `${pseudonymOf(a.shopId)} created`, detail: "A pseudonym and a payout address. Nothing else", hash: e.transactionHash };
     case "AdvanceWrittenOff":
-      return { kind: "Write-off", title: `Advance #${a.id} written off`, detail: `Loss ${money(usd(a.loss))}: junior ${money(usd(a.paidJ))}, reserve ${money(usd(a.fromReserve))}, senior ${money(usd(a.seniorLoss))}`, hash: e.transactionHash };
+      return { kind: "Write-off", title: `Advance #${a.id} written off`, detail: `Loss ${money(usd(a.loss))}: DRIP ${money(usd(a.paidJ))}, reserve ${money(usd(a.fromReserve))}, vault ${money(usd(a.seniorLoss))}`, hash: e.transactionHash };
     case "LimitsChanged":
       return { kind: "Limits", title: "Limits changed", detail: `Tier caps ${(a.caps as bigint[]).map((c) => money(usd(c))).join(" / ")}`, hash: e.transactionHash };
     default:

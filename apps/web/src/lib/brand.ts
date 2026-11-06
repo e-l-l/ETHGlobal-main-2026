@@ -1,4 +1,4 @@
-/** Product name (renamed from Dollar Jar). Every surface reads it from here. */
+/** Product name . Every surface reads it from here. */
 export const APP_NAME = "DripMoni";
 
 /** Public domain, used for pay links and QR codes. */

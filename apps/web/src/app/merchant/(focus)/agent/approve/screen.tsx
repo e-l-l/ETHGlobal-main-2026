@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentApproveView, AgentSetupStep } from "@repo/sdk";
-import { ActionBar, Banner, Button, Card, DemoBadge, Heading, Ledger, LockIcon, OfferDisclosure, Page, Text } from "@/final";
+import { ActionBar, Banner, Button, DemoBadge, Ledger, LockIcon, OfferDisclosure, Page, Text } from "@/final";
+import { HeroBlock, HeroLabel } from "../../../_ui";
 import { capitalize, formatMoney, formatPercent } from "@/lib/format";
 import { isMock } from "@/lib/mra";
 import { q, type AgentLimitsInput } from "@/lib/mra-queries";
@@ -51,40 +52,55 @@ export function ApproveScreen({
 
   return (
     <Page width="narrow" className="justify-center">
-      <Card padding="lg" className="shadow-lift">
-        <span className="grid size-12 place-items-center rounded-full bg-honeydew text-hunter" aria-hidden>
-          <LockIcon size={24} />
-        </span>
-        <Heading level={1} size="h2">
-          Approve your agent once.
-        </Heading>
-        <DemoBadge>World test mode</DemoBadge>
-        <Text>This is a one-time World Agent Pass approval. Only you can turn the agent on. The recipient is your registered payout address; the purpose is not enforced onchain.</Text>
-        <Text size="note">Illustrative terms at your maximum per-draw limit; future offers may differ. Mandate expires after 90 days.</Text>
-        <OfferDisclosure principal={advance.drawn} fee={advance.fee} total={advance.total} holdback={advance.holdback} estimates={[100, 200, 400].map((sales, i) => ({ label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!, days: Math.ceil(advance.total / (sales * advance.holdback / 100)) }))} />
-        <ApproveMarks
-          rows={[
-            ["Max per advance", formatMoney(agentLimits.perAdvance)],
-            ["Max per month", formatMoney(agentLimits.perMonth)],
-            ["Draws for", capitalize(agentLimits.purpose)],
-          ]}
-          publicRows={[["Repaid from", `${formatPercent(advance.holdback)} of each sale`]]}
-        />
-        {setup.pending && step ? <Ledger role="status">{STEP_LABEL[step]}…</Ledger> : null}
-        {setup.error ? <Banner tone="risk">Not approved ({setup.error}). Nothing was drawn.</Banner> : null}
-        <ActionBar>
-          {isMock ? (
-            <Button href={routes.merchant}>Approve in World test mode</Button>
-          ) : (
-            <Button onClick={approve} loading={setup.pending}>
-              Approve in World test mode
+      <section className="flex flex-col overflow-hidden rounded-lg border border-hairline bg-surface shadow-lift">
+        <HeroBlock className="rounded-none">
+          <span className="grid size-12 place-items-center rounded-full bg-lime text-charcoal" aria-hidden>
+            <LockIcon size={24} />
+          </span>
+          <HeroLabel>World Agent Pass · one time</HeroLabel>
+          <h1 className="m-0 font-display text-h1-sm text-canvas md:text-h1">Approve your agent once.</h1>
+          <Text className="text-honeydew">
+            Only you can turn the agent on. It can never draw past these limits. The recipient is your registered payout address; the
+            purpose is not enforced onchain.
+          </Text>
+        </HeroBlock>
+        <div className="flex flex-col gap-4 p-5 md:p-6">
+          <DemoBadge>World test mode</DemoBadge>
+          <Text size="note">Illustrative terms at your maximum per-draw limit; future offers may differ. Mandate expires after 90 days.</Text>
+          <OfferDisclosure
+            principal={advance.drawn}
+            fee={advance.fee}
+            total={advance.total}
+            holdback={advance.holdback}
+            estimates={[100, 200, 400].map((sales, i) => ({
+              label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!,
+              days: Math.ceil(advance.total / ((sales * advance.holdback) / 100)),
+            }))}
+          />
+          <ApproveMarks
+            rows={[
+              ["Max per advance", formatMoney(agentLimits.perAdvance)],
+              ["Max per month", formatMoney(agentLimits.perMonth)],
+              ["Draws for", capitalize(agentLimits.purpose)],
+            ]}
+            publicRows={[["Paid back from", `${formatPercent(advance.holdback)} of each payment`]]}
+          />
+          {setup.pending && step ? <Ledger role="status">{STEP_LABEL[step]}…</Ledger> : null}
+          {setup.error ? <Banner tone="risk">Not approved ({setup.error}). Nothing was drawn.</Banner> : null}
+          <ActionBar>
+            {isMock ? (
+              <Button href={routes.merchant}>Approve in World test mode</Button>
+            ) : (
+              <Button onClick={approve} loading={setup.pending}>
+                Approve in World test mode
+              </Button>
+            )}
+            <Button href={routes.agent.denied} variant="ghost">
+              Not now
             </Button>
-          )}
-          <Button href={routes.agent.denied} variant="ghost">
-            Not now
-          </Button>
-        </ActionBar>
-      </Card>
+          </ActionBar>
+        </div>
+      </section>
     </Page>
   );
 }

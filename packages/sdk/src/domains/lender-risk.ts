@@ -14,7 +14,7 @@ import type { RiskStatus } from "../api/types.js";
 import type { Addr, Chain, ProtocolSnapshot } from "../chain/chain.js";
 import { decodeSlot0, poolIdOf, poolKeyOf, poolManagerAbi, poolSlots } from "../chain/swap.js";
 import type { CohortPointVM, RepaymentBucketVM, RiskPanelView, RiskTone, WaterfallLayerVM, WaterfallView } from "../viewmodels.js";
-import { clock, coveragePct, coverageStr, money, pctStr, shortDate, usd } from "./util.js";
+import { clock, coveragePct, coverageStr, money, pctStr, shortDate, triggerName, usd } from "./util.js";
 
 const DAY = 86_400;
 /** Sepolia's slot time. Used only to place an event in time when there are too many blocks to fetch one by one. */
@@ -176,7 +176,7 @@ export function riskPanelFrom(raw: RiskRaw): RiskPanelView {
     pct: cov === undefined ? null : Math.round(cov * 10) / 10,
     cushion: money(cushion),
     outstanding: money(usd(snap.seniorOutstanding)),
-    note: cov === undefined ? "Nothing lent out right now, so there is nothing to cover." : `${money(cushion)} of junior and reserve against ${money(usd(snap.seniorOutstanding))} lent out.`,
+    note: cov === undefined ? "Nothing lent out right now, so there is nothing to cover." : `${money(cushion)} of DRIP and reserve against ${money(usd(snap.seniorOutstanding))} lent out.`,
     tone: cov === undefined ? "none" : cov < 15 ? "watch" : "ok",
   };
 
@@ -240,7 +240,7 @@ export function riskPanelFrom(raw: RiskRaw): RiskPanelView {
     recentlyLowered,
     lastChange: last ? `${lastWasCut ? "Lowered" : "Changed"} ${now - last.at < DAY ? `today, ${clock(last.at)}` : shortDate(last.at)}` : "No change since deploy",
     lastCheck: tick
-      ? `${now - tick.at < DAY ? `today, ${clock(tick.at)}` : shortDate(tick.at)}${tick.triggers.length ? ` · ${tick.triggers.join(", ").replace(/_/g, " ")}` : " · all calm"}`
+      ? `${now - tick.at < DAY ? `today, ${clock(tick.at)}` : shortDate(tick.at)}${tick.triggers.length ? ` · ${tick.triggers.map(triggerName).join(", ")}` : " · all calm"}`
       : raw.risk
         ? "No check logged yet"
         : dash,
@@ -285,9 +285,9 @@ export function waterfallFrom(raw: Pick<RiskRaw, "snap" | "opened" | "splits" | 
       usd: feeLeft,
       estimated: true,
     }),
-    layer({ key: "junior", title: "Junior (DRIP)", description: "Cash in the junior vault. Takes the first write-off.", usd: junior, estimated: false, ...(mineJ > 0 ? { yours: `Yours ${money(mineJ)}` } : {}) }),
-    layer({ key: "reserve", title: "Reserve", description: "Fees and hook fees held back. Pays what junior can't.", usd: reserve, estimated: false }),
-    layer({ key: "senior", title: "Senior vault", description: "Lenders. Loses only after junior and the reserve run out.", usd: senior, estimated: false, ...(mineS > 0 ? { yours: `Yours ${money(mineS)}` } : {}) }),
+    layer({ key: "junior", title: "DripCoin (DRIP)", description: "Cash backing DRIP. Takes the first write-off.", usd: junior, estimated: false, ...(mineJ > 0 ? { yours: `Yours ${money(mineJ)}` } : {}) }),
+    layer({ key: "reserve", title: "Reserve", description: "Fees and hook fees held back. Pays what DRIP can't.", usd: reserve, estimated: false }),
+    layer({ key: "senior", title: "Vault", description: "Lenders. Loses only after DRIP and the reserve run out.", usd: senior, estimated: false, ...(mineS > 0 ? { yours: `Yours ${money(mineS)}` } : {}) }),
   ];
   const protection = junior + reserve;
   const cov = coveragePct(raw.snap.juniorAssets, raw.snap.reserve, raw.snap.seniorOutstanding);
@@ -295,11 +295,11 @@ export function waterfallFrom(raw: Pick<RiskRaw, "snap" | "opened" | "splits" | 
     layers,
     protection: money(protection),
     protectionUsd: Math.round(protection * 100) / 100,
-    headline: `${money(protection)} of protection ahead of every senior dollar`,
+    headline: `${money(protection)} of protection ahead of every vault dollar`,
     sub:
       outstanding > 0
-        ? `Junior ${money(junior)} + reserve ${money(reserve)}: ${coverageStr(cov)} of the ${money(outstanding)} lent out. The shops' holdback is not counted.`
-        : `Junior ${money(junior)} + reserve ${money(reserve)}. Nothing is lent out right now.`,
+        ? `DRIP ${money(junior)} + reserve ${money(reserve)}: ${coverageStr(cov)} of the ${money(outstanding)} lent out.`
+        : `DRIP ${money(junior)} + reserve ${money(reserve)}. Nothing is lent out right now.`,
     source: "chain",
   };
 }
@@ -421,8 +421,8 @@ export async function gatherRiskRaw(
     mine: pos ? { senior: pos.seniorValue, junior: pos.juniorValue } : null,
     contracts: [
       { label: "AdvanceBook", address: chain.addresses.book },
-      { label: "Senior vault", address: chain.addresses.senior },
-      { label: "Junior vault (DRIP)", address: chain.addresses.junior },
+      { label: "Vault", address: chain.addresses.senior },
+      { label: "DripCoin (DRIP)", address: chain.addresses.junior },
       { label: "RiskHook", address: chain.addresses.hook },
     ],
     timesEstimated,

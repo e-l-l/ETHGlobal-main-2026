@@ -46,7 +46,7 @@ export function splitSale(total: number) {
 /* ---------------------------------------------------- M11 advance arrived */
 
 export const drawReasons = [
-  "Sales are up 12% this week, so repayment is quick",
+  "Payments are up 12% this week, so paying back will be quick",
   "You usually restock on Mondays",
   `${formatMoney(advance.drawn)} is inside your ${formatMoney(agentLimits.perAdvance)} per-advance limit`,
   `This month: ${formatMoney(agentSummary.monthUsed)} of your ${formatMoney(agentLimits.perMonth)} limit used`,
@@ -171,9 +171,9 @@ export const myQr = {
   /** Shown under the QR; also the encoded value until real pay links exist. */
   payLink: appUrl(routes.pay),
   howToPay: [
-    "Scan with any phone camera, no app needed",
-    "Pay in any token; you always get dollars",
-    `While an advance is open, ${advance.holdback}% of each sale repays it`,
+    "They scan with any phone camera. No app needed.",
+    "They pay in any token. You always get dollars.",
+    `The contract splits each payment. While an advance is open, ${advance.holdback}% pays it back.`,
   ],
 } as const;
 

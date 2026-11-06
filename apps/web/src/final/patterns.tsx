@@ -5,14 +5,17 @@ import { cn } from "@/lib/cn";
 
 /*
  * dev2 patterns, lines and decals (anay-design.md section 6). Each one means something:
- * the wave is money moving, the bands are the jar, the pixels are real days of sales.
+ * the wave is money moving, the bands are the drip, the pixels are real days of sales.
  * Decals sit in their own block; text over them always sits on a solid Hunter ground.
  */
 
 /* --------------------------------------------------------------- WaveBand */
 
-/** S-curve tile 32×24, 7px stroke, −18°. Lime on Hunter. Checkout and Get Paid headers. */
-export function WaveBand({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * S-curve tile 32×24, 7px stroke, −18°. Lime on Hunter. Checkout and Get Paid headers.
+ * bodyClassName styles the content block, e.g. a solid Hunter panel inset from the wave frame.
+ */
+export function WaveBand({ children, className, bodyClassName }: { children: ReactNode; className?: string; bodyClassName?: string }) {
   const id = `fw${useId().replace(/[:«»]/g, "")}`;
   return (
     <div className={cn("relative overflow-hidden rounded-lg bg-hunter text-canvas", className)}>
@@ -24,7 +27,7 @@ export function WaveBand({ children, className }: { children: ReactNode; classNa
         </defs>
         <rect width="100%" height="100%" fill={`url(#${id})`} />
       </svg>
-      <div className="relative flex flex-col gap-1 p-5">{children}</div>
+      <div className={cn("relative flex flex-col gap-1 p-5", bodyClassName)}>{children}</div>
     </div>
   );
 }
@@ -32,7 +35,7 @@ export function WaveBand({ children, className }: { children: ReactNode; classNa
 /* ----------------------------------------------------------- GradientHero */
 
 /**
- * Light jar gradient: Hunter → Fern → Leaf → Honeydew. One per screen, top block only.
+ * Light drip gradient: Hunter → Fern → Leaf → Honeydew. One per screen, top block only.
  * Lime stays out of the large field; it appears as the thin band under it.
  */
 export function GradientHero({ className, children }: { className?: string; children?: ReactNode }) {
@@ -47,7 +50,7 @@ export function GradientHero({ className, children }: { className?: string; chil
 
 /* ----------------------------------------------------------- JarBandStrip */
 
-/** The mirrored jar band, Hunter → Leaf → Lime → Leaf → Hunter. A divider decal, 6px. */
+/** The mirrored drip band, Hunter → Leaf → Lime → Leaf → Hunter. A divider decal, 6px. */
 export function JarBandStrip({ className }: { className?: string }) {
   return (
     <div
@@ -113,7 +116,7 @@ export function PixelDune({ days, rows = 10, className }: { days: number[]; rows
 
 /* ---------------------------------------------------------------- SplitBar */
 
-/** Every sale: 9:1, 3px gap. The 90% is quiet so the 10% to the jar is what you see. */
+/** Every sale: 9:1, 3px gap. The 90% is quiet so the 10% drip is what you see. */
 export function SplitBar({ className, legend = true }: { className?: string; legend?: boolean }) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -124,7 +127,7 @@ export function SplitBar({ className, legend = true }: { className?: string; leg
       {legend ? (
         <div className="flex flex-wrap gap-x-4 gap-y-1 font-ledger text-[12px] text-charcoal-soft">
           <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-unlit" />90% to you</span>
-          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-hunter" />10% to your jar</span>
+          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-hunter" />10% to your advance</span>
         </div>
       ) : null}
     </div>

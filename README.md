@@ -38,10 +38,10 @@ The **World view** toggle on every screen shows exactly which data is onchain an
 
 | Part | State |
 |---|---|
-| Web app: every screen for merchant, customer, lender, junior and public users | ✅ Built, responsive (390px phone, 1440px desktop). Reads through `@repo/sdk`: mock by default, live on Sepolia with `NEXT_PUBLIC_MRA_MODE=sepolia` |
+| Web app: every screen for merchant, customer, lender, DripCoin holder and public users | ✅ Built, responsive (390px phone, 1440px desktop). Reads through `@repo/sdk`: mock by default, live on Sepolia with `NEXT_PUBLIC_MRA_MODE=sepolia` |
 | Design system (`/final/components`) | ✅ Built |
 | Demo seller portal | ✅ Built (inside the web app, deliberately unbranded) |
-| Contracts (Foundry): AdvanceBook, BusinessPassRegistry, senior/junior ERC-4626 vaults, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 152 tests |
+| Contracts (Foundry): AdvanceBook, BusinessPassRegistry, vault and DripCoin ERC-4626 tranches, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 152 tests |
 | Noir circuits: `standing_pass`, `business_pass` | ✅ Proofs made in the browser verify on the deployed verifiers |
 | Agents service (Python): Underwriter, Critic, managed cash-flow agents, Risk agent, keeper, relayer | ✅ Running on EC2, 406 tests |
 | Business Pass issuer (zkTLS → attestation) | ✅ Running; demo uses a mock attestor; the real Reclaim path is built and tested |
@@ -85,8 +85,8 @@ No other secrets are needed today. All data comes from `apps/web/src/lib/mock`.
 | Merchant, signed up | `/merchant` | Home and live sales · advance details · bad week · agent log, setup, approve and manage · repaid / Standing Pass · cash out · my QR · World view |
 | Customer | `/pay/corner-kiosk` | Pay with test USDC → receipt. The advance is never mentioned. |
 | Demo seller portal | `/portal/login` | The page the zkTLS proof reads from (stand-in for Mercado Pago) |
-| Lender | `/earn` | Senior vault: overview, deposit / withdraw, position |
-| Risk taker | `/junior` | Junior token: overview, mint / redeem, trade on Uniswap v4 |
+| Lender | `/earn` | Vault: overview, deposit / withdraw, position |
+| Risk taker | `/dripcoin` | DripCoin (DRIP): overview, mint / redeem, trade on Uniswap v4 |
 | Public / judges | `/protocol` | Protocol dashboard, `/risk` status, `/explorer` |
 | Dev | `/screens`, `/final/components` | Every screen on one page; the component gallery |
 
@@ -98,7 +98,7 @@ Every route lives in [`apps/web/src/lib/routes.ts`](apps/web/src/lib/routes.ts).
 .
 ├── apps/
 │   └── web/                     Next.js 16 app (App Router, React 19, Tailwind v4)
-│       ├── src/app/             Routes: onboarding, merchant, pay, portal, earn, junior, protocol, risk, explorer
+│       ├── src/app/             Routes: onboarding, merchant, pay, portal, earn, dripcoin, protocol, risk, explorer
 │       ├── src/final/           Design-system components (Tailwind utilities only)
 │       ├── src/screens/         Larger screen compositions shared by routes
 │       ├── src/lib/             routes, brand name, copy (EN/ES), formatting, mock data
@@ -130,7 +130,7 @@ The light-only, green-focused system lives in [`packages/tailwind-config/final.c
 - **Greens:** Charcoal `#262E24` (text), Hunter `#2C5A3A` (primary action, links), Fern, Sage, Leaf, Honeydew. **Lime `#C6F28C` is a fill on Hunter only, never on white** (1.2:1).
 - **Type:** Urbanist (display, money) · Figtree (body) · JetBrains Mono (labels, IDs, local amounts).
 - **Logo:** the ribbon drop. Its four bands double as the tier meter (lit bands = tier + 1).
-- **Patterns:** wave band, jar gradient, ledger grid, pixel dune (real sales only), 9:1 split bar.
+- **Patterns:** wave band, gradient hero, ledger grid, pixel dune (real sales only), 9:1 split bar.
 
 Rules for contributors:
 

@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import type { ClaimResult, ClaimStep, RepaidView } from "@repo/sdk";
-import { Banner, Button, Card, Columns, KeyValue, Label, Ledger, Page, PageHead, Pill, Stack, Text, TierMeter } from "@/final";
+import { Banner, Button, Card, Columns, JarMark, Ledger, Page, Stack, Text } from "@/final";
+import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA, useMRAAction } from "@/lib/use-mra";
+import { BackLink, BigFigure, CardTitle, DarkBlock, HeroBlock, HeroLabel } from "../../_ui";
 
 const CLAIM_STEP: Record<ClaimStep, string> = {
   claiming: "Saving your repayment to the private record",
@@ -31,6 +33,8 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
   const currentTier = claimed ? claimed.tier : data.currentTier;
   const cap = claimed ? claimed.newCap : (limitsLadder[currentTier]?.cap ?? 0);
   const claimable = !claimed && data.standingPass.claimable === true;
+  const lit = Math.min(4, Math.max(1, currentTier + 1)) as 1 | 2 | 3 | 4;
+  const advances = `${currentTier} ${currentTier === 1 ? "advance" : "advances"}`;
 
   const run = () => {
     claim.run().then(setClaimed, () => undefined);
@@ -38,30 +42,39 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
 
   return (
     <Page tabs>
-      <PageHead back={routes.merchant} backLabel="Home" label="Advance repaid" title="Repaid. From today, 100% of each sale is yours." />
+      <BackLink href={routes.merchant}>Home</BackLink>
 
-      <Columns>
-        <Stack>
-          <Card tone="tint">
-            <div className="flex items-center justify-between gap-3">
-              <Label>Standing Pass</Label>
-              <Pill tone="locked">private</Pill>
+      <HeroBlock>
+        <HeroLabel>Paid back in full</HeroLabel>
+        <BigFigure as="h1" className="max-w-[16ch] text-balance">
+          Your limit is now <span className="text-lime">{formatMoney(cap)}.</span>
+        </BigFigure>
+        <Text className="max-w-[56ch] text-honeydew md:text-[17px]">
+          You&rsquo;ve repaid {advances}. From today, all of each payment is yours. Nobody can see your history, not even
+          us.
+        </Text>
+      </HeroBlock>
+
+      <Columns ratio="3:2">
+        <Stack gap="lg">
+          <DarkBlock>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="font-display text-h1-sm">Standing Pass</span>
+                  <span className="rounded-chip bg-lime px-2 py-1 font-ledger text-tag font-semibold text-charcoal uppercase">On this phone</span>
+                </div>
+                <Text className="text-honeydew">
+                  Proves you&rsquo;ve paid back {advances}, without showing which shop, when, or how much. Your phone makes
+                  the proof; we never see it.
+                </Text>
+              </div>
+              <JarMark lit={lit} on="dark" size={64} label={`Tier ${currentTier}`} />
             </div>
-            <TierMeter tier={Math.min(3, Math.max(0, currentTier)) as 0 | 1 | 2 | 3} />
-            <div className="flex flex-col gap-1">
-              <strong className="font-display text-h2 text-charcoal">
-                You&rsquo;ve repaid {currentTier} {currentTier === 1 ? "advance" : "advances"}
-              </strong>
-              <Text size="note">
-                Your limit now: <strong className="text-charcoal">{formatMoney(cap)}</strong>
-              </Text>
-            </div>
-            <Text size="note" tone="muted">
-              Nobody can see your history. Not even us.
-            </Text>
-          </Card>
+          </DarkBlock>
+
           {claimable ? (
-            <Card>
+            <Card padding="lg">
               <Text>
                 Claim your Standing Pass to raise your limit to{" "}
                 <strong className="text-charcoal">{formatMoney(data.standingPass.nextCap ?? 0)}</strong>. It stays on this
@@ -75,24 +88,43 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
             </Card>
           ) : null}
           {claimed ? <Banner>Standing Pass claimed. Your new limit is {formatMoney(claimed.newCap)} per advance.</Banner> : null}
+        </Stack>
+
+        <Stack gap="lg">
+          <Card padding="lg">
+            <CardTitle>How your limit grows</CardTitle>
+            <ol aria-label="Limits ladder" className="m-0 grid list-none grid-cols-2 gap-2 p-0">
+              {limitsLadder.map((t, i) => {
+                const now = i === currentTier;
+                const done = i < currentTier;
+                return (
+                  <li
+                    key={t.label}
+                    className={cn(
+                      "flex flex-col gap-1 rounded-md px-3 py-3.5",
+                      now ? "bg-hunter text-canvas" : done ? "bg-honeydew text-hunter" : "bg-well text-charcoal-soft",
+                    )}
+                  >
+                    <span className="font-display text-h1-sm tabular-nums">{formatMoney(t.cap)}</span>
+                    <span className="font-body text-note">
+                      {t.label}
+                      {now ? " · now" : ""}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </Card>
           {claimed ? (
-            <Button href={routes.agent.setup}>Use my new limit</Button>
+            <Button href={routes.agent.setup} width="full">
+              Use my new limit
+            </Button>
           ) : (
-            <Button href={routes.merchant} {...(claimable ? { variant: "ghost" as const } : {})}>
-              Back to home
+            <Button href={routes.merchant} width="full" {...(claimable ? { variant: "secondary" as const } : {})}>
+              Back home
             </Button>
           )}
         </Stack>
-
-        <Card>
-          <Label>How your limit grows</Label>
-          <KeyValue
-            rows={limitsLadder.map((t, i) => [
-              i === currentTier ? <strong key={t.label}>{t.label} · now</strong> : t.label,
-              formatMoney(t.cap),
-            ])}
-          />
-        </Card>
       </Columns>
     </Page>
   );

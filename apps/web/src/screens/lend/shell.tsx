@@ -1,7 +1,8 @@
 "use client";
 
-import type { ReactNode, SVGProps } from "react";
-import { AppHeader, Banner, CopyHash, Page, WorldMark, type NavItem } from "@/final";
+import { useId, type ReactNode, type SVGProps } from "react";
+import { AppHeader, Banner, CopyHash, JarBandStrip, Label, Page, WorldMark, type NavItem } from "@/final";
+import { cn } from "@/lib/cn";
 import { MRA_ENV, isMock } from "@/lib/mra";
 import { routes } from "@/lib/routes";
 import { WALLET } from "@/lib/mock/shop";
@@ -16,16 +17,16 @@ function Svg({ children, ...p }: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
-const EarnTabIcon = () => (
+const VaultTabIcon = () => (
   <Svg>
     <path d="M3 17l6-6 4 4 8-8" />
     <path d="M15 7h6v6" />
   </Svg>
 );
-const JuniorTabIcon = () => (
+const DripTabIcon = () => (
   <Svg>
-    <path d="M12 3 3 8l9 5 9-5-9-5Z" />
-    <path d="m3 13 9 5 9-5" />
+    <path d="M12 3s-6.5 7-6.5 11.5a6.5 6.5 0 0 0 13 0C18.5 10 12 3 12 3Z" />
+    <path d="M9.5 15a2.5 2.5 0 0 0 2.5 2.5" />
   </Svg>
 );
 const ProtocolTabIcon = () => (
@@ -50,8 +51,8 @@ const ExplorerTabIcon = () => (
 
 /** Lender and public nav: one set for every page here. Becomes the phone tab bar. */
 export const LEND_NAV: NavItem[] = [
-  { key: "earn", label: "Earn", href: routes.earn, icon: <EarnTabIcon /> },
-  { key: "junior", label: "Junior", href: routes.junior, icon: <JuniorTabIcon /> },
+  { key: "earn", label: "Vault", href: routes.earn, icon: <VaultTabIcon /> },
+  { key: "dripcoin", label: "DripCoin", href: routes.dripcoin, icon: <DripTabIcon /> },
   { key: "protocol", label: "Protocol", href: routes.protocol, icon: <ProtocolTabIcon /> },
   { key: "risk", label: "Risk", href: routes.risk, icon: <RiskTabIcon /> },
   { key: "explorer", label: "Explorer", href: routes.explorer, icon: <ExplorerTabIcon /> },
@@ -98,5 +99,58 @@ export function Pub({ children, className }: { children: ReactNode; className?: 
     <WorldMark kind="pub" show={wv} className={className}>
       {children}
     </WorldMark>
+  );
+}
+
+/**
+ * The top band on Vault and DripCoin: a Hunter field (a Hunter → Fern sweep on desktop), lime only on the solid
+ * Hunter side, and the lime band under it. Full-bleed on phones, a rounded panel in the page column on desktop.
+ * `aside` is the one big number (APY, price); it sits on the right, so it stays canvas-coloured.
+ */
+export function LendHero({
+  label,
+  title,
+  children,
+  actions,
+  aside,
+  sweep,
+}: {
+  label: ReactNode;
+  title: ReactNode;
+  children?: ReactNode;
+  actions?: ReactNode;
+  aside?: ReactNode;
+  sweep?: boolean;
+}) {
+  const id = useId();
+  return (
+    <section aria-labelledby={id} className="-mx-4 -mt-6 overflow-hidden bg-hunter text-canvas md:mx-0 md:-mt-2 md:rounded-lg">
+      <div
+        className={cn(
+          "flex flex-col gap-8 px-4 pt-8 pb-9 md:flex-row md:items-end md:justify-between md:gap-12 md:px-10 md:pt-12 md:pb-12",
+          sweep && "md:bg-linear-110 md:from-hunter md:from-55% md:to-fern",
+        )}
+      >
+        <div className="flex max-w-[620px] min-w-0 flex-col gap-4">
+          <Label className="text-lime">{label}</Label>
+          <h1 id={id} className="font-display text-hero-sm text-balance text-canvas md:text-hero">
+            {title}
+          </h1>
+          {children ? <p className="max-w-[54ch] font-body text-read text-honeydew">{children}</p> : null}
+          {actions ? <div className="mt-2 flex flex-col gap-2 sm:flex-row">{actions}</div> : null}
+        </div>
+        {aside ? <div className="flex shrink-0 flex-col gap-1 md:items-end md:text-right">{aside}</div> : null}
+      </div>
+      <JarBandStrip className="rounded-none" />
+    </section>
+  );
+}
+
+/** The dark "your position" card: Charcoal ground, lime figure accents. */
+export function DarkCard({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
+  return (
+    <section aria-label={label} className={cn("flex min-w-0 flex-col gap-4 rounded-lg bg-charcoal p-5 text-canvas md:p-6", className)}>
+      {children}
+    </section>
   );
 }

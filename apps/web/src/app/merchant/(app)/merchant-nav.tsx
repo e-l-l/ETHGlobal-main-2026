@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { AppHeader, TextLink, type IconProps, type NavItem } from "@/final";
+import { AppHeader, SideNav, TextLink, type IconProps, type NavItem } from "@/final";
+import { shop } from "@/lib/mock/shop";
 import { routes } from "@/lib/routes";
 
 const svg = {
@@ -45,10 +46,28 @@ function QrIcon({ size = 22 }: IconProps) {
   );
 }
 
+function AdvanceIcon({ size = 22 }: IconProps) {
+  return (
+    <svg {...svg} width={size} height={size}>
+      <path d="M4 19h16M7 15V9M12 15V5M17 15v-3" />
+    </svg>
+  );
+}
+
+function CashOutIcon({ size = 22 }: IconProps) {
+  return (
+    <svg {...svg} width={size} height={size}>
+      <path d="M12 4v12M7 11l5 5 5-5M5 20h14" />
+    </svg>
+  );
+}
+
 const nav: NavItem[] = [
   { key: "home", label: "Home", href: routes.merchant, icon: <HomeIcon /> },
+  { key: "advance", label: "Advance", href: routes.advance.details, icon: <AdvanceIcon /> },
   { key: "agent", label: "Agent", href: routes.agent.log, icon: <AgentIcon /> },
   { key: "qr", label: "My QR", href: routes.myQr, icon: <QrIcon /> },
+  { key: "cash", label: "Cash out", href: routes.cashOut, icon: <CashOutIcon /> },
 ];
 
 const within = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -59,10 +78,29 @@ function activeKey(pathname: string): string {
   return nav.find((n) => n.key !== "home" && within(pathname, n.href))?.key ?? "home";
 }
 
+/** Desktop sidebar (lg+). The top bar and phone tab bar come from MerchantNav. */
+export function MerchantSideNav() {
+  const pathname = usePathname();
+  return (
+    <SideNav
+      nav={nav}
+      active={activeKey(pathname)}
+      home={routes.merchant}
+      account={{ name: shop.name, id: shop.id, initials: shop.initials }}
+      footer={
+        <TextLink href={routes.home} className="min-h-11 px-3 text-note">
+          Switch role
+        </TextLink>
+      }
+    />
+  );
+}
+
 export function MerchantNav() {
   const pathname = usePathname();
   return (
     <AppHeader
+      hideFrom="lg"
       nav={nav}
       active={activeKey(pathname)}
       home={routes.merchant}

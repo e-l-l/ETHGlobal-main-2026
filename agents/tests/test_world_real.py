@@ -194,7 +194,8 @@ def test_required_acr_and_discovery_issuer_pin():
 def test_device_flow_pending_then_approved_and_single_use():
     v, w, t = verifier()
     d = v.start_device("n0nce")
-    assert d["verification_uri"] == "https://world.org/device?user_code=WXYZ-1234" and d["user_code"] == "WXYZ-1234"
+    assert d["verification_uri"] == "https://world.org/device" and d["verification_uri_complete"] == "https://world.org/device?user_code=WXYZ-1234"
+    assert d["user_code"] == "WXYZ-1234" and d["expires_in"] == 600 and d["interval"] == 5
     assert "dev-code-secret" not in json.dumps(d)  # the device_code never leaves the server
     assert w.posts[0][1] == {"scope": "openid", "client_id": CLIENT, "client_secret": SECRET}
     w.token = (400, {"error": "authorization_pending"})
@@ -307,7 +308,8 @@ def test_api_device_flow_pending_does_not_deny_then_approves(tmp_path):
     auth = {"Authorization": f"Bearer {body['manage_token']}"}
     assert client.post(f"/agents/{body['id']}/agent-pass/device").status_code == 401
     d = client.post(f"/agents/{body['id']}/agent-pass/device", headers=auth).json()
-    assert d["verification_uri"].startswith("https://") and "device_code" not in d
+    assert d["verification_uri"].startswith("https://") and d["verification_uri_complete"].startswith("https://")
+    assert d["expires_in"] == 600 and d["interval"] == 5 and "device_code" not in d
     w.token = (400, {"error": "authorization_pending"})
     r = client.post(f"/agents/{body['id']}/agent-pass", json={"device_session": d["device_session"]}, headers=auth).json()
     assert r == {"approved": False, "reason": "pending", "attestation": None}

@@ -8,9 +8,9 @@ import { LimitsForm } from "./limits-form";
 export default async function AgentSetupPage() {
   const initial = await serverView(q.agentSetupPage);
   return (
-    <Page width="narrow" tabs>
-      <PageHead back={routes.merchant} backLabel="Home" label="Cash-flow agent" title="Set your agent's limits.">
-        It can only draw inside these. You approve once with World.
+    <Page tabs>
+      <PageHead back={routes.merchant} backLabel="Home" label="Cash-flow agent · setup" title="Set your agent's limits.">
+        It can only draw inside these. You approve once with World, and only you can turn it off.
       </PageHead>
       <LimitsForm initial={initial} />
     </Page>

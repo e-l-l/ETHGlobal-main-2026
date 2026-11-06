@@ -8,8 +8,8 @@ import { ManageForm } from "./manage-form";
 export default async function ManageAgentPage() {
   const initial = await serverView(q.agentStatus);
   return (
-    <Page width="narrow" tabs>
-      <PageHead back={routes.agent.log} backLabel="Agent activity" label="Manage agent" title="Your agent, your rules." />
+    <Page tabs>
+      <PageHead back={routes.agent.log} backLabel="Agent activity" label="Cash-flow agent" title="Manage your agent" />
       <ManageForm initial={initial} />
     </Page>
   );
