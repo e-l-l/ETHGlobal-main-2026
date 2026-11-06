@@ -95,7 +95,7 @@ function SiteHeader() {
           <JarMark size={32} />
           <span className="font-display text-[23px] leading-none font-extrabold tracking-[-0.02em] text-charcoal">{APP_NAME}</span>
         </Link>
-        <nav aria-label="Sections" className="hidden flex-1 items-center justify-center gap-7 md:flex">
+        <nav aria-label="Sections" className="hidden flex-1 items-center justify-end gap-7 md:flex">
           {NAV.map((n) => (
             <a key={n.href} href={n.href} className={cn("py-1 font-body text-[16px] font-semibold text-charcoal-soft hover:text-charcoal", drawLine)}>
               {n.label}
@@ -209,12 +209,12 @@ function Hero() {
         <div className="pointer-events-auto flex max-w-[980px] flex-col gap-8">
           <span className={cn("inline-flex w-fit items-center gap-3", enter)}>
             <JarMark size={94} />
-            <span className="font-display text-[60px] leading-none font-extrabold tracking-[-0.03em] text-charcoal md:text-[76px]">{APP_NAME}</span>
+            <span className="font-display text-[49px] leading-none font-extrabold tracking-[-0.03em] text-charcoal md:text-[61px]">{APP_NAME}</span>
           </span>
-          <h1 id="hero-h" className={cn("m-0 max-w-[14ch] font-display text-[66px] leading-[1.02] font-bold tracking-[-0.035em] text-charcoal [animation-delay:60ms] md:text-[103px]", enter)}>
+          <h1 id="hero-h" className={cn("m-0 max-w-[14ch] font-display text-[53px] leading-[1.02] font-bold tracking-[-0.035em] text-charcoal [animation-delay:60ms] md:text-[84px]", enter)}>
             Stock up now. <span className="text-hunter">Repay as you sell.</span>
           </h1>
-          <p className={cn("m-0 max-w-[44ch] font-body text-[29px] leading-[1.5] text-charcoal-soft [animation-delay:110ms]", enter)}>
+          <p className={cn("m-0 max-w-[44ch] font-body text-[23px] leading-[1.5] text-charcoal-soft [animation-delay:110ms]", enter)}>
             Dollar advances for small shops. Each sale sends 8% back. Pay early, pay less.
           </p>
           <div className={cn("flex flex-col gap-3 sm:flex-row [animation-delay:160ms]", enter)}>
@@ -227,14 +227,14 @@ function Hero() {
           </div>
           <p
             className={cn(
-              "m-0 inline-flex w-fit items-center gap-3 rounded-md border border-honeydew-line bg-honeydew py-3 pr-6 pl-4 font-body text-[22px] font-semibold text-hunter [animation-delay:200ms]",
+              "m-0 inline-flex w-fit items-center gap-3 rounded-md border border-honeydew-line bg-honeydew py-3 pr-6 pl-4 font-body text-[18px] font-semibold text-hunter [animation-delay:200ms]",
               enter,
             )}
           >
             <LockIcon size={28} className="shrink-0" />
             No name, phone or contacts. Ever.
           </p>
-          <ul className={cn("m-0 flex list-none flex-wrap gap-x-8 gap-y-3 p-0 font-body text-[22px] text-charcoal-soft [animation-delay:240ms]", enter)}>
+          <ul className={cn("m-0 flex list-none flex-wrap gap-x-8 gap-y-3 p-0 font-body text-[18px] text-charcoal-soft [animation-delay:240ms]", enter)}>
             {PROMISES.map((t) => (
               <li key={t} className="inline-flex items-center gap-2">
                 <span aria-hidden className="grid size-7 place-items-center rounded-[4px] bg-hunter text-canvas">
