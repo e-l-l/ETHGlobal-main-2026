@@ -114,8 +114,8 @@ async function loadAdvance(ctx: Ctx, shopId: Hex, latest = false): Promise<Loade
     id = opened.args.id as bigint;
   }
   if (id === 0n) return null;
-  if (!opened) opened = (await chain.bookLogs("AdvanceOpened", { id })).at(-1);
-  const onchain = await chain.advance(id);
+  const [onchain, ev] = await Promise.all([chain.advance(id), opened ? Promise.resolve(opened) : chain.bookLogs("AdvanceOpened", { id }).then((evs) => evs.at(-1))]);
+  opened = ev;
   const out: Loaded = { onchain };
   if (opened) {
     out.openedBlock = opened.blockNumber;
@@ -131,10 +131,10 @@ async function loadSales(ctx: Ctx, shopId: Hex, days: number): Promise<SaleEv[]>
   const latest = await chain.blockNumber();
   const from = latest > BLOCKS_PER_DAY * BigInt(days) ? latest - BLOCKS_PER_DAY * BigInt(days) : 0n;
   const evs = await chain.bookLogs("Sale", { shopId }, from, latest);
-  const out: SaleEv[] = [];
-  for (const e of evs) {
-    out.push({ total: usd(e.args.amount), repay: usd(e.args.repayment), at: await chain.blockTime(e.blockNumber), id: `${e.transactionHash}:${e.logIndex}` });
-  }
+  // One block-time read per distinct block, all at once (they used to go out one per sale, in sequence).
+  const out: SaleEv[] = await Promise.all(
+    evs.map(async (e) => ({ total: usd(e.args.amount), repay: usd(e.args.repayment), at: await chain.blockTime(e.blockNumber), id: `${e.transactionHash}:${e.logIndex}` })),
+  );
   return out.sort((a, b) => b.at - a.at);
 }
 

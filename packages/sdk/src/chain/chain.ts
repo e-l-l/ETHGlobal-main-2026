@@ -127,6 +127,8 @@ export interface Chain {
   walletAddress(): Addr | undefined;
   blockNumber(): Promise<bigint>;
   blockTime(n: bigint): Promise<number>;
+  /** Deployed bytecode size in bytes (0 = no code). Cached: code at an address is immutable. */
+  codeSize(address: Addr): Promise<number>;
   protocol(): Promise<ProtocolSnapshot>;
   position(account: Addr): Promise<PositionSnapshot>;
   usdcBalance(account: Addr): Promise<bigint>;
@@ -187,6 +189,16 @@ export function isTransientWriteError(e: unknown): boolean {
   return false;
 }
 
+/** Blocks behind the head after which logs are treated as final (Sepolia finalizes in ~64). */
+export const FINALITY = 64n;
+/** How long one eth_blockNumber answer is shared (Sepolia makes a block every 12 s). */
+const HEAD_TTL_MS = 2_000;
+
+function stableJson(v: unknown): string {
+  if (v === undefined) return "";
+  return JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? `${x}n` : typeof x === "string" ? x.toLowerCase() : x));
+}
+
 export function createChain(opts: ChainOptions): Chain {
   const d = opts.deployment;
   const chain = chainFor(d.chainId);
@@ -208,7 +220,7 @@ export function createChain(opts: ChainOptions): Chain {
     usdc: d.USDC as Addr,
   };
   const chunk = BigInt(opts.logChunk ?? 9_000);
-  const blockTimes = new Map<bigint, number>();
+  const blockTimes = new Map<bigint, Promise<number>>();
 
   async function read<T>(label: string, fn: () => Promise<T>): Promise<T> {
     try {
@@ -268,27 +280,83 @@ export function createChain(opts: ChainOptions): Chain {
     return write("approve", { address: token, abi: erc20Abi, functionName: "approve", args: [spender, target] });
   }
 
+  /**
+   * Event scans. Three things keep them cheap over a slow transport (Anon-RPC: 0.5-30 s a hop):
+   * - the chunks of one scan go out in parallel, not one after another;
+   * - logs older than head - FINALITY never change, so each (address, event, args) keeps what it has already fetched
+   *   up to that point and later scans only fetch the new tail;
+   * - an identical scan already in flight is shared, not repeated.
+   */
+  type LogCache = { start: bigint; end: bigint; logs: LogEntry[] };
+  const logCache = new Map<string, LogCache>();
+  const inflight = new Map<string, Promise<LogEntry[]>>();
+
+  async function fetchRange(address: Addr, abi: readonly unknown[], eventName: string, args: Record<string, unknown> | undefined, from: bigint, to: bigint): Promise<{ logs: LogEntry[]; end: bigint }> {
+    const ranges: [bigint, bigint][] = [];
+    for (let start = from; start <= to; start += chunk) ranges.push([start, start + chunk - 1n > to ? to : start + chunk - 1n]);
+    let reached = to;
+    const parts = await Promise.all(
+      ranges.map(async ([start, end]) => {
+        const get = (t: bigint) => client.getContractEvents({ address, abi, eventName, args, fromBlock: start, toBlock: t } as never);
+        try {
+          return (await get(end)) as unknown as LogEntry[];
+        } catch (e) {
+          // Load-balanced public RPCs: eth_blockNumber came from a node a block or two ahead of the one serving
+          // eth_getLogs ("block range extends beyond current head"). Stop short of the head; the next poll gets it.
+          if (end !== to || end - 2n < start) throw new ChainError("chain_read_failed", `chain read failed: logs ${eventName}`, e);
+          reached = end - 2n;
+          return (await read(`logs ${eventName}`, () => get(end - 2n))) as unknown as LogEntry[];
+        }
+      }),
+    );
+    return { logs: parts.flat(), end: reached };
+  }
+
+  async function scan(key: string, address: Addr, abi: readonly unknown[], eventName: string, args: Record<string, unknown> | undefined, from: bigint, latest: bigint): Promise<LogEntry[]> {
+    const hit = logCache.get(key);
+    const usable = !!hit && hit.start <= from && hit.end + 1n >= from;
+    const cached = usable ? hit!.logs.filter((l) => l.blockNumber >= from && l.blockNumber <= latest) : [];
+    const fetchFrom = usable ? hit!.end + 1n : from;
+    const fresh = fetchFrom <= latest ? await fetchRange(address, abi, eventName, args, fetchFrom, latest) : { logs: [] as LogEntry[], end: latest };
+    // Keep what is now final (contiguous with the entry this scan started from; a concurrent writer wins the race).
+    const safe = latest - FINALITY;
+    const keepTo = safe < fresh.end ? safe : fresh.end;
+    if (keepTo >= fetchFrom && logCache.get(key) === hit) {
+      const kept = fresh.logs.filter((l) => l.blockNumber <= keepTo);
+      logCache.set(key, usable ? { start: hit!.start, end: keepTo, logs: [...hit!.logs, ...kept] } : { start: from, end: keepTo, logs: kept });
+    }
+    return [...cached, ...fresh.logs];
+  }
+
   async function logs(address: Addr, abi: readonly unknown[], eventName: string, args?: Record<string, unknown>, fromBlock?: bigint, toBlock?: bigint) {
-    const latest = toBlock ?? (await read("blockNumber", () => client.getBlockNumber()));
+    const latest = toBlock ?? (await head());
     let from = fromBlock ?? BigInt(d.deployBlock);
     if (from < BigInt(d.deployBlock)) from = BigInt(d.deployBlock);
-    const out: any[] = [];
-    for (let start = from; start <= latest; start += chunk) {
-      const end = start + chunk - 1n > latest ? latest : start + chunk - 1n;
-      const get = (to: bigint) => client.getContractEvents({ address, abi, eventName, args, fromBlock: start, toBlock: to } as never);
-      let part: unknown;
-      try {
-        part = await get(end);
-      } catch (e) {
-        // Load-balanced public RPCs: eth_blockNumber came from a node a block or two ahead of the one serving
-        // eth_getLogs ("block range extends beyond current head"). Stop short of the head; the next poll gets it.
-        if (end !== latest || end - 2n < start) throw new ChainError("chain_read_failed", `chain read failed: logs ${eventName}`, e);
-        part = await read(`logs ${eventName}`, () => get(end - 2n));
-      }
-      out.push(...(part as any[]));
-    }
-    return out as LogEntry[];
+    if (from > latest) return [] as LogEntry[];
+    const key = `${address.toLowerCase()}|${eventName}|${stableJson(args)}`;
+    const flight = `${key}|${from}|${latest}`;
+    const running = inflight.get(flight);
+    if (running) return running;
+    const p = scan(key, address, abi, eventName, args, from, latest).finally(() => inflight.delete(flight));
+    inflight.set(flight, p);
+    return p;
   }
+
+  /** eth_blockNumber, shared for HEAD_TTL_MS: one screen asks for it from several loaders at once. */
+  let headCache: { at: number; p: Promise<bigint> } | undefined;
+  function head(): Promise<bigint> {
+    const now = Date.now();
+    if (headCache && now - headCache.at < HEAD_TTL_MS) return headCache.p;
+    const p = read("blockNumber", () => client.getBlockNumber({ cacheTime: 0 }));
+    headCache = { at: now, p };
+    p.catch(() => {
+      if (headCache?.p === p) headCache = undefined;
+    });
+    return p;
+  }
+
+  /** Contract bytecode never changes at an address once deployed: keep its size. */
+  const codeSizes = new Map<string, Promise<number>>();
 
   return {
     client,
@@ -298,14 +366,25 @@ export function createChain(opts: ChainOptions): Chain {
     hasWallet: () => !!opts.wallet?.account,
     walletAddress: () => opts.wallet?.account?.address as Addr | undefined,
 
-    blockNumber: () => read("blockNumber", () => client.getBlockNumber()),
-    async blockTime(n: bigint): Promise<number> {
+    blockNumber: () => head(),
+    /** Block timestamps are immutable: one request per block, shared by concurrent callers. */
+    blockTime(n: bigint): Promise<number> {
       const hit = blockTimes.get(n);
       if (hit !== undefined) return hit;
-      const b = await read("getBlock", () => client.getBlock({ blockNumber: n }));
-      const t = Number(b.timestamp);
-      blockTimes.set(n, t);
-      return t;
+      const p = read("getBlock", () => client.getBlock({ blockNumber: n })).then((b) => Number(b.timestamp));
+      blockTimes.set(n, p);
+      p.catch(() => blockTimes.delete(n));
+      return p;
+    },
+    codeSize(address: Addr): Promise<number> {
+      const k = address.toLowerCase();
+      const hit = codeSizes.get(k);
+      if (hit) return hit;
+      const p = read("getCode", () => client.getCode({ address })).then((c) => (c ? (c.length - 2) / 2 : 0));
+      codeSizes.set(k, p);
+      // An empty answer may be a lagging node: don't keep it.
+      p.then((n) => n === 0 && codeSizes.delete(k), () => codeSizes.delete(k));
+      return p;
     },
 
     async protocol(): Promise<ProtocolSnapshot> {
