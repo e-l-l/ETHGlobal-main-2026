@@ -124,7 +124,7 @@ Notes:
 ### Estimates and ratios in live modes
 
 - **Days left** (`AdvanceVM.etaDays`, `week.newEstimateDays`, `daysLeftEstimates`): the last 7 days' repayment pace, only once there are `ETA_MIN_SALES` (3) repaying sales. Before that it is the agent's own estimate when there is one, else `0` = "no estimate yet" (screens hide the number).
-- **Junior coverage** (`VaultVM.coverage`, the P03 signal): `(junior + reserve) / outstanding advances`, as `anay-docs/economics.md` defines it. `"—"` with nothing outstanding, `">999%"` above 999%.
+- **Junior coverage** (`VaultVM.coverage`, the P03 signal): `(junior + reserve) / outstanding advances`, as `docs/economics.md` defines it. `"—"` with nothing outstanding, `">999%"` above 999%.
 
 ## From mock to Sepolia
 

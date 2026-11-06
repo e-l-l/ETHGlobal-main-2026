@@ -46,6 +46,6 @@ Then open <http://localhost:3001> (landing page) or <http://localhost:3001/home>
 - **Styling:** Tailwind v4 utilities only. Tokens come from `@repo/tailwind-config` (`theme.css`, `final.css`). No hex values or hand-written CSS in components.
 - **Variants:** `cva`. Merge classes with `cn()`. When you add a token, register it in `src/lib/cn.ts`.
 - **Money:** dollars first in Urbanist with `tabular-nums`, then the local amount in mono, prefixed `≈`.
-- **Copy:** short sentences that translate cleanly. Say "fee" (0.5% per week while you owe, max 3%), never "interest" or "APR" (see [ux.md](../../anay-docs/ux.md)).
+- **Copy:** short sentences that translate cleanly. Say "fee" (0.5% per week while you owe, max 3%), never "interest" or "APR" (see [ux.md](../../docs/ux.md)).
 - **Accessibility:** 44px minimum touch targets, visible focus rings, `prefers-reduced-motion` respected, and axe must pass in e2e.
 - **Privacy markup:** mark onchain elements and on-device elements so the World view overlay can label them (`src/lib/world-view.ts`).

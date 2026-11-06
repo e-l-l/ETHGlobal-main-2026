@@ -84,7 +84,7 @@ export const etherscanFor = (chainId: number) => (chainId === 11_155_111 ? "http
 export const truncate = (s: string, head = 6, tail = 4) => (s.length <= head + tail + 1 ? s : `${s.slice(0, head)}…${s.slice(-tail)}`);
 
 /**
- * Junior coverage, as anay-docs/economics.md defines it: (junior + reserve) as a share of outstanding advances.
+ * Junior coverage, as docs/economics.md defines it: (junior + reserve) as a share of outstanding advances.
  * `undefined` with nothing outstanding (there is nothing to cover). Display caps at ">999%": early on a testnet a few
  * dollars outstanding against a funded junior gives five-digit percentages that read like a bug.
  */

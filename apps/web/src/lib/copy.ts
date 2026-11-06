@@ -1,6 +1,6 @@
 /**
  * Merchant onboarding and customer pay copy.
- * Voice rules: anay-design.md section 10 and anay-docs/ux.md "Words to use and avoid".
+ * Voice rules: anay-design.md section 10 and docs/ux.md "Words to use and avoid".
  * Short sentences that translate cleanly. No loan, interest, APR, gas, wallet or proof words.
  * Brand panel titles come in two parts: `title` plus the lime `accent` phrase.
  */
