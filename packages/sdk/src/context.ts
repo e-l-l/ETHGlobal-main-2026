@@ -25,6 +25,8 @@ export type MockState = {
   pseudonym: string;
   backup?: string;
   recoveryVerified: boolean;
+  /** World ID bound to the mock shop (mock views start verified). */
+  humanVerified: boolean;
 };
 
 export type Ctx = {
@@ -116,7 +118,7 @@ export function createContext(cfg: ResolvedConfig): Ctx {
     // The backend defaults to WORLD_MOCK=1, so the mock Agent Pass / IDKit payloads work against it too.
     agentPass: cfg.agentPass ?? mockAgentPass("approve"),
     idkit: cfg.idkit ?? mockIdkit(),
-    mock: { agentStatus: "active", pseudonym: "shop_7f3a", recoveryVerified: false },
+    mock: { agentStatus: "active", pseudonym: "shop_7f3a", recoveryVerified: false, humanVerified: true },
 
     api() {
       if (isMock) throw new NotSupportedError("the agents API", mode);

@@ -196,3 +196,22 @@ export const worldView = {
     { k: "Backup key", v: "this device only" },
   ],
 };
+
+/* ------------------------------------------ World ID + gradual unlock (SDK-only, not in apps/web) */
+
+/**
+ * Mock World ID / gradual-unlock state: a verified human at the $100 level, first advance capped at 50% ($50).
+ * Step amounts are the allowed size drawable at that step (75% of $100 rounds down to $50). The domain adds
+ * `nextUnlockAt` = now + 7 days.
+ */
+export const humanLimit = {
+  humanVerified: true,
+  banned: false,
+  limit: 100,
+  availableNow: 50,
+  unlockSteps: [
+    { pct: 50, amount: 50, unlocked: true },
+    { pct: 75, amount: 50, unlocked: false },
+    { pct: 100, amount: 100, unlocked: false },
+  ],
+};

@@ -71,6 +71,52 @@ export type TodayVM = {
 
 export type AgentSummaryVM = { lastDraw: number; lastDrawWhen: string; monthUsed: number };
 
+/** One step of the gradual unlock: at `pct`% of the limit, `amount` USD (an allowed size) can be drawn. */
+export type UnlockStepVM = { pct: number; amount: number; unlocked: boolean };
+
+/**
+ * World ID + gradual unlock, shared by Home, Advance details and the agent Approve dialog.
+ * Real modes fill it from GET /shops/{id}/human (owner auth); on any failure: not verified, not banned, and
+ * limit = availableNow = the tier cap (0 when unknown).
+ */
+export type HumanLimitVM = {
+  /** A unique human (World ID) is bound to this shop. Required before the first offer. */
+  humanVerified: boolean;
+  /** This human defaulted on an earlier advance: no new advances on any of their shops. */
+  banned: boolean;
+  /** USD limit at the current tier. */
+  limit: number;
+  /** USD drawable right now under the gradual unlock (an allowed size, ≤ limit). */
+  availableNow: number;
+  /** unix seconds of the next +25% unlock; null when fully unlocked, frozen or unknown. */
+  nextUnlockAt: number | null;
+  unlockSteps: UnlockStepVM[];
+};
+
+/** Gradual-unlock detail (camelCase of the API's UnlockStatus). */
+export type UnlockVM = {
+  tier: number;
+  limit: number;
+  availableNow: number;
+  /** 50..100 */
+  unlockedPct: number;
+  goodWeeks: number;
+  frozen: boolean;
+  nextUnlockAt: number | null;
+  steps: UnlockStepVM[];
+  reasons: string[];
+};
+
+/** `onboarding.humanStatus()`. `unlock` is null when the shop has no verified human (or the status is unknown). */
+export type HumanStatusView = { humanVerified: boolean; banned: boolean; unlock: UnlockVM | null; source: Source };
+
+export type HumanVerifyStep = "signing_owner" | "verifying_human" | "verified";
+/**
+ * `onboarding.verifyHuman()`. `reason` is the backend's stable code: verification_failed | wrong_action |
+ * unknown_or_used_nonce | invalid_request | shop_bound_to_other_human | unauthorized | not_found | rate_limited.
+ */
+export type HumanVerifyResult = { verified: true } | { verified: false; reason: string };
+
 /** M10 Home. */
 export type HomeView = {
   shop: ShopVM;
@@ -84,7 +130,7 @@ export type HomeView = {
   /** Local currency totals, newest first. Use `splitSale(total, advance.holdback)` for the split. */
   sales: SaleVM[];
   source: Source;
-};
+} & HumanLimitVM;
 
 /** M11 Advance arrived. */
 export type AdvanceArrivedView = { shop: ShopVM; advance: AdvanceVM; drawReasons: string[]; source: Source };
@@ -95,7 +141,7 @@ export type AdvanceDetailsView = {
   repaymentCurve: { points: number[]; ariaLabel: string };
   daysLeftEstimates: { label: string; days: number }[];
   source: Source;
-};
+} & HumanLimitVM;
 
 /** M13 Bad week. */
 export type WeekView = {
@@ -190,7 +236,7 @@ export type AgentSetupView = {
 };
 
 /** M08 Approve (dialog). */
-export type AgentApproveView = { advance: AdvanceVM; agentLimits: AgentLimitsVM; source: Source };
+export type AgentApproveView = { advance: AdvanceVM; agentLimits: AgentLimitsVM; source: Source } & HumanLimitVM;
 
 export type AgentSetupStep = "creating_agent" | "awaiting_agent_pass" | "proving_credential" | "registering_mandate" | "activating" | "done";
 

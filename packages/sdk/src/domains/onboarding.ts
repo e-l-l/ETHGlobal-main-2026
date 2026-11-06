@@ -5,7 +5,18 @@ import type { Band } from "../adapters/world.js";
 import type { Ctx } from "../context.js";
 import { ApiError, isMRAError, MRAError } from "../errors.js";
 import * as S from "../mock/shop.js";
-import type { BusinessPassView, ProveFailReason, ProveResult, ProveSession, ProveStep, ShopView } from "../viewmodels.js";
+import type {
+  BusinessPassView,
+  HumanStatusView,
+  HumanVerifyResult,
+  HumanVerifyStep,
+  ProveFailReason,
+  ProveResult,
+  ProveSession,
+  ProveStep,
+  ShopView,
+} from "../viewmodels.js";
+import { clearOwnerAuth, mockHumanStatus, ownerAuthFor, unlockVM } from "./human.js";
 import { initials, payLinkFor, payUrlFor, pseudonymOf } from "./util.js";
 
 const COUNTRY_NAME: Record<number, string> = { 32: "Argentina", 566: "Nigeria", 404: "Kenya" };
@@ -126,7 +137,62 @@ export function onboardingDomain(ctx: Ctx) {
     return { ...passView({ country: 32, band: Number(S.SHOP.band), commitment: "0x4c1e9a88b2d04f17c6aa0912e77b33d0a15f8c21", leafIndex: 0 }, "mock") };
   }
 
+  /**
+   * World ID for borrowers: bind a unique human (IDKit, Proof of Human, borrower action) to this device's shop.
+   * Required before the first offer. A 4xx from the backend comes back as `{ verified: false, reason: code }`.
+   */
+  async function verifyHuman(opts: { onStep?: (s: HumanVerifyStep) => void } = {}): Promise<HumanVerifyResult> {
+    const step = (s: HumanVerifyStep) => {
+      opts.onStep?.(s);
+      ctx.emit("onboarding.human", s);
+    };
+    if (isMock) {
+      step("verifying_human");
+      const res = await ctx.idkit.verify({ purpose: "borrower" });
+      if (res.mock !== undefined && res.mock !== "approve") return ctx.mocked({ verified: false as const, reason: "verification_failed" });
+      ctx.mock.humanVerified = true;
+      step("verified");
+      return ctx.mocked({ verified: true as const });
+    }
+    const s = await ctx.requireShop();
+    step("signing_owner");
+    const auth = await ownerAuthFor(ctx, s.shopId);
+    step("verifying_human");
+    const proof = await ctx.idkit.verify({ purpose: "borrower" });
+    try {
+      await ctx.api().bindHuman(s.shopId as Hex, auth, proof);
+    } catch (e) {
+      if (e instanceof ApiError && e.status >= 400 && e.status < 500) {
+        if (e.status === 401) clearOwnerAuth(ctx);
+        return { verified: false, reason: String(e.code) };
+      }
+      throw e;
+    }
+    step("verified");
+    return { verified: true };
+  }
+
+  /** World ID status of this device's shop: verified, banned, and the gradual unlock at `tier` (owner view). */
+  async function humanStatus(opts: { tier?: 0 | 1 | 2 | 3 } = {}): Promise<HumanStatusView> {
+    if (isMock) return ctx.mocked(mockHumanStatus(ctx));
+    const s = await ctx.requireShop();
+    const auth = await ownerAuthFor(ctx, s.shopId);
+    let r;
+    try {
+      r = await ctx.api().humanStatus(s.shopId as Hex, auth, opts.tier);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) clearOwnerAuth(ctx);
+      throw e;
+    }
+    return { humanVerified: r.verified === true, banned: r.banned === true, unlock: r.unlock ? unlockVM(r.unlock) : null, source: "api" };
+  }
+
   return {
+    /** World ID for borrowers: sign as shop owner → IDKit proof of human → POST /shops/{id}/human. */
+    verifyHuman,
+    /** World ID status + gradual unlock for this device's shop (GET /shops/{id}/human with owner auth). */
+    humanStatus,
+
     /** M02: start the zkTLS session. Show `requestUrl` (open on the phone, or as a QR on desktop). */
     startProof,
     /** M03: wait for the proof → issuer → BusinessPassRegistry.issue → pass saved on this device. */
