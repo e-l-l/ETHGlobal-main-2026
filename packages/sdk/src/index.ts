@@ -52,7 +52,7 @@ export {
   type Session,
   type VaultKey,
 } from "./adapters/vault.js";
-export { loadOrCreateBurner, type BurnerWallet } from "./adapters/burner.js";
+export { injectedWallet, loadOrCreateBurner, type BurnerWallet } from "./adapters/burner.js";
 export {
   mockReclaim,
   issuerMockReclaim,

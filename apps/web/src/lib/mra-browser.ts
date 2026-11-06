@@ -25,6 +25,7 @@ import {
   type MRAConfig,
   type Prover,
   type RpcConfig,
+  injectedWallet,
 } from "@repo/sdk";
 import { MRA_ENV, MRA_MODE } from "./mra";
 import { routes } from "./routes";
@@ -218,20 +219,17 @@ async function loadInjectedWallet(): Promise<MRAConfig["wallet"]> {
     }
     const chainId = (await eth.request({ method: "eth_chainId" })) as string;
     if (chainId?.toLowerCase() !== SEPOLIA_HEX) return undefined;
-    // viem is an SDK dependency, not a direct apps/web one: import the SDK's copy so the WalletClient type matches.
-    const { createWalletClient, custom } = await import("../../../../packages/sdk/node_modules/viem");
-    const { sepolia } = await import("../../../../packages/sdk/node_modules/viem/chains");
-    const wallet = createWalletClient({ account: address, chain: sepolia, transport: custom(eth) });
+    const wallet = injectedWallet(eth, { address, chainId: 11_155_111 });
     MRA_BROWSER_STATUS.address = address;
     MRA_BROWSER_STATUS.walletName = injectedName(eth);
-    injectedWallet = true;
+    usingInjected = true;
     return wallet as MRAConfig["wallet"];
   } catch {
     return undefined;
   }
 }
 
-let injectedWallet = false;
+let usingInjected = false;
 
 /* ------------------------------------- INJECTION POINTS: Reclaim, Agent Pass, IDKit */
 
@@ -319,7 +317,7 @@ export async function browserConfig(base: MRAConfig): Promise<MRAConfig> {
   }
   if (wallet) {
     cfg.wallet = wallet;
-    MRA_BROWSER_STATUS.wallet = injectedWallet ? "injected" : "burner";
+    MRA_BROWSER_STATUS.wallet = usingInjected ? "injected" : "burner";
   }
 
   let rpc: RpcConfig = { ...base.rpc };

@@ -6,7 +6,7 @@
  * Testnets only: `loadOrCreateBurner` refuses any chain but Sepolia (11155111) and anvil (31337).
  * The key is never logged, never sent anywhere and never put in an error message.
  */
-import { createWalletClient, http, type WalletClient } from "viem";
+import { createWalletClient, custom, http, type EIP1193Provider, type WalletClient } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { foundry, sepolia } from "viem/chains";
 import { ConfigError, VaultError } from "../errors.js";
@@ -41,4 +41,14 @@ export async function loadOrCreateBurner(vault: CredentialVault, opts: { chainId
   const account = privateKeyToAccount(rec.privateKey);
   const wallet = createWalletClient({ account, chain, transport: http(opts.rpcUrl, { retryCount: 1 }) });
   return { wallet, address: account.address, created };
+}
+
+/**
+ * A browser (injected, EIP-1193) wallet such as MetaMask as the SDK's wallet, on Sepolia or anvil.
+ * The caller has already requested accounts and switched the chain; this only builds the viem client.
+ */
+export function injectedWallet(provider: unknown, opts: { address: `0x${string}`; chainId: number }): WalletClient {
+  const chain = BURNER_CHAINS[opts.chainId];
+  if (!chain) throw new ConfigError("config_invalid", "injected wallets are wired for Sepolia / anvil only");
+  return createWalletClient({ account: opts.address, chain, transport: custom(provider as EIP1193Provider) });
 }
