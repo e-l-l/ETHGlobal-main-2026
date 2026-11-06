@@ -24,7 +24,7 @@ const GLOW = {
 
 function Nav() {
   return (
-    <header className="relative mx-auto box-border w-full max-w-300 px-[clamp(16px,4vw,40px)] pt-4">
+    <header className="relative z-10 mx-auto box-border w-full max-w-300 px-[clamp(16px,4vw,40px)] pt-4">
       <nav
         aria-label="Main"
         className={cn(
