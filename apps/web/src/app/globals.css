@@ -40,3 +40,44 @@
   }
   /* Safe areas are padded by the app chrome (header, action bar, tab bar), so it paints edge to edge. */
 }
+
+/*
+ * Landing page scale. The page is authored in fixed px for a ~1920px-wide viewport, so on a laptop at 100%
+ * browser zoom (viewport ~1280-1600px) everything looks zoomed in. Scale it to match the designed density
+ * on desktop widths. --lz is the factor, so viewport-based heights can divide it back out.
+ */
+.landing-zoom {
+  --lz: 1;
+}
+@media (min-width: 1024px) {
+  .landing-zoom {
+    --lz: 0.75;
+    zoom: var(--lz);
+  }
+}
+@media (min-width: 2200px) {
+  .landing-zoom {
+    --lz: 1;
+  }
+}
+
+/* Role-button icon animations on /home. Each plays once per hover or focus; the classes turn off for reduced motion. */
+@keyframes icon-drip {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  30% { transform: translateY(-7px) rotate(-8deg) scale(1.08); }
+  60% { transform: translateY(3px) rotate(4deg) scale(0.96, 1.06); }
+  80% { transform: translateY(-2px) rotate(0) scale(1.02); }
+}
+@keyframes icon-zap {
+  0%, 100% { transform: scale(1) rotate(0); }
+  20% { transform: scale(1.3) rotate(-12deg); }
+  40% { transform: scale(0.92) rotate(9deg); }
+  60% { transform: scale(1.18) rotate(-5deg); }
+  80% { transform: scale(1.04) rotate(2deg); }
+}
+@keyframes icon-blink {
+  0%, 100% { transform: scaleY(1) scale(1); }
+  25% { transform: scaleY(0.08) scale(1.1, 1); }
+  45% { transform: scaleY(1) scale(1.12); }
+  70% { transform: scaleY(1) scale(1.08); }
+}

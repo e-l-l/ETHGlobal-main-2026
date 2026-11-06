@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentLogView, AgentStatusView } from "@repo/sdk";
-import { BlockPanel } from "@/blocks";
 import { Banner, Button, Card, Columns, Heading, KeyValue, Label, Page, PageHead, Pill, Stack, StatGrid, Text, TextLink } from "@/final";
 import { capitalize, formatMoney } from "@/lib/format";
 import { isMock } from "@/lib/mra";
@@ -11,7 +10,7 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA, useMRAAction } from "@/lib/use-mra";
-import { BigFigure, CardTitle, HeroLabel, PlainWords } from "../../_ui";
+import { BigFigure, CardTitle, HeroLabel, HunterPanel, PlainWords } from "../../_ui";
 import { DecisionLog } from "./decision-log";
 import { decisions as demoDecisions, decisionsFrom } from "./_data";
 
@@ -34,7 +33,7 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
   if (!log) {
     return (
       <Page tabs dense>
-        <BlockPanel seed={3} dim={76} cols={8} rows={5} bodyClassName="gap-4 p-5 md:gap-5 md:p-7">
+        <HunterPanel bodyClassName="gap-4 p-5 md:gap-5 md:p-7">
           <HeroLabel>Cash-flow agent</HeroLabel>
           <BigFigure as="h1">No agent yet.</BigFigure>
           <Text className="max-w-[56ch] text-honeydew md:text-[17px]">
@@ -45,7 +44,7 @@ export function AgentLogScreen({ initial }: { initial: AgentPage | null }) {
               Set up your agent
             </Button>
           </div>
-        </BlockPanel>
+        </HunterPanel>
         <PlainWords>
           A small weekly fee while you owe, capped at 3%. Each advance is paid back from a small share of your payments,
           so a slow week just takes longer.

@@ -7,10 +7,10 @@
 
 const en = {
   welcome: {
-    eyebrow: "For shops in Buenos Aires",
-    title: "Dollars for stock,",
+    eyebrow: "For small shops",
+    title: "Stock on credit,",
     accent: "today.",
-    body: "A small dollar advance for your stock. While it's active, a slice of each sale repays it; the demo uses 8%. Repay on time and your limit grows.",
+    body: "A small advance for your stock. While it's active, a slice of each sale repays it; the demo uses 8%. Repay on time and your limit grows.",
     heading: "How it works",
     promises: [
       {
@@ -33,19 +33,22 @@ const en = {
   steps: (at: number) => `Step ${at} of 5`,
   stepNames: ["World ID", "Prove your business", "Verifying", "Business Pass", "Your shop"],
   prove: {
-    title: "Your sales already",
-    accent: "vouch for you.",
-    panel: "Months of selling on your seller app are your credit history. A demo attestor checks them and we keep only four facts.",
+    title: "Show us your",
+    accent: "shop's sales.",
+    panel: "Log in to your seller account. We read four facts about your sales and save nothing else.",
     heading: "Log in to your seller account",
     body: "Use the demo seller portal and mock attestor to check four facts. The issuer sees the account ID transiently.",
     whereSell: "Where you sell",
     sources: [
       {
         name: "Demo seller portal",
-        sub: "Stands in for Mercado Pago in this demo",
+        sub: "Stands in for your seller marketplace",
       },
-      { name: "Other seller apps", sub: "Coming soon" },
     ],
+    viewProfile: "View profile",
+    profileTitle: "Demo seller profile",
+    profileBody: "The account the check reads. Only four facts leave it.",
+    profile: { name: "Sharma General Store", shop: "Kirana store · 20 months selling" },
     weCheck: "We read",
     facts: [
       { k: "Country", v: "Where you sell" },
@@ -63,9 +66,9 @@ const en = {
     failBody: "Each one is a seeded portal account.",
   },
   verifying: {
-    title: "Checking your record",
-    accent: "privately.",
-    panel: "The demo uses a mock attestor; the issuer sees the account ID transiently.",
+    title: "Checking your",
+    accent: "seller account.",
+    panel: "This takes a few seconds. Keep this page open.",
     heading: "Almost there",
     body: "Usually 5 to 30 seconds. You can keep this screen open.",
     steps: ["Reading the seller portal", "Checking the four facts on this phone", "Saving your Business Pass"],
@@ -73,7 +76,7 @@ const en = {
   },
   pass: {
     title: "You're verified.",
-    accent: "We learned nothing else.",
+    accent: "Now set up your shop.",
     panel: "Your Business Pass lives on this phone. It proves your shop's facts without showing who you are (demo attestor in this build).",
     heading: "Your Business Pass",
     body: "Kept on this phone, not on our servers.",
@@ -89,9 +92,9 @@ const en = {
   },
   failed: {
     eyebrow: "Verification",
-    title: "Not yet.",
-    accent: "Here's what to do.",
-    panel: "Nothing from this check was kept. You can try again whenever you're ready.",
+    title: "We couldn't verify",
+    accent: "you yet.",
+    panel: "Nothing was saved. Read the reason on the right, then try again.",
     notVerified: "Not verified",
     others: "Other reasons a check can fail",
     "too-new": {
@@ -136,9 +139,11 @@ const en = {
     empty: "Add a name to continue",
   },
   worldId: {
-    panelTitle: "One person,",
-    accent: "one pass.",
-    panel: "World ID comes first. It stops one person from borrowing on many shops, or again after a default. That keeps lenders safe and your fee low.",
+    verifiedTitle: "Verified. Cleared to borrow.",
+    verifiedBody: "One person, one pass. Taking you to your business step…",
+    panelTitle: "Confirm you're",
+    accent: "one real person.",
+    panel: "World ID checks that you're a real person. You do this once, before your shop. We never learn your name.",
     title: "Prove you're a unique person",
     body: "World ID proves you're a real, unique person. We never learn who you are and nothing goes onchain.",
     keep: [

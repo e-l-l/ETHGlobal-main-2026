@@ -102,6 +102,62 @@ export function BlockBand({ rows = 1, cols = 12, grain, className, ...o }: Block
   );
 }
 
+/* ---------------------------------------------------------------- Skyline */
+
+export type BlockSkylineProps = Shared & {
+  /** Columns on desktop. Phones show the left half. */
+  cols?: 8 | 12 | 16 | 24;
+  /** Height of the tallest peak, in tiles. */
+  rows?: number;
+  /** One clean climb: stairs rise from the left edge to a single peak at this share of the width (0 to 1), then stop. */
+  peak?: number;
+};
+
+/** One staircase from the left edge up to a full-height peak; nothing after it. */
+function peakHeights(cols: number, rows: number, at: number) {
+  const p = Math.max(1, Math.min(cols - 1, Math.round((cols - 1) * at)));
+  return Array.from({ length: cols }, (_, c) => (c > p ? 0 : Math.max(1, Math.ceil((rows * (c + 1)) / (p + 1)))));
+}
+
+/** Uneven column heights that climb to a peak and stop, seeded so a screen always looks the same. */
+function skylineHeights(cols: number, rows: number, seed: number) {
+  let s = (seed * 9301 + 49297) % 233280 || 1;
+  const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+  const h: number[] = [];
+  for (let c = 0; c < cols; c++) {
+    // A slow wave sets the rolling shape; noise breaks it into uneven steps.
+    const wave = (Math.sin((c + seed) * 0.9) + 1) / 2;
+    const v = Math.round(1 + (rows - 1) * (0.55 * wave + 0.45 * rnd()));
+    h.push(Math.max(1, Math.min(rows, v)));
+  }
+  h[Math.floor(rnd() * cols)] = rows; // always one full-height peak
+  return h;
+}
+
+/** A multi-layer block skyline: columns of tiles rising to uneven peaks. Section feet, brand panels. */
+export function BlockSkyline({ rows = 4, cols = 16, peak, grain, className, ...o }: BlockSkylineProps) {
+  const half = cols / 2;
+  const tiles = useTiles(cols * rows, cols, o);
+  const heights = useMemo(() => (peak === undefined ? skylineHeights(cols, rows, o.seed ?? 7) : peakHeights(cols, rows, peak)), [cols, rows, o.seed, peak]);
+  return (
+    <BlockGrid
+      tiles={tiles}
+      step={o.step}
+      // Callers light tiles 0..n as if it were one strip; the bottom row is the one every column has.
+      lit={o.lit?.map((i) => (rows - 1) * cols + i)}
+      interactive={o.interactive}
+      grain={grain}
+      cols={cn(COLS[half as Cols], MD_COLS[cols])}
+      tileClassName={(i) => {
+        const c = i % cols;
+        const rowFromBottom = rows - Math.floor(i / cols);
+        return cn(c >= half && "max-md:hidden", rowFromBottom > (heights[c] ?? 1) && "invisible");
+      }}
+      className={className}
+    />
+  );
+}
+
 /* ---------------------------------------------------------------- Cluster */
 
 export type BlockClusterProps = Shared & {

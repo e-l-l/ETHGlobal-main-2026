@@ -15,7 +15,7 @@ Context: in Kenya and Nigeria, regulators have fined and shut down digital loan 
 | Lenders, agents, other apps | Full borrowing history | Standing Pass: prove a tier, not a history | Hackathon (Noir) |
 | RPC provider | Which shop or wallet the app queries | Anon-RPC for all reads | Hackathon |
 | Neighbours, suppliers, explorers | "This shop owes money" | Neutral shop names, fresh payout addresses, fixed advance sizes | Hackathon (partial) |
-| Lenders | Offchain books (Mercado Pago, M-Pesa) | zkTLS threshold proof | Stretch |
+| Lenders | Offchain books (M-Pesa) | zkTLS threshold proof | Stretch |
 | A determined chain watcher | Per-shop sales and repayment share | Shielded jar on a shielded pool | Roadmap |
 
 ## Privacy levels
@@ -100,7 +100,7 @@ The scheme also guarantees two things:
 
 > **Status:** built. The live demo uses a demo seller portal and a mock attestor; the real Reclaim path is built and tested ([zktls-spike.md](zktls-spike.md), `issuer/src/reclaim.ts`). The original plan follows.
 
-The merchant proves their Mercado Pago, M-Pesa or Paystack statement shows sales of at least $X a month, from at least N customers, and reveals nothing else. This fixes **cold start** (new merchants have no onchain history) without exposing their books. Check before 21:00 whether a zkTLS SDK such as Reclaim or vlayer has a working provider for these sites.
+The merchant proves their M-Pesa or Paystack statement shows sales of at least $X a month, from at least N customers, and reveals nothing else. This fixes **cold start** (new merchants have no onchain history) without exposing their books. Check before 21:00 whether a zkTLS SDK such as Reclaim or vlayer has a working provider for these sites.
 
 ### Level 3: shielded jar (roadmap)
 

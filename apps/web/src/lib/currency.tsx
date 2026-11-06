@@ -19,11 +19,11 @@ export const CURRENCIES = [
   { code: "MXN", name: "Mexican peso", perUsd: 18.5 },
   { code: "INR", name: "Indian rupee", perUsd: 88 },
   /** Dollars only: no local line anywhere. */
-  { code: "USD", name: "US dollar (dollars only)", perUsd: 1 },
+  { code: "USD", name: "US dollar", perUsd: 1 },
 ] as const;
 
 export type CurrencyCode = (typeof CURRENCIES)[number]["code"];
-export const DEFAULT_CURRENCY: CurrencyCode = "ARS";
+export const DEFAULT_CURRENCY: CurrencyCode = "USD";
 export const CURRENCY_COOKIE = "dj-currency";
 
 const isCode = (v: unknown): v is CurrencyCode => CURRENCIES.some((c) => c.code === v);

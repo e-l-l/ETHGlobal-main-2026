@@ -101,7 +101,7 @@ export function HomeScreen({ initial, demo }: { initial: HomeView | null; demo?:
       {advance && behind ? <BehindNotice advance={advance} /> : null}
 
       {/* Phones and tablets: payments and the advance at a glance. */}
-      <HeroBlock seed={3} className="lg:hidden">
+      <HeroBlock className="lg:hidden">
         <div className="grid grid-cols-2 gap-4">
           <div className="flex min-w-0 flex-col gap-1">
             <HeroLabel>Payments today</HeroLabel>
@@ -198,7 +198,7 @@ export function HomeScreen({ initial, demo }: { initial: HomeView | null; demo?:
         {/* ----------------------------------------------------------- Advance */}
         <section aria-label="Advance" className="flex min-w-0 flex-col gap-4 lg:gap-0 lg:overflow-hidden lg:rounded-lg lg:border lg:border-hairline lg:bg-surface">
           {advance ? (
-            <HeroBlock seed={3} className="hidden rounded-none lg:flex">
+            <HeroBlock className="hidden rounded-none lg:flex">
               <div className="flex items-center justify-between gap-3">
                 <HeroLabel>Advance · {advance.purpose}</HeroLabel>
                 <TextLink href={routes.advance.details} className="text-canvas decoration-canvas/40 hover:decoration-canvas">
@@ -226,7 +226,7 @@ export function HomeScreen({ initial, demo }: { initial: HomeView | null; demo?:
               </div>
             </HeroBlock>
           ) : (
-            <HeroBlock seed={3} className="hidden rounded-none lg:flex">
+            <HeroBlock className="hidden rounded-none lg:flex">
               <HeroLabel>Advance</HeroLabel>
               <span className="font-display text-h1 text-canvas">{data.banned ? "Advances off." : "No open advance."}</span>
               <Text className="text-honeydew">

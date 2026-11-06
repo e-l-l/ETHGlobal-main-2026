@@ -48,7 +48,7 @@ Nothing else leaves the session: no name, balance, transactions or customers.
 - **Nullifier:** derived from the seller account ID, so one seller account gets one Business Pass. It doesn't reveal the account.
 - **Binding:** the proof's context includes the shop ID, so it can't be replayed for another shop.
 - **Flow:** QR or deep link starts the zkTLS session, the merchant logs in, the proof takes 2–30 seconds, and the API validates the attestation before `BusinessPass` records the facts.
-- **Demo source:** our own demo seller portal, standing in for Mercado Pago, with seeded accounts. We can't count on a live Mercado Pago provider during the hackathon. Production would use real providers (Mercado Pago, M-Pesa, Paystack). Say this plainly in the pitch.
+- **Demo source:** our own demo seller portal, standing in for a real seller marketplace, with seeded accounts. We can't count on a live provider during the hackathon. Production would use real providers (M-Pesa, Paystack). Say this plainly in the pitch.
 
 ### Level 2: Standing Pass (Noir)
 

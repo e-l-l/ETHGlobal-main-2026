@@ -15,17 +15,17 @@ import {
   Label,
   LockIcon,
   Pill,
-  ShieldIcon,
+  Sheet,
   SplitPage,
   Text,
   TextLink,
 } from "@/final";
-import { copy, stepEyebrow } from "@/lib/copy";
+import { IconTile } from "@/app/_landing/pixel-icons";
+import { copy } from "@/lib/copy";
 import { isFailReason, routes, worldIdHref, type FailReason } from "@/lib/routes";
 import { reasonMessage, type BusinessPassView } from "@repo/sdk";
-import { PanelBlocks } from "./panel-blocks";
 import { litTiles } from "./lit-tiles";
-import { FailSheet, PassFacts, StepProgress } from "./onboarding-client";
+import { PassFacts, StepProgress } from "./onboarding-client";
 
 function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
@@ -51,13 +51,13 @@ function FormHead({ title, children }: { title: ReactNode; children?: ReactNode 
 /* M01 Welcome. One promise, one action: World ID first. Mock: `?mockWorld=` is forwarded to the World ID screen. */
 export function WelcomeScreen({ mockWorld }: { mockWorld?: string } = {}) {
   const t = copy.welcome;
-  const icons = [<ShieldIcon key="s" size={22} />, <LockIcon key="l" size={22} />, <CheckIcon key="c" size={22} />];
+  const icons = ["shield", "agent", "calendar"] as const;
   return (
     <>
       <SplitPage
         panel={
           <BrandPanel
-            top={<PanelBlocks seed={3} />}
+            blocks={{ seed: 3 }}
             eyebrow={t.eyebrow}
             title={
               <>
@@ -74,9 +74,7 @@ export function WelcomeScreen({ mockWorld }: { mockWorld?: string } = {}) {
           {t.promises.map((p, i) => (
             <li key={p.title}>
               <Card padding="sm" className="flex-row items-start gap-4">
-                <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-md bg-honeydew text-hunter">
-                  {icons[i]}
-                </span>
+                <IconTile name={icons[i]!} size={44} />
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="font-body text-read font-semibold text-charcoal">{p.title}</span>
                   <span className="font-body text-note text-charcoal-soft">{p.body}</span>
@@ -99,17 +97,17 @@ export function WelcomeScreen({ mockWorld }: { mockWorld?: string } = {}) {
   );
 }
 
-/* M02 Prove your business. The real path goes through the seller portal; the demo shop skips it. */
+/* M02 Prove your business. One seller to log in with; its profile and what is read open in a popup. No scroll. */
 export function ProveScreen() {
   const c = copy;
   const t = c.prove;
+  const s = t.sources[0]!;
   return (
     <>
       <SplitPage
         panel={
           <BrandPanel
-            top={<PanelBlocks seed={11} lit={litTiles(1)} />}
-            eyebrow={stepEyebrow(2)}
+            blocks={{ seed: 11, lit: litTiles(1) }}
             title={
               <>
                 {t.title} <Accent>{t.accent}</Accent>
@@ -123,56 +121,56 @@ export function ProveScreen() {
         <FormHead title={t.heading}>{t.body}</FormHead>
         <section aria-label={t.whereSell} className="flex flex-col gap-2">
           <Label>{t.whereSell}</Label>
-          <div className="flex flex-col gap-2">
-            {t.sources.map((s, i) => (
-              <div
-                key={s.name}
-                className={
-                  i === 0
-                    ? "flex items-center gap-3 rounded-md border-2 border-hunter bg-surface px-4 py-3"
-                    : "flex items-center gap-3 rounded-md border border-hairline bg-well px-4 py-3"
-                }
-              >
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className={i === 0 ? "font-body text-read font-semibold text-charcoal" : "font-body text-read font-semibold text-charcoal-soft"}>{s.name}</span>
-                  <span className="font-body text-note text-charcoal-muted">{s.sub}</span>
-                </span>
-                {i === 0 ? <CheckIcon size={20} className="shrink-0 text-hunter" /> : null}
+          <div className="flex items-center gap-3 rounded-md border-2 border-hunter bg-surface px-4 py-3">
+            <IconTile name="shop" size={44} />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="font-body text-read font-semibold text-charcoal">{s.name}</span>
+              <span className="font-body text-note text-charcoal-muted">{s.sub}</span>
+            </span>
+            <Sheet
+              title={t.profileTitle}
+              description={t.profileBody}
+              trigger={
+                <Button variant="ghost" size="sm" width="auto">
+                  {t.viewProfile}
+                </Button>
+              }
+            >
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3 rounded-md bg-well p-3">
+                  <IconTile name="shop" size={44} />
+                  <span className="flex flex-col">
+                    <span className="font-body text-read font-semibold text-charcoal">{t.profile.name}</span>
+                    <span className="font-body text-note text-charcoal-muted">{t.profile.shop}</span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label>{t.weCheck}</Label>
+                    <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+                      {t.facts.map((f) => (
+                        <Fact key={f.k} icon={<CheckIcon size={18} />}>
+                          <span className="font-semibold">{f.k}</span> <span className="text-note text-charcoal-muted">{f.v}</span>
+                        </Fact>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label>{t.neverTitle}</Label>
+                    <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+                      {t.never.map((f) => (
+                        <li key={f} className="flex items-center gap-3 font-body text-read text-charcoal-soft">
+                          <CrossIcon size={18} className="shrink-0 text-charcoal-muted" />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
-            ))}
+            </Sheet>
           </div>
         </section>
-        <Card as="section" aria-label={t.weCheck}>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div className="flex flex-col gap-3">
-              <Label>{t.weCheck}</Label>
-              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-                {t.facts.map((f) => (
-                  <Fact key={f.k} icon={<CheckIcon size={18} />}>
-                    <span className="flex flex-col">
-                      <span className="font-semibold">{f.k}</span>
-                      <span className="text-note text-charcoal-muted">{f.v}</span>
-                    </span>
-                  </Fact>
-                ))}
-              </ul>
-            </div>
-            <div className="flex flex-col gap-3">
-              <Label>{t.neverTitle}</Label>
-              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-                {t.never.map((f) => (
-                  <li key={f} className="flex items-start gap-3 font-body text-read text-charcoal-soft">
-                    <CrossIcon size={18} className="mt-0.5 shrink-0 text-charcoal-muted" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </Card>
-        <div className="flex justify-center">
-          <FailSheet />
-        </div>
         <ActionBar hint={t.time}>
           <Button href={routes.portalLogin}>{t.cta}</Button>
           <Button href={routes.verifying} variant="ghost">
@@ -193,19 +191,20 @@ export function PassScreen({ initial }: { initial: BusinessPassView | null }) {
       <SplitPage
         panel={
           <BrandPanel
-            eyebrow={stepEyebrow(4)}
             title={
               <>
                 {t.title} <Accent>{t.accent}</Accent>
               </>
             }
             body={t.panel}
+            blocks={{ seed: 23, lit: litTiles(2) }}
             top={
               <>
-                {/* Tier 1 pass: two bands lit on the mark, two tiles lit here. */}
-                <PanelBlocks seed={23} lit={litTiles(2)} />
-                <span aria-hidden className="hidden size-16 place-items-center rounded-full bg-lime text-hunter md:grid">
-                  <CheckIcon size={32} strokeWidth={3} />
+                <span
+                  aria-hidden
+                  className="hidden size-28 place-items-center rounded-full bg-lime text-hunter motion-safe:animate-[tick-pop_520ms_var(--ease-snappy)_both] md:grid [&_path]:[--len:30] [&_path]:[stroke-dasharray:30] motion-safe:[&_path]:animate-[draw_420ms_260ms_ease-out_both]"
+                >
+                  <CheckIcon size={60} strokeWidth={3} />
                 </span>
               </>
             }
@@ -246,7 +245,7 @@ export function FailedScreen({ reason }: { reason?: string }) {
       <SplitPage
         panel={
           <BrandPanel
-            top={<PanelBlocks seed={5} calm />}
+            blocks={{ seed: 5, calm: true }}
             eyebrow={t.eyebrow}
             title={
               <>
@@ -300,7 +299,7 @@ export function WorldStoppedScreen({ reason }: { reason?: string }) {
     <SplitPage
       panel={
         <BrandPanel
-          top={<PanelBlocks seed={5} calm />}
+          blocks={{ seed: 5, calm: true }}
           eyebrow={s.eyebrow}
           title={
             <>

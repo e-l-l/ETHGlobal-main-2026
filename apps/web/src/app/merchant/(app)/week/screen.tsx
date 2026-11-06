@@ -8,7 +8,7 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
-import { BlockRule, CardTitle, CheckList, ScreenHead } from "../../_ui";
+import { CardTitle, CheckList, ScreenHead } from "../../_ui";
 
 /** Payments per day, stacked: the shop's share (quiet) under the advance's share (Hunter). */
 function SplitBars({ days, labels, ariaLabel }: { days: { you: number; repay: number }[]; labels: string[]; ariaLabel: string }) {
@@ -107,7 +107,6 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
         </Stack>
 
         <Stack gap="lg" className="lg:gap-4">
-        <BlockRule seed={9} className="rounded-md" />
         <Card padding="lg" className="lg:p-4">
           <CardTitle>What a slow week means</CardTitle>
           <CheckList

@@ -97,11 +97,19 @@ export function ApproveScreen({
       panel={
         <BrandPanel
           home={routes.merchant}
-          eyebrow={waiting ? "World Agent Pass · awaiting approval" : "Your agent's first advance"}
+          eyebrow={waiting ? (worldReal ? "World Agent Pass · awaiting approval" : "World Agent Pass · test mode") : "Your agent's first advance"}
           title={
             waiting ? (
               <>
-                Approve in <Accent>World App.</Accent>
+                {worldReal ? (
+                  <>
+                    Approve in <Accent>World App.</Accent>
+                  </>
+                ) : (
+                  <>
+                    Approved <Accent>automatically.</Accent>
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -111,7 +119,9 @@ export function ApproveScreen({
           }
           body={
             waiting
-              ? "World checks that a real person stands behind this agent. Your name never leaves World App."
+              ? worldReal
+                ? "World checks that a real person stands behind this agent. Your name never leaves World App."
+                : "Test mode skips the World App check, so there is nothing to scan. In live mode World confirms a real person stands behind this agent."
               : "Your agent asks for an advance when stock runs low, inside the limits you set. The money lands in your account."
           }
         >
@@ -135,9 +145,11 @@ export function ApproveScreen({
         <>
           <div className="flex flex-col gap-2">
             <Heading level={2} size="h1">
-              Scan with World App
+              {worldReal ? "Scan with World App" : "Test mode: approved automatically"}
             </Heading>
-            <Text>Approve the request in World App. This page moves on by itself.</Text>
+            <Text>
+              {worldReal ? "Approve the request in World App. This page moves on by itself." : "No World App needed. This page moves on by itself."}
+            </Text>
           </div>
           {passPrompt ? <AgentPassWait prompt={passPrompt} /> : null}
           <Card>

@@ -2,7 +2,7 @@
 
 /**
  * Proof center ("Verify it yourself"): one read, `mra.protocol.proofCenter()`, rendered as 7 cards, live checks
- * first. Every hash and address copies and, where the SDK gives an explorer URL, links to Etherscan. Each card
+ * first. The read streams: each card appears as its data arrives, and the others show a skeleton meanwhile. Every hash and address copies and, where the SDK gives an explorer URL, links to Etherscan. Each card
  * renders on its own: section errors from `v.errors` go in a small muted list, and a card that crashes while
  * rendering is replaced by one line instead of blanking the page.
  */
@@ -10,10 +10,8 @@ import { Component, useEffect, useId, useState, type ReactNode } from "react";
 import { Button, Card, CheckIcon, Chips, CopyIcon, CrossIcon, Heading, Label, Ledger, PageHead, Pill, StatGrid, Text } from "@/final";
 import { REASON_MESSAGES, type AiActor, type PrivacyItemVM, type ProofCenterView, type ProofTxKind, type ZkProofKind } from "@repo/sdk";
 import { cn } from "@/lib/cn";
-import { isMock } from "@/lib/mra";
-import { q } from "@/lib/mra-queries";
-import { MRAState } from "@/lib/mra-state";
-import { useMRA } from "@/lib/use-mra";
+import { errorCode, getMRA, isMock } from "@/lib/mra";
+import { MRAState, SkeletonBlock } from "@/lib/mra-state";
 import { LendShell } from "./lend/shell";
 
 /* ------------------------------------------------------------- small parts */
@@ -94,6 +92,25 @@ function ProofCard({ n, title, copy, children, className }: { n: number; title: 
   );
 }
 
+/** Placeholder for a card whose data hasn't arrived yet. Keeps its number and title so the page doesn't jump. */
+function CardSkeleton({ n, title }: { n: number; title: string }) {
+  return (
+    <Card as="section" padding="lg" aria-busy="true" aria-label={`${title}, loading`}>
+      <div className="flex flex-col gap-1.5">
+        <Label>{String(n).padStart(2, "0")}</Label>
+        <Heading level={2} size="h2">
+          {title}
+        </Heading>
+      </div>
+      <div className="flex flex-col gap-3" aria-hidden>
+        <SkeletonBlock className="h-4 w-11/12" />
+        <SkeletonBlock className="h-4 w-4/5" />
+        <SkeletonBlock className="h-4 w-2/3" />
+      </div>
+    </Card>
+  );
+}
+
 /** A card body that throws while rendering shows one line instead of taking the page down. */
 class Guard extends Component<{ name: string; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -119,6 +136,12 @@ const ROW = "flex flex-col gap-1.5 border-t border-hairline py-3.5 first:border-
 /* ------------------------------------------------------------------ labels */
 
 const ZK_KIND: Record<ZkProofKind, string> = { business_pass: "Business Pass proof", standing_pass: "Standing Pass proof", pass_issued: "Pass issued" };
+
+/** The badge for a row. A draw under a mandate carries no proof of its own (it was checked when the mandate was registered). */
+function zkBadge(p: { kind: ZkProofKind; fn?: string | undefined }): { label: string; tone: "onchain" | "saving" | "locked" } {
+  if (p.fn === "drawByMandate") return { label: "Mandate draw", tone: "locked" };
+  return { label: ZK_KIND[p.kind] ?? p.kind, tone: p.kind === "pass_issued" ? "onchain" : "saving" };
+}
 
 const TX_KIND: Record<ProofTxKind, string> = {
   sale: "Sale",
@@ -208,7 +231,7 @@ function ZkCard({ v }: { v: ProofCenterView }) {
             <li key={`${p.txHash}-${p.kind}`} className={cn(ROW, "gap-2")}>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-body text-read font-semibold text-charcoal">{p.title}</span>
-                <Pill tone={p.kind === "pass_issued" ? "onchain" : "saving"}>{ZK_KIND[p.kind] ?? p.kind}</Pill>
+                <Pill tone={zkBadge(p).tone}>{zkBadge(p).label}</Pill>
               </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-body text-note text-charcoal-soft">
                 <span className="inline-flex items-center gap-1">
@@ -225,7 +248,14 @@ function ZkCard({ v }: { v: ProofCenterView }) {
               </div>
               {p.publicInputs?.length ? (
                 <details className="group rounded-md bg-well px-3 py-2">
-                  <summary className="cursor-pointer font-body text-note font-semibold text-hunter">Public inputs ({p.publicInputs.length})</summary>
+                  <summary className="cursor-pointer font-body text-note font-semibold text-hunter">
+                    Public inputs ({p.publicInputCount ?? p.publicInputs.length})
+                  </summary>
+                  {p.publicInputCount !== undefined && p.publicInputCount > p.publicInputs.length ? (
+                    <Text size="note" tone="muted" className="m-0 mt-1">
+                      {`${p.publicInputs.length} named below; the verifier takes ${p.publicInputCount} in all (a group, such as the country list, is one row).`}
+                    </Text>
+                  ) : null}
                   <dl className="m-0 mt-2 flex flex-col gap-1">
                     {p.publicInputs.map((i) => (
                       <div key={i.label} className="flex flex-wrap justify-between gap-x-4">
@@ -471,13 +501,46 @@ function PrivacyCard({ v }: { v: ProofCenterView }) {
 
 /* ------------------------------------------------------------------ screen */
 
+/**
+ * The proof-center read, handed over part by part. With server data (mock mode) it never fetches. `reload` keeps what
+ * is already on screen and replaces each part as the new read delivers it.
+ */
+function useProofCenter(initial: ProofCenterView | null) {
+  const [part, setPart] = useState<Partial<ProofCenterView>>(initial ?? {});
+  const [done, setDone] = useState(initial !== null);
+  const [error, setError] = useState<string | undefined>();
+  const [nonce, setNonce] = useState(0);
+  useEffect(() => {
+    if (initial && nonce === 0) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const mra = await getMRA();
+        const full = await mra.protocol.proofCenter({ onPartial: (p) => alive && setPart((prev) => ({ ...prev, ...p })) });
+        if (!alive) return;
+        setPart(full);
+        setError(undefined);
+      } catch (e) {
+        if (alive) setError(errorCode(e));
+      } finally {
+        if (alive) setDone(true);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [initial, nonce]);
+  const reload = () => {
+    setDone(false);
+    setError(undefined);
+    setNonce((n) => n + 1);
+  };
+  return { part, done, error, reload };
+}
+
 export function ProofScreen({ initial }: { initial: ProofCenterView | null }) {
-  const { data, error, reload } = useMRA(q.proofCenter, { initial });
-  // useMRA doesn't flag a reload as loading: track the button's own spinner until the next result or error.
-  // Every fetch yields a new object, so the spinner stops as soon as data (or a different error) arrives.
-  const [refreshFrom, setRefreshFrom] = useState<{ data: unknown; error: unknown } | null>(null);
-  const refreshing = refreshFrom !== null && refreshFrom.data === data && refreshFrom.error === error;
-  if (!data) {
+  const { part, done, error, reload } = useProofCenter(initial);
+  if (error && part.network === undefined) {
     return (
       <LendShell>
         <PageHead label="Proof center" title="Verify it yourself">
@@ -488,53 +551,54 @@ export function ProofScreen({ initial }: { initial: ProofCenterView | null }) {
       </LendShell>
     );
   }
-  const v = data;
-  const net = v.network;
-  const explorerName = v.explorer?.name ?? "the explorer";
+  // Each card only reads its own part, so a part that hasn't arrived yet is a skeleton, not an empty list.
+  const v = part as ProofCenterView;
+  const net = part.network;
+  const explorerName = part.explorer?.name ?? "the explorer";
   return (
     <LendShell>
       <PageHead
         label="Proof center"
         title="Verify it yourself"
         actions={
-          <Button variant="secondary" size="sm" width="auto" loading={refreshing} onClick={() => {
-              setRefreshFrom({ data, error });
-              reload();
-            }}>
+          <Button variant="secondary" size="sm" width="auto" loading={!done} onClick={reload}>
             Refresh
           </Button>
         }
       >
-        {`Everything below is read live from ${net.name}${net.block !== null ? `, block ${net.block.toLocaleString("en-US")}` : ""}. Tap any row to check it on ${explorerName}.`}
+        {net
+          ? `Everything below is read live from ${net.name}${net.block !== null ? `, block ${net.block.toLocaleString("en-US")}` : ""}. Tap any row to check it on ${explorerName}.`
+          : "Reading the chain. Each section appears as soon as it is ready."}
       </PageHead>
       <div className="flex flex-wrap items-center gap-2">
-        {v.source === "mock" ? <Pill tone="slow">Example data</Pill> : <Pill tone="saving" dot>Live</Pill>}
-        {v.window ? <Ledger>{`Blocks ${v.window.fromBlock.toLocaleString("en-US")} to ${v.window.toBlock.toLocaleString("en-US")}`}</Ledger> : null}
-        {!v.explorer?.baseUrl && v.explorer?.appRoute ? (
-          <a href={v.explorer.appRoute} className="font-body text-note font-semibold text-hunter underline decoration-hunter/30 underline-offset-[3px]">
+        {part.source === "mock" ? <Pill tone="slow">Example data</Pill> : <Pill tone="saving" dot>Live</Pill>}
+        {part.window ? <Ledger>{`Blocks ${part.window.fromBlock.toLocaleString("en-US")} to ${part.window.toBlock.toLocaleString("en-US")}`}</Ledger> : null}
+        {part.explorer && !part.explorer.baseUrl && part.explorer.appRoute ? (
+          <a href={part.explorer.appRoute} className="font-body text-note font-semibold text-hunter underline decoration-hunter/30 underline-offset-[3px]">
             No public explorer on this network: open the app explorer
           </a>
         ) : null}
         {error ? <span className="font-body text-note text-charcoal-muted">{`Refresh failed (${error}); showing the last read.`}</span> : null}
       </div>
 
+      {/* Checks sit beside the long contract list and follow it down the page, so the left column is never empty. */}
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <ChecksCard v={v} />
-        <ContractsCard v={v} />
+        <div className="lg:sticky lg:top-20">{part.checks ? <ChecksCard v={v} /> : <CardSkeleton n={1} title="Live checks" />}</div>
+        {part.contracts ? <ContractsCard v={v} /> : <CardSkeleton n={2} title="Contracts" />}
       </div>
-      <ZkCard v={v} />
-      <TxCard v={v} />
+      {part.zkProofs ? <ZkCard v={v} /> : <CardSkeleton n={3} title="ZK proofs verified onchain" />}
+      {part.transactions ? <TxCard v={v} /> : <CardSkeleton n={4} title="Transactions" />}
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <DeviceCard v={v} />
-        <AiCard v={v} />
+        {part.deviceProofs ? <DeviceCard v={v} /> : <CardSkeleton n={5} title="Proofs made on this device" />}
+        {part.ai ? <AiCard v={v} /> : <CardSkeleton n={6} title="AI decisions" />}
       </div>
-      <PrivacyCard v={v} />
+      {part.privacy ? <PrivacyCard v={v} /> : <CardSkeleton n={7} title="Privacy" />}
 
-      {v.errors?.length ? (
+      {done && part.errors?.length ? (
         <section className="flex flex-col gap-1" aria-label="Parts that didn't load">
           <Label>Some parts didn't load</Label>
           <ul className="m-0 flex list-disc flex-col gap-0.5 pl-5 font-body text-note text-charcoal-muted">
-            {v.errors.map((e, i) => (
+            {part.errors.map((e, i) => (
               <li key={i} className="[overflow-wrap:anywhere]">
                 {e}
               </li>

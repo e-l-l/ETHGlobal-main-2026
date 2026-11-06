@@ -55,12 +55,12 @@ Sector is **not** revealed by default. "We can't know what they do" is a design 
 ### How: zkTLS, then a ZK credential
 
 1. The merchant logs into **their own business account** in our app's zkTLS flow. Candidate sources by market:
-   - **Argentina:** the Mercado Pago seller account, or the ARCA/AFIP monotributo account
+   - **Argentina:** the marketplace seller account, or the ARCA/AFIP monotributo account
    - **Nigeria:** a Paystack or Moniepoint merchant dashboard
    - **Kenya:** M-Pesa business (Lipa na M-Pesa till) statements
    - **Anywhere:** Shopify or Stripe admin
 2. A zkTLS prover produces an **attestation** that the HTTPS response came from that site and satisfies our predicates (status active, revenue ≥ band, account age ≥ 6 months), **revealing only the predicate results**. Options to evaluate: Reclaim, vlayer Web Proofs, zkPass, Primus, TLSNotary.
-3. **No World ID here.** The platform (Mercado Pago, M-Pesa, Paystack…) already KYC'd the owner. A seller account does not by itself establish a genuine business, and requiring one pass per *human* would wrongly block owners of several businesses.
+3. **No World ID here.** The platform (M-Pesa, Paystack…) already KYC'd the owner. A seller account does not by itself establish a genuine business, and requiring one pass per *human* would wrongly block owners of several businesses.
 4. The **issuer** verifies the zkTLS proof, computes the **business nullifier**, discards the account ID, and signs an attestation. The registry checks the signature and inserts a **Business Pass commitment** into the onchain Business Pass tree:
 
 ```

@@ -12,8 +12,9 @@ export const buttonVariants = cva(
   [
     "relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md border font-body font-semibold",
     "whitespace-nowrap select-none touch-manipulation cursor-pointer",
-    "transition-[transform,background-color,border-color,color] duration-150 ease-snappy",
-    "active:scale-[0.97] motion-reduce:active:scale-100",
+    "transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-snappy",
+    "hover:-translate-y-px hover:shadow-[0_6px_16px_-8px_rgb(0_0_0/0.35)] active:translate-y-0 active:scale-[0.96] active:shadow-none",
+    "motion-reduce:transform-none motion-reduce:transition-colors",
     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal",
     "disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100",
   ],

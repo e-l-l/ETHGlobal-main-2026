@@ -31,7 +31,6 @@ import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useCurrency } from "@/lib/currency";
 import { useMRA } from "@/lib/use-mra";
-import { PanelBlocks } from "./panel-blocks";
 import { litTiles } from "./lit-tiles";
 
 /** Checkout pays in USDC only; no token swap exists. */
@@ -149,12 +148,8 @@ export function PayScreen({ initial, target }: { initial: PayShopView | null; ta
       <SplitPage
         panel={
           <BrandPanel
-            top={
-              <>
-                <PanelBlocks seed={31} />
-                <Secured />
-              </>
-            }
+            blocks={{ seed: 31 }}
+            top={<Secured />}
             eyebrow={t.verified}
             title={
               <span className="flex items-center gap-4">
@@ -222,13 +217,8 @@ export function PaidScreen({
       <SplitPage
         panel={
           <BrandPanel
-            top={
-              <>
-                {/* Paid: the whole strip lit, once. */}
-                <PanelBlocks seed={37} lit={litTiles(6)} />
-                <Secured />
-              </>
-            }
+            blocks={{ seed: 37, lit: litTiles(6) }}
+            top={<Secured />}
             eyebrow={t.paidEyebrow}
             title={
               <span className="flex items-center gap-4">

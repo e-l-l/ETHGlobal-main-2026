@@ -29,6 +29,7 @@ export function UnlockMeter({ availableNow, limit, unlockSteps, nextUnlockAt, fr
   const dark = tone === "dark";
   const steps = unlockSteps.length ? unlockSteps : [{ pct: 100, amount: limit, unlocked: availableNow >= limit }];
   const muted = dark ? "text-honeydew" : "text-charcoal-muted";
+  const allOpen = availableNow >= limit && !frozen;
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -38,6 +39,7 @@ export function UnlockMeter({ availableNow, limit, unlockSteps, nextUnlockAt, fr
           of your {formatMoney(limit, "USD").replace(/\.00$/, "")} limit available now
         </span>
       </div>
+      {allOpen ? null : (
       <ol aria-label={`Unlocked ${formatMoney(availableNow)} of ${formatMoney(limit)}`} className="m-0 grid list-none gap-1.5 p-0" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
         {steps.map((s) => (
           <li key={s.pct} className="flex min-w-0 flex-col gap-1.5">
@@ -55,13 +57,14 @@ export function UnlockMeter({ availableNow, limit, unlockSteps, nextUnlockAt, fr
           </li>
         ))}
       </ol>
+      )}
       <p className={cn("m-0 font-body text-note", frozen ? (dark ? "text-caution-tint" : "text-caution") : muted)}>
         {frozen
           ? "Unlock paused: the weekly minimum was missed. Catch up and each on-time week unlocks +25% again."
-          : nextUnlockAt
-            ? `Next +25% on ${unlockDate(nextUnlockAt)} if you keep up the weekly minimum (1% plus fee every 7 days). Falling behind pauses it.`
-            : availableNow >= limit
-              ? "Your whole limit is unlocked."
+          : allOpen
+            ? "Your whole limit is unlocked."
+            : nextUnlockAt
+              ? `Next +25% on ${unlockDate(nextUnlockAt)} if you keep up the weekly minimum (1% plus fee every 7 days). Falling behind pauses it.`
               : "Each on-time week unlocks +25%; falling behind pauses it."}
       </p>
     </div>

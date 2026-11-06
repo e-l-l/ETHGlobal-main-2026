@@ -1,7 +1,6 @@
 "use client";
 
 import type { WorldView } from "@repo/sdk";
-import { BlockBand } from "@/blocks";
 import { Banner, Card, Columns, KeyValue, LockIcon, Pill, Stack } from "@/final";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -17,7 +16,6 @@ export function WorldViewLists({ initial }: { initial: WorldView | null }) {
   if (!data) return <MRAState error={error} />;
   return (
     <Stack gap="md">
-      <BlockBand cols={24} seed={21} grain={false} className="pointer-events-none h-8 rounded-md opacity-90 lg:h-10" />
       <Columns className="items-stretch">
         <div className="h-full">
           <Card padding="md" className="h-full">

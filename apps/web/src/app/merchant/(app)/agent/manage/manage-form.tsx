@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentStatusView } from "@repo/sdk";
-import { BlockCluster } from "@/blocks";
 import { ActionBar, Banner, Button, Card, Columns, KeyValue, SettingRow, Stack, Switch, Text, TextLink } from "@/final";
 import { CardTitle } from "../../../_ui";
 import { capitalize, formatMoney } from "@/lib/format";
@@ -28,7 +27,6 @@ export function ManageForm({ initial }: { initial: AgentStatusView | null }) {
       <Stack gap="md">
         <Card padding="md">
           <div className="flex items-center gap-4">
-          <BlockCluster seed={12} cols={2} rows={2} grain={false} className="size-14 overflow-hidden rounded-md" />
           <div className="min-w-0 flex-1">
           <SettingRow
             title={paused ? "Agent is paused" : "Agent is on"}

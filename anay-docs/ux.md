@@ -68,7 +68,7 @@ Who we're designing for: a kiosco owner in Buenos Aires, a phone-accessory selle
 | Risk status | Live risk signals, and when the Risk agent lowered limits, with its reasoning |
 | Explorer links | A pseudonymous shop, commitments and nullifiers, with no identity anywhere |
 
-### Demo seller portal (separate site, stand-in for Mercado Pago)
+### Demo seller portal (separate site, stand-in for a real seller marketplace)
 
 | Screen | What it shows |
 |---|---|
@@ -80,7 +80,7 @@ Seed at least one account per outcome: a pass (Argentina, band 2, 6+ months), an
 ## Realities the design has to handle
 
 1. **Customers hold USDT, not USDC.** People mostly hold it on Tron or BSC, inside Lemon, Belo, Binance or Yellow Card. Live checkout accepts test USDC only; any-token checkout swaps are planned.
-2. **Merchants need local money.** The Cash out screen moves dollars to Mercado Pago, CVU or M-Pesa, mocked for the demo. Better still, **pay the supplier directly**: it matches the purpose the merchant gave the agent, and lowers the risk of someone taking the money and disappearing.
+2. **Merchants need local money.** The Cash out screen moves dollars to a local bank account or M-Pesa, mocked for the demo. Better still, **pay the supplier directly**: it matches the purpose the merchant gave the agent, and lowers the risk of someone taking the money and disappearing.
 3. **No onchain history at the start.** The Business Pass fixes cold start: the merchant proves months of offchain sales from day one, without showing their books. First limits stay small and the next limit is always visible.
 4. **Being visible is dangerous.** Neutral shop names, nothing about debt on the customer's screen, the split shown only to the merchant, and shop rotation. The "What the world sees" toggle makes this visible. See [zk-privacy.md](zk-privacy.md).
 5. **Handing money decisions to an agent is scary.** The merchant sets hard limits, sees why every draw happened, and can pause or revoke the agent at any time. Nothing happens until they approve once with World.

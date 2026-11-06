@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { CashOutView } from "@repo/sdk";
 import { ActionBar, Button, Card, Columns, KeyValue, Label, Ledger, Stack, Text, TextField } from "@/final";
-import { BlockPanel } from "@/blocks";
-import { CardTitle, HeroLabel } from "../../_ui";
+import { CardTitle, HeroLabel, HunterPanel } from "../../_ui";
 import { cn } from "@/lib/cn";
 import { useCurrency } from "@/lib/currency";
 import { formatMoney } from "@/lib/format";
@@ -58,11 +57,11 @@ function CashOutFields({ view }: { view: CashOutView }) {
   return (
     <Columns ratio="3:2">
       <Stack gap="md">
-        <BlockPanel seed={11} dim={78} cols={8} rows={3} bodyClassName="gap-1 p-5 md:p-6">
+        <HunterPanel bodyClassName="gap-1 p-5 md:p-6">
           <HeroLabel>Ready to cash out</HeroLabel>
           <span className="font-display text-hero-sm tabular-nums md:text-[52px] md:leading-none">{formatMoney(available)}</span>
           {cur.dollarsOnly ? null : <Ledger className="text-honeydew">{cur.approx(available)} · example rate</Ledger>}
-        </BlockPanel>
+        </HunterPanel>
 
         <div className="flex flex-col gap-2">
           <TextField

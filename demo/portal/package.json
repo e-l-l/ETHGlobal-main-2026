@@ -2,7 +2,7 @@
   "name": "demo-portal",
   "version": "0.1.0",
   "private": true,
-  "description": "DEMO seller portal (Mercado Pago-style stand-in) designed as a Reclaim zkTLS data source.",
+  "description": "DEMO seller portal (marketplace-style stand-in) designed as a Reclaim zkTLS data source.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

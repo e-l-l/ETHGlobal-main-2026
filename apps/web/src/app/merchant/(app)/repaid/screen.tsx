@@ -44,7 +44,7 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
     <Page tabs dense>
       <BackLink href={routes.merchant}>Home</BackLink>
 
-      <HeroBlock seed={11} lit={Array.from({ length: lit }, (_, i) => 7 - i)}>
+      <HeroBlock>
         <HeroLabel>Paid back in full</HeroLabel>
         <BigFigure as="h1" className="max-w-[16ch] text-balance">
           Your limit is now <span className="text-lime">{formatMoney(cap)}.</span>

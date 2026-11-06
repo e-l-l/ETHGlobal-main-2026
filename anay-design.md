@@ -299,7 +299,7 @@ The other 16 explorations (twist, ribbon coin, ribbon jar, ribbon $, pixel drop,
 
 ### Demo seller portal, 2
 
-Separate site, stand-in for a real marketplace. **Deliberately unbranded** (neutral greys, "Demo Seller Portal") so it never imitates Mercado Pago or anyone else.
+Separate site, stand-in for a real marketplace. **Deliberately unbranded** (neutral greys, "Demo Seller Portal") so it never imitates any real marketplace.
 
 | # | Screen | Key content |
 |---|---|---|

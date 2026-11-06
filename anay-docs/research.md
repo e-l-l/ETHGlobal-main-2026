@@ -29,7 +29,7 @@ Finalist data covers 36 finalists from Cannes, New York, Lisbon and Tokyo 2026, 
 - **Poseidon2:** a Solidity implementation that matches Noir's output.
 - **Browser proving:** proving time for `standing_pass` on a low-end Android phone.
 - **World:** Agent Pass test-mode proofs use fake identities, so check the live judge flow. Can one approval authorise an ongoing agent with limits, and does it give one agent per human? Can IDKit back credential recovery? Ask whether one project can win both World tracks.
-- **zkTLS (critical, now core):** which SDK (Reclaim, vlayer, TLSNotary or others) can prove facts from our own demo seller portal fastest, how long proofs take on a phone, and whether the attestation can be verified onchain or only server-side. For production: whether working Mercado Pago, M-Pesa or Paystack providers exist.
+- **zkTLS (critical, now core):** which SDK (Reclaim, vlayer, TLSNotary or others) can prove facts from our own demo seller portal fastest, how long proofs take on a phone, and whether the attestation can be verified onchain or only server-side. For production: whether working M-Pesa or Paystack providers exist.
 - **World ID by country:** where Orb verification is actually available in Africa and Argentina.
 - **Competition:** read Tap Pay, Usury Protocol and Kreditos on the ETHGlobal showcase.
 - **Default rates:** we have no real loss data. Break-even figures are arithmetic only.

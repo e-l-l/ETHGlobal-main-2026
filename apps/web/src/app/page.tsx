@@ -58,7 +58,7 @@ const TYPE_SCALE = {
 
 export default function LandingPage() {
   return (
-    <div className="bg-canvas" style={TYPE_SCALE}>
+    <div className="landing-zoom bg-canvas" style={TYPE_SCALE}>
       <SiteHeader />
       <main id="main" className="flex flex-col">
         <Hero />
@@ -198,7 +198,7 @@ const PARTNERS = ["Uniswap v4", "World ID", "Anon-RPC"];
 
 function Hero() {
   return (
-    <section aria-labelledby="hero-h" className="relative h-svh min-h-330 overflow-hidden bg-canvas md:min-h-275">
+    <section aria-labelledby="hero-h" className="relative h-[calc(100svh/var(--lz))] min-h-330 overflow-hidden bg-canvas md:min-h-275">
       <PixelScene />
       {/* Fog: a soft white wash over the left of the scene so the copy reads, fading out to the right. The pixels stay visible through it. */}
       <div
@@ -272,18 +272,25 @@ const WEEK_PROMISES: [PixelIconName, string, string][] = [
 function BadWeek() {
   return (
     <section aria-labelledby="week-h" className="relative overflow-hidden bg-hunter pt-28 md:pt-40">
-      <div className={cn(WRAP, "relative z-10 grid grid-cols-1 items-center gap-14 pb-24 md:pb-32 lg:grid-cols-[1fr_1.45fr] lg:gap-16")}>
-        <Reveal className="flex flex-col gap-6">
-          <Eyebrow tone="dark">Built for real weeks</Eyebrow>
-          <h2 id="week-h" className={cn(H2, "max-w-[13ch] text-canvas")}>
-            A slow week never costs more than 3%.
-          </h2>
-          <p className="m-0 max-w-[44ch] font-body text-read text-honeydew/85">
+      <div className={cn(WIDE, "relative z-10 flex flex-col gap-12 pb-24 md:gap-16 md:pb-32")}>
+        <Reveal className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-16">
+          <div className="flex flex-col gap-5">
+            <Eyebrow tone="dark">Built for real weeks</Eyebrow>
+            <h2 id="week-h" className={cn(H2, "max-w-[16ch] text-canvas")}>
+              A slow week never costs more than 3%.
+            </h2>
+          </div>
+          <p className="m-0 max-w-[42ch] font-body text-read text-honeydew/85">
             Fee 0.5% per week while you owe, never more than 3%. When sales slow down, paying back slows with them.
           </p>
-          <ul className="m-0 flex list-none flex-col gap-3 p-0">
+        </Reveal>
+        <Reveal>
+          <WeekChart />
+        </Reveal>
+        <Reveal>
+          <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 md:grid-cols-3">
             {WEEK_PROMISES.map(([icon, t, d]) => (
-              <li key={t} className="flex items-center gap-4 rounded-xl border border-hairline bg-surface px-5 py-4">
+              <li key={t} className="flex items-start gap-4 rounded-xl border border-hairline bg-surface px-5 py-5">
                 <IconTile name={icon} size={52} />
                 <span className="flex flex-col">
                   <span className="font-body text-read font-semibold text-charcoal">{t}</span>
@@ -292,9 +299,6 @@ function BadWeek() {
               </li>
             ))}
           </ul>
-        </Reveal>
-        <Reveal>
-          <WeekChart />
         </Reveal>
       </div>
 </section>

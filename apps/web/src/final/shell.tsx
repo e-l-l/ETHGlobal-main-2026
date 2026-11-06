@@ -7,7 +7,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/cn";
 import { APP_NAME } from "@/lib/brand";
 import { routes } from "@/lib/routes";
-import { Lockup } from "./brand";
+import { BlockSkyline } from "@/blocks";
+import { Lockup, WalletMark } from "./brand";
 import { ChevronLeftIcon, CrossIcon } from "./icons";
 import { Heading, Label, Text } from "./text";
 import { ScrollProgress } from "./reveal";
@@ -227,13 +228,15 @@ export function Stack({ gap = "md", className, children }: { gap?: "sm" | "md" |
   return <div className={cn("flex min-w-0 flex-col", { sm: "gap-3", md: "gap-4", lg: "gap-6" }[gap], className)}>{children}</div>;
 }
 
-/** The screen's next step. Pinned above the home indicator on phones; a plain row on desktop. */
-export function ActionBar({ hint, children }: { hint?: ReactNode; children: ReactNode }) {
+/** The screen's next step. Pinned above the home indicator on phones; a plain row on desktop unless `pinned`. */
+export function ActionBar({ hint, pinned, children }: { hint?: ReactNode; pinned?: boolean; children: ReactNode }) {
   return (
     <div
       className={cn(
         "sticky bottom-0 z-20 -mx-4 mt-auto flex flex-col gap-2 border-t border-hairline bg-canvas/90 px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] backdrop-blur-xl",
-        "md:static md:mx-0 md:mt-2 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none",
+        pinned
+          ? "md:mx-0 md:mt-2 md:px-0 md:backdrop-blur-xl"
+          : "md:static md:mx-0 md:mt-2 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none",
       )}
     >
       {hint ? <p className="font-body text-note text-charcoal-muted">{hint}</p> : null}
@@ -317,18 +320,16 @@ export function SideNav({
       .filter((n) => pathname === n.href || pathname.startsWith(`${n.href}/`))
       .sort((a, b) => b.href.length - a.href.length)[0]?.key;
   return (
-    <aside className="sticky top-0 hidden h-dvh w-62 shrink-0 flex-col gap-7 overflow-y-auto border-r border-hairline bg-surface px-4 py-7 lg:flex">
+    <aside className="sticky top-0 hidden h-dvh w-62 shrink-0 flex-col gap-7 overflow-y-auto border-r border-hairline bg-surface/60 px-4 py-7 backdrop-blur-sm lg:flex">
       <Link href={home} aria-label={`${APP_NAME} home`} className="w-fit rounded-md px-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal">
         <Lockup size={30} />
       </Link>
       {account ? (
-        <div className="flex items-center gap-3 rounded-md bg-well p-3">
-          <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-md bg-hunter font-display text-[15px] font-bold text-lime">
-            {account.initials}
-          </span>
-          <span className="flex min-w-0 flex-col">
-            <span className="truncate font-body text-note font-semibold text-charcoal">{account.name}</span>
-            <span className="truncate font-ledger text-[12px] text-charcoal-muted">{account.id}</span>
+        <div className="flex items-center gap-3 rounded-lg border border-hairline bg-surface p-3 shadow-sm">
+          <WalletMark size={44} />
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="truncate font-body text-read font-bold text-charcoal">{account.name}</span>
+            <span className="w-fit max-w-full truncate rounded-sm bg-well px-1.5 py-0.5 font-ledger text-[12px] text-charcoal-soft">{account.id}</span>
           </span>
         </div>
       ) : null}
@@ -385,7 +386,7 @@ export function SplitPage({ panel, children, className }: { panel: ReactNode; ch
       <main
         id="main"
         className={cn(
-          "flex min-w-0 flex-1 justify-center px-4 pt-6 pb-10 md:px-10 md:py-14 lg:px-16",
+          "flex min-w-0 flex-1 justify-center px-4 pt-6 pb-10 md:px-8 md:py-14 lg:px-12",
           "animate-[page-in_240ms_var(--ease-snappy)_both] motion-reduce:animate-none",
           className,
         )}
@@ -398,11 +399,11 @@ export function SplitPage({ panel, children, className }: { panel: ReactNode; ch
 
 /** Lime emphasis inside a BrandPanel title. */
 export function Accent({ children }: { children: ReactNode }) {
-  return <span className="text-lime">{children}</span>;
+  return <span className="block text-lime">{children}</span>;
 }
 
 /**
- * The Hunter panel of a SplitPage: logo, eyebrow, big headline, one line of body, the lime wave at the foot.
+ * The Hunter panel of a SplitPage: logo, eyebrow, big headline, one line of body, a block strip at the foot.
  * It carries the logo, so split screens render no AppHeader.
  */
 export function BrandPanel({
@@ -410,34 +411,42 @@ export function BrandPanel({
   title,
   body,
   top,
+  blocks,
   home = routes.home,
+  logo,
   children,
 }: {
+  /** Replaces the DripMoney logo, for screens that stand in for another site (the demo portal). */
+  logo?: ReactNode;
   eyebrow?: ReactNode;
   title: ReactNode;
   body?: ReactNode;
   top?: ReactNode;
+  /** The block strip at the foot of the panel. `lit` marks progress, `calm` is the quiet look for failures. */
+  blocks?: { seed?: number; lit?: number[]; calm?: boolean };
   /** Where the logo goes. */
   home?: string;
   children?: ReactNode;
 }) {
   return (
-    <aside className="relative flex flex-col gap-5 overflow-hidden bg-hunter px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] text-canvas md:sticky md:top-0 md:h-dvh md:w-[44%] md:max-w-[620px] md:shrink-0 md:gap-8 md:px-12 md:pt-10 lg:px-14">
-      <Link href={home} aria-label={`${APP_NAME} home`} className="w-fit shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime">
-        <Lockup size={28} on="dark" />
-      </Link>
+    <aside className="relative flex flex-col gap-5 overflow-hidden bg-hunter px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] text-canvas md:sticky md:top-0 md:h-dvh md:w-[55%] md:shrink-0 md:gap-8 md:px-12 md:pt-10 lg:px-16">
+      {logo ?? (
+        <Link href={home} aria-label={`${APP_NAME} home`} className="w-fit shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime">
+          <Lockup size={28} on="dark" />
+        </Link>
+      )}
       {top}
       <div className="flex flex-col gap-3 md:my-auto md:gap-5">
-        {eyebrow ? <span className="font-ledger text-tag tracking-[0.1em] text-lime uppercase">{eyebrow}</span> : null}
-        <h1 className="m-0 font-display text-hero-sm text-canvas md:text-[clamp(40px,4.4vw,64px)] md:leading-[1.02]">{title}</h1>
-        {body ? <p className="m-0 hidden max-w-[46ch] font-body text-read text-honeydew md:block md:text-[17px]">{body}</p> : null}
+        {eyebrow ? <span className="font-ledger text-tag tracking-[0.1em] text-lime uppercase md:text-[14px]">{eyebrow}</span> : null}
+        <h1 className="m-0 font-display text-hero-sm text-canvas md:text-[clamp(40px,4.4vw,68px)] md:leading-[1.02]">{title}</h1>
+        {body ? <p className="m-0 hidden max-w-[40ch] font-body text-read text-honeydew md:block md:text-[clamp(19px,1.6vw,24px)] md:leading-snug">{body}</p> : null}
         {children}
       </div>
-      <svg viewBox="0 0 720 110" preserveAspectRatio="none" aria-hidden className="-mx-4 mt-auto block h-14 w-[calc(100%+2rem)] md:-mx-12 md:h-28 md:w-[calc(100%+6rem)] lg:-mx-14 lg:w-[calc(100%+7rem)]">
-        <path d="M0 50 C90 0 180 100 270 50 S450 0 540 50 S690 100 760 50" fill="none" stroke="var(--color-lime)" strokeWidth="3" />
-        <path d="M0 76 C90 26 180 126 270 76 S450 26 540 76 S690 126 760 76" fill="none" stroke="var(--color-lime)" strokeWidth="3" opacity="0.5" />
-        <path d="M0 102 C90 52 180 152 270 102 S450 52 540 102 S690 152 760 102" fill="none" stroke="var(--color-lime)" strokeWidth="3" opacity="0.25" />
-      </svg>
+      <div aria-hidden className="pointer-events-none relative -mx-4 mt-auto overflow-hidden md:-mx-12 lg:-mx-16">
+        <BlockSkyline cols={16} rows={4} seed={blocks?.seed ?? 7} theme={blocks?.calm ? "night" : "brand"} {...(blocks?.lit ? { lit: blocks.lit } : {})} />
+        {/* Upper layers fade back so the peaks read as depth, not a wall. */}
+        <div className="absolute inset-0 bg-linear-to-t from-transparent via-hunter/30 to-hunter/70" />
+      </div>
     </aside>
   );
 }

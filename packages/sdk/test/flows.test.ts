@@ -56,7 +56,7 @@ describe("mock-mode flows (the demo path)", () => {
   it("pay + cash out + lender deposit are simulated in mock mode", async () => {
     const mra = createMRA({ mode: "mock" });
     expect(await mra.pay.pay("shop_7f3a", 10)).toMatchObject({ amount: 10, toShop: 9.2, toRepayment: 0.8, shopName: "Corner Kiosk" });
-    expect(await mra.merchant.cashOut(100, "mercado-pago")).toMatchObject({ status: "simulated" });
+    expect(await mra.merchant.cashOut(100, "bank")).toMatchObject({ status: "simulated" });
     await expect(mra.merchant.cashOut(100, "nowhere")).rejects.toMatchObject({ code: "invalid_request" });
     const steps: string[] = [];
     const tx = await mra.lender.deposit(2500, { onStep: (s) => steps.push(s.label) });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode, type SVGProps } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type SVGProps } from "react";
 import { Banner, Button, Card, Columns, Heading, Label, Ledger, Pill, Spinner, Text, TextLink } from "@/final";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
@@ -214,43 +214,130 @@ const toneCls: Record<Tone, { icon: string; title: string }> = {
   moment: { icon: "bg-lime text-charcoal", title: "text-canvas" },
 };
 
+/** Consecutive daily-sale steps fold into one expandable row; every other step stands alone. */
+type Entry = { kind: "step"; step: SimStep; last: boolean } | { kind: "sales"; steps: SimStep[]; last: boolean };
+const SALES_RUN_MIN = 3;
+
+function groupSteps(steps: SimStep[]): Entry[] {
+  const out: Entry[] = [];
+  let i = 0;
+  while (i < steps.length) {
+    const s = steps[i]!;
+    if (s.kind === "sale") {
+      let j = i;
+      while (j < steps.length && steps[j]!.kind === "sale") j += 1;
+      const run = steps.slice(i, j);
+      if (run.length >= SALES_RUN_MIN) out.push({ kind: "sales", steps: run, last: j === steps.length });
+      else run.forEach((r, n) => out.push({ kind: "step", step: r, last: j === steps.length && n === run.length - 1 }));
+      i = j;
+    } else {
+      out.push({ kind: "step", step: s, last: i === steps.length - 1 });
+      i += 1;
+    }
+  }
+  return out;
+}
+
+function StepRow({ s, last, running }: { s: SimStep; last: boolean; running: boolean }) {
+  const k = styleOf(s);
+  const tone = k.tone ?? "plain";
+  const t = toneCls[tone];
+  const moment = tone === "moment";
+  return (
+    <li className={cn("flex gap-3 border-b border-hairline py-4 last:border-b-0", moment && "-mx-4 my-2 rounded-lg border-b-0 bg-charcoal px-4 md:-mx-5 md:px-5")}>
+      <span className={cn("relative flex size-10 shrink-0 items-center justify-center rounded-full", t.icon)}>
+        {k.icon}
+        {last && running ? <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-lime/40 motion-reduce:animate-none" /> : null}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className={cn("font-ledger text-tag font-medium uppercase", moment ? "text-lime" : "text-charcoal-muted")}>
+          {moment ? "The moment to watch · " : ""}Day {s.sim_day} · {s.kind.replace(/_/g, " ")}
+        </span>
+        <span className={cn("font-body font-semibold", moment ? "text-h2 font-display" : "text-read", t.title)}>{s.title}</span>
+        {s.detail ? <span className={cn("font-body text-note", moment ? "text-honeydew" : "text-charcoal-soft")}>{s.detail}</span> : null}
+        {moment ? <RefusalFacts step={s} /> : null}
+      </div>
+      {s.tx ? (
+        <a
+          href={`${routes.explorer}?tx=${s.tx}`}
+          className={cn("shrink-0 self-start pt-5 font-ledger text-ledger underline-offset-4 hover:underline", moment ? "text-lime" : "text-hunter")}
+          aria-label={`Receipt for ${s.title}`}
+        >
+          tx ↗
+        </a>
+      ) : null}
+    </li>
+  );
+}
+
+/** "30 days of sales": one row that opens to the individual days. */
+function SalesGroup({ steps, running }: { steps: SimStep[]; running: boolean }) {
+  const first = steps[0]!;
+  const last = steps[steps.length - 1]!;
+  return (
+    <li className="border-b border-hairline last:border-b-0">
+      <details className="group">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 py-4 [&::-webkit-details-marker]:hidden">
+          <span className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-honeydew text-hunter">
+            {I.sale}
+            {running ? <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-lime/40 motion-reduce:animate-none" /> : null}
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="font-ledger text-tag font-medium uppercase text-charcoal-muted">
+              Day {first.sim_day}–{last.sim_day} · sales
+            </span>
+            <span className="font-body text-read font-semibold text-charcoal">{steps.length} days of sales</span>
+          </span>
+          <span aria-hidden className="font-ledger text-ledger text-hunter group-open:hidden">Show</span>
+          <span aria-hidden className="hidden font-ledger text-ledger text-hunter group-open:inline">Hide</span>
+        </summary>
+        <ol className="m-0 mb-3 flex list-none flex-col border-l-2 border-hairline p-0 pl-4">
+          {steps.map((s) => (
+            <li key={s.i} className="flex flex-col gap-0.5 py-2">
+              <span className="font-ledger text-tag font-medium uppercase text-charcoal-muted">Day {s.sim_day}</span>
+              <span className="font-body text-note font-semibold text-charcoal">{s.title}</span>
+              {s.detail ? <span className="font-body text-note text-charcoal-soft">{s.detail}</span> : null}
+            </li>
+          ))}
+        </ol>
+      </details>
+    </li>
+  );
+}
+
+/** True while the reader is at (or near) the bottom of the page, so the timeline only follows people who want it to. */
+function useFollowTail(count: number, active: boolean) {
+  const tail = useRef<HTMLLIElement>(null);
+  const following = useRef(true);
+  useEffect(() => {
+    const onScroll = () => {
+      following.current = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 320;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  useEffect(() => {
+    if (!active || !following.current) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    tail.current?.scrollIntoView({ block: "end", behavior: reduce ? "auto" : "smooth" });
+  }, [count, active]);
+  return tail;
+}
+
 function Timeline({ steps, running }: { steps: SimStep[]; running: boolean }) {
+  const entries = useMemo(() => groupSteps(steps), [steps]);
+  const tail = useFollowTail(steps.length, running);
   return (
     <ol aria-label="Run steps" aria-live="polite" className="m-0 flex list-none flex-col p-0">
-      {steps.map((s, idx) => {
-        const k = styleOf(s);
-        const tone = k.tone ?? "plain";
-        const t = toneCls[tone];
-        const last = idx === steps.length - 1;
-        const moment = tone === "moment";
-        return (
-          <li key={s.i} className={cn("flex gap-3 border-b border-hairline py-4 last:border-b-0", moment && "-mx-4 my-2 rounded-lg border-b-0 bg-charcoal px-4 md:-mx-5 md:px-5")}>
-            <span className={cn("relative flex size-10 shrink-0 items-center justify-center rounded-full", t.icon)}>
-              {k.icon}
-              {last && running ? <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-lime/40 motion-reduce:animate-none" /> : null}
-            </span>
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <span className={cn("font-ledger text-tag font-medium uppercase", moment ? "text-lime" : "text-charcoal-muted")}>
-                {moment ? "The moment to watch · " : ""}Day {s.sim_day} · {s.kind.replace(/_/g, " ")}
-              </span>
-              <span className={cn("font-body font-semibold", moment ? "text-h2 font-display" : "text-read", t.title)}>{s.title}</span>
-              {s.detail ? <span className={cn("font-body text-note", moment ? "text-honeydew" : "text-charcoal-soft")}>{s.detail}</span> : null}
-              {moment ? <RefusalFacts step={s} /> : null}
-            </div>
-            {s.tx ? (
-              <a
-                href={`${routes.explorer}?tx=${s.tx}`}
-                className={cn("shrink-0 self-start pt-5 font-ledger text-ledger underline-offset-4 hover:underline", moment ? "text-lime" : "text-hunter")}
-                aria-label={`Receipt for ${s.title}`}
-              >
-                tx ↗
-              </a>
-            ) : null}
-          </li>
-        );
-      })}
+      {entries.map((e) =>
+        e.kind === "sales" ? (
+          <SalesGroup key={`sales-${e.steps[0]!.i}`} steps={e.steps} running={running && e.last} />
+        ) : (
+          <StepRow key={e.step.i} s={e.step} last={e.last} running={running} />
+        ),
+      )}
       {running ? (
-        <li className="flex items-center gap-3 py-4 text-charcoal-muted">
+        <li ref={tail} className="flex scroll-mb-24 items-center gap-3 py-4 text-charcoal-muted">
           <Spinner size={18} label="Waiting for the next step" />
           <span className="font-body text-note">Next step lands onchain…</span>
         </li>

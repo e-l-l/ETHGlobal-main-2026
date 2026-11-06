@@ -10,6 +10,7 @@ import {
   BrandPanel,
   Button,
   Card,
+  CheckIcon,
   Chips,
   Heading,
   JarMark,
@@ -29,9 +30,8 @@ import {
 } from "@/final";
 import type { BusinessPassView, HumanCheckStep, ProveStep, ShopHumanBinding } from "@repo/sdk";
 import { appUrl } from "@/lib/brand";
-import { PanelBlocks } from "./panel-blocks";
 import { litTiles } from "./lit-tiles";
-import { copy, stepEyebrow } from "@/lib/copy";
+import { copy } from "@/lib/copy";
 import { explorerTxUrl, isMock, withMRA } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -177,8 +177,7 @@ export function VerifyingScreen({ outcome }: { outcome?: string }) {
         panel={
           <BrandPanel
             /* Two more tiles light as each of the three checks completes. */
-            top={<PanelBlocks seed={17} lit={litTiles(done * 2)} />}
-            eyebrow={stepEyebrow(3)}
+            blocks={{ seed: 17, lit: litTiles(done * 2) }}
             title={
               <>
                 {t.title} <Accent>{t.accent}</Accent>
@@ -190,7 +189,7 @@ export function VerifyingScreen({ outcome }: { outcome?: string }) {
       >
         <StepProgress at={3} />
         <div className="flex items-center gap-4">
-          <JarMark loading size={64} label={`${t.title} ${t.accent}`} />
+          <JarMark loading stage={done} size={64} label={`${t.title} ${t.accent}`} />
           <div className="flex min-w-0 flex-col gap-1">
             <Heading level={2} size="h1">
               {t.heading}
@@ -263,8 +262,7 @@ function ShopForm({ draft }: { draft: ShopDraft }) {
       <SplitPage
         panel={
           <BrandPanel
-            top={<PanelBlocks seed={29} lit={litTiles(6)} />}
-            eyebrow={stepEyebrow(5)}
+            blocks={{ seed: 29, lit: litTiles(6) }}
             title={
               <>
                 {t.panelTitle} <Accent>{t.accent}</Accent>
@@ -382,11 +380,16 @@ type WorldPhase = HumanCheckStep | "binding";
 /** Phase → how many of the three list items are done. */
 const PHASE_DONE: Record<WorldPhase, number> = { verifying_human: 0, checking: 1, eligible: 2, binding: 2, stopped: 1 };
 
+/** How long "Verified" stays on screen before the business step. */
+const VERIFIED_MOMENT_MS = 1500;
+
 export function WorldIdScreen({ bind = false }: { bind?: boolean }) {
   const t = copy.worldId;
   const router = useRouter();
   const [phase, setPhase] = useState<WorldPhase | undefined>();
   const [failure, setFailure] = useState<string | undefined>();
+  /** Set for a beat after a successful check, so the person sees it worked before the next step. */
+  const [verified, setVerified] = useState(false);
   /** Bind mode: a fresh ticket is on the device, so a retry only re-runs `bindHumanTicket()`. */
   const [ticket, setTicket] = useState(false);
   const check = useMRAAction((m) => m.onboarding.checkHuman({ onStep: setPhase }));
@@ -407,6 +410,8 @@ export function WorldIdScreen({ bind = false }: { bind?: boolean }) {
         return;
       }
       if (!bind) {
+        setVerified(true);
+        await new Promise((done) => window.setTimeout(done, VERIFIED_MOMENT_MS));
         router.push(routes.prove);
         return;
       }
@@ -434,8 +439,7 @@ export function WorldIdScreen({ bind = false }: { bind?: boolean }) {
     <SplitPage
       panel={
         <BrandPanel
-          top={<PanelBlocks seed={7} lit={litTiles(bind ? 6 : 0)} />}
-          eyebrow={bind ? `World ID · ${copy.stepNames[4]}` : stepEyebrow(1)}
+          blocks={{ seed: 7, lit: litTiles(bind ? 6 : 0) }}
           title={
             <>
               {t.panelTitle} <Accent>{t.accent}</Accent>
@@ -446,7 +450,17 @@ export function WorldIdScreen({ bind = false }: { bind?: boolean }) {
       }
     >
       {bind ? null : <StepProgress at={1} />}
-      {waiting ? (
+      {verified ? (
+        <div role="status" className="flex flex-1 flex-col items-center justify-center gap-4 py-10 text-center">
+          <span aria-hidden className="grid size-16 place-items-center rounded-full bg-hunter text-lime motion-safe:animate-[page-in_240ms_var(--ease-snappy)_both]">
+            <CheckIcon size={32} strokeWidth={3} />
+          </span>
+          <Heading level={2} size="h1">
+            {t.verifiedTitle}
+          </Heading>
+          <Text>{t.verifiedBody}</Text>
+        </div>
+      ) : waiting ? (
         <>
           <div className="flex flex-col gap-2">
             <Label>{t.waitingTag}</Label>

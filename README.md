@@ -113,7 +113,7 @@ No other secrets are needed today. All data comes from `apps/web/src/lib/mock`.
 | Merchant, new | `/onboarding` | Welcome → World ID (stop screen if banned or an advance is open) → Prove business (zkTLS) → Verifying → Business Pass → Create shop (bound via a sealed ticket) |
 | Merchant, signed up | `/merchant` | Home and live sales · advance details · bad week · agent log, setup, approve and manage · repaid / Standing Pass · cash out · my QR · World view |
 | Customer | `/pay/corner-kiosk` | Pay with test USDC → receipt. The advance is never mentioned. |
-| Demo seller portal | `/portal/login` | The page the zkTLS proof reads from (stand-in for Mercado Pago) |
+| Demo seller portal | `/portal/login` | The page the zkTLS proof reads from (stand-in for a real seller marketplace) |
 | Lender | `/earn` | Vault: overview, deposit / withdraw, position |
 | Risk taker | `/dripcoin` | DripCoin (DRIP): overview, mint / redeem, trade on Uniswap v4 |
 | Public / judges | `/protocol`, `/proof`, `/simulator` | Protocol dashboard, `/risk` status, `/explorer`, the proof center, and the simulator |

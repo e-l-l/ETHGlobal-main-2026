@@ -80,7 +80,7 @@ export function Keypad({ value, onChange, decimals = 2, label = "Amount keypad" 
             type="button"
             aria-label={k === "del" ? "Delete" : k === "." ? "Decimal point" : k}
             onClick={() => onChange(pressKey(value, k, { decimals }))}
-            className="min-h-14 cursor-pointer rounded-md bg-surface font-display text-h2 text-charcoal transition-[transform,background-color] duration-150 ease-snappy select-none hover:bg-well active:scale-[0.97] motion-reduce:active:scale-100"
+            className="min-h-14 cursor-pointer rounded-md bg-surface font-display text-h2 text-charcoal transition-[transform,background-color] duration-200 ease-snappy select-none hover:-translate-y-px hover:bg-honeydew active:scale-[0.92] active:bg-lime/40 motion-reduce:transform-none"
           >
             {k === "del" ? "⌫" : k}
           </button>

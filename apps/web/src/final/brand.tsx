@@ -38,6 +38,11 @@ export type JarMarkProps = {
   /** light: on white/canvas. meter: tier display, unlit bands read as empty. dark: on Hunter/Charcoal. */
   on?: keyof typeof SURFACE;
   loading?: boolean;
+  /**
+   * With `loading`: how many steps are finished. Finished bands sit in solid dark green, the band being worked on
+   * pulses, and the ones still to come stay pale, so the drop shows how far along it is.
+   */
+  stage?: number;
   /** Decorative: the bands walk the brand greens, a wave falling from the tip to the base. */
   cycle?: boolean;
   /** Light the bands one at a time, bottom to top, once on mount (a tier just earned). Static with reduced motion. */
@@ -46,7 +51,7 @@ export type JarMarkProps = {
   className?: string;
 };
 
-export function JarMark({ lit: litProp = 1, size = 40, on = "light", loading, cycle, build, label, className }: JarMarkProps) {
+export function JarMark({ lit: litProp = 1, size = 40, on = "light", loading, stage, cycle, build, label, className }: JarMarkProps) {
   const reduced = useReducedMotion();
   /* null = show the real tier (server, no-JS, reduced motion, after the climb). A number = mid-climb. */
   const [step, setStep] = useState<number | null>(null);
@@ -64,6 +69,9 @@ export function JarMark({ lit: litProp = 1, size = 40, on = "light", loading, cy
     return () => window.clearInterval(id);
   }, [build, reduced, litProp]);
   const lit = (step ?? litProp) as 0 | 1 | 2 | 3 | 4;
+  const staged = loading && stage !== undefined;
+  const solid = staged ? (stage >= BANDS.length - 1 ? BANDS.length : stage) : 0;
+  const active = staged && stage < BANDS.length - 1 ? stage : -1;
   const clip = `fdrop${useId().replace(/[:«»]/g, "")}`;
   const a11y = label ? { role: "img" as const, "aria-label": label } : { "aria-hidden": true as const };
 
@@ -86,13 +94,14 @@ export function JarMark({ lit: litProp = 1, size = 40, on = "light", loading, cy
           <polygon
             key={i}
             points={pts(b)}
-            fill={loading ? "var(--band-off)" : i < lit ? "var(--band-on)" : "var(--band-base)"}
+            fill={staged ? (i < solid ? "var(--color-hunter)" : "var(--color-stage-todo)") : loading ? "var(--band-off)" : i < lit ? "var(--band-on)" : "var(--band-base)"}
             className={cn(
-              "transition-[fill] duration-300",
-              loading && "animate-band motion-reduce:animate-none",
+              "transition-[fill] duration-500",
+              loading && !staged && "animate-band motion-reduce:animate-none",
+              staged && i === active && "animate-band-active motion-reduce:animate-none",
               cycle && !loading && "animate-band-cycle motion-reduce:animate-none",
             )}
-            style={loading ? { animationDelay: `${i * 2}s` } : cycle ? { animationDelay: `${-i * 0.7}s` } : undefined}
+            style={loading && !staged ? { animationDelay: `${i * 2}s` } : cycle ? { animationDelay: `${-i * 0.7}s` } : undefined}
           />
         ))}
       </g>
@@ -155,5 +164,43 @@ export function TierMeter({ tier }: { tier: -1 | 0 | 1 | 2 | 3 }) {
         ))}
       </ol>
     </div>
+  );
+}
+
+/**
+ * The mascot: the drop with a face. Two eyes and a small smile on the Hunter drop; the eyes blink now and then.
+ * Sits beside account names (the sidebar chip). Decorative.
+ */
+export function Mascot({ size = 36, className }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden className={cn("block shrink-0", className)}>
+      <rect width="40" height="40" rx="10" className="fill-hunter" />
+      <path d={DROP} transform="translate(5 4) scale(0.75)" className="fill-lime" />
+      <g className="fill-hunter">
+        <rect x="14.5" y="19" width="3.5" height="5" rx="1.75" className="origin-center animate-[blink_4.5s_infinite] motion-reduce:animate-none [transform-box:fill-box]" />
+        <rect x="22" y="19" width="3.5" height="5" rx="1.75" className="origin-center animate-[blink_4.5s_infinite] motion-reduce:animate-none [transform-box:fill-box]" />
+      </g>
+      <path d="M15.5 27.5q4.5 3.5 9 0" fill="none" strokeWidth="2" strokeLinecap="round" className="stroke-hunter" />
+    </svg>
+  );
+}
+
+/**
+ * The shop's wallet mark: a lime wallet with a clasp on a Hunter tile. Sits beside the shop name and its public id
+ * (the sidebar chip). Decorative.
+ */
+export function WalletMark({ size = 40, className }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden className={cn("block shrink-0", className)}>
+      <rect width="40" height="40" rx="11" className="fill-hunter" />
+      {/* Card tucked behind the wallet. */}
+      <rect x="11" y="9.5" width="18" height="8" rx="2.5" transform="rotate(-8 20 14)" className="fill-lime/45" />
+      {/* Wallet body. */}
+      <rect x="7.5" y="13.5" width="25" height="18" rx="4.5" className="fill-lime" />
+      <path d="M7.5 18.5h25" strokeWidth="1.5" className="stroke-hunter/20" />
+      {/* Clasp. */}
+      <rect x="21.5" y="19.5" width="13" height="8" rx="4" className="fill-hunter" />
+      <circle cx="26.5" cy="23.5" r="1.9" className="fill-lime" />
+    </svg>
   );
 }

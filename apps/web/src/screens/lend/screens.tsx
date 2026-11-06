@@ -34,6 +34,7 @@ import { DarkCard, LendHero, LendShell, PublicBand } from "./shell";
 import { DepositPanel, PositionCard } from "./client";
 import { LiveWaterfall, MarketView, RiskInPublic, RiskLoading } from "./risk";
 import { apyView, reasonLines, vaultNumbers } from "./vault";
+import { GrowBars, MiniStats, Panel, Stairs, num } from "./viz";
 
 const usd2 = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const price = (v: number) => `$${v.toFixed(3)}`;
@@ -83,8 +84,8 @@ function SplitStrip({ label, parts, showLabel = false }: { label: string; parts:
     <div className="flex flex-col gap-3">
       {showLabel ? <Label>{label}</Label> : null}
       <div role="img" aria-label={label} className="flex h-12 gap-1 overflow-hidden rounded-md">
-        {parts.map((p) => (
-          <span key={p.name} className={`flex min-w-0 items-center px-3 font-body text-note font-semibold whitespace-nowrap ${p.className}`} style={{ flexGrow: p.pct, flexBasis: 0 }}>
+        {parts.map((p, i) => (
+          <span key={p.name} className={`flex min-w-0 origin-left items-center px-3 font-body text-note font-semibold whitespace-nowrap motion-safe:animate-[bar-grow_800ms_var(--ease-snappy)_both] ${p.className}`} style={{ flexGrow: p.pct, flexBasis: 0, animationDelay: `${i * 120}ms` }}>
             {p.pct >= 15 ? `${p.name} ${p.pct}%` : `${p.pct}%`}
           </span>
         ))}
@@ -134,7 +135,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
           aside={
             <>
               <Label className="text-canvas">{APY.fresh ? "New vault · target per year" : "APY since deployment"}</Label>
-              <span className="font-display text-[64px] leading-none font-extrabold tracking-[-0.04em] tabular-nums text-canvas md:text-[80px]">{APY.value}</span>
+              <span className="font-display text-[40px] leading-none font-extrabold tracking-[-0.04em] tabular-nums text-canvas md:text-[56px]">{APY.value}</span>
               <span className="font-body text-note text-canvas">
                 {APY.fresh ? "A target, not promised. No fee history yet." : "From advance fees, after losses. Illustrative, not promised."}
               </span>
@@ -184,12 +185,13 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
                 <Heading level={2} size="h2">
                   Value of $100 deposited, 12 weeks
                 </Heading>
-                <span className="font-display text-h2 tabular-nums text-fern">{usd2(last)}</span>
+                {flat ? null : <span className="font-display text-h2 tabular-nums text-fern">{usd2(last)}</span>}
               </div>
               {flat ? (
-                <Text size="note" tone="muted">
-                  Chart starts after the first fees.
-                </Text>
+                <div className="flex min-h-40 flex-col items-center justify-center gap-1 rounded-md bg-well px-4 py-8 text-center">
+                  <span className="font-body text-read font-semibold text-charcoal">No history yet</span>
+                  <Text size="note">Chart starts after the first fees.</Text>
+                </div>
               ) : (
                 <LineChart
                   points={series}
@@ -517,97 +519,72 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
       <PageHead label="Public dashboard · anyone can check" title="DripMoney, in real numbers.">
         Read straight from the contracts. No shop is named anywhere.
       </PageHead>
-      <PublicBand seed={9}>Read from the contracts</PublicBand>
-      <div>
-        <StatGrid
-          items={[
-            { label: "Out in advances", value: VAULT.outstanding, sub: `${VAULT.advancesOut} advances made` },
-            { label: "Repaid, 30 days", value: VAULT.repaid30d },
-            { label: "Written off", value: VAULT.writtenOff, sub: "all time" },
-            { label: "Shops active", value: VAULT.shopsActive, sub: "pseudonyms" },
-            { label: "Vault APY", value: apyView(VAULT).fresh ? "New vault" : VAULT.apy, sub: apyView(VAULT).fresh ? "target 8–10%/yr, not promised" : "since deployment, illustrative" },
-            { label: "Loss rate", value: VAULT.defaultRate },
-            { label: "DRIP price (TWAP)", value: VAULT.juniorTwap },
-            { label: "Coverage", value: VAULT.coverage, sub: "DRIP cover · 20% rule" },
-          ]}
-        />
+      <MiniStats
+        items={[
+          { label: "Out in advances", value: VAULT.outstanding, sub: `${VAULT.advancesOut} advances made` },
+          { label: "Repaid, 30 days", value: VAULT.repaid30d },
+          { label: "Written off", value: VAULT.writtenOff, sub: "all time" },
+          { label: "Shops active", value: VAULT.shopsActive, sub: "pseudonyms" },
+          { label: "Vault APY", value: apyView(VAULT).fresh ? "New vault" : VAULT.apy, sub: apyView(VAULT).fresh ? "target 8–10%/yr, not promised" : "since deployment, illustrative" },
+          { label: "Loss rate", value: VAULT.defaultRate },
+          { label: "DRIP price (TWAP)", value: VAULT.juniorTwap },
+          { label: "Coverage", value: VAULT.coverage, sub: "DRIP cover · 20% rule" },
+        ]}
+      />
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <Panel title="Every payment, split by the contract">
+          <SplitStrip
+            label="92% to the shop, 8% to repaying its advance"
+            parts={[
+              { name: "Shop", pct: 92, className: "bg-unlit text-charcoal" },
+              { name: "Advance", pct: 8, className: "bg-hunter text-canvas" },
+            ]}
+          />
+          <Text size="note" tone="muted">
+            Open advance: 8% repays it, fee first. No advance: the shop keeps 100%.
+          </Text>
+        </Panel>
+        <Panel title="Where the money sits">
+          <GrowBars
+            rows={[
+              { label: "Vault", value: num(VAULT.tvl), text: VAULT.tvl },
+              { label: "DripCoin", value: num(VAULT.junior), text: VAULT.junior, className: "bg-charcoal" },
+              { label: "Reserve", value: num(VAULT.reserve), text: VAULT.reserve, className: "bg-leaf" },
+            ]}
+          />
+          <Text size="note" tone="muted">
+            Losses hit the reserve and DripCoin before the vault.
+          </Text>
+        </Panel>
+        <Panel
+          title="Advance limits"
+          aside={
+            lowered ? (
+              <TextLink href={routes.risk} arrow className="min-h-0 text-[12px]">
+                Why lowered
+              </TextLink>
+            ) : null
+          }
+        >
+          <Stairs steps={TIER_CAPS.map((t) => ({ label: TIER_NAMES[t.tier] ?? `Tier ${t.tier}`, cap: t.cap, was: t.was }))} />
+        </Panel>
       </div>
-      <Columns ratio="3:2">
-        <Stack gap="lg">
-          <Card padding="lg">
-            <Heading level={2} size="h2">
-              Every payment, split by the contract
-            </Heading>
-            <SplitStrip
-              label="92% to the shop, 8% to repaying its advance"
-              parts={[
-                { name: "To the shop", pct: 92, className: "bg-unlit text-charcoal" },
-                { name: "Advance", pct: 8, className: "bg-hunter text-canvas" },
-              ]}
-            />
-            <Text size="note" tone="muted">
-              Shops with an open advance send 8% of each payment to pay it back: the fee first, then the advance. Shops without one keep 100%.
-            </Text>
-          </Card>
-          <div>
-            <Card padding="lg" as="section" aria-label="Current advance limits">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <Heading level={2} size="h2">
-                  Current advance limits
-                </Heading>
-                {lowered ? (
-                  <TextLink href={routes.risk} arrow>
-                    Why lowered
-                  </TextLink>
-                ) : null}
-              </div>
-              <KeyValue
-                rows={TIER_CAPS.map((t) => [
-                  TIER_NAMES[t.tier] ?? `Tier ${t.tier}`,
-                  <span key={t.tier} className="inline-flex items-baseline gap-2">
-                    {t.was && t.was !== t.cap ? <s className="font-ledger text-ledger font-normal text-charcoal-muted">was {t.was}</s> : null}
-                    {t.cap}
-                  </span>,
-                ])}
-              />
-            </Card>
-          </div>
-        </Stack>
-        <Stack gap="lg">
-          <div>
-            <Card>
-              <Heading level={2} size="h2">
-                Capital
-              </Heading>
-              <KeyValue
-                rows={[
-                  ["Vault", VAULT.tvl],
-                  ["DripCoin (first loss)", VAULT.junior],
-                  ["Reserve", VAULT.reserve],
-                  ["Coverage", VAULT.coverage],
-                ]}
-              />
-            </Card>
-          </div>
-          <Card>
-            <Heading level={2} size="h2">
-              Each advance fee
-            </Heading>
-            <KeyValue rows={split.parts.map((p) => [p.row, `${p.pct}%`])} />
-            <Text size="note" tone="muted">
-              A small weekly fee on every advance (max 3%). Most of it goes to the vault.
-            </Text>
-          </Card>
-          <RowList>
-            <ListRow
-              href={routes.risk}
-              title="Risk status"
-              sub={isMock ? "Tier 3 limit reviewed today" : lowered ? "A limit was lowered" : "Signals and every limit change"}
-            />
-            <ListRow href={routes.explorer} title="Explorer" sub="Every payment, advance and pass. No names" />
-          </RowList>
-        </Stack>
-      </Columns>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
+        <Panel title="Each advance fee">
+          <SplitStrip label={split.label} parts={split.parts} />
+          <Text size="note" tone="muted">
+            A small weekly fee on every advance (max 3%). Most of it goes to the vault.
+          </Text>
+        </Panel>
+        <RowList>
+          <ListRow
+            href={routes.risk}
+            title="Risk status"
+            sub={isMock ? "Tier 3 limit reviewed today" : lowered ? "A limit was lowered" : "Signals and every limit change"}
+          />
+          <ListRow href={routes.explorer} title="Explorer" sub="Every payment, advance and pass" />
+        </RowList>
+      </div>
     </LendShell>
   );
 }
@@ -634,95 +611,68 @@ export function RiskScreen({ initial }: { initial: RiskView | null }) {
       >
         Signals and every limit change, with the reasons. Limits only move down on their own.
       </PageHead>
-      <PublicBand seed={13}>Every limit change is public</PublicBand>
       <Text size="note" tone="muted">
         Testnet pool seeded by the DripMoney team; its price is an early-warning signal, not a proven credit oracle.
       </Text>
-      <Columns ratio="3:2">
-        <Stack gap="lg">
-          <div>
-            <Card padding="lg" as="section" aria-label="Signals">
-              <Heading level={2} size="h2">
-                Signals
-              </Heading>
-              <ul className="m-0 flex list-none flex-col p-0">
-                {signals.map((s) => (
-                  <li key={s.name} className="flex items-start justify-between gap-4 border-t border-hairline py-3.5 first:border-t-0 first:pt-0 last:pb-0">
-                    <span className="flex min-w-0 flex-col gap-0.5">
-                      <span className="font-body text-read font-semibold text-charcoal">{s.name}</span>
-                      <span className="font-body text-note text-charcoal-muted">{s.note}</span>
-                    </span>
-                    <span className="flex shrink-0 flex-col items-end gap-1">
-                      <span className="font-display text-h2 tabular-nums text-charcoal">{s.value}</span>
-                      <Pill tone={signalPill[s.state].tone}>{signalPill[s.state].text}</Pill>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        {signals.map((s, i) => (
+          <div
+            key={s.name}
+            className="flex min-w-0 flex-col gap-1 rounded-lg border border-hairline bg-surface px-3.5 py-2.5 motion-safe:animate-[page-in_420ms_var(--ease-snappy)_both]"
+            style={{ animationDelay: `${i * 40}ms` }}
+          >
+            <span className="flex items-center justify-between gap-2">
+              <span className="truncate font-ledger text-tag text-charcoal-muted uppercase">{s.name}</span>
+              <Pill tone={signalPill[s.state].tone}>{signalPill[s.state].text}</Pill>
+            </span>
+            <span className="font-display text-h2 text-charcoal tabular-nums">{s.value}</span>
+            <span className="truncate font-body text-[12px] text-charcoal-muted">{s.note}</span>
           </div>
-          <div>
-            <Card padding="lg" as="section" aria-label="What the Risk agent did">
-              <Heading level={2} size="h2">
-                What the Risk agent did
-              </Heading>
-              {riskLog.length ? (
-                <ActivityList
-                  label="Risk decisions, newest first"
-                  items={riskLog.map((l, i) => ({
-                    id: `${l.title}-${i}`,
-                    title: l.title,
-                    when: isMock && i === 0 ? `Today ${l.time}` : l.time,
-                    tag: <Pill tone={logPill[logKind(l.kind)].tone}>{logPill[logKind(l.kind)].text}</Pill>,
-                    detail: (
-                      <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                        {linesOf(l).map((r) => (
-                          <li key={r} className="flex gap-2">
-                            <span aria-hidden className="text-hunter">
-                              →
-                            </span>
-                            {r}
-                          </li>
-                        ))}
-                      </ul>
-                    ),
-                  }))}
-                />
-              ) : (
-                <Text size="note" tone="muted">
-                  No decisions yet.
-                </Text>
-              )}
-            </Card>
-          </div>
-        </Stack>
-        <Stack gap="lg">
-          <section aria-label="The rule" className="flex flex-col gap-2 rounded-lg border border-honeydew-line bg-honeydew p-5">
-            <Label className="text-hunter">The rule</Label>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <Panel title="What the Risk agent did" className="lg:col-span-2">
+          {riskLog.length ? (
+            <ActivityList
+              label="Risk decisions, newest first"
+              items={riskLog.map((l, i) => ({
+                id: `${l.title}-${i}`,
+                title: l.title,
+                when: isMock && i === 0 ? `Today ${l.time}` : l.time,
+                tag: <Pill tone={logPill[logKind(l.kind)].tone}>{logPill[logKind(l.kind)].text}</Pill>,
+                detail: (
+                  <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                    {linesOf(l).map((r) => (
+                      <li key={r} className="flex gap-2">
+                        <span aria-hidden className="text-hunter">
+                          →
+                        </span>
+                        {r}
+                      </li>
+                    ))}
+                  </ul>
+                ),
+              }))}
+            />
+          ) : (
+            <Text size="note" tone="muted">
+              No decisions yet.
+            </Text>
+          )}
+        </Panel>
+        <div className="flex flex-col gap-3">
+          <Panel title="Limit per advance">
+            <Stairs steps={tierCaps.map((t) => ({ label: TIER_NAMES[t.tier] ?? `Tier ${t.tier}`, cap: t.cap, was: t.was }))} />
+          </Panel>
+          <Panel title="The rule" tone="tint">
             <Text tone="strong">The agent can only lower limits, inside a preset band. Raising them back always needs a person.</Text>
-          </section>
-          <div>
-            <Card as="section" aria-label="Limit per advance">
-              <Heading level={2} size="h2">
-                Limit per advance
-              </Heading>
-              <KeyValue
-                rows={tierCaps.map((t) => [
-                  TIER_NAMES[t.tier] ?? `Tier ${t.tier}`,
-                  <span key={t.tier} className="inline-flex items-baseline gap-2">
-                    {t.was && t.was !== t.cap ? <s className="font-ledger text-ledger font-normal text-charcoal-muted">was {t.was}</s> : null}
-                    {t.cap}
-                  </span>,
-                ])}
-              />
-            </Card>
-          </div>
+          </Panel>
           <RowList>
             <ListRow href={routes.dripcoin} title="DripCoin" sub="The price the agent watches" />
             <ListRow href={routes.protocol} title="Protocol" sub="Public totals" />
           </RowList>
-        </Stack>
-      </Columns>
+        </div>
+      </div>
     </LendShell>
   );
 }

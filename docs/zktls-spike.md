@@ -11,7 +11,7 @@ Goal: a merchant proves **"I control a real business account, active, revenue �
 | Onchain verification | ✅ **Verified live on Sepolia**: proxy `0xAe94FB09711e1c6B057853a515483792d8e474d0` → impl `0x1d0e…9634`, `verifyProof(...)` selector `0xa960e69e` present, owner `0xc157…06d5`, 1-day attestor epochs | ✅ RISC Zero verifier, about 300k gas | Both work; Reclaim is cheaper and simpler |
 | Bind the proof to our credential | `setContext(address, message)`: we put the Business Pass commitment in `message` | Custom | Stops proof theft |
 | SDK | `@reclaimprotocol/js-sdk` **5.8.3** (Oct 2026): `ReclaimProofRequest.init(appId, secret, providerId)`, `getRequestUrl()`, `startSession`, `verifyProof`, `transformForOnchain` | `@vlayer/sdk` | |
-| Existing merchant providers | ❌ **None** among its 121 verified providers: no Stripe, Shopify, Mercado Pago, M-Pesa, Paystack (closest: "Fiverr Seller Info") | n/a | **We build a custom provider** (`build.reclaimprotocol.org`) |
+| Existing merchant providers | ❌ **None** among its 121 verified providers: no Stripe, Shopify, M-Pesa, Paystack (closest: "Fiverr Seller Info") | n/a | **We build a custom provider** (`build.reclaimprotocol.org`) |
 
 ## Design
 
@@ -44,7 +44,7 @@ App ── relayer ─► BusinessPassRegistry.issue(reclaimProof, worldIdProof,
 | Track | What | Why |
 |---|---|---|
 | **A: "real platform"** | Custom provider on **Stripe** (a test-mode account we control; we create test charges to reach a revenue band) | Globally recognised; a real authenticated HTTPS dashboard. **Risk:** 2FA or bot checks in the login webview. Test early. |
-| **B: guaranteed** | Custom provider on our own **demo seller portal** (a "Mercado Pago-style" dashboard we host, with a login) | 100% under our control; same cryptography. Shown honestly as a stand-in. |
+| **B: guaranteed** | Custom provider on our own **demo seller portal** (a marketplace-style dashboard we host, with a login) | 100% under our control; same cryptography. Shown honestly as a stand-in. |
 | Backup | Pre-recorded proof JSON + replayed `issue()` tx | If the venue Wi-Fi breaks the live flow |
 
 **What the judge sees:**

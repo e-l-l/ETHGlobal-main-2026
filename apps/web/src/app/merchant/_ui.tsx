@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BlockBand, BlockPanel } from "@/blocks";
+import { BlockSkyline } from "@/blocks";
 import { Card, CheckIcon, ChevronLeftIcon, ExclaimIcon, Heading, JarBandStrip, Label, Text } from "@/final";
 import { cn } from "@/lib/cn";
 
@@ -10,48 +10,49 @@ import { cn } from "@/lib/cn";
  */
 
 /**
- * Hunter hero on the block pattern: the tiles run behind, a Hunter overlay (dim) keeps every line of text on dark
- * green, and a lime-to-Hunter rule closes it. Pick a different `seed` per screen so each reads as its own wall.
- * Keep text left-aligned inside it. Tighter on desktop (lg:p-5) so the screen fits one view.
+ * Hunter hero: a solid Hunter card, light text, and a lime-to-Hunter rule closing it. Keep text left-aligned inside it.
+ * Tighter on desktop (lg:p-5) so the screen fits one view.
  */
-export function HeroBlock({
-  className,
-  children,
-  rule = true,
-  seed = 1,
-  dim = 78,
-  lit,
-}: {
-  className?: string;
-  children: ReactNode;
-  rule?: boolean;
-  seed?: number;
-  dim?: number;
-  /** Tile indexes to light lime (a tier, a milestone). */
-  lit?: number[];
-}) {
+export function HeroBlock({ className, children, rule = true }: { className?: string; children: ReactNode; rule?: boolean }) {
   return (
     <section className={cn("relative flex flex-col overflow-hidden rounded-lg bg-hunter text-canvas", className)}>
-      <BlockPanel
-        seed={seed}
-        dim={dim}
-        lit={lit}
-        cols={8}
-        rows={6}
-        grain={false}
-        className="flex-1 rounded-none"
-        bodyClassName="flex-1 gap-4 p-5 md:gap-5 md:p-7 lg:gap-3 lg:p-5"
-      >
-        {children}
-      </BlockPanel>
+      <div className="flex flex-1 flex-col gap-4 p-5 md:gap-5 md:p-7 lg:gap-3 lg:p-5">{children}</div>
       {rule ? <JarBandStrip className="h-1 shrink-0 rounded-none" /> : null}
     </section>
   );
 }
 
-/** A thin strip of tiles (about 20px): a card edge or divider. Phones show half the strip. */
-export function BlockRule({ seed = 1, className }: { seed?: number; className?: string }) {
-  return <BlockBand cols={24} rows={1} seed={seed} grain={false} className={cn("h-5 shrink-0", className)} />;
+/** A plain Hunter panel for light text: the same slot the block-pattern panel used to fill. */
+export function HunterPanel({ className, bodyClassName, children }: { className?: string; bodyClassName?: string; children: ReactNode }) {
+  return (
+    <div className={cn("overflow-hidden rounded-lg bg-hunter text-canvas", className)}>
+      <div className={cn("flex flex-col gap-2 p-5", bodyClassName)}>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * The merchant canvas's only block pattern: a skyline along the bottom edge that climbs to one peak and stops,
+ * under a heavy Canvas wash so only traces show. Fixed and behind everything; render once per layout.
+ */
+export function MerchantBackdrop() {
+  return (
+    // Full width of the window. Two layers give depth: a taller, fainter ridge behind, the main climb in front.
+    // The mask melts the tops into the page. Only the merchant layouts render this, so no other route has it.
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-[46vh] max-h-130 overflow-hidden"
+      style={{ maskImage: "linear-gradient(to top, #000 35%, transparent)", WebkitMaskImage: "linear-gradient(to top, #000 35%, transparent)" }}
+    >
+      <div className="absolute inset-x-0 bottom-0 opacity-60">
+        <BlockSkyline cols={16} rows={5} peak={1} seed={9} grain={false} />
+      </div>
+      <div className="absolute inset-x-0 bottom-0">
+        <BlockSkyline cols={24} rows={4} peak={0.45} seed={5} grain={false} />
+      </div>
+      <div className="absolute inset-0 bg-canvas/90" />
+    </div>
+  );
 }
 
 /**

@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
   subgraph Onboarding
-    SPRT[Demo seller portal<br/>stand-in for Mercado Pago] -->|zkTLS proof| BP[Business Pass]
+    SPRT[Demo seller portal<br/>stand-in for a real seller marketplace] -->|zkTLS proof| BP[Business Pass]
     M[Merchant app] -->|create shop| SR[ShopRegistry]
     M -->|limits + one-time Agent Pass approval| PG
   end
@@ -61,7 +61,7 @@ flowchart LR
 | Pay screen | QR target for customers. Takes the customer's token, swaps through the Uniswap API, calls `PaymentRouter.pay`. Never mentions the advance. |
 | Lender and junior views | Same Next.js app. Senior vault earn, deposit, withdraw and position. Junior vault, mint, redeem and trade on the Uniswap pool. |
 | Public dashboard | Protocol totals, risk status, explorer links. Hosts the data behind the "What the world sees" toggle. |
-| Demo seller portal | A separate site with seeded seller accounts: login, balance, sales chart, transactions. The zkTLS proof reads from it. Stands in for Mercado Pago. |
+| Demo seller portal | A separate site with seeded seller accounts: login, balance, sales chart, transactions. The zkTLS proof reads from it. Stands in for a real seller marketplace. |
 | Agent service (TypeScript) | Cash-flow, Underwriter, Critic and Risk agents. Calls Claude with structured outputs, signs offers that pass the Critic. Holds an offer-signing key only, never funds. |
 | API routes (Vercel) | Server-side validation of Agent Pass and World ID results and of zkTLS attestations, offer relay, gas sponsorship for the demo. |
 
@@ -166,6 +166,6 @@ contracts/      Foundry project: shop registry, router, advance manager, policy 
 circuits/       Noir: standing_pass
 agents/         TypeScript agent service: cash-flow, underwriter, critic, risk
 app/            Next.js: merchant app, pay screen, lender and junior views, public dashboard, API routes
-seller-portal/  Demo seller portal (separate site, stand-in for Mercado Pago)
+seller-portal/  Demo seller portal (separate site, stand-in for a real seller marketplace)
 docs/           You are here
 ```

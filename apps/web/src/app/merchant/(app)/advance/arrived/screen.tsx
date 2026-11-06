@@ -22,7 +22,7 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
     <Page tabs dense>
       <BackLink href={routes.advance.details}>Your advance</BackLink>
 
-      <HeroBlock seed={7}>
+      <HeroBlock>
         <HeroLabel>Your agent drew an advance{advance.drawnAt ? ` · ${advance.drawnAt}` : ""}</HeroLabel>
         <BigFigure as="h1" className="text-balance">
           <CountUp value={advance.drawn} from={0} ms={900} format={formatMoney} /> <span className="text-lime">for {advance.purpose}</span>

@@ -15,6 +15,7 @@ export const routes = {
   oldLanding: "/old-landing",
   home: "/home",
   blockPattern: "/block-pattern",
+  covers: "/covers",
 
   /* Merchant onboarding */
   welcome: "/onboarding",

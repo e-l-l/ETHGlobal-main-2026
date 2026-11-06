@@ -1,6 +1,6 @@
 # demo-portal: "PagoSur Vendedores" (DEMO seller portal for the zkTLS demo)
 
-A small, deployable stand-in for a merchant dashboard such as Mercado Pago's. A merchant logs in on
+A small, deployable stand-in for a merchant dashboard like a marketplace seller dashboard. A merchant logs in on
 their phone inside Reclaim Protocol's zkTLS flow. Reclaim then proves predicates over the HTTPS
 response of `GET /api/me/summary` ("active", "6+ months", "allowed country", "revenue band >= k")
 **without revealing** the account id, the business name or the exact numbers.

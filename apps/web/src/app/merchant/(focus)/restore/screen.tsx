@@ -45,6 +45,7 @@ export function RestoreScreen() {
       panel={
         <BrandPanel
           home={routes.merchant}
+          blocks={{ seed: 41 }}
           eyebrow="New phone"
           title={
             <>

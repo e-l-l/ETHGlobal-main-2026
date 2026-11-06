@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { AgentLimitsVM, LadderStepVM } from "@repo/sdk";
 import { ActionBar, Button, Card, Chips, Columns, Label, OfferDisclosure, Stack, Text } from "@/final";
-import { BlockPanel } from "@/blocks";
 import { HeroLabel } from "../../../_ui";
 import { FEE_RULE, FEE_TERMS, HOLDBACK_PCT, annualizedMaxPercent, feeAfterDays, maxFee } from "@/lib/fees";
 import { formatMoney, formatPercent } from "@/lib/format";
@@ -95,7 +94,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
       </div>
 
       <Stack gap="md" className="md:sticky md:top-24">
-        <BlockPanel seed={4} dim={78} cols={6} rows={6} bodyClassName="gap-4 p-5 md:gap-5 md:p-7">
+        <section className="flex flex-col gap-4 rounded-lg bg-hunter p-5 text-canvas md:gap-5 md:p-7">
           <HeroLabel>In plain words</HeroLabel>
           <p className="m-0 font-display text-h2 text-canvas">
             Your agent can draw up to <span className="text-lime">{formatMoney(Number(perAdvance))} at a time</span> and{" "}
@@ -112,7 +111,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
               <span className="font-semibold text-canvas">0.5% a week, max 3%</span>
             </div>
           </div>
-        </BlockPanel>
+        </section>
         <ActionBar hint="One-time approval. Only you can turn the agent on.">
           <Button href={`${routes.agent.approve}?${new URLSearchParams({ perAdvance, perMonth, purpose })}`} width="full">
             Approve with World

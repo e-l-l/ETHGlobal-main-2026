@@ -1,4 +1,4 @@
-import { BlockPanel } from "@/blocks";
+import { HunterPanel } from "../../../_ui";
 import { ActionBar, AlertIcon, Button, Card, Heading, KeyValue, Label, LockIcon, Page, Text } from "@/final";
 import { routes } from "@/lib/routes";
 import { CardTitle } from "../../../_ui";
@@ -11,7 +11,7 @@ export default async function AgentDeniedPage({ searchParams }: { searchParams: 
   const expired = (await searchParams).reason === "expired";
   return (
     <Page width="narrow" tabs dense className="md:justify-center">
-      <BlockPanel seed={9} dim={78} cols={6} rows={5} bodyClassName="gap-2 p-5 md:p-6">
+      <HunterPanel bodyClassName="gap-2 p-5 md:p-6">
         <span aria-hidden className="grid size-12 place-items-center rounded-full bg-lime text-charcoal">
           {expired ? <AlertIcon size={24} /> : <LockIcon size={24} />}
         </span>
@@ -30,7 +30,7 @@ export default async function AgentDeniedPage({ searchParams }: { searchParams: 
             </>
           )}
         </Text>
-      </BlockPanel>
+      </HunterPanel>
       <Card padding="lg">
         <CardTitle>Where things stand</CardTitle>
         <KeyValue

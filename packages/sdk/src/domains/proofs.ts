@@ -539,6 +539,14 @@ export async function proofCenter(ctx: Ctx, opts: ProofCenterOptions = {}): Prom
   }
 
   const errors: string[] = [];
+  /** Hand a finished part to `opts.onPartial`. A throwing listener must never break the read. */
+  const emit = (part: Partial<ProofCenterView>) => {
+    try {
+      opts.onPartial?.(part);
+    } catch {
+      /* the listener's problem */
+    }
+  };
   const chain = ctx.chain();
   const d = chain.deployment;
   const scan = explorerBaseFor(d.chainId);
@@ -546,6 +554,14 @@ export async function proofCenter(ctx: Ctx, opts: ProofCenterOptions = {}): Prom
   const addrLink = (a: string) => (scan ? `${scan}/address/${a}` : null);
 
   const latest = await section(errors, "network", () => chain.blockNumber(), undefined as bigint | undefined);
+  const networkVM = {
+    mode: ctx.mode,
+    chainId: d.chainId,
+    name: d.chainId === 11_155_111 ? "Sepolia" : d.chainId === 31_337 ? "Local devnet" : `Chain ${d.chainId}`,
+    block: latest === undefined ? null : Number(latest),
+  };
+  const explorerVM = scan ? { name: "Etherscan", baseUrl: scan, appRoute: routes.explorer } : { name: "In-app explorer", baseUrl: null, appRoute: routes.explorer };
+  emit({ network: networkVM, explorer: explorerVM, privacy: privacyVM(rpcMode), source: "chain" });
   const deployBlock = BigInt(d.deployBlock);
   const span = BigInt(opts.days ?? 3) * BLOCKS_PER_DAY;
   const from = latest === undefined ? deployBlock : latest - span > deployBlock ? latest - span : deployBlock;
@@ -569,6 +585,7 @@ export async function proofCenter(ctx: Ctx, opts: ProofCenterOptions = {}): Prom
     },
     contractRows(d),
   );
+  void contractsP.then((contracts) => emit({ contracts }));
 
   // 2. events: one scan shared by zkProofs and transactions (explorer's set + extras), plus swaps and pass issues.
   const logsP: Promise<ExplorerLog[]> =
@@ -591,7 +608,7 @@ export async function proofCenter(ctx: Ctx, opts: ProofCenterOptions = {}): Prom
   };
 
   // 3. zkProofs: decode the proof-carrying txs.
-  const zkProofs = await section(
+  const zkProofsP = section(
     errors,
     "zkProofs",
     async () => {
@@ -673,9 +690,10 @@ export async function proofCenter(ctx: Ctx, opts: ProofCenterOptions = {}): Prom
     },
     [] as ZkProofVM[],
   );
+  void zkProofsP.then((zkProofs) => emit({ zkProofs }));
 
   // 4. transactions: explorer() logs + extras + swaps, newest first.
-  const transactions = await section(
+  const transactionsP = section(
     errors,
     "transactions",
     async () => {
@@ -693,11 +711,14 @@ export async function proofCenter(ctx: Ctx, opts: ProofCenterOptions = {}): Prom
     transactionCounts[k] = (transactionCounts[k] ?? 0) + 1;
   }
 
+  void transactionsP.then((transactions) => emit({ transactions, transactionCounts }));
+
   // 5. device proofs.
-  const deviceProofs = deviceVMs(await ctx.proofLog.list().catch(() => []), now, deviceLimit);
+  const deviceProofsP = ctx.proofLog.list().then((entries) => deviceVMs(entries, now, deviceLimit), () => deviceVMs([], now, deviceLimit));
+  void deviceProofsP.then((deviceProofs) => emit({ deviceProofs }));
 
   // 6. AI.
-  const ai = await section(
+  const aiP = section(
     errors,
     "ai",
     async () => {
@@ -720,13 +741,18 @@ export async function proofCenter(ctx: Ctx, opts: ProofCenterOptions = {}): Prom
     },
     aiFromSources({ now, decisions: ctx.decisionLog }),
   );
+  void aiP.then((ai) => emit({ ai }));
 
   // 7. checks.
-  const checks = opts.skipChecks ? [] : await section(errors, "checks", () => liveChecks(ctx, d, contracts), [] as ProofCheckVM[]);
+  const checksP = opts.skipChecks ? Promise.resolve([] as ProofCheckVM[]) : section(errors, "checks", () => liveChecks(ctx, d, contracts), [] as ProofCheckVM[]);
+  void checksP.then((checks) => emit({ checks }));
+
+  // The sections don't depend on each other, so they load side by side instead of one after another.
+  const [zkProofs, transactions, deviceProofs, ai, checks] = await Promise.all([zkProofsP, transactionsP, deviceProofsP, aiP, checksP]);
 
   return {
-    network: { mode: ctx.mode, chainId: d.chainId, name: d.chainId === 11_155_111 ? "Sepolia" : d.chainId === 31_337 ? "Local devnet" : `Chain ${d.chainId}`, block: latest === undefined ? null : Number(latest) },
-    explorer: scan ? { name: "Etherscan", baseUrl: scan, appRoute: routes.explorer } : { name: "In-app explorer", baseUrl: null, appRoute: routes.explorer },
+    network: networkVM,
+    explorer: explorerVM,
     contracts,
     zkProofs,
     deviceProofs,

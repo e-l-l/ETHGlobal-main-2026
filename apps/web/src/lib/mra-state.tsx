@@ -34,10 +34,34 @@ function NoShopHere() {
   );
 }
 
+/** A grey placeholder block. Pulses, unless the person asked for reduced motion. */
+export function SkeletonBlock({ className }: { className?: string }) {
+  return <div aria-hidden className={`animate-pulse rounded-md bg-well motion-reduce:animate-none ${className ?? ""}`} />;
+}
+
 /**
- * What a screen shows while the SDK loads, or when it fails, in local / sepolia mode. Mock mode never renders
- * this: its data is on the server. Kept plain on purpose, so it sits in either design system.
+ * Stand-in for a screen while its data loads: a heading, a hero card, two tiles and a few rows. It keeps the page's
+ * rough shape, so the layout doesn't jump when the real content lands. Live reads can take many seconds.
  */
+export function ScreenSkeleton({ message = "Loading" }: { message?: string }) {
+  return (
+    <div role="status" aria-busy="true" aria-live="polite" className="mx-auto flex w-full max-w-280 flex-col gap-5 px-4 py-6 md:px-8 md:py-10">
+      <p className="m-0 font-body text-note text-charcoal-muted">{message}</p>
+      <SkeletonBlock className="h-8 w-2/3 max-w-96" />
+      <SkeletonBlock className="h-44 w-full rounded-lg" />
+      <div className="grid grid-cols-2 gap-3">
+        <SkeletonBlock className="h-24 rounded-lg" />
+        <SkeletonBlock className="h-24 rounded-lg" />
+      </div>
+      <div className="flex flex-col gap-3">
+        <SkeletonBlock className="h-14 w-full" />
+        <SkeletonBlock className="h-14 w-full" />
+        <SkeletonBlock className="h-14 w-4/5" />
+      </div>
+    </div>
+  );
+}
+
 /** One shimmering placeholder block. The shimmer stops for users who ask for reduced motion. */
 function Bone({ className = "" }: { className?: string }) {
   return <div aria-hidden className={`rounded-md bg-well motion-safe:animate-pulse ${className}`} />;

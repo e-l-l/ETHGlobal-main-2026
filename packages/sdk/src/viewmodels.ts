@@ -781,4 +781,10 @@ export type ProofCenterOptions = {
   deviceLimit?: number;
   /** Skip the live checks (saves ~15 reads). Default false. */
   skipChecks?: boolean;
+  /**
+   * Called with each part of the view as soon as it is ready (network + contracts first, then proofs, transactions,
+   * device proofs, AI and checks, in whatever order they finish). The resolved view still has everything.
+   * Real modes only: mock mode resolves at once and never calls it.
+   */
+  onPartial?: (part: Partial<ProofCenterView>) => void;
 };

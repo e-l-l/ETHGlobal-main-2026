@@ -158,10 +158,10 @@ export const agentPermissions = {
 export const cashOut = {
   available: 100,
   destinations: [
-    { value: "mercado-pago", title: "Mercado Pago", description: "local pesos to your account" },
+    { value: "bank", title: "Local bank account", description: "local currency to your account" },
     { value: "usd", title: "Keep in dollars", description: "move it later" },
   ],
-  defaultDestination: "mercado-pago",
+  defaultDestination: "bank",
 } as const;
 
 /* --------------------------------------------------------------- M21 my QR */

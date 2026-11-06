@@ -43,6 +43,7 @@
   --color-hairline: #dfe9dc; /* card borders, dividers */
   --color-control: #6f8a68;  /* borders on anything tappable */
   --color-track: #b7cdb1;    /* empty progress, toggle off */
+  --color-stage-todo: #dbe7d6;  /* bands a loader has not reached yet */
   --color-unlit: #a9c3a2;    /* unlit meter bands, empty dune pixels, the 90% */
 
   /* status */
@@ -83,6 +84,13 @@
   @keyframes band {
     0%, 100% { fill: var(--band-off); }
     6%, 70% { fill: var(--band-on); }
+  }
+
+  /* Staged loader: the band being worked on breathes between pale and bright green. */
+  --animate-band-active: band-active 1.3s ease-in-out infinite;
+  @keyframes band-active {
+    0%, 100% { fill: var(--color-unlit); }
+    50% { fill: var(--color-leaf); }
   }
 
   /* Logo cycle (footer mark): each band walks the brand greens; staggered negative delays make a falling wave. */
@@ -135,6 +143,13 @@
 }
 /* Pixel dune and tier tiles build upward, one column at a time (set animation-delay per column). */
 @keyframes rise { from { transform: scaleY(0); } }
+/* Mascot blink: eyes squash shut for a moment every few seconds. */
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+/* Charts: a bar grows from its base; a line draws itself; a node pulses once. */
+@keyframes bar-grow { from { transform: scaleX(0); } }
+@keyframes draw { from { stroke-dashoffset: var(--len, 400); } to { stroke-dashoffset: 0; } }
+@keyframes tick-pop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes pulse-ring { 0% { transform: scale(0.6); opacity: 0.8; } 100% { transform: scale(2.2); opacity: 0; } }
 
 @layer base {
   html { background: var(--color-canvas); color: var(--color-charcoal); }

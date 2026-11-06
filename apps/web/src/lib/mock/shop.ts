@@ -22,7 +22,7 @@ export const shop = {
 export const WALLET = "0x7a3e5b2c4d1f9e8a7b6c5d4e3f2a1b0c9d8e91c2";
 
 /** Ordinary names offered on Create shop. Neutral on purpose: nothing about the owner. */
-export const SHOP_NAME_IDEAS = ["Corner Kiosk", "Kiosco Sol", "La Esquina", "Stall 14"] as const;
+export const SHOP_NAME_IDEAS = ["Corner Kiosk", "Chai Stop", "Daily Needs", "Sai Kirana"] as const;
 
 /** Max advance per tier, unlocked by repaid advances. */
 export const limitsLadder = [

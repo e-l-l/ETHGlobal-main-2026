@@ -52,7 +52,7 @@ export function AdvanceDetailsScreen({ initial, demo }: { initial: AdvanceDetail
       {/* Desktop: three columns so the advance, the chart and the terms share one view. */}
       <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[3fr_2fr] lg:grid-cols-3 lg:gap-4">
         <Stack gap="lg" className="lg:gap-4">
-          <HeroBlock seed={5}>
+          <HeroBlock>
             <HeroLabel>Left to pay back</HeroLabel>
             <div className="flex flex-col gap-1.5 lg:gap-1">
               <BigFigure>{formatMoney(advance.left)}</BigFigure>

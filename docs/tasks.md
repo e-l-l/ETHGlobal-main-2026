@@ -52,7 +52,7 @@ Built in parallel by 3 Claude and 3 Codex agents, then merged. 97 tests: 96 pass
 | Z3 | ✅ Generated `HonkVerifier` (18KB), real-proof end-to-end tests pass | P0 | 1.5 | Z2 |
 | Z4 | Browser proving with `@aztec-foundation/bb.js@6.0.0` in the app, time it on a cheap Android phone | P0 | 3 | Z2 |
 | Z5 | Secret storage on the device and a backup or export flow | P1 | 1.5 | Z4 |
-| Z6 | zkTLS proof of offchain sales (Mercado Pago or M-Pesa) | P2 | 6+ | — |
+| Z6 | zkTLS proof of offchain sales (M-Pesa) | P2 | 6+ | — |
 
 ## 3. Agents (Python, models on Amazon Bedrock): ✅ first iteration done 2026-11-05, see [agents/README.md](../agents/README.md)
 
