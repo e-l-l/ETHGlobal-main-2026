@@ -1,6 +1,6 @@
 # Caddy: automatic HTTPS (Let's Encrypt, with ZeroSSL as Caddy's built-in fallback) for every site below.
 # HOST_SUFFIX is e.g. 13-233-45-67.sslip.io (no domain needed) or demo.example.com (real domain).
-# CORS is deliberately NOT handled here: each app owns its own CORS policy.
+# CORS is deliberately NOT handled here: each app owns its own CORS policy (rpc-proxy sets CORS * itself).
 {
 	# Uncomment and set to get certificate-expiry mail (optional):
 	# email you@example.com
@@ -50,4 +50,23 @@ issuer.{$HOST_SUFFIX} {
 	import common
 	import noframe
 	reverse_proxy issuer:{$ISSUER_PORT}
+}
+
+# ---- public devnet (DEVNET=1 in env/compose.env; 502 when the devnet profile is off) ----
+# rpc: JSON-RPC for anvil, ONLY through rpc-proxy (method allowlist, per-IP rate limit, CORS *). anvil itself is
+# never proxied. Caddy replaces any client-sent X-Forwarded-For (no trusted_proxies), so the proxy's per-IP limit
+# keys on the real client address.
+rpc.{$HOST_SUFFIX} {
+	import common
+	import noframe
+	request_body {
+		max_size 512KB
+	}
+	reverse_proxy rpc-proxy:8546
+}
+
+api-devnet.{$HOST_SUFFIX} {
+	import common
+	import noframe
+	reverse_proxy agents-api-devnet:8787
 }

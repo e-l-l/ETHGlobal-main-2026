@@ -48,7 +48,18 @@ resolve_host_suffix() {
   export HOST_SUFFIX
 }
 
+# DEVNET=1 (shell env > compose.env) turns on the `devnet` compose profile: anvil, devnet-deployer, rpc-proxy,
+# agents-api-devnet. Every wrapper goes through dc(), so compose.sh / logs.sh / devnet.sh all see it.
+devnet_enabled() {
+  local v="${DEVNET:-}"
+  [[ -n "$v" ]] || v="$(env_val "$COMPOSE_ENV" DEVNET)"
+  [[ "$v" == 1 || "$v" == true || "$v" == yes ]]
+}
+
 dc() {
+  if devnet_enabled && [[ ",${COMPOSE_PROFILES:-}," != *",devnet,"* ]]; then
+    export COMPOSE_PROFILES="${COMPOSE_PROFILES:+$COMPOSE_PROFILES,}devnet"
+  fi
   local envfile=()
   [[ -f "$COMPOSE_ENV" ]] && envfile=(--env-file "$COMPOSE_ENV")
   # ${arr[@]+...} keeps macOS bash 3.2 happy with an empty array under set -u

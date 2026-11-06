@@ -11,7 +11,7 @@ set -euo pipefail
 # shellcheck source=deploy/lib.sh
 . "$(dirname "$0")/lib.sh"
 export COMPOSE_EXTRA_FILES="-f $DEPLOY_DIR/docker-compose.local.yml"
-export HOST_SUFFIX=localhost DEPLOYMENTS_NAME=local
+export HOST_SUFFIX=localhost DEPLOYMENTS_NAME=local DEVNET=0 # the public devnet is an EC2-only profile
 
 if [[ "${1:-}" == "--mock" ]]; then
   shift

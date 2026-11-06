@@ -5,7 +5,8 @@
 #   ./deploy/deploy.sh --no-pull     deploy the working tree as-is (e.g. after scp'ing a hotfix)
 #   ./deploy/deploy.sh --no-build    restart with the existing images (env-only change)
 #
-# Env: BRANCH (default: current branch), HOST_SUFFIX (default: <public-ip-dashed>.sslip.io).
+# Env: BRANCH (default: current branch), HOST_SUFFIX (default: <public-ip-dashed>.sslip.io),
+#      DEVNET=1 (or DEVNET=1 in env/compose.env) adds the public anvil devnet (see deploy/README.md).
 set -euo pipefail
 # shellcheck source=deploy/lib.sh
 . "$(dirname "$0")/lib.sh"
@@ -71,10 +72,41 @@ require_keys demo-portal.env SESSION_SECRET
 # The merchant UI (app/) is built by the frontend team; it is optional until it lands in the repo.
 HAS_APP=0; [[ -f "$REPO_DIR/apps/web/Dockerfile" ]] && HAS_APP=1
 [[ $HAS_APP == 1 ]] && require_keys app.env
+# Public devnet: its own env file with the PUBLIC anvil keys (created from the template on first use).
+DEVNET_ON=0; devnet_enabled && DEVNET_ON=1
+if [[ $DEVNET_ON == 1 ]]; then
+  ddev="$ENV_DIR/agents-devnet.env"
+  if [[ ! -f "$ddev" ]]; then
+    cp "$ENV_DIR/agents-devnet.env.example" "$ddev"
+    for k in PAYER_HASH_KEY BUSINESS_PEPPER AGENT_KEY_ENCRYPTION_KEY; do
+      tmp="$(mktemp "$ddev.XXXXXX")"
+      sed "s|^$k=.*|$k=$(openssl rand -hex 32)|" "$ddev" > "$tmp" && mv "$tmp" "$ddev"
+    done
+    # Only the LLM settings travel over from the Sepolia env file; never its keys. merge-secrets prints lengths only.
+    "$DEPLOY_DIR/merge-secrets.sh" "$ENV_DIR/agents.env" "$ddev" LLM_PROVIDER ANTHROPIC_API_KEY BEDROCK_API_KEY \
+      BEDROCK_REGION BEDROCK_UNDERWRITER_MODEL BEDROCK_CRITIC_MODEL BEDROCK_RISK_MODEL ANTHROPIC_MODEL 2>/dev/null || true
+    chmod 600 "$ddev"
+    c_ok "created agents-devnet.env (public anvil keys + fresh random HMAC/pepper/encryption keys)"
+  fi
+  require_keys agents-devnet.env OFFER_SIGNER_PRIVATE_KEY RISK_MANAGER_PRIVATE_KEY RELAYER_PRIVATE_KEY PAYER_HASH_KEY
+  # Never reuse a Sepolia key on the public devnet (compared here, never printed).
+  for k in OFFER_SIGNER_PRIVATE_KEY RISK_MANAGER_PRIVATE_KEY RELAYER_PRIVATE_KEY ISSUER_PRIVATE_KEY \
+           ATTESTER_PRIVATE_KEY PAYER_HASH_KEY BUSINESS_PEPPER AGENT_KEY_ENCRYPTION_KEY; do
+    a="$(env_val "$ddev" "$k")"; b="$(env_val "$ENV_DIR/agents.env" "$k")"
+    if [[ -n "$a" && "$a" == "$b" ]]; then
+      c_err "agents-devnet.env: $k equals the one in agents.env (Sepolia). Use the devnet template value."; missing=1
+    fi
+  done
+  if [[ ! -f "$REPO_DIR/contracts/lib/forge-std/src/Test.sol" ]]; then
+    c_err "contracts/lib submodules missing (the devnet image compiles the contracts): git submodule update --init --recursive"
+    missing=1
+  fi
+fi
 [[ $missing == 0 ]] || { c_err "fix the env files above, then re-run"; exit 1; }
 
 # Empty optional lines would override code defaults with "" (warn, don't fail).
 env_files=("$ENV_DIR"/agents.env); [[ $HAS_APP == 1 ]] && env_files+=("$ENV_DIR"/app.env)
+[[ $DEVNET_ON == 1 ]] && env_files+=("$ENV_DIR"/agents-devnet.env)
 for f in "${env_files[@]}"; do
   empties="$(grep -E '^[A-Z][A-Z0-9_]*=[[:space:]]*(#.*)?$' "$f" | cut -d= -f1 | tr '\n' ' ' || true)"
   [[ -z "$empties" ]] || c_warn "$(basename "$f") has empty values (passed as \"\"; comment them out if unused): $empties"
@@ -102,9 +134,14 @@ else
   c_warn "issuer/Dockerfile not found: skipping the issuer (https://issuer.$HOST_SUFFIX will return 502)"
 fi
 
+if [[ $DEVNET_ON == 1 ]]; then
+  # anvil + one-shot deployer + public RPC gateway + a second agents API (reuses the agents image).
+  services+=(anvil devnet-deployer rpc-proxy agents-api-devnet)
+fi
+
 if [[ $BUILD == 1 ]]; then
   # One at a time: two parallel `next build`s can exhaust RAM on a 4 GB box.
-  for s in agents-api app demo-portal issuer; do
+  for s in agents-api app demo-portal issuer devnet-deployer; do
     [[ " ${services[*]} " == *" $s "* ]] || continue
     c_info "build $s"
     dc build "$s"
@@ -112,8 +149,13 @@ if [[ $BUILD == 1 ]]; then
 fi
 c_info "pull caddy"
 dc pull --quiet caddy
+if [[ $DEVNET_ON == 1 ]]; then c_info "pull anvil (foundry)"; dc pull --quiet anvil; fi
 c_info "up -d"
-dc up -d --remove-orphans "${services[@]}" caddy
+[[ $DEVNET_ON == 1 ]] && c_info "devnet: the first boot deploys + seeds the chain (1-5 min); later boots are instant"
+if ! dc up -d --remove-orphans "${services[@]}" caddy; then
+  c_err "compose up failed. Devnet deployer? ./deploy/logs.sh devnet-deployer (fresh chain: ./deploy/devnet.sh reset --hard)"
+  exit 1
+fi
 
 # ---------------------------------------------------------------------------------------------- 4. health
 c_info "waiting for container health checks (max 4 min)"
@@ -145,6 +187,20 @@ fail=0
 check "api   " "https://api.$HOST_SUFFIX/health" || fail=1
 check "portal" "https://portal.$HOST_SUFFIX/api/health" || fail=1
 [[ $HAS_APP == 1 ]] && { check "app   " "https://app.$HOST_SUFFIX/" || fail=1; }
+if [[ $DEVNET_ON == 1 ]]; then
+  check "rpc   " "https://rpc.$HOST_SUFFIX/health" || fail=1
+  check "api-devnet" "https://api-devnet.$HOST_SUFFIX/health" || fail=1
+  # Security self-test of the public RPC: a standard call must work, an admin call must be refused.
+  rpc_post() { curl -s -m 10 -X POST -H 'Content-Type: application/json' -d "$1" "https://rpc.$HOST_SUFFIX/" || true; }
+  if [[ "$(rpc_post '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}')" == *'"0x7a69"'* ]]; then
+    c_ok "rpc    eth_chainId -> 31337"
+  else c_warn "rpc    eth_chainId did not return 31337"; fail=1; fi
+  if [[ "$(rpc_post '{"jsonrpc":"2.0","id":1,"method":"anvil_setBalance","params":["0x0000000000000000000000000000000000000001","0x1"]}')" == *'-32601'* ]]; then
+    c_ok "rpc    anvil_setBalance refused (admin methods are not public)"
+  else
+    c_err "rpc    anvil_setBalance was NOT refused: stop it (./deploy/compose.sh stop rpc-proxy) and investigate"; fail=1
+  fi
+fi
 if [[ " ${services[*]} " == *" issuer "* ]]; then
   issuer_health="$(env_val "$COMPOSE_ENV" ISSUER_HEALTH_PATH)"
   check "issuer" "https://issuer.$HOST_SUFFIX${issuer_health:-/health}" || fail=1
@@ -157,6 +213,15 @@ Public URLs
   Agents API   : https://api.$HOST_SUFFIX   (health: /health, risk: /risk/status)
   Demo portal  : https://portal.$HOST_SUFFIX   (Reclaim login URL: /login, request URL: /api/me/summary)
   Issuer       : https://issuer.$HOST_SUFFIX
+EOF
+if [[ $DEVNET_ON == 1 ]]; then
+  cat <<EOF
+  Devnet RPC   : https://rpc.$HOST_SUFFIX   (chain 31337; contracts: /devnet.json; standard eth_* only)
+  Devnet API   : https://api-devnet.$HOST_SUFFIX   (health: /health, risk: /risk/status)
+  Default scene: ./deploy/devnet.sh scene   (dry run; add --execute)
+EOF
+fi
+cat <<EOF
 
 Logs: ./deploy/logs.sh [service]     Status: ./deploy/compose.sh ps
 EOF

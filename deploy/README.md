@@ -9,6 +9,8 @@ Everything runs on one EC2 box in **ap-south-1 (Mumbai)**, under Docker Compose.
 | `https://portal.<suffix>` | Demo seller portal (Next.js), `demo/portal/`. Reclaim's zkTLS attestors fetch it | `demo-portal:3000` |
 | `https://issuer.<suffix>` | Issuer (Node TS), `issuer/` | `issuer:${ISSUER_PORT:-4000}` |
 | (no URL) | `agents-worker`: Risk agent, keeper and managed merchant agents | |
+| `https://rpc.<suffix>` | **Public devnet RPC** (anvil, chain 31337) behind a JSON-RPC allowlist proxy. Only with `DEVNET=1` | `rpc-proxy:8546` |
+| `https://api-devnet.<suffix>` | Agents API on the devnet (public anvil keys, own DB). Only with `DEVNET=1` | `agents-api-devnet:8787` |
 
 Here `<suffix>` is `<ip-with-dashes>.sslip.io`. Only Caddy publishes ports (80 and 443). All other services sit on the private compose network.
 
@@ -25,6 +27,9 @@ deploy/
   merge-secrets.sh          copy keys between env files without printing them
   secrets-howto.md          how secrets get onto the box
   agents/worker_entry.py    agents-worker entrypoint (see "Worker" below)
+  devnet.sh                 public devnet admin over SSH: status | warp 31d | scene | reset [--hard] | rpc | logs
+  devnet/                   anvil-entry.sh (anvil + clock fix), bootstrap.sh (deploy + seed), rpc_proxy.py
+                            (public RPC allowlist) + tests/, Dockerfile (devnet tools image)
   env/*.env.example         templates; the real *.env files are git-ignored
 ```
 
@@ -35,7 +40,7 @@ deploy/
 Why:
 
 - **`next build` is the peak.** The merchant app bundles the Noir/Barretenberg prover (`@aztec-foundation/bb.js`, `@noir-lang/noir_js`), Reclaim, World IDKit and viem. Its production build takes 1.5–2.5 GB of RAM. `deploy.sh` builds images one at a time, and the bootstrap adds 2 GB of swap when RAM is under 4 GiB. A t3.small (2 GiB) gets OOM-killed during the build.
-- **Steady state is about 1.5–2 GB:** two `next start` servers (200–400 MB each), the FastAPI API and the worker (web3 + boto3, 150–300 MB each), the issuer (about 100 MB), and Caddy (about 30 MB). The compose `mem_limit`s total about 3.8 GB. They're ceilings, not reservations.
+- **Steady state is about 1.5–2 GB:** two `next start` servers (200–400 MB each), the FastAPI API and the worker (web3 + boto3, 150–300 MB each), the issuer (about 100 MB), and Caddy (about 30 MB). The compose `mem_limit`s total about 3.8 GB. They're ceilings, not reservations. With `DEVNET=1`, steady state grows by about 300–450 MB: anvil, the proxy and the devnet API. The one-shot deployer adds a peak during its first boot.
 - **CPU:** t3 instances are burstable. Builds burn credits, but the default *unlimited* mode keeps them from being throttled. Everything at runtime is I/O-bound (RPC and LLM calls).
 - **Disk:** images and build cache take about 4–6 GB. 30 GiB leaves room for rebuilds. 8 GiB fills up after a few builds.
 - **Use x86_64,** not Graviton (t4g). It avoids surprises with npm packages that ship prebuilt binaries.
@@ -114,6 +119,105 @@ The first run takes 5–10 minutes (npm installs and Next builds). Certificates 
 
 The worker and API share the SQLite volume `agents-data` (`/srv/agents/data/agents.sqlite`). `agents/deployments/` is bind-mounted read-only, so a contract redeploy only needs a new `<name>.json` and a restart, not a rebuild.
 
+## Public devnet (the default scene)
+
+The default scene needs **30 days with no repaying sale** before `writeOff`, so it can't happen live on Sepolia. It runs instead on an anvil chain that we host on the same box and that anyone can use: judges, the app, scripts and Anon-RPC workers. Sepolia stays the main deployment. The devnet is an extra, under the compose profile `devnet`.
+
+| URL | What |
+|---|---|
+| `https://rpc.<suffix>` | JSON-RPC, chain id **31337**. Standard `eth_*` / `net_*` / `web3_*` only. `GET /devnet.json` returns the contract addresses, `GET /health` checks the chain, and `GET /` lists the allowed methods |
+| `https://api-devnet.<suffix>` | The agents API pointed at the devnet (`/health`, `/risk/status`, `/offers`, ...) |
+
+### Enable it
+
+1. In `deploy/env/compose.env`, set `DEVNET=1`.
+2. Make sure the contract submodules are present: `git submodule update --init --recursive`. The bootstrap already does this.
+3. Run `./deploy/deploy.sh`.
+
+On the first run, `deploy.sh` does the following:
+
+- Creates `deploy/env/agents-devnet.env` from `agents-devnet.env.example`:
+  - the **public anvil keys**
+  - fresh random `PAYER_HASH_KEY`, `BUSINESS_PEPPER` and `AGENT_KEY_ENCRYPTION_KEY`
+  - only the LLM settings copied over from `agents.env`
+- **Refuses to start** if any key in it equals a Sepolia key in `agents.env`.
+- Builds `mra-devnet-tools`, which contains:
+  - foundry v1.2.2, nargo 1.0.0-rc.3 and bb 6.0.0
+  - the agents package
+  - the contracts and the Business Pass circuit, compiled at build time (about 1 GB, built once)
+- Starts the four services:
+
+| Service | Role | Memory cap |
+|---|---|---|
+| `anvil` | `ghcr.io/foundry-rs/foundry:v1.2.2`. State lives on the `anvil-state` volume (`--state`, dumped every 30 s and on stop), so a restart keeps the chain. **Not published, and not reachable from Caddy.** | 512 MB (actual use is about 100–200 MB) |
+| `devnet-deployer` | One-shot. Only on the first boot, it runs the existing local scripts: `agents/scripts/devnet.sh` (Poseidon2, both verifiers, `DeployLocal.s.sol`: MockUSDC, registry, PoolManager, vaults, AdvanceBook, RiskHook, the v4 pool plus liquidity), then `seed_demo.py` (3 shops, 300 sales, the ghost-shop advance with a real proof), then `seed_devnet.py` (a junior LP position, a v4 swap router, pool activity). It writes `devnet.json` to the `devnet-data` volume. Later boots check the chain and exit in seconds. It shares anvil's network namespace. | 1.5 GB cap, first boot only |
+| `rpc-proxy` | The only public path to anvil (see the security model below). It reuses the agents image. | 128 MB |
+| `agents-api-devnet` | The agents image with `DEPLOYMENTS_FILE=devnet.json`, its own SQLite volume and the public anvil keys. | 384 MB |
+
+`deploy.sh` also health-checks `https://rpc.<suffix>/health` and `https://api-devnet.<suffix>/health`, plus a live self-test: `eth_chainId` must return 31337, and `anvil_setBalance` must be refused.
+
+To turn the devnet off, set `DEVNET=` and run `./deploy/compose.sh stop anvil rpc-proxy agents-api-devnet`. The volumes stay.
+
+### Run the default scene
+
+Run these on the box, over SSH. The scene runs in the tools image, next to anvil, and **is a dry run unless you pass `--execute`**.
+
+```bash
+./deploy/devnet.sh scene                          # status + plan, sends nothing
+./deploy/devnet.sh scene --execute                # every pending step, narrated
+./deploy/devnet.sh scene --execute --step sell    # one step at a time on stage:
+#   setup -> stop -> warp -> writeoff -> sell -> twap -> risk -> summary
+./deploy/devnet.sh scene --execute --llm          # Risk agent asks the configured LLM
+```
+
+What each step does:
+
+- **setup**: A merchant registers. The devnet issuer issues a Business Pass, a real Noir/bb proof is generated, and `drawFirst` opens a 50 USDC advance. Three customer sales follow, and the 10% holdback repays part of the advance.
+- **stop**: Shows the last repaying sale.
+- **warp**: Moves the clock 31 days forward with `evm_increaseTime`.
+- **writeoff**: `Keeper.tick()` calls `writeOff`. The junior vault pays the loss, the junior share price falls and the senior share price is untouched.
+- **sell**: A junior LP sells on the v4 pool with a price limit, which moves the pool price **−15%**.
+- **twap**: One more hour passes. The 1h TWAP is now at the new price while the 24h TWAP lags, so the ratio is about 0.86. The trigger needs < 0.90.
+- **risk**: `RiskAgent.tick()` sees `junior_twap_drop`, plus `write_offs_7d` if there were 2 or more write-offs in 7 days. It calls `lowerLimits` (down only), and the cap change is printed.
+- **summary**: Prints a before/after table.
+
+Without `--llm`, the Risk agent applies its documented deterministic −25% cut on tiers 2–3 and maxExposure: caps go from 250/500 to 187.5/375 and maxExposure from 100k to 75k.
+
+The scene is **idempotent and resumable**. Each step checks the chain and `scene-state.json` (on the devnet volume), so re-running the same command continues from where it stopped. A finished step only prints its result.
+
+### Reset
+
+- `./deploy/devnet.sh reset` (soft, about 10 s): buys the junior back to the starting pool price, restores the tier caps with the owner's `setLimits`, and starts a new merchant (`kiosco-2`, ...). Then run `scene --execute` again. The chain clock only moves forward, so earlier write-offs stay in history and drop out of the 7-day window. In later runs the TWAP trigger fires on its own.
+- `./deploy/devnet.sh reset --hard` (1–5 min): deletes the `anvil-state`, `devnet-data` and `agents-devnet-data` volumes, then redeploys and reseeds. The contract addresses stay the same, because the deploy is deterministic.
+- Other admin commands: `./deploy/devnet.sh status | manifest | warp 31d | mine 5 | rpc anvil_nodeInfo | logs`.
+
+### Security model of the public RPC
+
+A raw public anvil lets anyone mint ETH and tokens (`anvil_setBalance`, `anvil_setStorageAt`), impersonate any account, replace code, warp or revert time, or sign with anvil's 10 unlocked accounts. The defences:
+
+1. **Anvil is never exposed.** It publishes no port, and Caddy only proxies to `rpc-proxy`.
+2. **Method allowlist** (`deploy/devnet/rpc_proxy.py`, `ALLOWED_METHODS`). Only standard reads are forwarded: chain, fee, state, block, transaction, receipt, log and filter methods, `eth_call` and `eth_estimateGas`. The only write is **`eth_sendRawTransaction`**, which the client signs itself.
+   - Everything else gets JSON-RPC error `-32601` locally and never reaches anvil: `anvil_*`, `evm_*`, `hardhat_*`, `debug_*`, `trace_*`, `ots_*`, `txpool_*`, `personal_*`, `admin_*`, `miner_*`, and also `eth_sendTransaction`, `eth_sign*` and `eth_signTransaction`, which would sign with the unlocked accounts.
+   - `eth_accounts` returns `[]`.
+   - Matching is exact and case-sensitive.
+3. **Batches** are checked call by call. Only the allowed calls are forwarded, and request ids are rewritten and mapped back. The batch size cap is 50.
+4. **Per-IP rate limits**, as token buckets. Each call in a batch costs one token.
+   - Defaults: 15 calls/s with a burst of 60, and 30 raw transactions per minute with a burst of 10.
+   - The IP comes from Caddy's `X-Forwarded-For`, and Caddy overwrites any client-sent value. IPv6 is bucketed per /64.
+   - Tune them in `compose.env` with `DEVNET_RPC_*`.
+5. **Body limits:** 256 KiB at the proxy (a proof-carrying tx is about 30–60 KB) and 512 KB at Caddy.
+6. **CORS `*`** on every response, and the `OPTIONS` preflight is answered with 204. That means plain HTTPS POST works from browsers and from **Anon-RPC workers**.
+7. **Admin only over SSH:** `deploy/devnet.sh` runs `cast rpc` inside the anvil container (`docker compose exec`).
+8. **The proxy container is read-only** and runs as non-root (uid 10001).
+
+**What's still possible, by design:** the devnet's role keys are anvil's well-known public keys (owner, offer signer, risk manager, relayer, issuer). Anyone can sign transactions with them, for example to raise caps as the owner or race the relayer's nonce. Treat the devnet as a shared sandbox: it has no real value, and `reset` / `reset --hard` fix any griefing. **Never put a real key on it**, and `deploy.sh` enforces that for Sepolia keys. A time warp is global, so it affects everyone on the devnet.
+
+### Using it from elsewhere
+
+- Add a wallet network: RPC `https://rpc.<suffix>`, chain id 31337, currency ETH. Fund a new key from a public anvil account; anvil account 9 is a good choice because the scene doesn't use it. Sign locally, since the proxy refuses `eth_sendTransaction`.
+- Contract addresses: `curl https://rpc.<suffix>/devnet.json`. The file also includes `PoolSwapTest`, the v4 swap router for the junior/USDC pool.
+- Anon-RPC: point the worker's upstream at `https://rpc.<suffix>`. It is a plain JSON-RPC POST endpoint.
+
 ## Updating
 
 | Change | Command |
@@ -155,6 +259,7 @@ Don't add `includeSubDomains` or `preload` to HSTS while you're on sslip.io. It'
 - [ ] Reclaim real mode: a proof against `https://portal.<suffix>` succeeds. The attestors must reach it publicly.
 - [ ] The wallets have Sepolia ETH: relayer, risk manager, and the demo customer if `/api/demo/pay` is used. The LLM key works. `POST /offers` returns a decision through the app.
 - [ ] `free -m` shows headroom and `df -h /` is under 70%.
+- [ ] Devnet (`DEVNET=1`): `./deploy/devnet.sh status` shows every service running or healthy. A dry run of `./deploy/devnet.sh scene` shows run N with every step pending. If the last rehearsal finished, run `./deploy/devnet.sh reset` first.
 - [ ] **Freeze:** no deploys within 2 hours of judging unless something is broken.
 - [ ] The laptop fallback is pre-built: run `./deploy/local.sh --mock` once so all images are cached locally, plus anvil, `devnet.sh` and `seed_demo.py`. Then `./deploy/local.sh down`.
 - [ ] Record a screen capture of the full happy path as the last-resort backup.
@@ -207,3 +312,6 @@ bash agents/scripts/devnet.sh                              # deploys contracts, 
 | `agents-api` returns 500 on `/offers` | Bad keys or RPC in `agents.env`, or the deployments JSON doesn't match the chain. Check `./deploy/logs.sh agents-api`. |
 | Build killed / exit 137 | Out of memory. Check that swap is on (`swapon --show`) and use t3.large. Builds already run one at a time. |
 | App still shows the old API URL or mode | `NEXT_PUBLIC_*` is build-time. Run `./deploy/deploy.sh --no-pull` to rebuild. |
+| `devnet-deployer` exited 1 | `./deploy/devnet.sh logs devnet-deployer`. `seed_demo.py` refuses to run twice on one chain, so after a half-finished first boot run `./deploy/devnet.sh reset --hard`. |
+| Devnet RPC returns 429 | The per-IP rate limit. Raise `DEVNET_RPC_RATE_PER_SEC` / `DEVNET_RPC_RATE_BURST` in `compose.env`, then run `./deploy/compose.sh up -d rpc-proxy`. |
+| The scene says "waits for: ..." | It runs in order. Run the named step first, or run `scene --execute` without `--step`. |
