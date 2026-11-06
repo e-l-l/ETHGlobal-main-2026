@@ -48,6 +48,13 @@ const ExplorerTabIcon = () => (
   </Svg>
 );
 
+const SimulatorTabIcon = () => (
+  <Svg>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M10 8.5v7l6-3.5z" />
+  </Svg>
+);
+
 /** Lender and public nav: one set for every page here. Becomes the phone tab bar. */
 export const LEND_NAV: NavItem[] = [
   { key: "earn", label: "Vault", href: routes.earn, icon: <VaultTabIcon /> },
@@ -55,6 +62,7 @@ export const LEND_NAV: NavItem[] = [
   { key: "protocol", label: "Protocol", href: routes.protocol, icon: <ProtocolTabIcon /> },
   { key: "risk", label: "Risk", href: routes.risk, icon: <RiskTabIcon /> },
   { key: "explorer", label: "Explorer", href: routes.explorer, icon: <ExplorerTabIcon /> },
+  { key: "simulator", label: "Simulator", href: routes.simulator, icon: <SimulatorTabIcon /> },
 ];
 
 const burnerAddress = async (m: { wallet: { address(): string | undefined } }) => m.wallet.address() ?? null;

@@ -382,7 +382,7 @@ export function DripCoinScreen({
             { label: "Price", value: vault.juniorPrice, sub: "Uniswap v4" },
             { label: "Book value", value: price(V.juniorBook), sub: "Mint and redeem here" },
             { label: "DRIP outstanding", value: vault.junior },
-            { label: "Coverage", value: vault.coverage, sub: "DRIP + reserve vs advances out" },
+            { label: "Coverage", value: vault.coverage, sub: "DRIP cover vs advances out · 20% rule" },
           ]}
         />
       </div>
@@ -491,7 +491,7 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
             { label: "Vault APY", value: VAULT.apy },
             { label: "Loss rate", value: VAULT.defaultRate },
             { label: "DRIP price (TWAP)", value: VAULT.juniorTwap },
-            { label: "Coverage", value: VAULT.coverage, sub: "DRIP + reserve" },
+            { label: "Coverage", value: VAULT.coverage, sub: "DRIP cover · 20% rule" },
           ]}
         />
       </div>

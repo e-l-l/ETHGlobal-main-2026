@@ -19,6 +19,7 @@ export function OfferDisclosure({
   annualizedCostPercent,
   holdback,
   estimates = [],
+  feeRule,
 }: {
   principal: number;
   maxFeeBps: number;
@@ -26,6 +27,8 @@ export function OfferDisclosure({
   annualizedCostPercent: number;
   holdback: number;
   estimates?: { label: string; days: number }[];
+  /** `AdvanceVM.feeRule`: the on-time / late rule in the merchant's words. */
+  feeRule?: string;
 }) {
   const terms = { rateBpsPerWeek: FEE_TERMS.rateBpsPerWeek, capBps: maxFeeBps };
   return <Card tone="well" gap="sm">
@@ -43,7 +46,8 @@ export function OfferDisclosure({
         {e.label}: {e.days > 0 ? `${e.days} days · fee ${formatMoney(feeAfterDays(principal, e.days, terms))}` : "estimate unavailable"}
       </Text>
     ))}
-    <Text size="note" tone="muted">The fee builds on the original advance, is paid before the advance itself and stops once it&rsquo;s paid off. Pay early, pay less. No late fees.</Text>
+    <Text size="note" tone="muted">The fee builds on the original advance, is paid before the advance itself and stops once it&rsquo;s paid off. Pay early, pay less. No late fee if you pay on time.</Text>
+    {feeRule ? <Text size="note">{feeRule}</Text> : null}
   </Card>;
 }
 

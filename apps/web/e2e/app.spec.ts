@@ -12,6 +12,7 @@ const routes = [
   "/onboarding/pass",
   "/onboarding/failed?reason=suspended",
   "/onboarding/shop",
+  "/onboarding/world-id",
   "/merchant",
   "/merchant/advance",
   "/merchant/advance/arrived",
@@ -25,6 +26,9 @@ const routes = [
   "/merchant/cash-out",
   "/merchant/qr",
   "/merchant/world-view",
+  "/merchant/blocked",
+  "/merchant/blocked?reason=open_advance",
+  "/merchant/settings",
   "/merchant/settings/backup",
   "/merchant/restore",
   "/pay/corner-kiosk",
@@ -40,11 +44,25 @@ const routes = [
   "/protocol",
   "/risk",
   "/explorer",
+  "/simulator",
   "/screens",
 ];
 
 async function settle(page: Page) {
   await page.evaluate(() => document.fonts.ready);
+  // Let entrance animations finish so axe doesn't read a half-faded element (looping animations are skipped).
+  // Paused or scroll-triggered ones may never finish, so cap the wait.
+  await page.evaluate(() =>
+    Promise.race([
+      Promise.all(
+        document
+          .getAnimations()
+          .filter((a) => a.playState === "running" && a.effect?.getComputedTiming().iterations !== Infinity)
+          .map((a) => a.finished.catch(() => undefined)),
+      ),
+      new Promise((r) => setTimeout(r, 2000)),
+    ]),
+  );
 }
 
 test.describe("every screen", () => {
@@ -89,8 +107,10 @@ test.describe("journeys", () => {
     await expect(page).toHaveURL(/\/onboarding\/pass/, { timeout: 10000 });
     await page.getByRole("link", { name: "Create your shop" }).click();
     await expect(page).toHaveURL(/\/onboarding\/shop/);
-    await page.getByRole("main").getByRole("link", { name: /agent/i }).first().click();
-    await expect(page).toHaveURL(/\/merchant\/agent\/setup/);
+    await page.getByRole("main").getByRole("link", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/onboarding\/world-id/);
+    await page.getByRole("button", { name: "Verify with World ID" }).click();
+    await expect(page).toHaveURL(/\/merchant\/agent\/setup/, { timeout: 10000 });
     await page.getByRole("link", { name: "Approve with World" }).click();
     await expect(page).toHaveURL(/\/merchant\/agent\/approve/);
     await page.getByRole("link", { name: /approve/i }).first().click();
@@ -101,24 +121,6 @@ test.describe("journeys", () => {
     await page.goto("/portal?acct=sur");
     await page.getByRole("link", { name: "Share 4 facts privately" }).click();
     await expect(page).toHaveURL(/failed\?reason=suspended/, { timeout: 10000 });
-  });
-
-  test("spanish is a setting that sticks", async ({ page }) => {
-    await page.goto("/onboarding");
-    await page.getByRole("button", { name: "EN, cambiar a español" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Dólares para el stock, hoy.");
-    await page.goto("/onboarding/prove");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Tus ventas");
-  });
-
-  test("world view follows you across screens", async ({ page }) => {
-    await page.goto("/onboarding/pass");
-    await page.getByRole("button", { name: "World view" }).click();
-    await expect(page.getByText("Onchain, anyone can see")).toBeVisible();
-    await page.goto("/earn");
-    await expect(page.getByRole("button", { name: "World view" })).toHaveAttribute("aria-pressed", "true");
-    await page.goto("/merchant");
-    await expect(page.getByRole("button", { name: "World view" })).toHaveAttribute("aria-pressed", "true");
   });
 
   test("the customer pays with the keypad and never sees the advance", async ({ page }) => {

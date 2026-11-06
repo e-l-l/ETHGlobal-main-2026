@@ -27,7 +27,7 @@ import {
   TextField,
   TextLink,
 } from "@/final";
-import type { BusinessPassView, ProveStep } from "@repo/sdk";
+import type { BusinessPassView, HumanVerifyStep, ProveStep } from "@repo/sdk";
 import { appUrl } from "@/lib/brand";
 import { copy, stepEyebrow } from "@/lib/copy";
 import { explorerTxUrl, isMock, withMRA } from "@/lib/mra";
@@ -35,15 +35,17 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { failedHref, isFailReason, routes, verifyingHref, type FailReason } from "@/lib/routes";
 import { useMRA, useMRAAction } from "@/lib/use-mra";
+import { useWorldPrompt } from "@/lib/world-prompt";
+import { IdkitWait } from "@/app/merchant/_world";
 
 /* ---------------------------------------------------------- Shared bits */
 
-/** Step progress at the top of the form column: four bars and "Step 1 of 4". */
+/** Step progress at the top of the form column: five bars and "Step 1 of 5". */
 export function StepProgress({ at }: { at: number }) {
   const c = copy;
   return (
     <div className="flex items-center gap-3">
-      <StepDots at={at} of={4} label={c.steps(at)} />
+      <StepDots at={at} of={5} label={c.steps(at)} />
       <Ledger className="text-charcoal-muted">{c.steps(at)}</Ledger>
     </div>
   );
@@ -92,7 +94,11 @@ const STEP_DONE: Record<ProveStep, number> = {
 };
 
 /** The demo portal's outcome → the seeded account that produces it (the SDK mock and the issuer's ISSUER_MOCK). */
-const OUTCOME_ACCOUNT: Record<FailReason, string> = { "too-new": "newshop", suspended: "suspended", "revenue-low": "lowrevenue" };
+const OUTCOME_ACCOUNT: Record<FailReason, string> = {
+  "too-new": "newshop",
+  suspended: "suspended",
+  "revenue-low": "lowrevenue",
+};
 
 export function VerifyingScreen({ outcome }: { outcome?: string }) {
   const c = copy;
@@ -105,7 +111,10 @@ export function VerifyingScreen({ outcome }: { outcome?: string }) {
   const done = Math.min(reached, tick);
   // One proof per visit. React's dev double-mount must not start a second one: past the portal step a proof can't be
   // cancelled (the issuer signs, the wallet sends BusinessPassRegistry.issue), so both would land onchain.
-  const proof = useRef<{ fail: FailReason | undefined; run: Promise<{ dest: string; at: number } | { error: string }> } | null>(null);
+  const proof = useRef<{
+    fail: FailReason | undefined;
+    run: Promise<{ dest: string; at: number } | { error: string }>;
+  } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -124,9 +133,17 @@ export function VerifyingScreen({ outcome }: { outcome?: string }) {
           onStep: (st) => setReached((n) => Math.max(n, STEP_DONE[st])),
         }),
       ).then(
-        (r) => (r.ok ? { dest: routes.pass as string, at: TIMING[3]! } : { dest: r.reason === "error" ? routes.failed : failedHref(r.reason), at: TIMING[1]! }),
+        (r) =>
+          r.ok
+            ? { dest: routes.pass as string, at: TIMING[3]! }
+            : {
+                dest: r.reason === "error" ? routes.failed : failedHref(r.reason),
+                at: TIMING[1]!,
+              },
         // A network / chain error is not a verdict on the shop: say so and offer a retry instead of M05.
-        (e: unknown) => ({ error: e && typeof e === "object" && "code" in e ? String((e as { code: unknown }).code) : "error" }),
+        (e: unknown) => ({
+          error: e && typeof e === "object" && "code" in e ? String((e as { code: unknown }).code) : "error",
+        }),
       );
       proof.current = { fail, run };
     }
@@ -182,11 +199,7 @@ export function VerifyingScreen({ outcome }: { outcome?: string }) {
             <Steps items={steps} />
           </Card>
         </div>
-        {failed ? (
-          <Banner tone="caution">
-            {`The check couldn't finish (${failed}). Nothing was saved.`}
-          </Banner>
-        ) : null}
+        {failed ? <Banner tone="caution">{`The check couldn't finish (${failed}). Nothing was saved.`}</Banner> : null}
         <p role="status" className="sr-only">
           {steps.find((s) => s.state === "current")?.label ?? t.steps[t.steps.length - 1]}
         </p>
@@ -223,7 +236,7 @@ function ShopForm({ draft }: { draft: ShopDraft }) {
   const clean = name.trim();
   const payUrl = appUrl(routes.pay);
   // Live: the pseudonym is minted on create (random id), so there is none to show before.
-  const pseudonym = isMock ? draft.pseudonym : (create.pending ? "shop_…" : "shop_····");
+  const pseudonym = isMock ? draft.pseudonym : create.pending ? "shop_…" : "shop_····";
 
   return (
     <>
@@ -270,22 +283,18 @@ function ShopForm({ draft }: { draft: ShopDraft }) {
             </div>
           </Card>
         </div>
-        {create.error ? (
-          <Banner tone="caution">
-            {`Couldn't create the shop (${create.error}).`}
-          </Banner>
-        ) : null}
+        {create.error ? <Banner tone="caution">{`Couldn't create the shop (${create.error}).`}</Banner> : null}
         <ActionBar>
           {clean.length < 2 ? (
             <Button disabled>{t.empty}</Button>
           ) : isMock ? (
-            <Button href={routes.agent.setup}>{t.cta}</Button>
+            <Button href={routes.worldId}>{t.cta}</Button>
           ) : (
             <Button
               loading={create.pending}
               onClick={() => {
                 create.run(clean).then(
-                  () => router.push(routes.agent.setup),
+                  () => router.push(routes.worldId),
                   () => undefined,
                 );
               }}
@@ -322,5 +331,129 @@ export function PassFacts({ initial }: { initial: BusinessPassView | null }) {
         </TextLink>
       ) : null}
     </>
+  );
+}
+
+/* ------------------------------------------------------- M06b World ID
+ * After the shop exists (verifyHuman signs with the shop's key): `onboarding.verifyHuman({ onStep })` runs IDKit for
+ * the borrower action. Verified → agent setup. `verification_failed` → retry; `shop_bound_to_other_human` → this shop
+ * belongs to someone else (restore instead). Real World mode shows the IDKit QR from ./world-prompt while it waits.
+ */
+const HUMAN_DONE: Record<HumanVerifyStep, number> = {
+  signing_owner: 0,
+  verifying_human: 1,
+  verified: 3,
+};
+
+export function WorldIdScreen() {
+  const t = copy.worldId;
+  const router = useRouter();
+  const [step, setStep] = useState<HumanVerifyStep | undefined>();
+  const [reason, setReason] = useState<string | undefined>();
+  const verify = useMRAAction((m) => m.onboarding.verifyHuman({ onStep: setStep }));
+  const prompt = useWorldPrompt("idkit");
+  const waiting = verify.pending;
+  const failure = reason ?? verify.error;
+
+  const run = () => {
+    setReason(undefined);
+    setStep(undefined);
+    verify.run().then(
+      (r) => {
+        if (r.verified) router.push(routes.agent.setup);
+        else setReason(r.reason ?? "verification_failed");
+      },
+      () => undefined,
+    );
+  };
+
+  const done = step ? HUMAN_DONE[step] : 0;
+  const steps = t.steps.map((label, i) => ({
+    label,
+    state: (i < done ? "done" : i === done ? "current" : "next") as "done" | "current" | "next",
+  }));
+
+  return (
+    <SplitPage
+      panel={
+        <BrandPanel
+          eyebrow={stepEyebrow(5)}
+          title={
+            <>
+              {t.panelTitle} <Accent>{t.accent}</Accent>
+            </>
+          }
+          body={t.panel}
+        />
+      }
+    >
+      <StepProgress at={5} />
+      {waiting ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <Label>{t.waitingTag}</Label>
+            <Heading level={2} size="h1">
+              {t.waitingTitle}
+            </Heading>
+          </div>
+          {prompt ? <IdkitWait prompt={prompt} /> : null}
+          <Card>
+            <Steps items={steps} />
+          </Card>
+          <p role="status" className="sr-only">
+            {steps.find((s) => s.state === "current")?.label ?? ""}
+          </p>
+        </>
+      ) : failure === "shop_bound_to_other_human" ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <Heading level={2} size="h1">
+              {t.failedTitle}
+            </Heading>
+            <Text>{t.failedBody}</Text>
+          </div>
+          <Banner tone="caution">
+            <span className="flex flex-col gap-1">
+              <strong className="font-semibold">{t.bound}</strong>
+              <span>{t.boundBody}</span>
+            </span>
+          </Banner>
+          <ActionBar>
+            <Button href={routes.restore}>{t.restore}</Button>
+            <Button href={routes.welcome} variant="ghost">
+              {copy.failed.start}
+            </Button>
+          </ActionBar>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col gap-2">
+            <Heading level={2} size="h1">
+              {failure ? t.failedTitle : t.title}
+            </Heading>
+            <Text>{failure ? t.failedBody : t.body}</Text>
+          </div>
+          {failure ? (
+            <Banner tone="caution">{failure === "verification_failed" ? t.failed : t.other(failure)}</Banner>
+          ) : (
+            <>
+              <Card>
+                <KeyValue rows={t.keep.map((r) => [r.k, r.v])} />
+              </Card>
+              <Card tone="tint" gap="sm">
+                <Label className="text-hunter">In plain words</Label>
+                <Text className="text-forest">{t.plain}</Text>
+              </Card>
+            </>
+          )}
+          <ActionBar>
+            <Button onClick={run} loading={verify.pending}>
+              {failure ? t.retry : t.cta}
+            </Button>
+            {failure ? null : <Text size="note">{t.note}</Text>}
+          </ActionBar>
+        </>
+      )}
+    </SplitPage>
   );
 }

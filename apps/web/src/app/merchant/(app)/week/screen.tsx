@@ -42,7 +42,9 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
   return (
     <Page tabs>
       <PageHead back={routes.advance.details} backLabel="Your advance" label="This week" title="A slow week. That's fine.">
-        When payments fall, paying back slows down with them. Nothing else changes.
+        {advance.isBehind
+          ? "Payments fell below the weekly minimum, so the fee is 1% a week until sales catch up."
+          : "Payments fell this week, so paying back slowed down with them. You still met the weekly minimum, so your fee stays at 0.5% a week."}
       </PageHead>
 
       <Columns ratio="3:2">
@@ -73,8 +75,11 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
               <span className="font-display text-h1 text-charcoal tabular-nums">{formatMoney(paidBack)}</span>
             </Card>
             <Card>
-              <Label>Late fees</Label>
-              <span className="font-display text-h1 text-fern tabular-nums">$0</span>
+              <Label>Late fee</Label>
+              <span className={`font-display text-h1 tabular-nums ${advance.lateFee > 0 ? "text-caution" : "text-fern"}`}>{formatMoney(advance.lateFee).replace(/\.00$/, "")}</span>
+              <Text size="note" tone="muted">
+                {advance.lateFee > 0 ? "goes to the safety reserve" : "you kept up"}
+              </Text>
             </Card>
             <Card>
               <Label>New estimate</Label>
@@ -96,7 +101,7 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
             items={[
               { text: `You pay back ${formatPercent(advance.holdback)} of what you take in. Take in less, pay less.` },
               { text: `No penalty and no late fee. The fee keeps adding 0.5% a week but stops at ${formatPercent(advance.maxFeeBps / 100)} (${formatMoney((advance.drawn * advance.maxFeeBps) / 10_000)}).` },
-              { text: "Every 7 days, pay back at least 1% of the advance plus the fee so far. Short of that for 14 days, the advance is marked late. We'll warn you well before that.", caution: true },
+              { text: `The weekly minimum is 1% of the advance plus the fee. ${advance.feeRule}`, caution: true },
             ]}
           />
         </Card>

@@ -13,16 +13,25 @@ const en = {
     body: "A small dollar advance for your stock. While it's active, a slice of each sale repays it; the demo uses 8%. Repay on time and your limit grows.",
     heading: "How it works",
     promises: [
-      { title: "Prove the shop, not you", body: "Four facts from your seller account. Never your name, phone or contacts." },
-      { title: "You set the limits", body: "Your agent only draws stock inside them." },
-      { title: "Slow week? No late fee", body: "Repayment is a slice of each sale, so it slows when sales do." },
+      {
+        title: "Prove the shop, not you",
+        body: "Four facts from your seller account. Never your name, phone or contacts.",
+      },
+      {
+        title: "You set the limits",
+        body: "Your agent only draws stock inside them.",
+      },
+      {
+        title: "Slow week? No late fee",
+        body: "Repayment is a slice of each sale, so it slows when sales do.",
+      },
     ],
     cta: "Prove your business",
     back: "Back",
     restore: "New phone? Restore your shop with World ID",
   },
-  steps: (at: number) => `Step ${at} of 4`,
-  stepNames: ["Prove your business", "Verifying", "Business Pass", "Your shop"],
+  steps: (at: number) => `Step ${at} of 5`,
+  stepNames: ["Prove your business", "Verifying", "Business Pass", "Your shop", "World ID"],
   prove: {
     title: "Your sales already",
     accent: "vouch for you.",
@@ -31,7 +40,10 @@ const en = {
     body: "Use the demo seller portal and mock attestor to check four facts. The issuer sees the account ID transiently.",
     whereSell: "Where you sell",
     sources: [
-      { name: "Demo seller portal", sub: "Stands in for Mercado Pago in this demo" },
+      {
+        name: "Demo seller portal",
+        sub: "Stands in for Mercado Pago in this demo",
+      },
       { name: "Other seller apps", sub: "Coming soon" },
     ],
     weCheck: "We read",
@@ -119,9 +131,40 @@ const en = {
     hint: "Keep it ordinary. Not your own name.",
     ideas: "Ideas",
     qr: "Payment QR",
-    cta: "Set up your agent",
+    cta: "Continue",
     preview: "Preview the checkout",
     empty: "Add a name to continue",
+  },
+  worldId: {
+    panelTitle: "One person,",
+    accent: "one pass.",
+    panel: "World ID stops one person from borrowing on many shops. That keeps lenders safe and your fee low.",
+    title: "Verify you're a unique person with World ID",
+    body: "World ID proves you're a real, unique person.",
+    keep: [
+      { k: "We keep", v: "An anonymous World ID code, nothing else." },
+      { k: "Never", v: "Your name, address, face or phone number." },
+      {
+        k: "Onchain",
+        v: "Nothing. The check stays between this phone and DripMoni.",
+      },
+    ],
+    plain: "We keep only an anonymous World ID code, never your name or address. Nothing goes onchain.",
+    cta: "Verify with World ID",
+    note: "Takes about a minute in World App. You need it once per shop.",
+    waitingTag: "Waiting for World App",
+    waitingTitle: "Scan with World App",
+    steps: ["Signed with this phone's shop key", "Verify in World App", "Done. Your shop is ready for advances"],
+    cancel: "Cancel",
+    failedTitle: "That didn't go through",
+    failedBody: "Nothing was saved and nothing went onchain.",
+    failed: "World App couldn't confirm it was you. It may have timed out or been cancelled. Try once more.",
+    retry: "Try again",
+    bound: "This shop is already verified by someone else.",
+    boundBody: "Each shop links to one person. If this is your shop, restore it on this phone with your World ID and backup passphrase.",
+    restore: "Restore with World ID",
+    other: (code: string) => `World ID didn't go through (${code}). Nothing was saved.`,
+    done: "Verified. Your shop is ready for advances.",
   },
 };
 
@@ -156,7 +199,7 @@ const payEn = {
 };
 export const payCopy = payEn;
 
-/** Brand panel eyebrow for an onboarding step, e.g. "Step 1 of 4 · Prove your business". */
+/** Brand panel eyebrow for an onboarding step, e.g. "Step 1 of 5 · Prove your business". */
 export function stepEyebrow(at: number) {
   return `${copy.steps(at)} · ${copy.stepNames[at - 1] ?? ""}`;
 }

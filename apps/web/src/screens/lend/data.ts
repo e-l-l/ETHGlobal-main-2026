@@ -84,7 +84,7 @@ export const riskLog = [
     time: "Sep 3",
     title: "Wrote off an advance",
     kind: "down" as const,
-    reasons: ["No sales for 30 days.", "DripCoin took the loss. The vault was not touched."],
+    reasons: ["Behind the weekly minimum, then no sales at all.", "DripCoin took the loss. The vault was not touched."],
   },
 ];
 

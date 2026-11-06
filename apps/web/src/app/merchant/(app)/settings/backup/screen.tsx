@@ -44,7 +44,7 @@ export function BackupScreen() {
 
   return (
     <Page tabs>
-      <PageHead back={routes.merchant} backLabel="Home" label="Settings" title="Back up with World ID">
+      <PageHead back={routes.settings} backLabel="Settings" label="Backup" title="Back up with World ID">
         Keep your passes safe if you lose this phone. World ID proves it&rsquo;s you; your passphrase opens the backup.
       </PageHead>
 
