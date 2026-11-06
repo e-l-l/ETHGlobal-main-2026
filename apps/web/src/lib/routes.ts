@@ -11,7 +11,10 @@
  */
 export const routes = {
   landing: "/",
+  /** The first landing page (feat/landing-page), kept for reference. */
+  oldLanding: "/old-landing",
   home: "/home",
+  blockPattern: "/block-pattern",
 
   /* Merchant onboarding */
   welcome: "/onboarding",

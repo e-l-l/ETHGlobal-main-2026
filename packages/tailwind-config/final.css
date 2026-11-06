@@ -84,6 +84,15 @@
     0%, 100% { fill: var(--band-off); }
     6%, 70% { fill: var(--band-on); }
   }
+
+  /* Logo cycle (footer mark): each band walks the brand greens; staggered negative delays make a falling wave. */
+  --animate-band-cycle: band-cycle 5.6s var(--ease-swap) infinite;
+  @keyframes band-cycle {
+    0%, 100% { fill: var(--color-lime); }
+    25% { fill: var(--color-leaf); }
+    50% { fill: var(--color-fern); }
+    75% { fill: var(--color-honeydew); }
+  }
 }
 
 /* Inline: next/font sets --font-urbanist etc. on a wrapper, so the value must resolve at the element. */
@@ -96,6 +105,21 @@
 /* App chrome motion (apps/web/src/final/shell.tsx). */
 @keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
 @keyframes fade-in { from { opacity: 0; } }
+/* Header scroll progress (final/reveal.tsx): driven by the root scroll timeline. */
+@keyframes scroll-progress { from { scale: 0 1; } to { scale: 1 1; } }
+/* Hero sale chips: slide out of the kiosk sideways, hold, then drift up and off. Left and right alternate. */
+@keyframes chip-left {
+  0% { opacity: 0; transform: translate(36px, 0); }
+  8% { opacity: 1; transform: translate(0, 0); }
+  80% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(-14px, -18px); }
+}
+@keyframes chip-right {
+  0% { opacity: 0; transform: translate(-36px, 0); }
+  8% { opacity: 1; transform: translate(0, 0); }
+  80% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(14px, -18px); }
+}
 @keyframes sheet-up { from { transform: translateY(100%); } }
 
 @layer base {

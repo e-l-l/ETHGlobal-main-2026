@@ -35,11 +35,13 @@ export type JarMarkProps = {
   /** light: on white/canvas. meter: tier display, unlit bands read as empty. dark: on Hunter/Charcoal. */
   on?: keyof typeof SURFACE;
   loading?: boolean;
+  /** Decorative: the bands walk the brand greens, a wave falling from the tip to the base. */
+  cycle?: boolean;
   label?: string;
   className?: string;
 };
 
-export function JarMark({ lit = 1, size = 40, on = "light", loading, label, className }: JarMarkProps) {
+export function JarMark({ lit = 1, size = 40, on = "light", loading, cycle, label, className }: JarMarkProps) {
   const clip = `fdrop${useId().replace(/[:«»]/g, "")}`;
   const a11y = label ? { role: "img" as const, "aria-label": label } : { "aria-hidden": true as const };
 
@@ -63,8 +65,12 @@ export function JarMark({ lit = 1, size = 40, on = "light", loading, label, clas
             key={i}
             points={pts(b)}
             fill={loading ? "var(--band-off)" : i < lit ? "var(--band-on)" : "var(--band-base)"}
-            className={cn("transition-[fill] duration-300", loading && "animate-band motion-reduce:animate-none")}
-            style={loading ? { animationDelay: `${i * 2}s` } : undefined}
+            className={cn(
+              "transition-[fill] duration-300",
+              loading && "animate-band motion-reduce:animate-none",
+              cycle && !loading && "animate-band-cycle motion-reduce:animate-none",
+            )}
+            style={loading ? { animationDelay: `${i * 2}s` } : cycle ? { animationDelay: `${-i * 0.7}s` } : undefined}
           />
         ))}
       </g>

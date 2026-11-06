@@ -177,7 +177,7 @@ The primary mark is the 1-band state. The Standing Pass screen shows the real ti
 | # | Version | Where |
 |---|---|---|
 | 01 | Ribbon drop | The mark everywhere |
-| 02 | Token badge (drop in a Hunter coin) | JAR-J, wallet lists, onchain contexts |
+| 02 | Token badge (drop in a Hunter coin) | DRIP-J, wallet lists, onchain contexts |
 | 14 | Horizontal lockup | Default logo, app top bar |
 | 17 | App icons | Hunter for the store; Charcoal and Lime alternates; 22% corner radius |
 
@@ -285,8 +285,8 @@ The other 16 explorations (twist, ribbon coin, ribbon jar, ribbon $, pixel drop,
 | # | Screen | Key content |
 |---|---|---|
 | R01 | Junior vault | First-loss warning, waterfall, fee share 30%, coverage ratio |
-| R02 | Mint / redeem | USDC in, JAR-J out, book value |
-| R03 | Trade junior | Swap UI on the JAR-J/USDC Uniswap v4 pool; price, TWAP, book, discount |
+| R02 | Mint / redeem | USDC in, DRIP-J out, book value |
+| R03 | Trade junior | Swap UI on the DRIP-J/USDC Uniswap v4 pool; price, TWAP, book, discount |
 
 ### Public / judges, 4
 

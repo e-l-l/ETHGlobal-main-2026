@@ -130,7 +130,7 @@ The light-only, green-focused system lives in [`packages/tailwind-config/final.c
 - **Greens:** Charcoal `#262E24` (text), Hunter `#2C5A3A` (primary action, links), Fern, Sage, Leaf, Honeydew. **Lime `#C6F28C` is a fill on Hunter only, never on white** (1.2:1).
 - **Type:** Urbanist (display, money) · Figtree (body) · JetBrains Mono (labels, IDs, local amounts).
 - **Logo:** the ribbon drop. Its four bands double as the tier meter (lit bands = tier + 1).
-- **Patterns:** wave band, jar gradient, ledger grid, pixel dune (real sales only), 9:1 split bar.
+- **Patterns:** wave band, drip gradient, ledger grid, pixel dune (real sales only), 9:1 split bar.
 
 Rules for contributors:
 

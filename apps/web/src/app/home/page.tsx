@@ -46,7 +46,7 @@ export default function Page_() {
                 <Heading level={2} size="h2">
                   Lend
                 </Heading>
-                <Text className="max-w-[40ch]">Earn on a senior vault. Losses are absorbed first by each shop&apos;s jar, then by the junior vault.</Text>
+                <Text className="max-w-[40ch]">Earn on a senior vault. Losses are absorbed first by each shop&apos;s drip, then by the junior vault.</Text>
               </div>
               <div className="mt-auto flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
                 <Button href={routes.earn}>Start earning</Button>
