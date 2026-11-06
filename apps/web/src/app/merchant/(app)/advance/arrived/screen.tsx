@@ -27,7 +27,7 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
         </BigFigure>
         <Text className="max-w-[60ch] text-honeydew md:text-[17px]">
           {formatLocal(advance.drawn * shop.usdToLocal, shop.localCurrency)}. You pay it back with{" "}
-          {formatPercent(advance.holdback)} of each payment, and a flat fee that never grows.
+          {formatPercent(advance.holdback)} of each payment, and a fee of 0.5% a week while you owe, never more than {formatPercent(advance.maxFeeBps / 100)}.
         </Text>
       </HeroBlock>
 
@@ -49,8 +49,10 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
             <CardTitle>What you pay back</CardTitle>
             <KeyValue
               rows={[
-                ["Total", formatMoney(advance.total)],
-                [`${advance.feeLabel}, included`, formatMoney(advance.fee)],
+                ["Owed now", formatMoney(advance.owedNow)],
+                ["Fee so far, included", formatMoney(advance.feeSoFar)],
+                ["Fee if repaid in 2 weeks", formatMoney(advance.feeIfRepaidIn2Weeks)],
+                [`Max fee (${formatPercent(advance.maxFeeBps / 100)})`, formatMoney((advance.drawn * advance.maxFeeBps) / 10_000)],
                 ["From each payment", formatPercent(advance.holdback)],
                 ...(etaKnown(advance.etaDays) ? [["At your usual pace", formatDays(advance.etaDays)] as [string, string]] : []),
               ]}

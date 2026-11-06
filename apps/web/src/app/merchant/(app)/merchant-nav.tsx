@@ -72,9 +72,9 @@ const nav: NavItem[] = [
 
 const within = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
-/** Agent and My QR own their prefixes; the world view page highlights nothing; the rest sits under Home. */
+/** Agent and My QR own their prefixes; the world view and backup pages highlight nothing; the rest sits under Home. */
 function activeKey(pathname: string): string {
-  if (pathname === routes.worldView) return "";
+  if (pathname === routes.worldView || pathname === routes.backup) return "";
   return nav.find((n) => n.key !== "home" && within(pathname, n.href))?.key ?? "home";
 }
 
@@ -88,9 +88,14 @@ export function MerchantSideNav() {
       home={routes.merchant}
       account={{ name: shop.name, id: shop.id, initials: shop.initials }}
       footer={
-        <TextLink href={routes.home} className="min-h-11 px-3 text-note">
-          Switch role
-        </TextLink>
+        <>
+          <TextLink href={routes.backup} className="min-h-11 px-3 text-note">
+            Back up with World ID
+          </TextLink>
+          <TextLink href={routes.home} className="min-h-11 px-3 text-note">
+            Switch role
+          </TextLink>
+        </>
       }
     />
   );
@@ -105,11 +110,16 @@ export function MerchantNav() {
       active={activeKey(pathname)}
       home={routes.merchant}
       end={
-        <span className="hidden md:inline-flex">
-          <TextLink href={routes.home} className="min-h-11 px-3 text-note">
-            Switch role
+        <>
+          <TextLink href={routes.backup} className="min-h-11 px-3 text-note">
+            Back up
           </TextLink>
-        </span>
+          <span className="hidden md:inline-flex">
+            <TextLink href={routes.home} className="min-h-11 px-3 text-note">
+              Switch role
+            </TextLink>
+          </span>
+        </>
       }
     />
   );

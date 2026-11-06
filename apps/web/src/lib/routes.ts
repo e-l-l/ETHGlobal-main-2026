@@ -42,6 +42,10 @@ export const routes = {
   cashOut: "/merchant/cash-out",
   worldView: "/merchant/world-view",
   myQr: "/merchant/qr",
+  /** Back up this device's passes with World ID + a passphrase. */
+  backup: "/merchant/settings/backup",
+  /** New device: restore the passes from a World ID backup. */
+  restore: "/merchant/restore",
 
   /* Customer */
   pay: "/pay/corner-kiosk",
@@ -71,6 +75,11 @@ export type FailReason = "too-new" | "suspended" | "revenue-low";
 
 export function isFailReason(value: string | undefined): value is FailReason {
   return value === "too-new" || value === "suspended" || value === "revenue-low";
+}
+
+/** M09 with a reason: `expired` when the World approval timed out. */
+export function agentDeniedHref(reason?: "expired") {
+  return reason ? `${routes.agent.denied}?reason=${reason}` : routes.agent.denied;
 }
 
 export function failedHref(reason: FailReason) {

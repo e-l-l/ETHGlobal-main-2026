@@ -3,7 +3,7 @@ import { PixelIcon } from "./pixel-icons";
 
 /*
  * A slow week, as data. One example week of sales; each day shows what goes back:
- * DripMoni takes 10% of that day's sales, a fixed instalment takes the same amount every day.
+ * DripMoni takes 8% of that day's sales, a fixed instalment takes the same amount every day.
  * Both repay the same total. One block is one dollar. Brand greens only.
  */
 
@@ -14,7 +14,9 @@ const WEEK: [string, number][] = [
   ["Fri", 160],
   ["Sat", 200],
 ];
-const TOTAL = WEEK.reduce((a, [, s]) => a + s, 0) / 10;
+/** Share of each sale that repays the advance. */
+const HOLD = 0.08;
+const TOTAL = WEEK.reduce((a, [, s]) => a + s, 0) * HOLD;
 const FIXED = TOTAL / WEEK.length;
 const SLOW = new Set(["Wed", "Thu"]);
 const MAX = 20;
@@ -44,7 +46,7 @@ export function WeekChart() {
         <span className="flex flex-wrap gap-x-5 gap-y-1 font-body text-note text-honeydew">
           <span className="inline-flex items-center gap-2">
             <i aria-hidden className="size-3 rounded-[2px] bg-lime" />
-            DripMoni: 10% of the day&apos;s sales
+            DripMoni: 8% of the day&apos;s sales
           </span>
           <span className="inline-flex items-center gap-2">
             <i aria-hidden className="size-3 rounded-[2px] bg-honeydew/35" />
@@ -55,7 +57,7 @@ export function WeekChart() {
 
       <ol
         className="m-0 flex list-none flex-col gap-2 p-0"
-        aria-label={`Paid back each day. ${WEEK.map(([d, s]) => `${d}: sold $${s}, DripMoni ${money(s / 10)}, fixed ${money(FIXED)}`).join(". ")}.`}
+        aria-label={`Paid back each day. ${WEEK.map(([d, s]) => `${d}: sold $${s}, DripMoni ${money(s * HOLD)}, fixed ${money(FIXED)}`).join(". ")}.`}
       >
         {WEEK.map(([day, sales]) => {
           const slow = SLOW.has(day);
@@ -72,11 +74,11 @@ export function WeekChart() {
                 <span className="font-ledger text-[12px] text-honeydew">${sales} sold</span>
               </span>
               <span className="flex flex-col gap-[3px]">
-                <Row n={sales / 10} on="bg-lime" off="bg-honeydew/10" />
+                <Row n={sales * HOLD} on="bg-lime" off="bg-honeydew/10" />
                 <Row n={FIXED} on="bg-honeydew/45" off="bg-honeydew/10" />
               </span>
               <span className="flex flex-col items-end text-right">
-                <span className="font-display text-note font-bold text-lime tabular-nums">{money(sales / 10)}</span>
+                <span className="font-display text-note font-bold text-lime tabular-nums">{money(sales * HOLD)}</span>
                 <span className="font-ledger text-[12px] text-honeydew tabular-nums">vs {money(FIXED)}</span>
               </span>
             </li>
@@ -88,8 +90,8 @@ export function WeekChart() {
         <span className="flex items-start gap-3 font-body text-note text-honeydew">
           <PixelIcon name="calendar" size={22} className="mt-0.5 text-lime" accent="fill-honeydew" />
           <span>
-            <strong className="text-canvas">Wednesday, $30 sold:</strong> you pay back {money(3)}. A fixed instalment would still take {money(FIXED)}, more than a third
-            of the day.
+            <strong className="text-canvas">Wednesday, $30 sold:</strong> you pay back {money(30 * HOLD)}. A fixed instalment would still take {money(FIXED)}, almost a
+            third of the day.
           </span>
         </span>
         <span className="flex items-start gap-3 font-body text-note text-honeydew">

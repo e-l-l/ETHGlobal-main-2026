@@ -116,18 +116,19 @@ export function PixelDune({ days, rows = 10, className }: { days: number[]; rows
 
 /* ---------------------------------------------------------------- SplitBar */
 
-/** Every sale: 9:1, 3px gap. The 90% is quiet so the 10% drip is what you see. */
-export function SplitBar({ className, legend = true }: { className?: string; legend?: boolean }) {
+/** Every sale: the holdback (8% by default) against the rest, 3px gap. The shop's share is quiet so the drip is what you see. */
+export function SplitBar({ className, legend = true, holdback = 8 }: { className?: string; legend?: boolean; holdback?: number }) {
+  const keep = 100 - holdback;
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex h-2 gap-0.75" aria-hidden>
-        <span className="flex-9 rounded-[2px] bg-unlit" />
-        <span className="flex-1 rounded-[2px] bg-hunter" />
+        <span className="rounded-[2px] bg-unlit" style={{ flexGrow: keep, flexBasis: 0 }} />
+        <span className="rounded-[2px] bg-hunter" style={{ flexGrow: holdback, flexBasis: 0 }} />
       </div>
       {legend ? (
         <div className="flex flex-wrap gap-x-4 gap-y-1 font-ledger text-[12px] text-charcoal-soft">
-          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-unlit" />90% to you</span>
-          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-hunter" />10% to your advance</span>
+          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-unlit" />{keep}% to you</span>
+          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-[2px] bg-hunter" />{holdback}% to your advance</span>
         </div>
       ) : null}
     </div>

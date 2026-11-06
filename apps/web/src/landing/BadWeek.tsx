@@ -40,15 +40,16 @@ export function BadWeek() {
     <Section className="flex flex-wrap items-center gap-12">
       <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-4">
         <Eyebrow>Built for real weeks</Eyebrow>
-        <SectionTitle>A slow week costs you nothing extra.</SectionTitle>
+        <SectionTitle>A slow week never costs more than 3%.</SectionTitle>
         <Text className="m-0">
-          The fee is flat and you see it before you start. When sales slow down,
-          paying back slows with them. No penalty, no late fee, nobody calling.
+          Fee 0.5% per week while you owe, never more than 3%. When sales slow
+          down, paying back slows with them. No penalty, no late fee, nobody
+          calling. Pay early, pay less.
         </Text>
       </div>
       <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-3">
         <DayCard title="Busy day" sales="$200 in sales">
-          <strong className="text-hunter">$20</strong> drips back
+          <strong className="text-hunter">$16</strong> drips back
         </DayCard>
         {/* Bar width is the day's sales relative to the busy day. */}
         <DayCard
@@ -56,8 +57,8 @@ export function BadWeek() {
           sales="$30 in sales"
           barClassName="w-[15%] min-w-12"
         >
-          <strong className="text-hunter">$3</strong> drips back. Same fee, a
-          little more time.
+          <strong className="text-hunter">$2.40</strong> drips back. A little
+          more time, and the fee stops at 3%.
         </DayCard>
       </div>
     </Section>

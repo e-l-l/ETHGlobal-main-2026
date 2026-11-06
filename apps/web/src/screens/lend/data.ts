@@ -1,7 +1,7 @@
 /**
  * Lender, risk-taker and public numbers for the phone screens. One example world, consistent
  * across L01–P04: a shop stopped selling, DripCoin absorbed a $100 write-off, and the Risk agent
- * lowered the tier 3 cap. Numbers are numbers here, so the keypad screens can do arithmetic.
+ * reviewed the tier 3 cap ($300). Numbers are numbers here, so the keypad screens can do arithmetic.
  */
 
 import { limitsLadder } from "@/lib/mock/shop";
@@ -44,9 +44,9 @@ export const positionActivity = [
   { when: "Nov 2", what: "Deposited", amount: "$2,500" },
 ];
 
-/** Tier caps come from the shop's limits ladder. Tier 3 is currently lowered by the Risk agent. */
+/** Tier caps come from the shop's limits ladder ($50 / $100 / $200 / $300). Tier 3 is under review by the Risk agent (matches the SDK mock). */
 const LOWERED_TIER = 3;
-const LOWERED_CAP = 250;
+const LOWERED_CAP = 300;
 export const TIER_CAPS: { tier: number; cap: string; was?: string }[] = limitsLadder.map((l, tier) =>
   tier === LOWERED_TIER ? { tier, cap: `$${LOWERED_CAP}`, was: `$${l.cap}` } : { tier, cap: `$${l.cap}` },
 );
@@ -54,13 +54,13 @@ export const TIER_CAPS: { tier: number; cap: string; was?: string }[] = limitsLa
 export const signals = [
   { name: "DRIP price (TWAP)", value: "$0.986", state: "watch" as const, note: "Fell through $0.97 after the write-off, recovering" },
   { name: "Repayment speed", value: "−40%", state: "watch" as const, note: "One shop is selling slower than its usual week" },
-  { name: "Coverage", value: "20.3%", state: "ok" as const, note: "DRIP + reserve vs advances out. Above the 15% floor" },
+  { name: "Coverage", value: "20.3%", state: "ok" as const, note: "DRIP cover vs advances out. Above the 20% cover rule" },
 ];
 
 export const riskLog = [
   {
     time: "14:41",
-    title: "Lowered the tier 3 cap, $500 → $250",
+    title: "Limits reviewed at the $300 tier cap",
     kind: "down" as const,
     reasons: [
       "DRIP TWAP fell through $0.97 after a $100 write-off.",

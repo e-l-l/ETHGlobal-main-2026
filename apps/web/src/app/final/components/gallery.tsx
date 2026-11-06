@@ -273,7 +273,7 @@ function Swatches({ rows }: { rows: [string, string, string, string][] }) {
 
 export function FinalGallery() {
   const [seg, setSeg] = useState<"today" | "week" | "month">("week");
-  const [chip, setChip] = useState<"50" | "100" | "250">("100");
+  const [chip, setChip] = useState<"50" | "100" | "200">("100");
   const [pace, setPace] = useState<"slow" | "usual" | "busy">("usual");
   const [voice, setVoice] = useState(true);
   const [world, setWorld] = useState(false);
@@ -352,8 +352,8 @@ export function FinalGallery() {
               <Heading size="h2" level={3}>About 12 days at your usual pace</Heading>
             </Spec>
             <Spec name="Body · Figtree 16 · Note 14">
-              <Text>Every sale sends 10% to your advance. Nobody can tell who owes.</Text>
-              <Text size="note" tone="muted">No penalty, no extra fee.</Text>
+              <Text>Every sale sends 8% to your advance. Nobody can tell who owes.</Text>
+              <Text size="note" tone="muted">No penalty, no late fee.</Text>
             </Spec>
             <Spec name="Label · Mono 11 · Ledger · Mono 13">
               <Label>Repaid this week</Label>
@@ -473,7 +473,7 @@ export function FinalGallery() {
           <div className={grid}>
             <Card>
               <Label>Surface</Label>
-              <KeyValue rows={[["Advance", "$100.00"], ["Flat fee", "$15.00"], ["Total to repay", "$115.00"]]} />
+              <KeyValue rows={[["Advance", "$100.00"], ["Fee if repaid in 2 weeks", "$1.00"], ["Max fee (3%)", "$3.00"]]} />
             </Card>
             <Card tone="well">
               <Label>Well</Label>
@@ -535,7 +535,7 @@ export function FinalGallery() {
               <Segmented label="Range" value={seg} onChange={setSeg} options={[{ value: "today", label: "Today" }, { value: "week", label: "Week" }, { value: "month", label: "Month" }]} />
             </Spec>
             <Spec name="Chips · max per advance">
-              <Chips label="Max per advance" value={chip} onChange={setChip} options={[{ value: "50", label: "$50" }, { value: "100", label: "$100" }, { value: "250", label: "$250" }]} />
+              <Chips label="Max per advance" value={chip} onChange={setChip} options={[{ value: "50", label: "$50" }, { value: "100", label: "$100" }, { value: "200", label: "$200" }]} />
             </Spec>
             <Spec name="Pace picker">
               <PacePicker
@@ -555,7 +555,7 @@ export function FinalGallery() {
               </SettingRow>
             </Spec>
             <Spec name="Text fields">
-              <TextField label="Amount" prefix="$" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} hint="Up to $250 at your tier" />
+              <TextField label="Amount" prefix="$" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} hint="Up to $200 at your tier" />
               <TextField label="Shop name" defaultValue="Corner Kiosk 7" error="That name is taken. Try another." />
             </Spec>
           </div>
@@ -776,7 +776,7 @@ export function FinalGallery() {
                 {(
                   [
                     ["$", "bg-hunter text-canvas", "Sale", "Phone charger", "$10.00", "border-hairline"],
-                    ["%", "bg-lime text-deep", "Drip", "10% repays your advance", "+$1.00", "border-hunter/50"],
+                    ["%", "bg-lime text-deep", "Drip", "8% repays your advance", "+$0.80", "border-hunter/50"],
                     ["AI", "bg-deep text-lime", "Agent", "Agent drew for stock", "$100", "border-hairline"],
                   ] as const
                 ).map(([glyph, tile, kind, text, amount, border], i) => (

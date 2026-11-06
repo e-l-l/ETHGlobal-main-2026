@@ -28,32 +28,43 @@ export const SHOP_NAME_IDEAS = ["Corner Kiosk", "Kiosco Sol", "La Esquina", "Sta
 export const limitsLadder = [
   { label: "First advance", cap: 50 },
   { label: "1 repaid", cap: 100 },
-  { label: "2 repaid", cap: 250 },
-  { label: "3 or more", cap: 500 },
+  { label: "2 repaid", cap: 200 },
+  { label: "3 or more", cap: 300 },
 ] as const;
 
 /** Index into limitsLadder: Corner Kiosk has repaid one advance, so its limit is $100. */
 export const currentTier = 1;
 
 const drawn = limitsLadder[currentTier].cap;
-const fee = 15;
+/** Fee so far: 0.5% a week on the original advance, never more than 3%. */
+const fee = 2;
 const repaid = 46;
 const total = drawn + fee;
 
-/** The advance currently being repaid. */
+/** The advance currently being repaid. Same values as packages/sdk/src/mock/shop.ts. */
 export const advance = {
   purpose: "stock",
   drawn,
-  /** Fee wording is undecided ("Flat fee" vs interest): change the label here only. */
-  feeLabel: "Flat fee",
+  feeLabel: "Fee so far",
+  /** Deprecated aliases: `fee` = feeSoFar, `total` = owedNow. */
   fee,
   total,
+  /** Current debt still to pay back (same as `left`). */
+  owedNow: total - repaid,
+  feeSoFar: fee,
+  feeIfRepaidIn1Week: drawn * 0.005,
+  feeIfRepaidIn2Weeks: drawn * 0.01,
+  feeIfRepaidIn4Weeks: drawn * 0.02,
+  feeIfRepaidIn6Weeks: drawn * 0.03,
+  maxFeeBps: 300,
+  /** Simple annualized maximum, not an APR: 0.5% a week × 52. */
+  annualizedCostPercent: 26,
   repaid,
   left: total - repaid,
   /** Percent of the total already repaid. */
   pct: Math.round((repaid / total) * 100),
   /** Percent of each sale that goes to repayment. */
-  holdback: 10,
+  holdback: 8,
   drawnOn: "5 Nov",
   drawnAt: "today 9:12 am",
   /** Days to go at the current pace. */

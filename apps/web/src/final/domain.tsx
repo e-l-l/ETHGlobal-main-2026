@@ -41,7 +41,7 @@ export function SaleRow({ amount, time, item }: { amount: number; time: string; 
       </div>
       <div className="flex items-center justify-between gap-3">
         <Ledger className="text-charcoal-muted">{time}</Ledger>
-        <Ledger className="text-hunter">+${(amount / 10).toFixed(2)} to your advance</Ledger>
+        <Ledger className="text-hunter">+${(amount * 0.08).toFixed(2)} to your advance</Ledger>
       </div>
       <SplitBar legend={false} />
     </li>

@@ -32,7 +32,7 @@ import { WeekChart } from "./_landing/week";
 export const metadata: Metadata = {
   title: { absolute: `${APP_NAME}: dollar advances for small shops, repaid as you sell` },
   description:
-    "Dollars for stock today, paid back one sale at a time. 10% of each sale goes toward your advance. Flat fee, no interest, and we never ask for your name, phone or contacts.",
+    "Dollars for stock today, paid back one sale at a time. 8% of each sale goes toward your advance. Fee 0.5% per week while you owe, never more than 3%, and we never ask for your name, phone or contacts.",
 };
 
 const PRIMARY = "Get an advance";
@@ -192,7 +192,7 @@ function Eyebrow({ children, tone = "light" }: { children: ReactNode; tone?: "li
 /* ------------------------------------------------------------------ Hero */
 
 
-const PROMISES = ["Flat fee, no interest", "No penalty for slow weeks", "Your agent, your limits"];
+const PROMISES = ["0.5% a week, never more than 3%", "No late fees", "Your agent, your limits"];
 
 const PARTNERS = ["Uniswap v4", "World ID", "Anon-RPC"];
 
@@ -215,7 +215,7 @@ function Hero() {
             Stock up now. <span className="text-hunter">Repay as you sell.</span>
           </h1>
           <p className={cn("m-0 max-w-[44ch] font-body text-[29px] leading-[1.5] text-charcoal-soft [animation-delay:110ms]", enter)}>
-            Dollar advances for small shops. Each sale sends 10% back, so a slow day never costs extra.
+            Dollar advances for small shops. Each sale sends 8% back. Pay early, pay less.
           </p>
           <div className={cn("flex flex-col gap-3 sm:flex-row [animation-delay:160ms]", enter)}>
             <Button href={routes.welcome} width="auto" className="w-full px-6 sm:w-auto">
@@ -264,7 +264,7 @@ function Hero() {
 /* -------------------------------------------------------------- Bad week */
 
 const WEEK_PROMISES: [PixelIconName, string, string][] = [
-  ["check", "One flat fee", "You see it before you start. It never grows."],
+  ["check", "Fee capped at 3%", "0.5% a week while you owe. Pay early, pay less."],
   ["calendar", "No late fees", "A slow day just pays back less."],
   ["phone", "Nobody calling", "No reminders, no penalties, no pressure."],
 ];
@@ -276,10 +276,10 @@ function BadWeek() {
         <Reveal className="flex flex-col gap-6">
           <Eyebrow tone="dark">Built for real weeks</Eyebrow>
           <h2 id="week-h" className={cn(H2, "max-w-[13ch] text-canvas")}>
-            A slow week costs you nothing extra.
+            A slow week never costs more than 3%.
           </h2>
           <p className="m-0 max-w-[44ch] font-body text-read text-honeydew/85">
-            The fee is flat and you see it before you start. When sales slow down, paying back slows with them.
+            Fee 0.5% per week while you owe, never more than 3%. When sales slow down, paying back slows with them.
           </p>
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {WEEK_PROMISES.map(([icon, t, d]) => (
@@ -305,6 +305,14 @@ function BadWeek() {
 
 /* ---------------------------------------------------------- How it works */
 
+/** Positioning: one line each. */
+const DIFFERENT: [PixelIconName, string, string][] = [
+  ["lock", "Private", "A ZK pass, so lenders never see who you are."],
+  ["shop", "Built for tiny shops", "Advances from $50 to $300."],
+  ["agent", "An agent draws for you", "It restocks inside the limits you set."],
+  ["chart", "Risk priced in public", "DripCoin trades on Uniswap, so anyone can see the risk."],
+];
+
 function HowItWorks() {
   return (
     <section id="how" aria-labelledby="how-h" className="scroll-mt-16 bg-canvas py-28 md:py-40">
@@ -322,6 +330,19 @@ function HowItWorks() {
         </Reveal>
         <Reveal>
           <Explore />
+        </Reveal>
+        <Reveal>
+          <ul aria-label="What makes it different" className="m-0 grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-4">
+            {DIFFERENT.map(([icon, t, d]) => (
+              <li key={t} className="flex items-start gap-4 rounded-xl border border-hairline bg-surface px-5 py-4">
+                <IconTile name={icon} size={52} />
+                <span className="flex flex-col">
+                  <span className="font-body text-read font-semibold text-charcoal">{t}</span>
+                  <span className="font-body text-note text-charcoal-soft">{d}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </Reveal>
       </div>
     </section>
@@ -388,7 +409,7 @@ const SPONSORS: Sponsor[] = [
     title: "The market prices default risk.",
     points: [
       ["coin", "DripCoin, first loss, listed", "DripCoin is the junior tranche, an ERC-4626 vault. Its shares trade against USDC on a v4 pool."],
-      ["swap", "RiskHook fee funds the reserve", "A USDC-only fee on swaps, flushed to the reserve that covers losses after junior."],
+      ["swap", "RiskHook fee funds the reserve", "A USDC-only fee on swaps, flushed to the reserve that covers losses after DripCoin."],
       ["chart", "TWAP oracle: price drops, limits drop", "The risk agent compares the 1h and 24h TWAP. A fall of over 10% lowers lending limits."],
     ],
   },

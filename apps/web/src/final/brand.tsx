@@ -116,7 +116,7 @@ export function AppIcon({ size = 64, tone = "hunter" }: { size?: number; tone?: 
   );
 }
 
-const TIER_CAPS = ["–", "$50", "$100", "$250", "$500"] as const;
+const TIER_CAPS = ["–", "$50", "$100", "$200", "$300"] as const;
 
 /** Standing Pass meter: the logo is the tier. Never light bands that don't match a real tier. */
 export function TierMeter({ tier }: { tier: -1 | 0 | 1 | 2 | 3 }) {

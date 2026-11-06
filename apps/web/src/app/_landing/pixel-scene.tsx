@@ -12,7 +12,7 @@ import { useLive } from "./use-live";
  *   1. a customer walks up to the counter
  *   2. they tap their phone: it lights lime and a ring pulses out      -> "Sale" chip
  *   3. a coin arcs onto the counter and the counter flashes
- *   4. 10% hops from the counter into the pool, the pool fills and sparks -> "Drip" chip
+ *   4. 8% hops from the counter into the pool, the pool fills and sparks -> "Drip" chip
  *   5. the customer turns and walks off
  *
  * Drawn at two canvas pixels per art unit (3px squares on desktop) and scaled up with
@@ -680,7 +680,7 @@ export function PixelScene() {
         done.drip = true;
         jar = jar >= 6 ? 2 : jar + 1;
         jarGlow = 0.7;
-        emit("Drip", "10% repays your advance", `+$${(amt / 10).toFixed(2)}`);
+        emit("Drip", "8% repays your advance", `+$${(amt * 0.08).toFixed(2)}`);
         saleN++;
         if (saleN % 4 === 0) {
           agentT = 0;

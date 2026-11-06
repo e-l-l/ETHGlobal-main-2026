@@ -61,7 +61,8 @@ export const advance = {
   feeLabel: "Fee so far",
   fee,
   total,
-  owedNow: total,
+  /** Current debt still to pay back (same as `left`). */
+  owedNow: total - repaid,
   feeSoFar: fee,
   feeIfRepaidIn1Week: drawn * 0.005,
   feeIfRepaidIn2Weeks: drawn * 0.01,

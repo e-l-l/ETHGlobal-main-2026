@@ -7,18 +7,20 @@ import { PixelIcon, type PixelIconName } from "./pixel-icons";
 
 /*
  * One day at the kiosk, as a single timeline: three numbers, sales by hour as pixel columns
- * (one block per dollar, the top block is the tenth that drips back), and four moments pinned to their hours.
+ * (one block per dollar, the top block is the share that drips back), and four moments pinned to their hours.
  */
 
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 const SALES = [0, 3.6, 10, 5.4, 6.2, 4.8, 2.5, 3.1, 10, 7.3, 8.9, 9.8];
 const TOTAL = SALES.reduce((a, b) => a + b, 0);
+/** Share of each sale that repays the advance (8%). */
+const HOLD = advance.holdback / 100;
 
 const MOMENTS: { at: number; time: string; icon: PixelIconName; title: string; body: string }[] = [
   { at: 1, time: "9:12", icon: "agent", title: `Your agent drew $${advance.drawn} for stock`, body: "Why: cash was low before Thursday's restock." },
-  { at: 2, time: "10:14", icon: "coin", title: "A $10.00 sale", body: "$9.00 to you. $1.00 drips back to the advance." },
-  { at: 8, time: "4:20 pm", icon: "sound", title: "Read out loud", body: "“Recibiste 10 dólares, 1 fue a tu adelanto.”" },
-  { at: 11, time: "7:45 pm", icon: "shop", title: "Shop closes", body: `$${TOTAL.toFixed(2)} sold. $${(TOTAL / 10).toFixed(2)} went back, automatically.` },
+  { at: 2, time: "10:14", icon: "coin", title: "A $10.00 sale", body: "$9.20 to you. $0.80 drips back to the advance." },
+  { at: 8, time: "4:20 pm", icon: "sound", title: "Read out loud", body: "“Recibiste 10 dólares, 80 centavos fueron a tu adelanto.”" },
+  { at: 11, time: "7:45 pm", icon: "shop", title: "Shop closes", body: `$${TOTAL.toFixed(2)} sold. $${(TOTAL * HOLD).toFixed(2)} went back, automatically.` },
 ];
 
 const hourLabel = (h: number) => (h === 12 ? "12" : h > 12 ? `${h - 12}` : `${h}`);
@@ -29,7 +31,7 @@ export function DayTimeline() {
   function hear() {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance("Recibiste 10 dólares, 1 fue a tu adelanto");
+    const u = new SpeechSynthesisUtterance("Recibiste 10 dólares, 80 centavos fueron a tu adelanto");
     u.lang = "es-AR";
     u.onend = () => setSpeaking(false);
     u.onerror = () => setSpeaking(false);
@@ -39,8 +41,8 @@ export function DayTimeline() {
 
   const stats = [
     { k: "Sold today", v: `$${TOTAL.toFixed(2)}`, sub: `≈ ARS ${Math.round(toLocal(TOTAL)).toLocaleString("es-AR")}` },
-    { k: "Dripped back", v: `$${(TOTAL / 10).toFixed(2)}`, sub: "10% of every sale" },
-    { k: "Advance repaid", v: `${advance.pct}%`, sub: `$${advance.repaid} of $${advance.total}` },
+    { k: "Dripped back", v: `$${(TOTAL * HOLD).toFixed(2)}`, sub: `${advance.holdback}% of every sale` },
+    { k: "Advance repaid", v: `${advance.pct}%`, sub: `$${advance.repaid} of $${advance.owedNow}` },
   ];
 
   return (

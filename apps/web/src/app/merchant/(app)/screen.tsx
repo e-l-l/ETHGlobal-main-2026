@@ -91,7 +91,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
             {advance ? (
               <>
                 <span className="font-display text-amount tabular-nums">{formatMoney(advance.left)}</span>
-                <Ledger className="text-honeydew">of {formatMoney(advance.total)}</Ledger>
+                <Ledger className="text-honeydew">of {formatMoney(advance.drawn + advance.feeSoFar)}</Ledger>
               </>
             ) : (
               <span className="font-body text-note text-honeydew">None open</span>
@@ -184,7 +184,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
                 <div className="flex min-w-0 flex-col gap-1.5">
                   <BigFigure>{formatMoney(advance.left)}</BigFigure>
                   <Ledger className="text-honeydew">
-                    left of {formatMoney(advance.total)} · {formatLocal(advance.left * shop.usdToLocal, shop.localCurrency)}
+                    left of {formatMoney(advance.drawn + advance.feeSoFar)} · {formatLocal(advance.left * shop.usdToLocal, shop.localCurrency)}
                   </Ledger>
                 </div>
                 <JarMark lit={lit} on="dark" size={72} label={`Limit meter: tier ${currentTier} of 3`} />
@@ -196,7 +196,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
                     {formatMoney(advance.repaid)} paid back · {formatPercent(advance.pct)}
                   </span>
                   <span>
-                    {formatMoney(advance.fee)} {advance.feeLabel.toLowerCase()}, no interest · {eta}
+                    Fee so far {formatMoney(advance.feeSoFar)} · owed now {formatMoney(advance.owedNow)} · {eta}
                   </span>
                 </div>
               </div>

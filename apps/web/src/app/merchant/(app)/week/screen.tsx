@@ -73,7 +73,7 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
               <span className="font-display text-h1 text-charcoal tabular-nums">{formatMoney(paidBack)}</span>
             </Card>
             <Card>
-              <Label>Extra fees</Label>
+              <Label>Late fees</Label>
               <span className="font-display text-h1 text-fern tabular-nums">$0</span>
             </Card>
             <Card>
@@ -95,8 +95,8 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
           <CheckList
             items={[
               { text: `You pay back ${formatPercent(advance.holdback)} of what you take in. Take in less, pay less.` },
-              { text: `No penalty and no extra fee. The total stays ${formatMoney(advance.total)}.` },
-              { text: "Only if there are no payments at all for 30 days does the advance close as unpaid. We'll warn you well before that.", caution: true },
+              { text: `No penalty and no late fee. The fee keeps adding 0.5% a week but stops at ${formatPercent(advance.maxFeeBps / 100)} (${formatMoney((advance.drawn * advance.maxFeeBps) / 10_000)}).` },
+              { text: "Every 7 days, pay back at least 1% of the advance plus the fee so far. Short of that for 14 days, the advance is marked late. We'll warn you well before that.", caution: true },
             ]}
           />
         </Card>
