@@ -11,17 +11,22 @@ export const shop = {
   usdToLocal: 1500,
 } as const;
 
+const drawn = 100;
+const fee = 15;
+const repaid = 46;
+const total = drawn + fee;
+
 export const advance = {
   purpose: "stock",
-  drawn: 100,
+  drawn,
   /** Fee wording is undecided ("Flat fee" vs interest): change the label here only. */
   feeLabel: "Flat fee",
-  fee: 15,
-  total: 115,
-  repaid: 46,
-  left: 69,
+  fee,
+  total,
+  repaid,
+  left: total - repaid,
   /** Percent of the total already repaid. */
-  pct: 40,
+  pct: Math.round((repaid / total) * 100),
   /** Percent of each sale that goes to repayment. */
   holdback: 10,
   drawnOn: "5 Nov",
@@ -50,4 +55,9 @@ export const currentTier = 1;
 /** Local-currency value of a USD amount at the mock rate. */
 export function toLocal(usd: number) {
   return usd * shop.usdToLocal;
+}
+
+/** USD value of a local-currency amount at the mock rate. */
+export function toUsd(local: number) {
+  return local / shop.usdToLocal;
 }

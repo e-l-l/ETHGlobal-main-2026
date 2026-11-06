@@ -10,7 +10,7 @@ import { cashOut } from "@/lib/mock/merchant";
 
 /** Local-only amount state; nothing is sent yet. */
 export function AmountCard() {
-  const [amount, setAmount] = useState(String(cashOut.amount));
+  const [amount, setAmount] = useState(String(cashOut.available));
   const value = Number(amount) || 0;
   return (
     <>
@@ -25,7 +25,7 @@ export function AmountCard() {
         <Mono>{formatLocal(toLocal(value), shop.localCurrency)} at today&rsquo;s rate</Mono>
         <KeyValueList
           items={[
-            { k: "Available", v: `$${cashOut.available.toFixed(2)}` },
+            { k: "Available", v: formatMoney(cashOut.available) },
             { k: "Fee", v: "None" },
           ]}
         />

@@ -42,8 +42,8 @@ export function formatPercent(value: number): string {
 }
 
 /** "~23 days". */
-export function formatDays(days: number, approx = true): string {
-  return `${approx ? "~" : ""}${days} ${days === 1 ? "day" : "days"}`;
+export function formatDays(days: number): string {
+  return `~${days} ${days === 1 ? "day" : "days"}`;
 }
 
 /** "0x7a3e…91c2". Short strings (pseudonyms like "shop_7f3a") pass through unchanged. */

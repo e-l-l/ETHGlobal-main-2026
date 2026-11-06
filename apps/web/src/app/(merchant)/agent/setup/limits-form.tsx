@@ -6,6 +6,15 @@ import { formatMoney } from "@/lib/format";
 import { agentLimits } from "@/lib/mock/shop";
 import { perAdvanceOptions, perMonthStepper, purposes } from "@/lib/mock/merchant";
 
+const perAdvanceChoices = perAdvanceOptions.map((o) => ({
+  value: String(o.value),
+  label: formatMoney(o.value),
+  disabled: "lockedReason" in o,
+  disabledReason: "lockedReason" in o ? o.lockedReason : undefined,
+}));
+
+const purposeChoices = purposes.map((p) => ({ value: p, label: p }));
+
 /** Local-only state: nothing is saved yet. */
 export function LimitsForm() {
   const perAdvanceId = useId();
@@ -19,12 +28,7 @@ export function LimitsForm() {
         <SegmentedControl
           aria-labelledby={perAdvanceId}
           defaultValue={String(agentLimits.perAdvance)}
-          options={perAdvanceOptions.map((o) => ({
-            value: String(o.value),
-            label: formatMoney(o.value),
-            disabled: "lockedReason" in o,
-            disabledReason: "lockedReason" in o ? o.lockedReason : undefined,
-          }))}
+          options={perAdvanceChoices}
         />
       </Card>
       <Card>
@@ -35,7 +39,7 @@ export function LimitsForm() {
           step={perMonthStepper.step}
           min={perMonthStepper.min}
           max={perMonthStepper.max}
-          format={(v) => formatMoney(v)}
+          format={formatMoney}
           decrementLabel="Less"
           incrementLabel="More"
         />
@@ -45,7 +49,7 @@ export function LimitsForm() {
         <ChoiceChips
           aria-labelledby={purposeId}
           defaultValue={[agentLimits.purpose]}
-          options={purposes.map((p) => ({ value: p, label: p }))}
+          options={purposeChoices}
         />
       </Card>
     </>

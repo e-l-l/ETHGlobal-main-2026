@@ -236,8 +236,6 @@ export type ChoiceChip = { value: string; label: ReactNode; disabled?: boolean }
 
 export type ChoiceChipsProps = {
   options: ChoiceChip[];
-  /** Selected values (controlled). */
-  value?: string[];
   defaultValue?: string[];
   onValueChange?: (value: string[]) => void;
   /** Accessible name for the group. */
@@ -249,17 +247,15 @@ export type ChoiceChipsProps = {
 /** Multi-select toggle pills (aria-pressed buttons). Selected = accent fill with a check. */
 export function ChoiceChips({
   options,
-  value,
   defaultValue = [],
   onValueChange,
   className,
   ...aria
 }: ChoiceChipsProps) {
-  const [inner, setInner] = useState<string[]>(defaultValue);
-  const selected = value ?? inner;
+  const [selected, setSelected] = useState<string[]>(defaultValue);
   const toggle = (v: string) => {
     const next = selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v];
-    if (value === undefined) setInner(next);
+    setSelected(next);
     onValueChange?.(next);
   };
   return (

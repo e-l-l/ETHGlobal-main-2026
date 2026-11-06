@@ -5,7 +5,6 @@ import { formatMoney } from "@/lib/format";
 import { currentTier, limitsLadder } from "@/lib/mock/shop";
 
 export default function RepaidPage() {
-  const repaidCount = currentTier;
   return (
     <TwoColumn
       main={
@@ -18,7 +17,7 @@ export default function RepaidPage() {
             kind="standing"
             title="Standing Pass"
             privateTag="private"
-            headline={`You’ve repaid ${repaidCount} ${repaidCount === 1 ? "advance" : "advances"}`}
+            headline={`You’ve repaid ${currentTier} ${currentTier === 1 ? "advance" : "advances"}`}
             limitLabel="Your limit now"
             limit={formatMoney(limitsLadder[currentTier].cap)}
             footer="Nobody can see your history. Not even us."

@@ -78,7 +78,7 @@ import {
   SplitRow,
   WorldViewList,
 } from "@/components/domain";
-import { ArrowRightIcon, BoltIcon, ShieldIcon } from "@/components/icons";
+import { ArrowRightIcon, BoltIcon, PrintIcon, ShareIcon, ShieldIcon } from "@/components/icons";
 import { Group, Specimen } from "./kit";
 import { DEMO } from "./demo-data";
 
@@ -564,7 +564,14 @@ export function Gallery() {
         <LossWaterfall tiers={DEMO.waterfall} />
         <WorldViewList {...DEMO.worldView} />
         <div className="max-w-[400px]">
-          <QRCard value="https://example.com/pay/shop_7f3a" shopName="Tienda Lucía" pseudonym="shop_7f3a" shareLabel="Share" printLabel="Print" qrLabel="QR code to pay Tienda Lucía" />
+          <QRCard value="https://example.com/pay/shop_7f3a" shopName="Tienda Lucía" pseudonym="shop_7f3a" qrLabel="QR code to pay Tienda Lucía"
+            actions={
+              <ButtonRow className="w-full md:justify-center">
+                <Button variant="outline" iconStart={<ShareIcon size={18} />}>Share</Button>
+                <Button variant="outline" iconStart={<PrintIcon size={18} />}>Print</Button>
+              </ButtonRow>
+            }
+          />
         </div>
         <div className="flex flex-wrap gap-3">
           <ShieldIcon className="text-accent-text" />

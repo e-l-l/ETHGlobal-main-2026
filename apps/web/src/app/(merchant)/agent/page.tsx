@@ -4,7 +4,7 @@ import { Accent, Button, ButtonRow, Card, Eyebrow, Heading, Pill } from "@/compo
 import { formatMoney } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { agentLimits } from "@/lib/mock/shop";
-import { agentActivity, agentStats } from "@/lib/mock/merchant";
+import { agentActivity, agentStats, agentSummary } from "@/lib/mock/merchant";
 
 export default function AgentLogPage() {
   return (
@@ -31,7 +31,7 @@ export default function AgentLogPage() {
       <StatGrid>
         <StatCard
           label="This month"
-          value={formatMoney(agentStats.monthUsed)}
+          value={formatMoney(agentSummary.monthUsed)}
           sub={`of ${formatMoney(agentLimits.perMonth)} limit`}
         />
         <StatCard label="Draws" value={agentStats.draws} sub={`since ${agentStats.drawsSince}`} />

@@ -12,19 +12,12 @@ const links: NavLink<NavKey>[] = [
   { key: "qr", label: "My QR", href: routes.myQr },
 ];
 
-/** Which nav tab owns each route prefix. Anything else (e.g. /world-view) highlights nothing. */
-const sections: [prefix: string, key: NavKey][] = [
-  [routes.agent.log, "agent"],
-  [routes.myQr, "qr"],
-  [routes.home, "home"],
-  [routes.advance.details, "home"],
-  [routes.week, "home"],
-  [routes.cashOut, "home"],
-  [routes.repaid, "home"],
-];
+const within = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
+/** Agent and My QR own their prefixes; world view highlights nothing; every other merchant route is under Home. */
 function activeKey(pathname: string): NavKey | undefined {
-  return sections.find(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`))?.[1];
+  if (pathname === routes.worldView) return undefined;
+  return links.find((l) => l.key !== "home" && within(pathname, l.href))?.key ?? "home";
 }
 
 /** MerchantHeader with the active tab and world-view state taken from the URL. */

@@ -4,17 +4,21 @@
  */
 import type { ActivityKind } from "@/components/data";
 import { APP_NAME } from "@/lib/brand";
-import { advance, agentLimits, shop } from "./shop";
+import { formatMoney } from "@/lib/format";
+import { advance, agentLimits, shop, toUsd } from "./shop";
 
 /* ------------------------------------------------------------- M10 home */
 
+/** Sold today, in local currency. */
+const soldLocal = 142500;
+const soldUsd = toUsd(soldLocal);
+
 export const today = {
   label: "Thursday 5 Nov",
-  /** Sold today, in local currency. */
-  soldLocal: 142500,
-  soldUsd: 95,
+  soldLocal,
+  soldUsd,
   salesCount: 18,
-  toRepayment: 9.5,
+  toRepayment: (soldUsd * advance.holdback) / 100,
   weekUsd: 475,
 } as const;
 
@@ -42,8 +46,8 @@ export function splitSale(total: number) {
 export const drawReasons = [
   "Sales are up 12% this week, so repayment is quick",
   "You usually restock on Mondays",
-  `$${advance.drawn} is inside your $${agentLimits.perAdvance} per-advance limit`,
-  `This month: $${agentSummary.monthUsed} of your $${agentLimits.perMonth} limit used`,
+  `${formatMoney(advance.drawn)} is inside your ${formatMoney(agentLimits.perAdvance)} per-advance limit`,
+  `This month: ${formatMoney(agentSummary.monthUsed)} of your ${formatMoney(agentLimits.perMonth)} limit used`,
 ] as const;
 
 /* ---------------------------------------------------- M12 advance details */
@@ -81,7 +85,6 @@ export const week = {
 /* --------------------------------------------------------- M14 agent log */
 
 export const agentStats = {
-  monthUsed: agentSummary.monthUsed,
   draws: 2,
   drawsSince: "5 Oct",
   skipped: 1,
@@ -140,8 +143,8 @@ export const purposes = ["stock", "rent", "repairs"] as const;
 
 export const agentPermissions = {
   can: [
-    `Draw up to $${agentLimits.perAdvance} at a time for ${agentLimits.purpose}`,
-    `Draw up to $${agentLimits.perMonth} in a month`,
+    `Draw up to ${formatMoney(agentLimits.perAdvance)} at a time for ${agentLimits.purpose}`,
+    `Draw up to ${formatMoney(agentLimits.perMonth)} in a month`,
     "Only when your sales can repay it",
   ],
   never: ["Go past these limits: the contract blocks it", "Move money anywhere but to you or your supplier"],
@@ -150,7 +153,6 @@ export const agentPermissions = {
 /* ------------------------------------------------------------ M18 cash out */
 
 export const cashOut = {
-  amount: 100,
   available: 100,
   destinations: [
     { value: "supplier", title: "My supplier · Distribuidora Sur", description: "paid directly, in pesos" },
