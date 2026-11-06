@@ -1,13 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { DepositView, ExplorerView, TradeView, TxResult } from "@repo/sdk";
 import { ActionBar, CopyHash, DoneMark, Keypad, LinkButton, Main, Note, Screen, Stat, TopBar, typedUsd } from "@/jar/app";
 import { I } from "@/jar/app-icons";
 import { Sparkline } from "@/jar/app-data";
 import { Button, Chips, Pill, Segmented } from "@/jar/controls";
 import { usdText } from "@/jar/format";
+import { errorCode, withMRA } from "@/lib/mra";
+import { q } from "@/lib/mra-queries";
+import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
-import { JUNIOR_WRITE_OFF_INDEX, VAULT, explorerEvents, juniorSeries, type ExplorerKind } from "./data";
+import { useMRA } from "@/lib/use-mra";
+import { vaultNumbers } from "./vault";
+
+type ExplorerKind = "Sale" | "Draw" | "Pass" | "Proof" | "Shop";
 
 /* ------------------------------------------------------------ VaultAction
  * L02 Deposit / withdraw and J02 Mint / redeem: one shape. Amount on a keypad, the quote under it,
@@ -22,6 +29,8 @@ type Side = {
   steps: string[];
   done: (n: number) => string;
   doneSub: string;
+  /** The SDK call, sent on the last wallet step (mock mode: simulated steps). */
+  submit: (n: number) => Promise<TxResult>;
 };
 
 type Phase = "idle" | "wallet" | "pending";
@@ -33,6 +42,8 @@ function VaultAction({ title, back, sides, initial, after, worldNote }: { title:
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [done, setDone] = useState(false);
+  const [tx, setTx] = useState<TxResult | undefined>();
+  const [failed, setFailed] = useState<string | undefined>();
   const n = Number(value || 0);
   const over = n > side.max;
   const busy = phase !== "idle";
@@ -45,13 +56,23 @@ function VaultAction({ title, back, sides, initial, after, worldNote }: { title:
   };
 
   const run = () => {
+    const last = step >= side.steps.length - 1;
+    setFailed(undefined);
     setPhase("wallet");
     window.setTimeout(() => setPhase("pending"), 700);
-    window.setTimeout(() => {
-      setPhase("idle");
-      if (step >= side.steps.length - 1) setDone(true);
-      else setStep((s) => s + 1);
-    }, 1500);
+    const beat = new Promise((r) => window.setTimeout(r, 1500));
+    Promise.all([last ? side.submit(n) : Promise.resolve(undefined), beat]).then(
+      ([result]) => {
+        setPhase("idle");
+        if (!last) return setStep((s) => s + 1);
+        setTx(result);
+        setDone(true);
+      },
+      (e: unknown) => {
+        setPhase("idle");
+        setFailed(errorCode(e));
+      },
+    );
   };
 
   if (done) {
@@ -64,7 +85,13 @@ function VaultAction({ title, back, sides, initial, after, worldNote }: { title:
             <h1 className="app-display">{side.done(n)}</h1>
             <p className="dj-body">{side.doneSub}</p>
           </div>
-          <Note>Simulated. A demo wallet confirmed it; nothing left this phone.</Note>
+          {tx && !tx.simulated ? (
+            <Note>
+              Confirmed onchain. <CopyHash value={tx.hash} short />
+            </Note>
+          ) : (
+            <Note>Simulated. A demo wallet confirmed it; nothing left this phone.</Note>
+          )}
         </Main>
         <ActionBar>
           <LinkButton href={after.href}>{after.label}</LinkButton>
@@ -96,6 +123,11 @@ function VaultAction({ title, back, sides, initial, after, worldNote }: { title:
           ))}
         </div>
         <Keypad value={value} onChange={(v) => !busy && setValue(v)} />
+        {failed ? (
+          <p role="alert" className="dj-small">
+            Not sent ({failed})
+          </p>
+        ) : null}
       </Main>
       <ActionBar>
         {side.steps.length > 1 ? (
@@ -118,7 +150,11 @@ function VaultAction({ title, back, sides, initial, after, worldNote }: { title:
 
 const fmt = (n: number, d = 1) => n.toLocaleString("en-US", { maximumFractionDigits: d });
 
-export function DepositScreen({ side }: { side?: string }) {
+/** L02 Deposit / withdraw: `lender.depositView()`, then `lender.deposit(n)` / `lender.withdraw(n)`. */
+export function DepositScreen({ side, initial }: { side?: string | undefined; initial: DepositView | null }) {
+  const { data, error } = useMRA(q.deposit, { initial });
+  if (!data) return <MRAState error={error} />;
+  const VAULT = vaultNumbers(data.vault);
   return (
     <VaultAction
       title="Senior vault"
@@ -136,6 +172,7 @@ export function DepositScreen({ side }: { side?: string }) {
           steps: ["Approve USDC", "Deposit"],
           done: (n) => `Deposited ${usdText(n, 2)}`,
           doneSub: "You earn from shop fees. Senior is paid back before junior.",
+          submit: (n) => withMRA((m) => m.lender.deposit(n)),
         },
         {
           key: "withdraw",
@@ -146,13 +183,18 @@ export function DepositScreen({ side }: { side?: string }) {
           steps: ["Withdraw"],
           done: (n) => `Withdrew ${usdText(n, 2)}`,
           doneSub: "The rest stays in advances until shops repay.",
+          submit: (n) => withMRA((m) => m.lender.withdraw(n)),
         },
       ]}
     />
   );
 }
 
-export function MintScreen() {
+/** J02 Mint / redeem: `lender.junior.mintView()`, then `lender.junior.deposit(n)` / `withdraw(n × book)`. */
+export function MintScreen({ initial }: { initial: DepositView | null }) {
+  const { data, error } = useMRA(q.mint, { initial });
+  if (!data) return <MRAState error={error} />;
+  const VAULT = vaultNumbers(data.vault);
   return (
     <VaultAction
       title="JAR-J"
@@ -169,6 +211,7 @@ export function MintScreen() {
           steps: ["Approve USDC", "Mint"],
           done: (n) => `Minted ${fmt(n / VAULT.juniorBook, 2)} JAR-J`,
           doneSub: "First loss: you take losses before senior, for 30% of every fee.",
+          submit: (n) => withMRA((m) => m.lender.junior.deposit(n)),
         },
         {
           key: "redeem",
@@ -179,6 +222,8 @@ export function MintScreen() {
           steps: ["Redeem"],
           done: (n) => `Redeemed ${fmt(n, 2)} JAR-J`,
           doneSub: "USDC is back in your wallet.",
+          // The SDK withdraws USDC assets; the keypad is in JAR-J, so convert at book.
+          submit: (n) => withMRA((m) => m.lender.junior.withdraw(n * VAULT.juniorBook)),
         },
       ]}
     />
@@ -186,11 +231,15 @@ export function MintScreen() {
 }
 
 /* ------------------------------------------------------------- J03 Trade */
-export function TradeScreen() {
+/** J03 Trade: `lender.junior.trade()`. The swap itself is simulated: the SDK has no v4 swap yet. */
+export function TradeScreen({ initial }: { initial: TradeView | null }) {
+  const { data, error } = useMRA(q.trade, { initial });
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [value, setValue] = useState("100");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  if (!data) return <MRAState error={error} />;
+  const VAULT = vaultNumbers(data.vault);
   const n = Number(value || 0);
   const out = side === "buy" ? n / VAULT.juniorPrice : n * VAULT.juniorPrice;
   const discount = (((VAULT.juniorBook - VAULT.juniorPrice) / VAULT.juniorBook) * 100).toFixed(1);
@@ -204,7 +253,7 @@ export function TradeScreen() {
             <span className="dj-label">Uniswap v4 · JAR-J / USDC</span>
             <Pill kind="slow">{discount}% under book</Pill>
           </div>
-          <Sparkline points={juniorSeries} mark={JUNIOR_WRITE_OFF_INDEX} height={56} label="JAR-J price over 12 weeks, dipping at the write-off" />
+          <Sparkline points={data.juniorSeries} mark={data.writeOffIndex} height={56} label="JAR-J price over 12 weeks, dipping at the write-off" />
         </section>
         <div className="app-stats app-stats--3 pub">
           <Stat label="Price" value={`$${VAULT.juniorPrice.toFixed(3)}`} />
@@ -263,15 +312,19 @@ const FILTERS: { value: "all" | ExplorerKind; label: string }[] = [
   { value: "Pass", label: "Passes" },
 ];
 
-export function ExplorerScreen() {
-  const [q, setQ] = useState("");
+/** P04 Explorer: `protocol.explorer()`. */
+export function ExplorerScreen({ initial }: { initial: ExplorerView | null }) {
+  const { data, error } = useMRA(q.explorer, { initial });
+  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | ExplorerKind>("all");
+  const events = data?.events;
   const rows = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return explorerEvents.filter(
+    const s = search.trim().toLowerCase();
+    return (events ?? []).filter(
       (e) => (filter === "all" || e.kind === filter || (filter === "Pass" && e.kind === "Proof")) && (!s || `${e.title} ${e.detail} ${e.hash}`.toLowerCase().includes(s)),
     );
-  }, [q, filter]);
+  }, [events, search, filter]);
+  if (!data) return <MRAState error={error} />;
 
   return (
     <Screen mode="light">
@@ -282,7 +335,7 @@ export function ExplorerScreen() {
           <span aria-hidden style={{ position: "absolute", left: 14, display: "inline-flex", color: "var(--text-3)" }}>
             <I.search />
           </span>
-          <input className="dj-input" type="search" inputMode="search" enterKeyHint="search" autoCapitalize="none" autoCorrect="off" placeholder="shop_7f3a, 0x…" value={q} onChange={(e) => setQ(e.target.value)} style={{ paddingLeft: 44, fontWeight: 400 }} />
+          <input className="dj-input" type="search" inputMode="search" enterKeyHint="search" autoCapitalize="none" autoCorrect="off" placeholder="shop_7f3a, 0x…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ paddingLeft: 44, fontWeight: 400 }} />
         </label>
         <Chips label="Filter" value={filter} onChange={setFilter} options={FILTERS} />
         <ul className="app-rows pub" aria-label="Public events, newest first">

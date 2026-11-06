@@ -1,17 +1,21 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { CashOutView } from "@repo/sdk";
 import { KeyValueList } from "@/components/data";
 import { AmountInput, Button, Card, Mono } from "@/components/ui";
 import { formatLocal, formatMoney } from "@/lib/format";
 import { routes } from "@/lib/routes";
-import { shop, toLocal } from "@/lib/mock/shop";
-import { cashOut } from "@/lib/mock/merchant";
+import { useMRAAction } from "@/lib/use-mra";
 
-/** Local-only amount state; nothing is sent yet. */
-export function AmountCard() {
-  const [amount, setAmount] = useState(String(cashOut.available));
+/** Amount + send. Sending is `merchant.cashOut(amount, destination)` (simulated in every mode). */
+export function AmountCard({ view, destination }: { view: CashOutView; destination: string }) {
+  const router = useRouter();
+  const [amount, setAmount] = useState(String(view.available));
+  const send = useMRAAction((m, usd: number, dest: string) => m.merchant.cashOut(usd, dest));
   const value = Number(amount) || 0;
+  const { shop } = view;
   return (
     <>
       <Card>
@@ -20,19 +24,31 @@ export function AmountCard() {
           unit="USD"
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
-          onMax={() => setAmount(String(cashOut.available))}
+          onMax={() => setAmount(String(view.available))}
         />
-        <Mono>{formatLocal(toLocal(value), shop.localCurrency)} at today&rsquo;s rate</Mono>
+        <Mono>{formatLocal(value * shop.usdToLocal, shop.localCurrency)} at today&rsquo;s rate</Mono>
         <KeyValueList
           items={[
-            { k: "Available", v: formatMoney(cashOut.available) },
+            { k: "Available", v: formatMoney(view.available) },
             { k: "Fee", v: "None" },
           ]}
         />
       </Card>
       <div>
-        <Button href={routes.home}>Send {formatMoney(value)}</Button>
+        <Button
+          loading={send.pending}
+          disabled={!(value > 0)}
+          onClick={() => {
+            send.run(value, destination).then(
+              () => router.push(routes.home),
+              () => undefined,
+            );
+          }}
+        >
+          Send {formatMoney(value)}
+        </Button>
       </div>
+      {send.error ? <Mono>Not sent ({send.error})</Mono> : null}
     </>
   );
 }

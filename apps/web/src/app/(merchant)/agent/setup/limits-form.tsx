@@ -1,25 +1,32 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId } from "react";
+import type { AgentSetupView } from "@repo/sdk";
 import { Card, ChoiceChips, Label, NumberStepper, SegmentedControl } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
-import { agentLimits } from "@/lib/mock/shop";
-import { perAdvanceOptions, perMonthStepper, purposes } from "@/lib/mock/merchant";
 
-const perAdvanceChoices = perAdvanceOptions.map((o) => ({
-  value: String(o.value),
-  label: formatMoney(o.value),
-  disabled: "lockedReason" in o,
-  disabledReason: "lockedReason" in o ? o.lockedReason : undefined,
-}));
+export type LimitsDraft = { perAdvance: number; perMonth: number; purposes: string[] };
 
-const purposeChoices = purposes.map((p) => ({ value: p, label: p }));
-
-/** Local-only state: nothing is saved yet. */
-export function LimitsForm() {
+/** The three limits, from `agent.setupOptions()`. Controlled, so the choice can go on to M08. */
+export function LimitsForm({
+  options,
+  value,
+  onChange,
+}: {
+  options: AgentSetupView;
+  value: LimitsDraft;
+  onChange: (next: LimitsDraft) => void;
+}) {
   const perAdvanceId = useId();
   const purposeId = useId();
-  const [perMonth, setPerMonth] = useState<number>(agentLimits.perMonth);
+  const perAdvanceChoices = options.perAdvanceOptions.map((o) => ({
+    value: String(o.value),
+    label: formatMoney(o.value),
+    disabled: !!o.lockedReason,
+    disabledReason: o.lockedReason,
+  }));
+  const purposeChoices = options.purposes.map((p) => ({ value: p, label: p }));
+  const { step, min, max } = options.perMonthStepper;
 
   return (
     <>
@@ -27,18 +34,19 @@ export function LimitsForm() {
         <Label id={perAdvanceId}>Max per advance</Label>
         <SegmentedControl
           aria-labelledby={perAdvanceId}
-          defaultValue={String(agentLimits.perAdvance)}
+          value={String(value.perAdvance)}
+          onValueChange={(v) => onChange({ ...value, perAdvance: Number(v) })}
           options={perAdvanceChoices}
         />
       </Card>
       <Card>
         <NumberStepper
           label="Max per month"
-          value={perMonth}
-          onValueChange={setPerMonth}
-          step={perMonthStepper.step}
-          min={perMonthStepper.min}
-          max={perMonthStepper.max}
+          value={value.perMonth}
+          onValueChange={(perMonth) => onChange({ ...value, perMonth })}
+          step={step}
+          min={min}
+          max={max}
           format={formatMoney}
           decrementLabel="Less"
           incrementLabel="More"
@@ -48,7 +56,8 @@ export function LimitsForm() {
         <Label id={purposeId}>What it can draw for</Label>
         <ChoiceChips
           aria-labelledby={purposeId}
-          defaultValue={[agentLimits.purpose]}
+          defaultValue={value.purposes}
+          onValueChange={(purposes) => onChange({ ...value, purposes })}
           options={purposeChoices}
         />
       </Card>

@@ -3,9 +3,10 @@ import { I } from "@/jar/app-icons";
 import { Coin } from "@/jar/app-data";
 import { Lockup, JarMark } from "@/jar/mark";
 import { Pill } from "@/jar/controls";
+import type { BusinessPassView } from "@repo/sdk";
 import { copy, type Lang } from "@/lib/copy";
 import { isFailReason, routes } from "@/lib/routes";
-import { DemoMenu, FailSheet } from "./onboarding-client";
+import { DemoMenu, FailSheet, PassFacts } from "./onboarding-client";
 
 /* M01 Welcome. One promise, one action. The gradient sits in its own block; text sits on solid ground. */
 export function WelcomeScreen({ lang }: { lang: Lang }) {
@@ -101,8 +102,8 @@ export function ProveScreen({ lang }: { lang: Lang }) {
   );
 }
 
-/* M04 Business Pass. A rare, first-time moment: the check draws itself, then the pass. */
-export function PassScreen({ lang }: { lang: Lang }) {
+/* M04 Business Pass: `onboarding.pass()`. A rare, first-time moment: the check draws itself, then the pass. */
+export function PassScreen({ lang, pass }: { lang: Lang; pass: BusinessPassView | null }) {
   const c = copy[lang];
   const t = c.pass;
   return (
@@ -122,14 +123,7 @@ export function PassScreen({ lang }: { lang: Lang }) {
             </span>
             <Pill kind="locked">{lang === "es" ? "En este teléfono" : "On this phone"}</Pill>
           </div>
-          <dl className="dj-kv priv">
-            {t.facts.map((f) => (
-              <div key={f.k}>
-                <dt>{f.k}</dt>
-                <dd>{f.v}</dd>
-              </div>
-            ))}
-          </dl>
+          <PassFacts lang={lang} initial={pass} />
           <p className="dj-body" style={{ color: "var(--text)", fontWeight: 700 }}>
             {t.learned}
           </p>

@@ -1,17 +1,27 @@
+"use client";
+
+import type { EarnView, JuniorView, PositionView, ProtocolView, RiskView } from "@repo/sdk";
 import { ActionBar, LinkButton, Main, Note, Row, Screen, Stat, TopBar } from "@/jar/app";
 import { I } from "@/jar/app-icons";
 import { LossStrip, Sparkline } from "@/jar/app-data";
 import { Pill } from "@/jar/controls";
 import { usdText } from "@/jar/format";
+import { q } from "@/lib/mra-queries";
+import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
-import { JUNIOR_WRITE_OFF_INDEX, TIER_CAPS, VAULT, juniorSeries, positionActivity, riskLog, seniorSeries, signals } from "./data";
+import { useMRA } from "@/lib/use-mra";
 import { LendTabs, WalletChip, lendBrand } from "./shell";
+import { reasonLines, vaultNumbers } from "./vault";
 
 const usd2 = (n: number) => usdText(n, 2);
 const pct = (a: number, b: number) => `${(((b - a) / b) * 100).toFixed(1)}%`;
 
-/* ------------------------------------------------------------------ L01 Earn */
-export function EarnScreen() {
+/* ------------------------------------------------------------------ L01 Earn: `lender.overview()` */
+export function EarnScreen({ initial }: { initial: EarnView | null }) {
+  const { data, error } = useMRA(q.earn, { initial });
+  if (!data) return <MRAState error={error} />;
+  const VAULT = data.vault;
+  const n = vaultNumbers(VAULT);
   return (
     <Screen mode="light">
       <TopBar brand start={lendBrand} end={<WalletChip />} worldNote="Vault totals and positions are onchain. Lenders never see a shop's books or who owns it." />
@@ -45,8 +55,8 @@ export function EarnScreen() {
               href={routes.position}
               lead={<I.wallet size={20} />}
               title="Your position"
-              sub={`+${usd2(VAULT.positionEarned)} earned`}
-              end={<span className="pub">{usd2(VAULT.positionValue)}</span>}
+              sub={`+${usd2(n.positionEarned)} earned`}
+              end={<span className="pub">{usd2(n.positionValue)}</span>}
             />
           </li>
         </ul>
@@ -62,29 +72,33 @@ export function EarnScreen() {
   );
 }
 
-/* -------------------------------------------------------------- L03 Position */
-export function PositionScreen() {
+/* -------------------------------------------------------------- L03 Position: `lender.position()` */
+export function PositionScreen({ initial }: { initial: PositionView | null }) {
+  const { data, error } = useMRA(q.position, { initial });
+  if (!data) return <MRAState error={error} />;
+  const { positionActivity, seniorSeries } = data;
+  const n = vaultNumbers(data.vault);
   return (
     <Screen mode="light">
       <TopBar back={routes.earn} title="My position" worldNote="Your shares are onchain under this wallet. Nothing ties the wallet to your name." />
       <Main>
         <div className="dj-stack pub" style={{ gap: 2 }}>
           <span className="dj-label">Value</span>
-          <span className="dj-balance">{usd2(VAULT.positionValue)}</span>
+          <span className="dj-balance">{usd2(n.positionValue)}</span>
           <span className="dj-small">
-            +{usd2(VAULT.positionEarned)} earned · {VAULT.positionShares.toLocaleString("en-US")} shares
+            +{usd2(n.positionEarned)} earned · {n.positionShares.toLocaleString("en-US")} shares
           </span>
         </div>
         <section className="dj-card" style={{ gap: 10 }}>
           <div className="dj-between">
             <span className="dj-label">Share value, 12 weeks</span>
-            <span className="dj-mono">${VAULT.sharePrice.toFixed(3)}</span>
+            <span className="dj-mono">${n.sharePrice.toFixed(3)}</span>
           </div>
           <Sparkline points={seniorSeries} label="Share value rising steadily over 12 weeks, flat through the write-off" />
         </section>
         <div className="app-stats">
-          <Stat label="Withdraw now" value={usdText(VAULT.availableToWithdraw)} sub="cash in the vault" />
-          <Stat label="In advances" value={usd2(VAULT.positionValue - VAULT.availableToWithdraw)} sub="back as shops repay" />
+          <Stat label="Withdraw now" value={usdText(n.availableToWithdraw)} sub="cash in the vault" />
+          <Stat label="In advances" value={usd2(n.positionValue - n.availableToWithdraw)} sub="back as shops repay" />
         </div>
         <ul className="app-rows" aria-label="Activity">
           {positionActivity.map((a) => (
@@ -106,8 +120,12 @@ export function PositionScreen() {
   );
 }
 
-/* ---------------------------------------------------------------- J01 Junior */
-export function JuniorScreen() {
+/* ---------------------------------------------------------------- J01 Junior: `lender.junior.overview()` */
+export function JuniorScreen({ initial }: { initial: JuniorView | null }) {
+  const { data, error } = useMRA(q.junior, { initial });
+  if (!data) return <MRAState error={error} />;
+  const VAULT = data.vault;
+  const n = vaultNumbers(VAULT);
   return (
     <Screen mode="light">
       <TopBar brand start={lendBrand} end={<WalletChip />} worldNote="The JAR-J price, pool and coverage are public. So is every mint and trade." />
@@ -124,22 +142,22 @@ export function JuniorScreen() {
             <div className="dj-stack" style={{ gap: 2 }}>
               <span className="dj-label">JAR-J price</span>
               <span className="dj-balance" style={{ fontSize: 34 }}>
-                ${VAULT.juniorPrice.toFixed(3)}
+                ${n.juniorPrice.toFixed(3)}
               </span>
             </div>
             <span className="dj-mono" style={{ textAlign: "right" }}>
-              {pct(VAULT.juniorPrice, VAULT.juniorBook)} under book
+              {pct(n.juniorPrice, n.juniorBook)} under book
               <br />
-              TWAP ${VAULT.juniorTwap.toFixed(3)}
+              TWAP ${n.juniorTwap.toFixed(3)}
             </span>
           </div>
-          <Sparkline points={juniorSeries} mark={JUNIOR_WRITE_OFF_INDEX} height={64} label="JAR-J price over 12 weeks. It dips at the write-off, then recovers to 0.982." />
+          <Sparkline points={data.juniorSeries} mark={data.writeOffIndex} height={64} label="JAR-J price over 12 weeks. It dips at the write-off, then recovers to 0.982." />
           <span className="dj-small">The dot is the $100 write-off.</span>
         </section>
         <div className="app-stats app-stats--3">
           <Stat label="Coverage" value={VAULT.coverage} />
           <Stat label="Fee share" value={VAULT.feeShareJunior} />
-          <Stat label="Pool" value="$42k" />
+          <Stat label="Pool" value={`$${Math.round(n.junior / 1000)}k`} />
         </div>
         <LossStrip viewer="junior" />
         <div className="app-actions__row">
@@ -154,8 +172,12 @@ export function JuniorScreen() {
   );
 }
 
-/* -------------------------------------------------------------- P02 Protocol */
-export function ProtocolScreen() {
+/* -------------------------------------------------------------- P02 Protocol: `protocol.stats()` */
+export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
+  const { data, error } = useMRA(q.protocol, { initial });
+  if (!data) return <MRAState error={error} />;
+  const VAULT = data.vault;
+  const n = vaultNumbers(VAULT);
   return (
     <Screen mode="light">
       <TopBar brand start={lendBrand} end={<WalletChip />} worldNote="Everything on this screen is public. None of it names a person." />
@@ -169,17 +191,17 @@ export function ProtocolScreen() {
           <Stat label="Repaid, 30 days" value={VAULT.repaid30d} />
           <Stat label="Written off" value={VAULT.writtenOff} sub="all time" />
           <Stat label="Reserve" value={VAULT.reserve} />
-          <Stat label="Junior TWAP" value={`$${VAULT.juniorTwap.toFixed(3)}`} />
+          <Stat label="Junior TWAP" value={`$${n.juniorTwap.toFixed(3)}`} />
           <Stat label="Shops" value={VAULT.shopsActive} sub="pseudonyms" />
         </div>
         <section className="dj-stack" style={{ gap: 8 }} aria-label="Limit per tier">
           <span className="dj-label">Limit per tier</span>
           <ol className="app-loss pub">
-            {TIER_CAPS.map((t) => (
+            {data.tierCaps.map((t) => (
               <li key={t.tier}>
                 <span className="dj-label">Tier {t.tier}</span>
                 <strong>{t.cap}</strong>
-                <span>{"was" in t ? <s>{t.was}</s> : " "}</span>
+                <span>{t.was ? <s>{t.was}</s> : " "}</span>
               </li>
             ))}
           </ol>
@@ -198,12 +220,21 @@ export function ProtocolScreen() {
   );
 }
 
-/* ------------------------------------------------------------------ P03 Risk */
+/* ------------------------------------------------------------------ P03 Risk: `protocol.risk()` */
 const signalPill = { watch: { kind: "slow" as const, text: "Watch" }, ok: { kind: "saving" as const, text: "OK" } };
-const logPill = { down: { kind: "risk" as const, text: "Lowered" }, watch: { kind: "slow" as const, text: "Watch" }, ok: { kind: "saving" as const, text: "Info" } };
+/** SDK ActivityKind → pill. */
+const logPill = {
+  down: { kind: "risk" as const, text: "Lowered" },
+  warn: { kind: "slow" as const, text: "Watch" },
+  accent: { kind: "saving" as const, text: "Info" },
+  neutral: { kind: "saving" as const, text: "Info" },
+};
 
-export function RiskScreen() {
-  const [latest, ...rest] = riskLog;
+export function RiskScreen({ initial }: { initial: RiskView | null }) {
+  const { data, error } = useMRA(q.risk, { initial });
+  if (!data) return <MRAState error={error} />;
+  const { signals } = data;
+  const [latest, ...rest] = data.riskLog;
   return (
     <Screen mode="light">
       <TopBar brand start={lendBrand} end={<WalletChip />} worldNote="Signals and every limit change are public, with the Risk agent's reasons." />
@@ -217,7 +248,7 @@ export function RiskScreen() {
             </div>
             <h2 className="dj-h2">{latest.title}</h2>
             <ul className="dj-list">
-              {latest.reasons.map((r) => (
+              {reasonLines(latest.reason).map((r) => (
                 <li key={r} className="dj-small">
                   <span aria-hidden style={{ color: "var(--accent)" }}>
                     →
@@ -255,7 +286,7 @@ export function RiskScreen() {
                     </span>
                   </summary>
                   <ul className="dj-list" style={{ padding: "0 16px 14px" }}>
-                    {l.reasons.map((r) => (
+                    {reasonLines(l.reason).map((r) => (
                       <li key={r} className="dj-small">
                         {r}
                       </li>
