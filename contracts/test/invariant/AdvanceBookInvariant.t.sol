@@ -45,7 +45,7 @@ contract Handler is Test {
         ++calls;
         uint256 index = seed % 4;
         ++serial;
-        Offer memory offer = Offer(bytes32(serial), shopIds[index], actors[index], 50e6, 11000, 2000, 0, serial, 0, uint64(block.timestamp + 1 days));
+        Offer memory offer = Offer(bytes32(serial), shopIds[index], actors[index], 50e6, 50, 300, 2000, 0, serial, 0, uint64(block.timestamp + 1 days));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PK, book.hashOffer(offer));
         // Business Pass proof: MockVerifier accepts; the registry's empty root is a known root.
         try book.drawFirst(offer, abi.encodePacked(r, s, v), hex"01", EMPTY_ROOT, serial) returns (uint256) { ++successes; } catch { ++failures; }

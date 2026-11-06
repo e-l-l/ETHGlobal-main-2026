@@ -129,7 +129,7 @@ contract MandateTest is BaseTest {
         internal
         returns (Offer memory o, bytes memory sig)
     {
-        o = Offer(bytes32(++offerSerial), SHOP, RCPT, amount, 11000, 1000, tier, passNullifier, minBand, uint64(block.timestamp + 1 hours));
+        o = Offer(bytes32(++offerSerial), SHOP, RCPT, amount, 50, 300, 1000, tier, passNullifier, minBand, uint64(block.timestamp + 1 hours));
         sig = _signOffer(o, OFFER_SIGNER_PK);
     }
 
@@ -291,7 +291,7 @@ contract MandateTest is BaseTest {
         junior.withdraw(junior.maxWithdraw(address(this)), address(this), address(this));
         (Offer memory o, bytes memory sig) = _mOffer(0, 50e6, 0, 0);
         bytes memory agentSig = _agentSig(id, o.offerId, AGENT_PK);
-        vm.expectRevert(abi.encodeWithSelector(AdvanceBook.InsufficientJuniorCover.selector, 0, 5e6));
+        vm.expectRevert(abi.encodeWithSelector(AdvanceBook.InsufficientJuniorCover.selector, 0, 10e6));
         book.drawByMandate(o, sig, id, agentSig);
         assertEq(book.getMandate(id).drawnInPeriod, 0);
     }
@@ -320,7 +320,7 @@ contract MandateTest is BaseTest {
         uint256 id = _register(_req(1, 0), 777); // 100 per draw, 150 per 30 days
         uint256 t0 = block.timestamp;
 
-        (Offer memory o, bytes memory sig) = _mOffer(1, 250e6, 0, 0); // over maxPerDraw
+        (Offer memory o, bytes memory sig) = _mOffer(1, 200e6, 0, 0); // over maxPerDraw
         bytes memory as_ = _agentSig(id, o.offerId, AGENT_PK);
         vm.expectRevert(AdvanceBook.MandateLimitExceeded.selector);
         book.drawByMandate(o, sig, id, as_);
@@ -471,7 +471,7 @@ contract MandateTest is BaseTest {
     function testFuzz_drawByMandate_neverExceedsLimits(uint256 seed, address caller) public {
         if (caller == address(0)) caller = address(0x5E1A7);
         uint256 id = _register(_req(1, 0), 777); // 100 / 150 per 30 days
-        uint256[4] memory sizes = [uint256(50e6), 100e6, 250e6, 500e6];
+        uint256[4] memory sizes = [uint256(50e6), 100e6, 200e6, 300e6];
         uint256 periodStart = block.timestamp;
         uint256 drawn;
         for (uint256 i = 0; i < 12; ++i) {

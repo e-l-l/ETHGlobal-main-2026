@@ -47,11 +47,14 @@ abstract contract Policy is EIP712, Ownable2Step {
     uint256[4] public tierCapFloor;
     uint256 public maxExposure;
     uint256 public maxExposureFloor;
+    uint16 public maxFeeRateBpsPerWeek = 50;
+    uint16 public maxFeeCapBps = 300;
     mapping(bytes32 => bool) public offerUsed;
     mapping(uint256 => bool) public passNullifierUsed;
 
     event OfferConsumed(bytes32 indexed offerId, bytes32 indexed shopId, uint8 tier, uint256 amount);
     event LimitsChanged(address indexed by, uint256[4] caps, uint256 maxExposure);
+    event FeeTermBoundsSet(uint16 maxFeeRateBpsPerWeek, uint16 maxFeeCapBps);
 
     constructor(
         address owner_,
@@ -96,12 +99,12 @@ abstract contract Policy is EIP712, Ownable2Step {
         if (offerUsed[o.offerId]) revert OfferAlreadyUsed();
         if (block.timestamp > o.expiresAt) revert OfferExpired();
         if (o.tier > 3) revert InvalidTier();
-        if (o.amount != 50e6 && o.amount != 100e6 && o.amount != 250e6 && o.amount != 500e6) {
+        if (o.amount != 50e6 && o.amount != 100e6 && o.amount != 200e6 && o.amount != 300e6) {
             revert InvalidAmount();
         }
         if (o.amount > tierCap[o.tier]) revert TierCapExceeded();
-        if (o.feeRateBpsPerWeek == 0 || o.feeRateBpsPerWeek > 1000) revert InvalidFeeRate();
-        if (o.feeCapBps == 0 || o.feeCapBps > 1000) revert InvalidFeeCap();
+        if (o.feeRateBpsPerWeek == 0 || o.feeRateBpsPerWeek > maxFeeRateBpsPerWeek) revert InvalidFeeRate();
+        if (o.feeCapBps == 0 || o.feeCapBps > maxFeeCapBps) revert InvalidFeeCap();
         if (o.holdbackBps < 500 || o.holdbackBps > 2000) revert InvalidHoldback();
         if (currentExposure > maxExposure || o.amount > maxExposure - currentExposure) revert ExposureExceeded();
         if (!manual) {
@@ -142,5 +145,13 @@ abstract contract Policy is EIP712, Ownable2Step {
 
     function setRiskManager(address r) external virtual onlyOwner {
         riskManager = r;
+    }
+
+    function setFeeTermBounds(uint16 rateBpsPerWeek, uint16 capBps) external virtual onlyOwner {
+        if (rateBpsPerWeek == 0 || rateBpsPerWeek > 1000) revert InvalidFeeRate();
+        if (capBps == 0 || capBps > 1000) revert InvalidFeeCap();
+        maxFeeRateBpsPerWeek = rateBpsPerWeek;
+        maxFeeCapBps = capBps;
+        emit FeeTermBoundsSet(rateBpsPerWeek, capBps);
     }
 }

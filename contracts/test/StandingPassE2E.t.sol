@@ -49,11 +49,11 @@ contract StandingPassE2ETest is Test {
 
         usdc = new MockUSDC();
         senior = new TrancheVault(IERC20(address(usdc)), "Senior", "SNR", address(this), TrancheVault(address(0)), 0);
-        junior = new TrancheVault(IERC20(address(usdc)), "Junior", "JNR", address(this), senior, 1000);
+        junior = new TrancheVault(IERC20(address(usdc)), "Junior", "JNR", address(this), senior, 2000);
         book = new AdvanceBookTreeHarness(BookConfig(
             IERC20(address(usdc)), senior, junior, IPoseidon2(POSEIDON2_SEPOLIA), honk,
             address(this), vm.addr(SIGNER_PK), address(this),
-            [uint256(50e6), 100e6, 250e6, 500e6], [uint256(50e6), 50e6, 50e6, 50e6], 100_000e6, 1_000e6, 30 days, 5e6,
+            [uint256(50e6), 100e6, 200e6, 300e6], [uint256(50e6), 50e6, 50e6, 50e6], 100_000e6, 1_000e6, 30 days, 5e6,
             IBusinessPass(address(new BusinessPassRegistry(IPoseidon2(POSEIDON2_SEPOLIA), address(this), address(0x155E), [uint16(32), 566, 404, 0]))),
             new MockVerifier(), address(0xA77E5)
         ));
@@ -76,7 +76,7 @@ contract StandingPassE2ETest is Test {
     }
 
     function _offer(address recipient) internal view returns (Offer memory o, bytes memory sig) {
-        o = Offer(OFFER_ID, SHOP, recipient, 100e6, 11500, 1000, 1, 0, 0, uint64(block.timestamp + 1 days));
+        o = Offer(OFFER_ID, SHOP, recipient, 100e6, 50, 300, 1000, 1, 0, 0, uint64(block.timestamp + 1 days));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PK, book.hashOffer(o));
         sig = abi.encodePacked(r, s, v);
     }

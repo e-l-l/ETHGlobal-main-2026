@@ -179,7 +179,7 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
     uint256 public reserve;
     uint256 public nextAdvanceId; // ids start at 1
     mapping(bytes32 => Shop) public shops;
-    mapping(uint256 => Advance) public advances;
+    mapping(uint256 => Advance) internal advances;
     mapping(uint256 => bool) public nullifierSpent;
     address public agentPassAttester;
     uint256 public nextMandateId; // ids start at 1
@@ -313,58 +313,37 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
 
         _pullExact(msg.sender, amount);
 
-        uint256 advanceId = s.activeAdvanceId;
-        uint256 rep;
-        uint256 principalPart;
-        uint256 seniorFee;
-        uint256 juniorFee;
-        uint256 protocolFee;
-
-        if (advanceId != 0) {
-            Advance storage a = advances[advanceId];
-            uint256 owedLeft = owedOf(advanceId);
-            rep = amount * a.holdbackBps / BPS;
-            if (rep > owedLeft) rep = owedLeft;
-
-            if (rep > 0) {
-                uint256 accrued = accruedFee(a);
-                uint256 feeDue = accrued - a.feePaid;
-                uint256 fee = rep < feeDue ? rep : feeDue;
-                a.feePaid += fee;
-                principalPart = rep - fee;
-                uint256 principalLeft = a.principal - a.principalRepaid;
-                if (principalPart > principalLeft) principalPart = principalLeft;
-                uint256 repaidAfter = a.repaid + rep;
-                seniorFee = Math.mulDiv(fee, seniorFeeBps, BPS);
-                juniorFee = Math.mulDiv(fee, juniorFeeBps, BPS);
-                protocolFee = Math.mulDiv(fee, protocolFeeBps, BPS);
-                uint256 reserveFee = fee - seniorFee - juniorFee - protocolFee;
-
-                // effects
-                a.repaid = repaidAfter;
-                a.principalRepaid += principalPart;
-                _noteRepayment(a, rep);
-                reserve += reserveFee;
-                emit RepaymentSplit(advanceId, principalPart, seniorFee, juniorFee, reserveFee, protocolFee);
-
-                if (a.principalRepaid == a.principal) {
-                    a.status = Status.Repaid;
-                    s.activeAdvanceId = 0;
-                    emit AdvanceRepaid(advanceId, shopId);
-                }
-            }
-        }
-
+        uint256 rep = s.activeAdvanceId == 0 ? 0 : _applySaleRepayment(s, shopId, amount);
         emit Sale(shopId, msg.sender, amount, rep);
-
-        // interactions
         if (amount > rep) usdc.safeTransfer(payout, amount - rep);
-        if (principalPart + seniorFee > 0) {
-            usdc.safeTransfer(address(senior), principalPart + seniorFee);
-            if (principalPart > 0) senior.principalReturned(principalPart);
+    }
+
+    function _applySaleRepayment(Shop storage s, bytes32 shopId, uint256 amount) internal returns (uint256 rep) {
+        uint256 id = s.activeAdvanceId;
+        Advance storage a = advances[id];
+        rep = Math.min(amount * a.holdbackBps / BPS, owedOf(id));
+        if (rep == 0) return 0;
+        uint256 feeDue = accruedFee(a) - a.feePaid;
+        uint256 fee = Math.min(rep, feeDue);
+        a.feePaid += fee;
+        uint256 principalPart = Math.min(rep - fee, a.principal - a.principalRepaid);
+        a.repaid += rep;
+        a.principalRepaid += principalPart;
+        _noteRepayment(a, rep);
+        uint256 sFee = Math.mulDiv(fee, seniorFeeBps, BPS);
+        uint256 jFee = Math.mulDiv(fee, juniorFeeBps, BPS);
+        uint256 pFee = Math.mulDiv(fee, protocolFeeBps, BPS);
+        uint256 rFee = fee - sFee - jFee - pFee;
+        reserve += rFee;
+        emit RepaymentSplit(id, principalPart, sFee, jFee, rFee, pFee);
+        if (a.principalRepaid == a.principal) {
+            a.status = Status.Repaid;
+            s.activeAdvanceId = 0;
+            emit AdvanceRepaid(id, shopId);
         }
-        if (juniorFee > 0) usdc.safeTransfer(address(junior), juniorFee);
-        if (protocolFee > 0) usdc.safeTransfer(treasury, protocolFee);
+        if (principalPart + sFee > 0) { usdc.safeTransfer(address(senior), principalPart + sFee); if (principalPart > 0) senior.principalReturned(principalPart); }
+        if (jFee > 0) usdc.safeTransfer(address(junior), jFee);
+        if (pFee > 0) usdc.safeTransfer(treasury, pFee);
     }
 
     // ---------------------------------------------------------------- draws
@@ -654,14 +633,15 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
     }
 
     /// @notice Amount still owed on an advance (0 unless Active).
-    function owedOf(uint256 advanceId) external view returns (uint256) {
+    function owedOf(uint256 advanceId) public view returns (uint256) {
         Advance storage a = advances[advanceId];
         return a.status == Status.Active ? a.principal - a.principalRepaid + accruedFee(a) - a.feePaid : 0;
     }
 
     function accruedFee(Advance storage a) internal view returns (uint256) {
-        uint256 raw = Math.mulDiv(a.principal, uint256(a.feeRateBpsPerWeek) * (block.timestamp - a.drawnAt), BPS * 7 days);
+        uint256 raw = Math.mulDiv(a.principal, uint256(a.feeRateBpsPerWeek) * (block.timestamp - a.drawnAt), uint256(BPS) * 7 days);
         uint256 cap = Math.mulDiv(a.principal, a.feeCapBps, BPS);
+        if (a.principalRepaid == a.principal) return a.feePaid;
         return raw < cap ? raw : cap;
     }
 
@@ -782,7 +762,7 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         uint256 acc = rep;
         if (nowTs < a.windowStart + REPAY_WINDOW) acc += a.windowRepaid;
         else a.windowStart = nowTs;
-        if (acc >= minWindowRepayment(a.principal - a.principalRepaid + accruedFee(a))) {
+        if (acc >= minWindowRepayment(a.principal + accruedFee(a))) {
             a.lastSaleAt = nowTs;
             a.windowStart = nowTs;
             a.windowRepaid = 0;
@@ -812,6 +792,7 @@ contract AdvanceBook is Policy, StandingPassTree, ReentrancyGuard {
         uint256 toProtocol = Math.mulDiv(fee, protocolFeeBps, BPS);
         uint256 toReserve = fee - (toSenior - principalPart) - toJunior - toProtocol;
         reserve += toReserve;
+        emit RepaymentSplit(advanceId, principalPart, toSenior - principalPart, toJunior, toReserve, toProtocol);
         if (toSenior > 0) { usdc.safeTransfer(address(senior), toSenior); if (principalPart > 0) senior.principalReturned(principalPart); }
         if (toJunior > 0) usdc.safeTransfer(address(junior), toJunior);
         if (toProtocol > 0) usdc.safeTransfer(treasury, toProtocol);
