@@ -125,6 +125,32 @@
   },
   {
     "type": "function",
+    "name": "LATE_FEE_CAP_BPS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "LATE_FEE_RATE_BPS_PER_WEEK",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "LIMITS_TYPEHASH",
     "inputs": [],
     "outputs": [
@@ -875,6 +901,16 @@
             "name": "windowRepaid",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "lateSecs",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "lateFeePaid",
+            "type": "uint256",
+            "internalType": "uint256"
           }
         ]
       }
@@ -1091,6 +1127,25 @@
   },
   {
     "type": "function",
+    "name": "isBehind",
+    "inputs": [
+      {
+        "name": "advanceId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "isKnownRoot",
     "inputs": [
       {
@@ -1130,6 +1185,25 @@
         "name": "",
         "type": "uint16",
         "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lateFeeOf",
+    "inputs": [
+      {
+        "name": "advanceId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -2269,6 +2343,25 @@
         "type": "uint16",
         "indexed": false,
         "internalType": "uint16"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LateFeePaid",
+    "inputs": [
+      {
+        "name": "advanceId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false

@@ -70,6 +70,15 @@ export const advance = {
   feeIfRepaidIn6Weeks: drawn * 0.03,
   maxFeeBps: 300,
   annualizedCostPercent: 26,
+  /** Late-fee step-up: 0 / false for an on-time merchant (the fee doubles only while behind the minimum). */
+  lateFee: 0,
+  lateFeePaid: 0,
+  isBehind: false,
+  lateFeeRateBpsPerWeek: 50,
+  maxLateFeeBps: 300,
+  feeRule:
+    "Paying on time keeps your fee at 0.5% a week, max 3%. If you fall behind the minimum, the fee doubles to 1% a week (max 6% total) until you catch up; the extra goes to the safety reserve.",
+  lateFeeHint: null as string | null,
   repaid,
   left: total - repaid,
   /** Percent of the total already repaid. */

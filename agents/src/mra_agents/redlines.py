@@ -61,6 +61,12 @@ MESSAGES: dict[str, dict[str, str]] = {
 }
 
 
+# World ID red lines (humans.py), checked by the pipeline with the registry; same message lookup.
+from .humans import MESSAGES as _HUMAN_MESSAGES
+
+MESSAGES.update(_HUMAN_MESSAGES)
+
+
 def _over(x: float, limit: float) -> bool:
     return not math.isfinite(x) or x > limit
 

@@ -193,7 +193,8 @@ def cors_origins() -> list[str]:
     return [x.strip().rstrip("/") for x in raw.split(",") if x.strip() and x.strip() != "*"]
 
 
-def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=None, faucet=None, sim=None):
+def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=None, faucet=None, sim=None,
+               humans=None):
     app = FastAPI(debug=False)
     app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["GET", "POST", "PUT"],
                        allow_headers=["Content-Type", "Authorization"], max_age=600)
@@ -330,6 +331,10 @@ def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=N
         from .agents_api import build_router
         app.include_router(build_router(merchant, recovery))
 
+    if humans is not None:  # World ID for borrowers (humans.HumanBindingService)
+        from .agents_api import build_human_router
+        app.include_router(build_human_router(humans))
+
     if sim is not None:  # devnet only: the judge simulator (sim_api.SimMount)
         from .sim_api import mount
         mount(app, sim)
@@ -394,11 +399,16 @@ class _LazyServices:
         def chain_now() -> int:
             return reader.w3.eth.get_block("latest")["timestamp"]
 
+        # World ID binding + ban on default + gradual unlock (humans.py, unlock.py); enforced by the offer signer.
+        from .humans import build_human_services
+        human_registry, human_service = build_human_services(settings, reader)
+        human_service.now = time.time  # owner-auth freshness is wall clock (the devnet chain clock warps)
         pipeline = UnderwritingPipeline(reader=reader, indexer=indexer, judge=judge, signer=signer,
-                                        store=store, settings=settings, now=chain_now)
+                                        store=store, settings=settings, now=chain_now, humans=human_registry)
         from .faucet import build_faucet
         return {"pipeline": pipeline, "relayer": Relayer(writer, settings, now=chain_now), "reader": reader,
                 "store": store, "risk": RiskAgent(reader, writer, judge, settings, now=chain_now),
+                "humans": human_service, "human_registry": human_registry,
                 "faucet": build_faucet(writer, settings)}
 
 
@@ -438,4 +448,5 @@ def _devnet_simulator():
 
 
 app = create_app(*(_LazyProxy(_services, name) for name in ("pipeline", "relayer", "reader", "store", "risk")),
-                 *_merchant_proxies(), faucet=_LazyProxy(_services, "faucet"), sim=_devnet_simulator())
+                 *_merchant_proxies(), faucet=_LazyProxy(_services, "faucet"), sim=_devnet_simulator(),
+                 humans=_LazyProxy(_services, "humans"))

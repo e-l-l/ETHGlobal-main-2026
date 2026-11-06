@@ -29,6 +29,7 @@ import type {
   AgentStatusView,
   AgentTriggerResult,
 } from "../viewmodels.js";
+import { humanLimit, mockHumanLimit, tierLimit } from "./human.js";
 import { dayLabel, shortDate, toBase, usd } from "./util.js";
 
 const DAY = 86_400;
@@ -202,15 +203,21 @@ export function agentDomain(ctx: Ctx) {
 
     /** M08 Approve dialog content. */
     async approveView(limits?: SetupLimits): Promise<AgentApproveView> {
-      if (!limits) return ctx.mocked({ advance: { ...S.advance }, agentLimits: { ...S.agentLimits }, source: "mock" as const });
+      // World ID + gradual unlock at the tier this device can prove (what the first draw will be capped at).
+      const human = isMock
+        ? mockHumanLimit(ctx)
+        : await humanLimit(ctx, await tierLimit(ctx, provableTier(await ctx.vault.get("standing_pass").catch(() => undefined))));
+      if (!limits) return ctx.mocked({ advance: { ...S.advance }, agentLimits: { ...S.agentLimits }, ...human, source: "mock" as const });
       const fee = Math.round(limits.perAdvance * 2) / 100;
       return {
         advance: { ...S.advance, purpose: limits.purpose ?? "stock", drawn: limits.perAdvance, fee,
           feeSoFar: 0, owedNow: limits.perAdvance, total: limits.perAdvance, left: limits.perAdvance,
           feeIfRepaidIn1Week: limits.perAdvance * 0.005, feeIfRepaidIn2Weeks: limits.perAdvance * 0.01,
           feeIfRepaidIn4Weeks: limits.perAdvance * 0.02, feeIfRepaidIn6Weeks: limits.perAdvance * 0.03,
-          maxFeeBps: 300, annualizedCostPercent: 26, repaid: 0, pct: 0 },
+          maxFeeBps: 300, annualizedCostPercent: 26, lateFee: 0, lateFeePaid: 0, isBehind: false, lateFeeHint: null,
+          repaid: 0, pct: 0 },
         agentLimits: { perAdvance: limits.perAdvance, perMonth: limits.perMonth, purpose: limits.purpose ?? "stock" },
+        ...human,
         source: "device",
       };
     },

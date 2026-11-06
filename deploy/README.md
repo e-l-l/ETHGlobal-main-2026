@@ -268,7 +268,8 @@ Judges run real merchant stories on the devnet from the web app. `agents-api-dev
 - **Real work only:** devnet txs, the production pipeline (red lines, Underwriter and Critic LLMs, signer),
   real UltraHonk proofs (about 7.6 KB, 0.2 s), the Keeper and the Risk agent. Only customers are simulated.
 - **Fee model:** offers read "0.5%/week, max 3%"; sales repay fee first until `owedOf` is zero. `slow_week`
-  checks the accrued fee against the published schedule (no late fee). Tier caps are $50/$100/$200/$300.
+  checks the accrued fee against the published schedule and shows a late fee only if the slow week fell
+  behind the 1% minimum; `defaulter` falls behind, pays some late fee into the reserve, then is written off. Tier caps are $50/$100/$200/$300.
 - **Keys:** public anvil keys only. Signer, relayer and risk keys come from the anvil mnemonic, whatever
   `agents-devnet.env` says. That file only needs the LLM provider and key (`LLM_PROVIDER`, `BEDROCK_API_KEY`).
 - **One run at a time:** a worker thread runs each one in a spawned child process. It has a 210 s budget and is killed at 240 s.

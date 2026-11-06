@@ -98,7 +98,11 @@ contract AdvanceBookInvariantTest is StdInvariant, BaseTest {
             AdvanceBook.Advance memory a = book.getAdvance(id);
             (uint256 principal, uint256 owed, uint256 repaid, uint256 principalRepaid, AdvanceBook.Status status) =
                 (a.principal, a.totalOwed, a.repaid, a.principalRepaid, a.status);
-            assertLe(repaid, owed);
+            // totalOwed = principal + normal fee cap; a late payer can also owe up to LATE_FEE_CAP_BPS more.
+            assertLe(repaid, owed + principal * book.LATE_FEE_CAP_BPS() / 10_000);
+            assertLe(a.lateFeePaid, principal * book.LATE_FEE_CAP_BPS() / 10_000);
+            assertLe(a.feePaid, principal * 300 / 10_000);
+            assertEq(repaid, a.feePaid + a.lateFeePaid + principalRepaid, "repaid = fee + late fee + principal");
             if (status == AdvanceBook.Status.Active) activePrincipal += principal - principalRepaid;
         }
         assertEq(senior.outstanding(), activePrincipal);

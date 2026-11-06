@@ -24,7 +24,15 @@ from web3 import Web3
 from web3.exceptions import ContractLogicError
 
 from .config import Settings
-from .models import AdvanceState, AdvanceStatus, ChainLimits, SaleEvent
+from .models import (
+    LATE_FEE_CAP_BPS,
+    LATE_FEE_RATE_BPS_PER_WEEK,
+    REPAY_WINDOW_SECONDS,
+    AdvanceState,
+    AdvanceStatus,
+    ChainLimits,
+    SaleEvent,
+)
 
 ABI_DIR = Path(__file__).resolve().parents[2] / "abi"
 LOG_CHUNK_BLOCKS = 5_000
@@ -201,6 +209,9 @@ class Web3ChainReader:
         self._start_block_cache: dict[int, int] = {}
         self._opened_at: dict[int, int] = {}
         self._opened_scanned_to = self.deploy_block - 1
+        self._split_ev = self.book.events.RepaymentSplit()
+        self._repaid: dict[int, list[tuple[int, int]]] = {}  # advance id -> [(timestamp, amount)]
+        self._repaid_scanned_to = self.deploy_block - 1
 
     # -- basics
     def latest_block(self) -> int:
@@ -323,12 +334,20 @@ class Web3ChainReader:
         for i in range(1, n):
             a = self.book.functions.getAdvance(i).call()
             # (shopId, principal, maxOwed, repaid, principalRepaid, feePaid, drawnAt,
-            #  feeRateBpsPerWeek, feeCapBps, holdbackBps, tier, lastSaleAt, status, ...)
+            #  feeRateBpsPerWeek, feeCapBps, holdbackBps, tier, lastSaleAt, status, credentialClaimed,
+            #  pendingCommitment, windowStart, windowRepaid, lateSecs, lateFeePaid)
             now = self.block_timestamp(self.latest_block())
             raw_fee = int(a[1]) * int(a[7]) * max(0, now - int(a[6])) // (10_000 * 7 * 86_400)
             fee_so_far = min(int(a[1]) * int(a[8]) // 10_000, raw_fee)
             fee_due = max(0, fee_so_far - int(a[5])) if int(a[4]) < int(a[1]) else 0
-            owed_now = max(0, int(a[1]) - int(a[4])) + fee_due
+            # Late fee (AdvanceBook.lateFeeOf / isBehind): only while Active and behind the minimum repayment.
+            active = int(a[12]) == 1 and int(a[4]) < int(a[1])
+            behind_secs = max(0, now - int(a[11]) - REPAY_WINDOW_SECONDS) if active else 0
+            late_paid = int(a[18])
+            late_fee = (min(int(a[1]) * LATE_FEE_CAP_BPS // 10_000,
+                            int(a[1]) * LATE_FEE_RATE_BPS_PER_WEEK * (int(a[17]) + behind_secs) // (10_000 * 7 * 86_400))
+                        if active else late_paid)
+            owed_now = max(0, int(a[1]) - int(a[4])) + fee_due + max(0, late_fee - late_paid)
             out.append(AdvanceState(
                 advance_id=i,
                 shop_id=_hex(a[0]),
@@ -346,6 +365,7 @@ class Web3ChainReader:
                 owed_now=owed_now, fee_so_far=fee_so_far,
                 minimum_repayment=(int(a[1]) + fee_so_far + 99) // 100,
                 window_start=int(a[15]), window_repaid=int(a[16]),
+                late_secs=int(a[17]), late_fee=late_fee, late_fee_paid=late_paid, is_behind=behind_secs > 0,
             ))
         return out
 
@@ -377,6 +397,30 @@ class Web3ChainReader:
              "inputs": [{"name": "slot", "type": "bytes32"}], "outputs": [{"type": "bytes32"}]}])
         word = pm.functions.extsload((state + 3).to_bytes(32, "big")).call()
         return int.from_bytes(word, "big") & ((1 << 128) - 1)
+
+    def repayments(self, advance_ids: list[int]) -> dict[int, list[tuple[int, int]]]:
+        """Every repayment per advance from RepaymentSplit logs (pay() holdbacks and direct repay()), as
+        [(block timestamp, amount)], amount = principal part + all fee parts. Used by unlock.py to replay the
+        contract's minimum-repayment windows. Scanned incrementally, like AdvanceOpened."""
+        latest = self.latest_block()
+        if latest > self._repaid_scanned_to:
+            for log in self._get_logs(self.book_address, [_hex(self._split_ev.topic)],
+                                      self._repaid_scanned_to + 1, latest):
+                ev = self._split_ev.process_log(log)
+                args = ev["args"]
+                amount = sum(int(args[k]) for k in
+                             ("principalPart", "seniorFee", "juniorFee", "reserveFee", "protocolFee"))
+                self._repaid.setdefault(int(args["advanceId"]), []).append(
+                    (self.block_timestamp(int(log["blockNumber"])), amount))
+            self._repaid_scanned_to = latest
+        return {i: list(self._repaid.get(int(i), [])) for i in advance_ids}
+
+    def shop_owner(self, shop_id: str) -> str | None:
+        """The address that registered the shop (AdvanceBook.shops(id).owner); None if not registered."""
+        owner, _payout, _active = self.book.functions.shops(_bytes32(shop_id)).call()
+        if not owner or int(owner, 16) == 0:
+            return None
+        return Web3.to_checksum_address(owner)
 
     def shop_payout(self, shop_id: str) -> str | None:
         _owner, payout, _active = self.book.functions.shops(_bytes32(shop_id)).call()

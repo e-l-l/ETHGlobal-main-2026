@@ -94,7 +94,38 @@ uniqueness: businessNullifier = HMAC(issuerPepper, accountId) stored as "used": 
 |---|---|---|---|
 | **Delegating to the merchant's managed cash-flow agent, once** | **Agent Pass** | We host one agent per merchant. Before it may draw advances on the merchant's behalf, a **real, consenting human** must authorise it, with limits. Without this, anyone could run bots posing as merchants' agents. A denied or expired approval means no mandate and no automatic draws. | Agent Pass |
 | **Recovering credentials on a new phone** | **IDKit** (Proof of Human) | The Business Pass and Standing Pass secrets live on the device. Only the same human can unlock their encrypted backup. Proof of Human is the minimum sufficient credential: we need "same unique human", not age or nationality. | Best Use of IDKit |
+| **Before a shop's first advance** | **IDKit** (Proof of Human) | One defaulter must not walk away and borrow again under a fresh pseudonym. "Same unique human" is exactly the question, and nothing more. | Best Use of IDKit |
 | Business verification, credit decisions | *(none)* | The business is proven by zkTLS from a KYC'd platform. Decisions are agents + code + contract. | — |
+
+### World ID binding: what we store and what we don't
+
+Before a shop's first offer, its owner proves "unique human" with World ID (IDKit 4, Proof of Human, action
+`WORLD_BORROWER_ACTION`, by default the same action as recovery so no new portal setup is needed). Our offer signer
+then refuses offers to banned humans and to humans with an open advance on any of their shops. Code:
+`agents/src/mra_agents/humans.py`.
+
+| Stored (agents DB, offer signer only) | Not stored, anywhere |
+|---|---|
+| `human_key = HMAC(server key, "world-human" ‖ nullifier ‖ action)` | The World nullifier itself (it lives only for the verify call) |
+| `shop_key = HMAC(server key, "world-shop" ‖ shopId)`, so a DB dump doesn't even list the bound shops | Name, phone, address, document, or anything else about the person (we never have it) |
+| AES-256-GCM ciphertexts of shop → human and human → [shops], each bound to its row key | Anything onchain: no new contract fields, events or transactions |
+| `banned` flag, ban time and a reason code (`written_off`) | Free-text notes about anyone |
+
+- **The API never returns the nullifier.** `POST /shops/{id}/human` answers `{"verified": true}`. `GET` shows
+  `verified` publicly, and `banned` plus the unlock status only to the shop's owner (an EIP-191 signature by the
+  onchain shop owner). Responses are fixed shapes, so nothing from World's verify can leak through.
+- **Shops stay unlinkable in public.** The chain sees independent pseudonymous shops. Only the offer signer, holding
+  the server key, can tell that two shops share a human, and it uses that only for the red lines and the unlock.
+- **Unjoinable with recovery.** The recovery backup is keyed under a different HMAC label, so even the same human's
+  rows in the two tables can't be matched without a fresh proof.
+- **Ban on default.** Any advance on a bound shop that reads `WrittenOff` onchain bans that human. `writeOff` is
+  permissionless, so bans come from chain state: the pipeline checks before every offer, and the Keeper and status
+  reads sync too. For the hackathon the ban is permanent. **Appeal / expiry path (roadmap):** repaying the
+  written-off principal through a recovery payment, or a time-based expiry (for example 24 months), clears the flag.
+  Both need only `world_humans.banned` and a ban timestamp, which we already keep.
+- **Trust assumption, stated plainly.** This is enforced by our offer signer and a private list, not by the contract.
+  An operator with the server key could link a human's shops. The roadmap moves the check into a ZK proof ("my
+  World nullifier is not in the banned set", against a published commitment) so even we can't link them.
 
 ### Managed agents with mandates (how automation stays private)
 
@@ -191,7 +222,7 @@ Uniswap swaps (junior/USDC) ─► hook fee → Reserve ; TWAP → Risk agent �
 | **The issuer (Business Pass)** | That a zkTLS predicate passed; the HMAC of the account ID | The business name or account data; the revealed predicates are yes/no plus bands |
 | **AI models (Bedrock)** | Numbers and hashed payers only | Any identity; raw payer addresses |
 | **RPC providers** | Configured app reads are routed through Anon-RPC; bootstrap and other interactions have separate boundaries | — |
-| **World** | That a human delegated to an agent / recovered credentials in our app | Which business, what was borrowed |
+| **World** | That a human delegated to an agent, recovered credentials, or verified before borrowing in our app | Which business, what was borrowed |
 | **Regulators** | Only what the merchant chooses to disclose (selective disclosure, 🔭) | Everything else |
 
 ### The honest gap ⚠️ and how we shrink it

@@ -92,6 +92,8 @@ def offer_options(features: ShopFeatures, tier: int, limits: ChainLimits, rate: 
     """(options for the prompt, paces). Four-week time-based fee estimate."""
     paces = paces_usd_per_day(features)
     amounts = eligible_amounts(tier, limits)
+    if features.available_now is not None:  # gradual unlock (unlock.py): code caps the amount here too
+        amounts = [a for a in amounts if a <= features.available_now]
     rows = []
     for amount in amounts:
         owed_usd = amount / USDC * (1 + min(cap, rate * 4) / 10_000)
@@ -131,6 +133,9 @@ def build_underwriter_user(features: ShopFeatures, tier: int, limits: ChainLimit
         "limits": {
             "tier_cap_for_this_tier": limits.tier_cap[tier],
             "exposure_room": max(0, limits.max_exposure - limits.exposure),
+            # Gradual unlock (unlock.py): first advance at a level = 50% of the limit, +25% per on-time week.
+            **({"approved_limit": features.approved_limit, "available_now_gradual_unlock": features.available_now}
+               if features.available_now is not None else {}),
         },
         "paces_usd_per_day": paces,
         "cold_start": features.cold_start,

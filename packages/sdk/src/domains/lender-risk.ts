@@ -41,7 +41,7 @@ export type RiskRaw = {
   repaidIds: bigint[];
   writeOffs: { id: bigint; loss: bigint; at: number }[];
   /** Live state of the advances still Active (from getAdvance). Missing entries fall back to the logs. */
-  active: { id: bigint; principal: bigint; principalRepaid: bigint; totalOwed: bigint; owedNow?: bigint; repaid: bigint; lastSaleAt: number }[];
+  active: { id: bigint; principal: bigint; principalRepaid: bigint; totalOwed: bigint; owedNow?: bigint; repaid: bigint; lastSaleAt: number; lateDue?: bigint }[];
   /** AdvanceBook.defaultWindow in seconds (null if the read failed). */
   defaultWindow: number | null;
   /** RiskHook pool: ticks (price = 1.0001^tick, USDC per DRIP). Undefined = unavailable (e.g. under 24h of history). */
@@ -86,8 +86,9 @@ function openAdvances(raw: RiskRaw): OpenAdvance[] {
       const a = live.get(o.id);
       const principalRepaid = a?.principalRepaid ?? principalBack.get(o.id) ?? 0n;
       const principalLeft = o.principal - principalRepaid;
-      // Fee left = (owed left) − (principal left). From logs alone: the fee rides pro rata, so scale by principal left.
-      const feeLeft = a ? (a.owedNow ?? (a.totalOwed - a.repaid)) - principalLeft : o.principal > 0n ? ((o.totalOwed - o.principal) * principalLeft) / o.principal : 0n;
+      // Fee left = (owed left) − (principal left) − (unpaid late fee: it goes 100% to the reserve, not the vaults).
+      // From logs alone: the fee rides pro rata, so scale by principal left.
+      const feeLeft = a ? (a.owedNow ?? (a.totalOwed - a.repaid)) - principalLeft - (a.lateDue ?? 0n) : o.principal > 0n ? ((o.totalOwed - o.principal) * principalLeft) / o.principal : 0n;
       const repayAt = lastRepay.get(o.id);
       return {
         id: o.id,
@@ -393,7 +394,7 @@ export async function gatherRiskRaw(
       // Older Chain fakes may not carry principalRepaid: fall back to the contract's pro-rata rule.
       const principalRepaid = a.principalRepaid ?? (a.totalOwed > 0n ? (a.repaid * a.principal) / a.totalOwed : 0n);
       return { id: a.id, principal: a.principal, principalRepaid, totalOwed: a.totalOwed, owedNow: a.owedNow,
-        repaid: a.repaid, lastSaleAt: Number(a.lastSaleAt) };
+        repaid: a.repaid, lastSaleAt: Number(a.lastSaleAt), lateDue: (a.lateFee ?? 0n) - (a.lateFeePaid ?? 0n) };
     });
   const pos = settled(posR);
   const win = settled(winR);

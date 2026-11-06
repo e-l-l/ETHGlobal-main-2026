@@ -152,7 +152,7 @@ Notes:
 | `CredentialVault` | `MemoryVault` (mock / SSR / tests) | `IndexedDbVault` (browser default) | Nothing. Stores the Business Pass, Standing Pass and session (shop id, agent `manage_token`) on the device only. `export(passphrase)` / `import()` use PBKDF2 + AES-GCM. |
 | `ReclaimAdapter` | `mockReclaim()` offline; `issuerMockReclaim` in local / sepolia | `reclaimJsSdk({ createRequest })` | `@reclaimprotocol/js-sdk` in the app. Also a small server route that runs `ReclaimProofRequest.init(RECLAIM_APP_ID, RECLAIM_APP_SECRET, RECLAIM_PROVIDER_ID_BAND{n})` and returns `toJsonString()`; the client rebuilds it with `fromJsonString`. Keep the secret off the client. The SDK calls `setContext(addr, commitmentHex)`. The issuer needs `ISSUER_MOCK=0` and the `RECLAIM_*` env (issuer/README.md). |
 | `AgentPassAdapter` | `mockAgentPass("approve" \| "deny" \| "expire")` (works with the backend's `WORLD_MOCK=1`) | `worldOidcAgentPass({ authorize: (nonce) => ... })` | A World sign-in that sends **`agent_pass_nonce` as the OIDC nonce** and returns `{ code, code_verifier, redirect_uri }` or `{ id_token }`. The backend needs `WORLD_MOCK=0`, its World app config, and `ATTESTER_PRIVATE_KEY`. |
-| `IdkitAdapter` | `mockIdkit({ human })` (same label = same human) | `idkit({ request })` | `@worldcoin/idkit` with action = the backend's `WORLD_RECOVERY_ACTION` (Proof of Human). Resolve with the widget's success result; the backend forwards it to World unchanged. |
+| `IdkitAdapter` | `mockIdkit({ human })` (same label = same human) | `idkitV4({ api, run })` or `idkit({ request })` | `@worldcoin/idkit` 4 (Proof of Human). `verify({ purpose })`: `"recovery"` (default, `POST /recovery/rp-context`) or `"borrower"` (`POST /world/borrower/rp-context`). The backend forwards the widget's result to World unchanged. |
 | Anon-RPC | Direct RPC | `rpc: createAnonRpc().rpcConfig()` from `@repo/sdk/browser/anon` | Below. |
 
 ### Anon-RPC (`@repo/sdk/browser/anon`)
@@ -205,6 +205,22 @@ const mra = createMRA({ mode: "sepolia", prover, ... });
 - `@repo/sdk/browser/prover-core` exposes the same engine without a worker (`createProverCore()`), for Node scripts.
 
 Verified: proofs from this code path (Node WASM, the browser main thread, and the bundled Web Worker in Chrome) return `true` from `verify()` on the **deployed Sepolia** `HonkVerifier` (`0x7764…2017`) and `BusinessPassVerifier` (`0xb79d…136a`) via `eth_call`, and a tampered public input reverts. Cold worker proof in Chrome: about 5 s (about 1 s of it proving). `pnpm --filter @repo/sdk test:prover` re-runs the Node check.
+
+## World ID for borrowers
+
+Each shop binds one unique human (World ID, IDKit 4 Proof of Human) before its first offer. The backend stores only an HMAC of the World nullifier and never returns it. A human who defaulted (advance written off) is banned on all their shops, and one human can hold one open advance at a time.
+
+```ts
+const r = await mra.onboarding.verifyHuman({ onStep });   // "signing_owner" → "verifying_human" → "verified"
+if (!r.verified) show(r.reason);                         // verification_failed | shop_bound_to_other_human | wrong_action | unknown_or_used_nonce | rate_limited ...
+const st = await mra.onboarding.humanStatus({ tier: 1 }); // { humanVerified, banned, unlock: UnlockVM | null }
+```
+
+- **Owner auth.** Owner-only routes take `Authorization: Owner <issuedAt>:<signature>`, an EIP-191 signature by the wallet that called `registerShop` over `ownerAuthMessage(shopId, chainId, issuedAt)` (`DripMoni shop owner\nshop: <shopId>\nchain: <chainId>\nissued: <unix s>`, valid ±600 s). `ownerAuthHeader(signer, shopId, chainId)` builds it; the domains reuse one signature for 5 minutes, so a screen doesn't prompt the wallet on every render.
+- **Gradual unlock.** At a new limit level the first advance is capped at 50% of the limit (rounded down to $50 / $100 / $200 / $300, never below $50). Each full week of on-time minimum repayments unlocks another 25%, and a missed minimum freezes it.
+- **View-model fields.** `merchant.home()`, `merchant.advance()` and `agent.approveView()` carry `HumanLimitVM`: `humanVerified`, `banned`, `limit`, `availableNow`, `nextUnlockAt` (unix s or null) and `unlockSteps` (`{ pct, amount, unlocked }[]`). Live modes read `GET /shops/{id}/human?tier=` with owner auth. If there is no shop or wallet, or the call fails, they fall back to not verified, not banned, and limit = available = the tier cap (0 if unknown); `home()` never throws on this. The mock has a verified human, $100 limit, $50 available now, the next unlock in 7 days, and steps 50%/$50 (unlocked), 75%/$50, 100%/$100.
+- **Rejections.** `POST /offers` may reject with `redline_hits` `human_not_verified`, `human_banned` or `human_has_open_advance`. `reasonMessage(code)` / `REASON_MESSAGES` give the merchant-facing English for these and for the sales red lines.
+- **API.** `AgentsApi.worldBorrowerRpContext()`, `bindHuman(shopId, ownerAuth, idkit)` and `humanStatus(shopId, ownerAuth?, tier?)`, with the types `BindHumanResponse`, `HumanStatusResponse` and `UnlockStatus`.
 
 ## What's real vs mock
 
