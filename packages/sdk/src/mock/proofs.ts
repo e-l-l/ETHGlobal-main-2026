@@ -138,7 +138,7 @@ export const mockDeviceProofs: DeviceProofVM[] = [
 export const mockTransactions: ProofTxVM[] = [
   { kind: "sale", title: "$10.00 to shop_7f3a", detail: "$9.00 to the shop · $1.00 to its advance", txHash: "0x3b91c2e07d4a55f8a1c0e922b7d4416f0ae3c9d2", explorerUrl: null, when: "2m ago" },
   { kind: "repayment_split", title: "Repayment on advance #3: $1.00", detail: "$0.98 principal · fee $0.02 split senior / DRIP / reserve", txHash: "0x3b91c2e07d4a55f8a1c0e922b7d4416f0ae3c9d2", explorerUrl: null, when: "2m ago" },
-  { kind: "advance_opened", title: "Vault → supplier, $100", detail: "For stock. Paid to the supplier, not to cash", txHash: "0x91c27a3e0b5f4c88d21e7a9f30c64b1d2e8f7a3e", explorerUrl: null, when: "1h ago" },
+  { kind: "advance_opened", title: "Vault → shop, $100", detail: "For stock. Paid to the shop's payout address", txHash: "0x91c27a3e0b5f4c88d21e7a9f30c64b1d2e8f7a3e", explorerUrl: null, when: "1h ago" },
   { kind: "swap", title: "Sold 80 DRIP for $78.56", detail: "Uniswap v4 DRIP/USDC pool · RiskHook recorded the price", txHash: "0x5e2b7c91d0a34f68b2c1d0e9f8a7b6c5d4e3f2a1", explorerUrl: null, when: "2h ago" },
   { kind: "limits_changed", title: "Limits changed", detail: "Tier caps $50 / $100 / $200 / $300", txHash: "0x8a4f2e6d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f", explorerUrl: null, when: "Today" },
   { kind: "advance_written_off", title: "Advance #1 written off", detail: "Loss $100: DRIP $100, reserve $0, vault $0", txHash: "0x2c9e8d7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d", explorerUrl: null, when: "Today" },

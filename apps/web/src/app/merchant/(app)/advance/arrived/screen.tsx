@@ -65,14 +65,9 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
               {advance.feeRule} Pay early, pay less.
             </Text>
           </Card>
-          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-2">
-            <Button href={routes.advance.details} width="full">
-              See your advance
-            </Button>
-            <Button href={routes.cashOut} variant="secondary" width="full">
-              Send to my supplier
-            </Button>
-          </div>
+          <Button href={routes.advance.details} width="full">
+            See your advance
+          </Button>
         </Stack>
       </Columns>
     </Page>

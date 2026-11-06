@@ -112,7 +112,7 @@ export function ApproveScreen({
           body={
             waiting
               ? "World checks that a real person stands behind this agent. Your name never leaves World App."
-              : "Your agent asks for an advance when stock runs low, inside the limits you set. The money goes straight to your supplier."
+              : "Your agent asks for an advance when stock runs low, inside the limits you set. The money lands in your account."
           }
         >
           {waiting ? null : (

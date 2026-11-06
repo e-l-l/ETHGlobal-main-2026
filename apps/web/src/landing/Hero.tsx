@@ -102,8 +102,8 @@ function AdvanceCard() {
         Your agent drew $100 for stock
       </span>
       <span className="text-note text-charcoal">
-        Why it drew this: weekend sales usually run high and your supplier
-        delivers Friday.
+        Why it drew this: weekend sales usually run high and you
+        restock on Fridays.
       </span>
     </div>
   );

@@ -91,7 +91,7 @@ export const riskLog = [
 export type ExplorerKind = "Sale" | "Draw" | "Pass" | "Proof" | "Shop";
 export const explorerEvents: { kind: ExplorerKind; title: string; detail: string; hash: string; when: string }[] = [
   { kind: "Sale", title: "$10.00 to shop_7f3a", detail: "$9.00 to the shop · $1.00 to its advance", hash: "0x3b91c2e07d4a55f8a1c0e922b7d4416f0ae3c9d2", when: "2m ago" },
-  { kind: "Draw", title: "Vault → supplier, $100", detail: "For stock. Paid to the supplier, not to cash", hash: "0x91c27a3e0b5f4c88d21e7a9f30c64b1d2e8f7a3e", when: "1h ago" },
+  { kind: "Draw", title: "Vault → shop, $100", detail: "For stock. Paid to the shop's payout address", hash: "0x91c27a3e0b5f4c88d21e7a9f30c64b1d2e8f7a3e", when: "1h ago" },
   { kind: "Pass", title: "Business Pass on shop_7f3a", detail: "Commitment only. No name, no sales figures", hash: "0x4c1e9a88b2d04f17c6aa0912e77b33d0a15f8c21", when: "Today" },
   { kind: "Proof", title: "Standing Pass used by shop_b19c", detail: "Nullifier spent. No onchain link to any earlier shop", hash: "0x11de90aa47c2b8193044ee12aa90817263bc4410", when: "Today" },
   { kind: "Shop", title: "shop_b19c created", detail: "A pseudonym and a payout address. Nothing else", hash: "0x88aa01c2e91d44b7083319aa77c0de12f4b6e901", when: "Today" },

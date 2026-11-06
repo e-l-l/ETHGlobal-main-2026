@@ -96,11 +96,10 @@ export const week = {
 export const cashOut = {
   available: 100,
   destinations: [
-    { value: "supplier", title: "My supplier · Distribuidora Sur", description: "paid directly, in pesos" },
     { value: "mercado-pago", title: "Mercado Pago", description: "local pesos to your account" },
     { value: "usd", title: "Keep in dollars", description: "move it later" },
   ],
-  defaultDestination: "supplier",
+  defaultDestination: "mercado-pago",
 } as const;
 
 /* --------------------------------------------------------------- M21 my QR */

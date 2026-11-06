@@ -117,8 +117,8 @@ export const explorerEvents = [
   },
   {
     kind: "Draw",
-    title: "Vault → supplier, $100",
-    detail: "For stock. Paid to the supplier, not to cash",
+    title: "Vault → shop, $100",
+    detail: "For stock. Paid to the shop's payout address",
     hash: "0x91c27a3e0b5f4c88d21e7a9f30c64b1d2e8f7a3e",
     when: "1h ago",
   },
@@ -171,7 +171,7 @@ export const explorerShops = [
     name: "active",
     commitment: "0x4c1e9a88b2d04f17c6aa0912e77b33d0a15f8c21",
     nullifier: "—",
-    note: "A sale and a draw to a supplier. No name attached.",
+    note: "A sale and an advance. No name attached.",
   },
   {
     id: "shop_b19c",
