@@ -11,8 +11,11 @@ import { cn } from "@/lib/cn";
 
 /* --------------------------------------------------------------- WaveBand */
 
-/** S-curve tile 32×24, 7px stroke, −18°. Lime on Hunter. Checkout and Get Paid headers. */
-export function WaveBand({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * S-curve tile 32×24, 7px stroke, −18°. Lime on Hunter. Checkout and Get Paid headers.
+ * bodyClassName styles the content block, e.g. a solid Hunter panel inset from the wave frame.
+ */
+export function WaveBand({ children, className, bodyClassName }: { children: ReactNode; className?: string; bodyClassName?: string }) {
   const id = `fw${useId().replace(/[:«»]/g, "")}`;
   return (
     <div className={cn("relative overflow-hidden rounded-lg bg-hunter text-canvas", className)}>
@@ -24,7 +27,7 @@ export function WaveBand({ children, className }: { children: ReactNode; classNa
         </defs>
         <rect width="100%" height="100%" fill={`url(#${id})`} />
       </svg>
-      <div className="relative flex flex-col gap-1 p-5">{children}</div>
+      <div className={cn("relative flex flex-col gap-1 p-5", bodyClassName)}>{children}</div>
     </div>
   );
 }
