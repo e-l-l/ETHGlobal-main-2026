@@ -21,7 +21,7 @@ The junior tranche of our lending book is an ERC-4626 vault, and its shares are 
 
 Live on Sepolia: RiskHook `0x216ec669911e5e042c73de8f593397a51e00d044` on PoolManager `0xE03A1074c86CFeDd5C142C4F04F1a1536e203543`. Pool key: junior `0x3091…1a90` / MockUSDC `0x6603…55bb`, fee 3000, tick spacing 60 (`agents/deployments/sepolia.json`).
 
-Not built yet: Uniswap API swaps at checkout, where a customer pays in USDT and it settles in USDC. **TODO: status at submission.**
+Not built: Uniswap API swaps at checkout (customer pays in USDT, it settles in USDC). Checkout takes USDC only at submission; the app defaults to USDC in live mode and does not claim a swap. The v4 integration we ship is the junior-token market above, which is core to the product: it prices default risk and drives the Risk agent.
 
 ## What worked
 
@@ -33,7 +33,7 @@ Not built yet: Uniswap API swaps at checkout, where a customer pays in USDT and 
 
 ## Friction
 
-1. **solc pin vs the latest OpenZeppelin.** `PoolManager.sol` pins `pragma solidity 0.8.26` exactly, and hook tests compile it. The current OpenZeppelin release (5.7) needs a newer compiler (0.8.31), so it can't be in the same build. Our files use `^0.8.26`. The Barretenberg-generated ZK verifier needs `>=0.8.27`, so it compiles as a separate unit and is never imported. A floating `^0.8.26` pragma on PoolManager, or a note in the docs, would have saved time. *(The OZ 5.7 / 0.8.31 figures come from the team. They are not recorded in the repo docs. **TODO: confirm.**)*
+1. **PoolManager's exact solc pin.** `PoolManager.sol` pins `pragma solidity 0.8.26` exactly, and hook tests compile it, so nothing in the same compilation unit may require a newer compiler. In our build that was the Barretenberg-generated ZK verifier (`>=0.8.27`), which we had to compile as a separate unit and never import. The same applies to newer OpenZeppelin modules: we checked OpenZeppelin Contracts 5.7.0, where most files are `^0.8.20`–`^0.8.26`, but new modules such as `utils/RateLimiter.sol` and `crosschain/CrosschainRemoteExecutor.sol` are `^0.8.27`. A floating `^0.8.26` pragma on PoolManager, or a note in the v4 docs, would have saved time.
 2. **We use uniswap-hooks' bundled OpenZeppelin (5.5.0).** To avoid two OZ copies, every `@openzeppelin/contracts/` import is remapped to `lib/uniswap-hooks/lib/openzeppelin-contracts`, and v4-core and v4-periphery are also taken from inside uniswap-hooks ([`contracts/remappings.txt`](../../contracts/remappings.txt)). It works, but it ties our whole project's OZ version to the hooks library. We had to make this a rule: "never add or upgrade libraries" ([`contracts/SPEC.md`](../../contracts/SPEC.md), Toolchain).
 3. **`afterSwapReturnDelta` sign conventions.** The hard part was not the code. It was working out three things:
    - which currency is "unspecified": it is currency0 if and only if `exactInput != zeroForOne` ([L105-L107](../../contracts/src/RiskHook.sol#L105-L107))
@@ -43,7 +43,7 @@ Not built yet: Uniswap API swaps at checkout, where a customer pays in USDT and 
    The result is that exact-in/USDC-out swappers receive `out - fee` and exact-out/USDC-in swappers pay `in + fee`. We pinned each of the four direction cases with a test, plus a fuzz test ([`RiskHook.t.sol` L244-L290](../../contracts/test/RiskHook.t.sol#L244-L290)). A table of the four cases in the custom-accounting guide would help.
 4. **HookMiner deployer address.** In tests the CREATE2 deployer is the test contract (`HookMiner.find(address(this), …)`). In a `forge script` broadcast it is the CREATE2 factory `0x4e59b44847b379578588920cA78FbF26c0B4956C` ([`Deploy.s.sol` L23, L70](../../contracts/script/Deploy.s.sol#L23)). If you pass the wrong one, the address silently fails to match the flags. We added `require(address(hook) == predicted)` (L72). HookMiner could return or document this more clearly.
 5. **PoolManager pragma (see 1).** Because PoolManager is pinned, the whole Foundry project needs auto-detected solc. One `solc_version` setting in `foundry.toml` won't work, which we noted in [`contracts/foundry.toml`](../../contracts/foundry.toml).
-6. **TWAP in v4 is your job.** v3 had a built-in oracle. In v4 we wrote a 64-slot ring buffer and the interpolation ourselves. An audited reference "oracle hook" in uniswap-hooks would be the most useful single addition for projects like ours. **TODO: check whether one exists we missed.**
+6. **We missed the existing oracle hook.** v3 had a built-in oracle; in v4 we wrote a 64-slot ring buffer and the interpolation ourselves. After building it we found that uniswap-hooks already ships one: `src/oracles/panoptic/BaseOracleHook.sol` (and `OracleHookWithV3Adapters`), present even in the version we vendored. We didn't find it because the v4 docs' hook guides and the custom-accounting pages don't mention it, and its name doesn't say "TWAP". A "Need a price oracle? Use BaseOracleHook" pointer in the v4 hook docs would have saved us the work. We kept our own because it is small, tested (21 tests) and tailored to one fee-taking hook, but we would start from `BaseOracleHook` next time.
 
 ## Sepolia notes
 
