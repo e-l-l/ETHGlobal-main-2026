@@ -448,11 +448,10 @@ class Simulator:
         if out.get("eligible") or out.get("reason") != "human_banned":
             raise RuntimeError("banned human was not stopped at the World ID check")
         after = self.ledger()
-        self._step(ctx, "world_view", "World ID check: banned, stopped before any business step",
-                   "Same person, brand-new wallet, trying again. The very first screen is World ID, and the check "
-                   "answered human_banned: no Business Pass proof, no shop, no transaction. If they skipped the app "
-                   "and opened a shop directly, the offer signer would still refuse it at offer time (human_banned "
-                   f"or human_not_verified). Outstanding stays at ${after['outstanding']:,.2f}.",
+        self._step(ctx, "world_view", "Retry refused at World ID",
+                   "Same person, brand-new wallet, trying again. The first screen is World ID, and it refused before "
+                   "any business step. Skipping the app and opening a shop directly would not help: the offer signer "
+                   "refuses at offer time too.",
                    {"eligible": False, "reason": out.get("reason"), "business_pass": "not started",
                     "shop": "not created", "outstanding_before": before["outstanding"],
                     "outstanding_after": after["outstanding"],

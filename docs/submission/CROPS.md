@@ -88,7 +88,7 @@ Identity never touches the chain or our servers. Only ZK yes/no answers and pseu
 - Testing:
   - Foundry invariants: accounting adds up and no USDC is created or lost (about 4,000 random calls per run)
   - real-proof E2E tests
-  - a read-only Sepolia smoke test (24/24 checks pass, no transactions sent; commit `c4840bb`)
+  - a read-only Sepolia smoke test (24/24 checks pass, no transactions sent)
 
 ## Honest gaps
 

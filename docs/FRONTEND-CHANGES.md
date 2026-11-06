@@ -71,7 +71,7 @@ agents API (bans and the unlock still apply to verified shops). Full spec, SDK c
 | Banned state on home | When `home().banned` is true: "This World ID can't borrow on DripMoney after a default." Hide the advance CTA. |
 | `app/merchant/(app)/screen.tsx` (home) and `advance/screen.tsx` | Show "Available now $`availableNow` of $`limit`", the `unlockSteps` bar (50/75/100%) and `nextUnlockAt`. The first advance at a new level is 50% of the limit. |
 | `(focus)/agent/approve/screen.tsx` | Cap the per-advance limit suggestion at `availableNow`; show the same unlock line. |
-| Simulator page | Step kinds `world_id` and `unlock`; render them like `info` if there is no special style. Every archetype now starts with "World ID first: a unique human, cleared to borrow", then Business Pass, then the shop, then "Shop bound to the World ID from the first step". `defaulter` ends with "World ID banned: this person can't borrow again, on any shop" and "World ID check: banned, stopped before any business step" (no Business Pass, no shop). |
+| Simulator page | Step kinds `world_id` and `unlock`; render them like `info` if there is no special style. Every archetype now starts with "World ID first: a unique human, cleared to borrow", then Business Pass, then the shop, then "Shop bound to the World ID from the first step". `defaulter` ends with "World ID banned: this person can't borrow again, on any shop" and "Retry refused at World ID" (no Business Pass, no shop). |
 | Mock / demo | Stop screens without a backend: add `?mockWorld=banned` or `?mockWorld=open_advance` to the URL (mock mode only). |
 
 ## P1: World is real on the backend; the screens aren't wired

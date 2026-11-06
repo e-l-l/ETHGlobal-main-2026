@@ -219,10 +219,6 @@ Onchain and services: Solidity (Foundry) · Uniswap v4 hooks · ERC-4626 · Noir
 
 Secrets live in git-ignored `.env` files; each folder has a `.env.example`.
 
-## Development history
-
-This repository was assembled on 6 Nov from the team's working repo, then continued here through 7 Nov (wallet connect, faucet, loading states, privacy hygiene, landing redesign). Full commit history: TODO(team): link the original repository.
-
 ## License
 
 [MIT](LICENSE)

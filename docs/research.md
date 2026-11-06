@@ -68,4 +68,4 @@ Finalist data covers 36 finalists from Cannes, New York, Lisbon and Tokyo 2026, 
 - [Buenos Aires 2025 finalists](https://www.bitget.cloud/news/detail/12560605081065)
 - [EU AI Act context](https://protofire.io/blog/on-chain-credit-2026-lending-beyond-collateral/)
 
-The original pre-privacy brief (with ENS as a partner) was removed; it's still in git history (e.g. commit `28a7866`).
+The original pre-privacy brief (with ENS as a partner) was removed.

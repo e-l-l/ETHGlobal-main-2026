@@ -175,7 +175,7 @@ const SCRIPTS: Record<string, Script> = {
     [16, "risk", "Risk agent lowers the top cap", "DRIP price fell to 0.94 of its daily average. Tier 3: $300 → $225.", { junior_pool_price: 0.941, tier_caps: [50, 100, 200, 225] }, true],
     [30, "writeoff", "Written off: $47.73", "DripCoin takes the loss first. The vault is not touched.", { junior_assets: 9_792.27, outstanding: 12_452.27, junior_pool_price: 0.974 }, true],
     [30, "world_id", "World ID banned: this person can't borrow again, on any shop", "The offer signer banned the World ID behind this shop. A private list: nothing about the person went onchain.", undefined, false, { banned: true }],
-    [31, "world_view", "World ID check: banned, stopped before any business step", "Same person, brand-new wallet, trying again. The very first screen is World ID, and it answered human_banned: no Business Pass proof, no shop, no transaction. Outstanding stays at $12,452.27.", undefined, false, { eligible: false, reason: "human_banned", business_pass: "not started", shop: "not created", outstanding_before: 12_452.27, outstanding_after: 12_452.27, unchanged: true }],
+    [31, "world_view", "Retry refused at World ID", "Same person, brand-new wallet, trying again. The first screen is World ID, and it refused before any business step.", undefined, false, { eligible: false, reason: "human_banned", business_pass: "not started", shop: "not created", outstanding_before: 12_452.27, outstanding_after: 12_452.27, unchanged: true }],
   ],
   repeat_borrower: [
     ...OPEN,

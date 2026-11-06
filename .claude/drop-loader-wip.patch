@@ -1,0 +1,208 @@
+diff --git a/apps/web/src/app/final/components/gallery.tsx b/apps/web/src/app/final/components/gallery.tsx
+index eab6eea..7eed9e1 100644
+--- a/apps/web/src/app/final/components/gallery.tsx
++++ b/apps/web/src/app/final/components/gallery.tsx
+@@ -25,6 +25,7 @@ import {
+   Card,
+   Chips,
+   Divider,
++  DropLoader,
+   GradientHero,
+   Heading,
+   IconButton,
+@@ -509,6 +510,7 @@ export function FinalGallery() {
+             <Spec name="Progress · spinner">
+               <ProgressBar value={0.4} label="Repaid" />
+               <div className="flex items-center gap-3 text-hunter"><Spinner /> <Text size="note">Verifying…</Text></div>
++              <DropLoader variant="inline" caption="Reading public chain data…" />
+             </Spec>
+             <Spec name="Repayment ring">
+               <div className="flex justify-center">
+diff --git a/apps/web/src/final/status.tsx b/apps/web/src/final/status.tsx
+index 4f6dfaa..d8a10b4 100644
+--- a/apps/web/src/final/status.tsx
++++ b/apps/web/src/final/status.tsx
+@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
+ import { cva, type VariantProps } from "class-variance-authority";
+ import { cn } from "@/lib/cn";
+ import { CheckIcon } from "./icons";
++import { JarMark } from "./brand";
+ 
+ /* ------------------------------------------------------------------- Pill */
+ 
+@@ -34,6 +35,8 @@ export function Pill({ tone, dot, className, children }: VariantProps<typeof pil
+ 
+ /* ---------------------------------------------------------------- Spinner */
+ 
++/** Inside buttons only (Button `loading`). Screens and cards use DropLoader. */
++
+ export function Spinner({ size = 20, label = "Loading", className }: { size?: number; label?: string; className?: string }) {
+   return (
+     <span role="status" className={cn("inline-grid place-items-center", className)}>
+@@ -46,6 +49,47 @@ export function Spinner({ size = 20, label = "Loading", className }: { size?: nu
+   );
+ }
+ 
++/* ------------------------------------------------------------- DropLoader */
++
++/**
++ * The brand loader: the drop with its bands filling in turn (JarMark `loading`), plus a caption.
++ * `block` fills the content area for a screen that is waiting; `inline` sits in a card or list row.
++ * Use this for every loading state; `Spinner` is only for inside buttons.
++ */
++export function DropLoader({
++  caption,
++  hint,
++  variant = "block",
++  on = "light",
++  className,
++}: {
++  caption: ReactNode;
++  /** A quieter second line under a block caption, e.g. how long it can take. */
++  hint?: ReactNode;
++  variant?: "block" | "inline";
++  on?: "light" | "dark";
++  className?: string;
++}) {
++  const tone = on === "dark" ? "text-honeydew" : "text-charcoal-muted";
++  if (variant === "inline") {
++    return (
++      <div role="status" className={cn("flex items-center gap-2.5 font-body text-note", tone, className)}>
++        <JarMark size={24} loading on={on} />
++        <span>{caption}</span>
++      </div>
++    );
++  }
++  return (
++    <div role="status" className={cn("flex min-h-[50vh] flex-col items-center justify-center gap-4 px-6 py-12 text-center", className)}>
++      <JarMark size={56} loading on={on} />
++      <div className="flex max-w-xs flex-col gap-1">
++        <p className={cn("m-0 font-body text-read font-semibold", on === "dark" ? "text-canvas" : "text-charcoal")}>{caption}</p>
++        {hint ? <p className={cn("m-0 font-body text-note", tone)}>{hint}</p> : null}
++      </div>
++    </div>
++  );
++}
++
+ /* ------------------------------------------------------------ ProgressBar */
+ 
+ export function ProgressBar({ value, label, className }: { value: number; label: string; className?: string }) {
+diff --git a/apps/web/src/lib/mra-state.tsx b/apps/web/src/lib/mra-state.tsx
+index 7ec7ab6..bdbd8fe 100644
+--- a/apps/web/src/lib/mra-state.tsx
++++ b/apps/web/src/lib/mra-state.tsx
+@@ -1,32 +1,45 @@
+-import Link from "next/link";
++import { DropLoader, JarMark, TextLink } from "@/final";
+ import { routes } from "./routes";
+ 
+-const MESSAGES: Record<string, { text: string; href: string; link: string }> = {
+-  session_missing: { text: "No shop on this device yet.", href: routes.welcome, link: "Set up a shop" },
+-  not_found: { text: "Nothing here yet: this shop has no advance.", href: routes.merchant, link: "Back to home" },
++const MESSAGES: Record<string, { title: string; body: string; href: string; link: string }> = {
++  session_missing: {
++    title: "No shop on this device yet",
++    body: "Set one up to see this screen with your own numbers.",
++    href: routes.welcome,
++    link: "Set up a shop",
++  },
++  not_found: {
++    title: "Nothing here yet",
++    body: "This shop has no advance.",
++    href: routes.merchant,
++    link: "Back to home",
++  },
+ };
+ 
+ /**
+  * What a screen shows while the SDK loads, or when it fails, in local / sepolia mode. Mock mode never renders
+- * this: its data is on the server. Plain text on purpose, so it sits in either design system.
++ * this: its data is on the server. Live chain reads can be slow, so the loader says so.
+  */
+ export function MRAState({ error }: { error?: string | undefined }) {
+   if (!error) {
+-    return (
+-      <p role="status" className="p-6 font-body text-note text-charcoal-muted">
+-        Loading…
+-      </p>
+-    );
++    return <DropLoader caption="Reading the chain…" hint="Live reads can take up to a minute." />;
+   }
+-  const m = MESSAGES[error] ?? { text: `Couldn't load this screen (${error}).`, href: routes.home, link: "Back to start" };
++  const m = MESSAGES[error] ?? {
++    title: "Couldn't load this screen",
++    body: `The read failed (${error}). Try again in a moment.`,
++    href: routes.home,
++    link: "Back to start",
++  };
+   return (
+-    <div role="alert" className="flex flex-col gap-2 p-6 font-body text-note text-charcoal-muted">
+-      <p className="m-0">{m.text}</p>
+-      <p className="m-0">
+-        <Link className="underline" href={m.href}>
++    <div role="alert" className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-6 py-12 text-center">
++      <JarMark size={56} lit={0} on="meter" />
++      <div className="flex max-w-xs flex-col items-center gap-1">
++        <p className="m-0 font-body text-read font-semibold text-charcoal">{m.title}</p>
++        <p className="m-0 font-body text-note text-charcoal-muted">{m.body}</p>
++        <TextLink href={m.href} arrow>
+           {m.link}
+-        </Link>
+-      </p>
++        </TextLink>
++      </div>
+     </div>
+   );
+ }
+diff --git a/apps/web/src/screens/lend/risk.tsx b/apps/web/src/screens/lend/risk.tsx
+index 6b2b929..44c5a05 100644
+--- a/apps/web/src/screens/lend/risk.tsx
++++ b/apps/web/src/screens/lend/risk.tsx
+@@ -5,7 +5,7 @@
+  * dollars?" answered with numbers anyone can check onchain. Aggregate only: no shop is named anywhere.
+  * Data: `lender.riskPanel()` / `lender.waterfall()` (live: public chain reads; mock: the SDK's RISK_PANEL / WATERFALL).
+  */
+-import { BarChart, Card, Divider, KeyValue, Label, LossWaterfall, Pill, Spinner, StatGrid, Text, TextLink, type LossViewer } from "@/final";
++import { BarChart, Card, Divider, DropLoader, KeyValue, Label, LossWaterfall, Pill, StatGrid, Text, TextLink, type LossViewer } from "@/final";
+ import type { RiskPanelView, RiskTone, WaterfallView } from "@repo/sdk";
+ import { routes } from "@/lib/routes";
+ 
+@@ -26,12 +26,7 @@ export function RiskLoading({ error, what }: { error?: string | undefined; what:
+           Couldn&apos;t read the chain just now ({error}). The numbers above are still live.
+         </Text>
+       ) : (
+-        <div role="status" className="flex items-center gap-2.5">
+-          <Spinner size={18} label="Reading public chain data" />
+-          <Text size="note" tone="muted">
+-            Reading public chain data…
+-          </Text>
+-        </div>
++        <DropLoader variant="inline" caption="Reading public chain data…" />
+       )}
+     </Card>
+   );
+diff --git a/apps/web/src/screens/sim/simulator.tsx b/apps/web/src/screens/sim/simulator.tsx
+index f14d9ec..18c5a79 100644
+--- a/apps/web/src/screens/sim/simulator.tsx
++++ b/apps/web/src/screens/sim/simulator.tsx
+@@ -1,7 +1,7 @@
+ "use client";
+ 
+ import { useCallback, useEffect, useState, type ReactNode, type SVGProps } from "react";
+-import { Banner, Button, Card, Columns, Heading, Label, Ledger, Pill, Spinner, Text, TextLink } from "@/final";
++import { Banner, Button, Card, Columns, DropLoader, Heading, Label, Ledger, Pill, Text, TextLink } from "@/final";
+ import { cn } from "@/lib/cn";
+ import { formatMoney } from "@/lib/format";
+ import { routes } from "@/lib/routes";
+@@ -250,9 +250,8 @@ function Timeline({ steps, running }: { steps: SimStep[]; running: boolean }) {
+         );
+       })}
+       {running ? (
+-        <li className="flex items-center gap-3 py-4 text-charcoal-muted">
+-          <Spinner size={18} label="Waiting for the next step" />
+-          <span className="font-body text-note">Next step lands onchain…</span>
++        <li className="py-4">
++          <DropLoader variant="inline" caption="Next step lands onchain…" />
+         </li>
+       ) : null}
+     </ol>
