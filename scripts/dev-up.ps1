@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Start the whole DripMoni stack locally in Docker (docs/LOCAL.md, Path A). Windows (Docker Desktop + WSL2).
+  Start the whole DripMoney stack locally in Docker (docs/LOCAL.md, Path A). Windows (Docker Desktop + WSL2).
 
 .DESCRIPTION
   env files (if missing) -> build -> anvil + deploy + seed -> API, worker, issuer, portal, web app in local mode
@@ -192,7 +192,7 @@ if (-not $NoApp) { Test-Url 'app   ' "http://localhost:$AppPort/home" }
 
 Write-Host @"
 
-DripMoni local stack is up (compose project mra-dev).
+DripMoney local stack is up (compose project mra-dev).
 
   web app      http://localhost:$AppPort/home
   agents API   http://localhost:$ApiPort/health

@@ -1,23 +1,27 @@
 "use client";
 
 import type { WeekView } from "@repo/sdk";
-import { Card, Columns, Label, Page, PageHead, Stack, Text } from "@/final";
+import { Card, Columns, Label, Page, Stack, Text } from "@/final";
 import { etaKnown } from "@/lib/estimate";
 import { formatDays, formatMoney, formatPercent } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
-import { CardTitle, CheckList } from "../../_ui";
+import { BlockRule, CardTitle, CheckList, ScreenHead } from "../../_ui";
 
 /** Payments per day, stacked: the shop's share (quiet) under the advance's share (Hunter). */
 function SplitBars({ days, labels, ariaLabel }: { days: { you: number; repay: number }[]; labels: string[]; ariaLabel: string }) {
   const max = Math.max(1, ...days.map((d) => d.you + d.repay));
   return (
     <div className="flex flex-col gap-2">
-      <div role="img" aria-label={ariaLabel} className="grid h-48 grid-flow-col auto-cols-fr items-end gap-2 md:h-56 md:gap-3">
+      <div role="img" aria-label={ariaLabel} className="grid h-48 grid-flow-col auto-cols-fr items-end gap-2 md:h-56 md:gap-3 lg:h-44">
         {days.map((d, i) => (
-          <div key={i} className="flex h-full flex-col justify-end gap-0.5">
+          <div
+            key={i}
+            className="flex h-full origin-bottom flex-col justify-end gap-0.5 motion-safe:animate-[rise_600ms_var(--ease-snappy)_both]"
+            style={{ animationDelay: `${i * 60}ms` }}
+          >
             <span className="block min-h-px rounded-t-[4px] bg-unlit" style={{ height: `${(d.you / max) * 100}%` }} />
             <span className="block min-h-px bg-hunter" style={{ height: `${(d.repay / max) * 100}%` }} />
           </div>
@@ -40,23 +44,23 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
   const paidBack = week.days.reduce((t, d) => t + d.repay, 0);
 
   return (
-    <Page tabs>
-      <PageHead back={routes.advance.details} backLabel="Your advance" label="This week" title="A slow week. That's fine.">
+    <Page tabs dense>
+      <ScreenHead back={routes.advance.details} backLabel="Your advance" label="This week" title="A slow week. That's fine.">
         When payments fall, paying back slows down with them. Nothing else changes.
-      </PageHead>
+      </ScreenHead>
 
       <Columns ratio="3:2">
-        <Stack gap="lg">
-          <Card padding="lg">
+        <Stack gap="lg" className="lg:gap-4">
+          <Card padding="lg" className="lg:p-4">
             <CardTitle
               end={
                 <span className="flex gap-3.5 font-body text-note text-charcoal-soft">
                   <span className="inline-flex items-center gap-1.5">
-                    <i aria-hidden className="size-2.5 rounded-[2px] bg-unlit" />
+                    <i aria-hidden className="size-2.5 rounded-xs bg-unlit" />
                     To you
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <i aria-hidden className="size-2.5 rounded-[2px] bg-hunter" />
+                    <i aria-hidden className="size-2.5 rounded-xs bg-hunter" />
                     To advance
                   </span>
                 </span>
@@ -67,7 +71,7 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
             <SplitBars days={week.days} labels={[...week.dayLabels]} ariaLabel={week.ariaLabel} />
           </Card>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-3">
             <Card>
               <Label>Paid back this week</Label>
               <span className="font-display text-h1 text-charcoal tabular-nums">{formatMoney(paidBack)}</span>
@@ -90,7 +94,9 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
           </div>
         </Stack>
 
-        <Card padding="lg">
+        <Stack gap="lg" className="lg:gap-4">
+        <BlockRule seed={9} className="rounded-md" />
+        <Card padding="lg" className="lg:p-4">
           <CardTitle>What a slow week means</CardTitle>
           <CheckList
             items={[
@@ -100,6 +106,7 @@ export function WeekScreen({ initial }: { initial: WeekView | null }) {
             ]}
           />
         </Card>
+        </Stack>
       </Columns>
     </Page>
   );

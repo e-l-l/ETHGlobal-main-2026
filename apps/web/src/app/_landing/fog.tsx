@@ -128,7 +128,7 @@ export function Fog() {
   return (
     <div className="relative overflow-hidden rounded-[20px] border-2 border-hunter/25 bg-canvas shadow-lift">
       <PixelFog />
-      <div className="relative grid min-h-[600px] grid-cols-1 gap-12 p-7 md:grid-cols-[1.3fr_1fr] md:p-14">
+      <div className="relative grid min-h-150 grid-cols-1 gap-12 p-7 md:grid-cols-[1.3fr_1fr] md:p-14">
         <div className="flex flex-col justify-between gap-10">
           <div className="flex flex-col gap-5">
             <span className="inline-flex w-fit items-center gap-2 font-ledger text-tag font-medium text-hunter uppercase">
@@ -145,7 +145,7 @@ export function Fog() {
           <div
             key={pin}
             aria-live="polite"
-            className="flex max-w-[440px] flex-col gap-1.5 rounded-lg border border-hairline bg-surface p-5 shadow-lift transition-[opacity,transform,filter] duration-300 ease-snappy starting:translate-y-1 starting:opacity-0 starting:blur-[2px]"
+            className="flex max-w-110 flex-col gap-1.5 rounded-lg border border-hairline bg-surface p-5 shadow-lift transition-[opacity,transform,filter] duration-300 ease-snappy starting:translate-y-1 starting:opacity-0 starting:blur-[2px]"
           >
             <span className="font-ledger text-tag font-semibold text-hunter uppercase">
               {p.k} · {p.tag}

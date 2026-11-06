@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="apps/web/src/app/apple-icon.png" width="72" height="72" alt="DripMoni" />
+  <img src="apps/web/src/app/apple-icon.png" width="72" height="72" alt="DripMoney" />
 </p>
 
-<h1 align="center">DripMoni</h1>
+<h1 align="center">DripMoney</h1>
 
 <p align="center">
   <b>A shop gets an advance and repays a slice of sales while it is active. ZK proofs protect credential details; transactions remain public.</b>
@@ -24,7 +24,7 @@ DripCoin (DRIP): junior, takes losses first. The deployed contract still uses Ju
 
 ## What it is
 
-DripMoni is a private **merchant cash advance** for small shops in dollar-short economies, such as a kiosco in Buenos Aires, a phone-accessory stall in Lagos or a duka in Nairobi.
+DripMoney is a private **merchant cash advance** for small shops in dollar-short economies, such as a kiosco in Buenos Aires, a phone-accessory stall in Lagos or a duka in Nairobi.
 
 1. **Prove the business, not the person.** The merchant proves with zkTLS that their seller dashboard shows a country, a revenue band and 6+ months of activity. That becomes a **Business Pass**. We never ask for a name, phone number or contacts.
 2. **Get paid in stablecoins.** Customers scan the shop's QR and pay in test USDC. While an advance is active, 8% of each sale goes toward repayment; without an advance there is no holdback. Any-token checkout swaps are planned.

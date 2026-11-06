@@ -13,6 +13,7 @@ import {
   LossWaterfall,
   PageHead,
   LenderDisclosure,
+  Reveal,
   Pill,
   RowList,
   ListRow,
@@ -29,7 +30,7 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
-import { DarkCard, LendHero, LendShell, Pub } from "./shell";
+import { DarkCard, LendHero, LendShell, Pub, PublicBand } from "./shell";
 import { DepositPanel, PositionCard } from "./client";
 import { LiveWaterfall, MarketView, RiskInPublic, RiskLoading } from "./risk";
 import { reasonLines, vaultNumbers } from "./vault";
@@ -114,7 +115,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
       <Pub>
         <LendHero
           sweep
-          label="DripMoni vault · USDC"
+          label="DripMoney vault · USDC"
           title={
             <>
               Lend to small shops. <span className="text-lime">Get paid from every sale.</span>
@@ -137,7 +138,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
 
       <ol aria-label="How it works" className="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
         {HOW.map((s, i) => (
-          <li key={s.title} className="flex items-start gap-3.5 rounded-lg border border-hairline bg-surface p-4 md:p-5">
+          <Reveal as="li" key={s.title} delay={i * 70} className="flex items-start gap-3.5 rounded-lg border border-hairline bg-surface p-4 md:p-5">
             <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-honeydew font-display text-read font-bold text-hunter">
               {i + 1}
             </span>
@@ -145,7 +146,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
               <span className="font-body text-read font-semibold text-charcoal">{s.title}</span>
               <span className="font-body text-note text-charcoal-muted">{s.body}</span>
             </span>
-          </li>
+          </Reveal>
         ))}
       </ol>
 
@@ -164,6 +165,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
               ]}
             />
           </Pub>
+          <Reveal>
           <Pub>
             <Card padding="lg">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -181,6 +183,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
               />
             </Card>
           </Pub>
+          </Reveal>
           {isMock ? (
             <Banner>A shop stopped selling. DripCoin took the $100 loss. The vault was not touched.</Banner>
           ) : wroteOff ? (
@@ -223,6 +226,7 @@ export function PositionScreen({ initial }: { initial: PositionView | null }) {
   return (
     <LendShell note="Your shares are onchain under this wallet. Nothing ties the wallet to your name.">
       <PageHead back={routes.earn} backLabel="Vault" label="The vault · USDC" title="My position" />
+      <PublicBand seed={5}>Onchain · under your wallet</PublicBand>
       <Columns ratio="3:2">
         <Stack gap="lg">
           <Pub>
@@ -389,6 +393,7 @@ export function DripCoinScreen({
 
       <Columns ratio="3:2">
         <Stack gap="lg">
+          <Reveal>
           <Pub>
             <Card padding="lg" gap="lg">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -407,6 +412,8 @@ export function DripCoinScreen({
               />
             </Card>
           </Pub>
+          </Reveal>
+          <Reveal delay={80}>
           <Card padding="lg">
             <Heading level={2} size="h2">
               Where each advance fee goes
@@ -420,6 +427,7 @@ export function DripCoinScreen({
               The reserve slice builds the reserve, together with a small fee from every DRIP trade on Uniswap.
             </Text>
           </Card>
+          </Reveal>
           <Pub>
             <Card padding="lg">
               <Heading level={2} size="h2">
@@ -478,9 +486,10 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
   const split = feeSplitParts(data.feeSplit);
   return (
     <LendShell note="Everything on this screen is public. None of it names a person.">
-      <PageHead label="Public dashboard · anyone can check" title="DripMoni, in real numbers.">
+      <PageHead label="Public dashboard · anyone can check" title="DripMoney, in real numbers.">
         Read straight from the contracts. No shop is named anywhere.
       </PageHead>
+      <PublicBand seed={9}>Read from the contracts</PublicBand>
       <Pub>
         <StatGrid
           items={[
@@ -597,6 +606,7 @@ export function RiskScreen({ initial }: { initial: RiskView | null }) {
       >
         Signals and every limit change, with the reasons. Limits only move down on their own.
       </PageHead>
+      <PublicBand seed={13}>Every limit change is public</PublicBand>
       <Columns ratio="3:2">
         <Stack gap="lg">
           <Pub>

@@ -6,7 +6,7 @@ import { routes } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "Choose your side" };
 
-/* The /home role picker: what DripMoni is in one line, then one card per role and how the money moves. */
+/* The /home role picker: what DripMoney is in one line, then one card per role and how the money moves. */
 
 function RoleCard({ href, icon, title, body, cta }: { href: string; icon: ReactNode; title: string; body: string; cta: string }) {
   return (
@@ -57,7 +57,7 @@ export default function Page_() {
       <AppHeader home={routes.home} />
       <main id="main" className="flex flex-1 flex-col animate-[page-in_240ms_var(--ease-snappy)_both] motion-reduce:animate-none">
         <section className="relative overflow-hidden bg-hunter text-canvas">
-          <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-4 px-4 pt-10 md:px-8 md:pt-16">
+          <div className="mx-auto flex w-full max-w-280 flex-col gap-4 px-4 pt-10 md:px-8 md:pt-16">
             <h1 className="m-0 max-w-[20ch] font-display text-hero-sm text-canvas md:text-[clamp(44px,5vw,72px)] md:leading-[1.02]">
               QR payments for small shops. <Accent>Advances paid back by every sale.</Accent>
             </h1>
@@ -72,7 +72,7 @@ export default function Page_() {
           </svg>
         </section>
 
-        <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-10 px-4 pt-8 pb-12 md:px-8 md:pt-12 md:pb-16">
+        <div className="mx-auto flex w-full max-w-280 flex-col gap-10 px-4 pt-8 pb-12 md:px-8 md:pt-12 md:pb-16">
           <section aria-labelledby="roles" className="flex flex-col gap-4">
             <Heading level={2} size="h1" id="roles">
               Choose your side
@@ -113,8 +113,8 @@ export default function Page_() {
               <Arrow />
               <FlowStep>Contract splits it</FlowStep>
               <Arrow />
-              <FlowStep strong>90% to the shop</FlowStep>
-              <FlowStep strong>10% repays the advance, to the vault and lenders</FlowStep>
+              <FlowStep strong>92% to the shop</FlowStep>
+              <FlowStep strong>8% repays the advance, to the vault and lenders</FlowStep>
             </ol>
           </section>
 

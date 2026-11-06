@@ -4,7 +4,6 @@ import AxeBuilder from "@axe-core/playwright";
 /* Every route in the app (see src/lib/routes.ts). */
 const routes = [
   "/",
-  "/old-landing",
   "/home",
   "/onboarding",
   "/onboarding/prove",
@@ -40,7 +39,6 @@ const routes = [
   "/protocol",
   "/risk",
   "/explorer",
-  "/screens",
 ];
 
 async function settle(page: Page) {

@@ -32,6 +32,7 @@ import {
 } from "@/final";
 import type { BusinessPassView, ProveStep } from "@repo/sdk";
 import { appUrl } from "@/lib/brand";
+import { PanelBlocks, litTiles } from "./panel-blocks";
 import { copy, stepEyebrow, type Lang } from "@/lib/copy";
 import { explorerTxUrl, isMock, withMRA } from "@/lib/mra";
 import { q } from "@/lib/mra-queries";
@@ -183,6 +184,8 @@ export function VerifyingScreen({ lang, outcome }: { lang: Lang; outcome?: strin
       <SplitPage
         panel={
           <BrandPanel
+            /* Two more tiles light as each of the three checks completes. */
+            top={<PanelBlocks seed={17} lit={litTiles(done * 2)} />}
             eyebrow={stepEyebrow(lang, 2)}
             title={
               <>
@@ -258,6 +261,7 @@ function ShopForm({ lang, draft }: { lang: Lang; draft: ShopDraft }) {
       <SplitPage
         panel={
           <BrandPanel
+            top={<PanelBlocks seed={29} lit={litTiles(6)} />}
             eyebrow={stepEyebrow(lang, 4)}
             title={
               <>

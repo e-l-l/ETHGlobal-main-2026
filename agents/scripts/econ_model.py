@@ -1,4 +1,4 @@
-"""DripMoni time-based fee economics; amounts are USD and rates are fractions.
+"""DripMoney time-based fee economics; amounts are USD and rates are fractions.
 
 Late-fee step-up (AdvanceBook constants): while a merchant is behind the minimum repayment (1% of principal + fee
 per 7 days), an extra late fee accrues at the same 0.5%/week, capped at another 3% (6% total). 100% of it goes to

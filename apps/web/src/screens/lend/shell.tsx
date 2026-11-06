@@ -2,6 +2,7 @@
 
 import { useId, type ReactNode, type SVGProps } from "react";
 import { AppHeader, Banner, CopyHash, JarBandStrip, Label, Page, WorldMark, type NavItem } from "@/final";
+import { BlockBand, BlockWall } from "@/blocks";
 import { cn } from "@/lib/cn";
 import { MRA_ENV, isMock } from "@/lib/mra";
 import { routes } from "@/lib/routes";
@@ -124,14 +125,20 @@ export function LendHero({
 }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="-mx-4 -mt-6 overflow-hidden bg-hunter text-canvas md:mx-0 md:-mt-2 md:rounded-lg">
+    <section aria-labelledby={id} className="relative -mx-4 -mt-6 overflow-hidden bg-hunter text-canvas md:mx-0 md:-mt-2 md:rounded-lg">
+      {/* Block wall on the right, dimmed under Hunter and fading to solid Hunter toward the copy, so text never sits on tiles. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 motion-safe:animate-[fade-in_900ms_var(--ease-snappy)_both]">
+        <BlockWall seed={11} cols={8} rows={8} fade="none" grain />
+        <div className="absolute inset-0 bg-hunter/72" />
+        <div className="absolute inset-0 bg-linear-to-r from-hunter from-35% to-transparent md:from-45%" />
+      </div>
       <div
         className={cn(
-          "flex flex-col gap-8 px-4 pt-8 pb-9 md:flex-row md:items-end md:justify-between md:gap-12 md:px-10 md:pt-12 md:pb-12",
+          "relative flex flex-col gap-8 px-4 pt-8 pb-9 md:flex-row md:items-end md:justify-between md:gap-12 md:px-10 md:pt-12 md:pb-12",
           sweep && "md:bg-linear-110 md:from-hunter md:from-55% md:to-fern",
         )}
       >
-        <div className="flex max-w-[620px] min-w-0 flex-col gap-4">
+        <div className="flex max-w-155 min-w-0 flex-col gap-4">
           <Label className="text-lime">{label}</Label>
           <h1 id={id} className="font-display text-hero-sm text-balance text-canvas md:text-hero">
             {title}
@@ -143,6 +150,24 @@ export function LendHero({
       </div>
       <JarBandStrip className="rounded-none" />
     </section>
+  );
+}
+
+/**
+ * A slim strip of block tiles under a Hunter dim, with a mono label on top: the one block-pattern moment on a
+ * public or position screen. Decorative; the label states the fact the strip stands for.
+ */
+export function PublicBand({ children, seed = 3 }: { children: ReactNode; seed?: number }) {
+  return (
+    <div className="relative isolate overflow-hidden rounded-lg bg-hunter">
+      <div aria-hidden className="pointer-events-none">
+        <BlockBand seed={seed} cols={24} rows={1} grain />
+        <div className="absolute inset-0 bg-hunter/78" />
+      </div>
+      <div className="absolute inset-0 flex items-center px-4 md:px-5">
+        <Label className="text-lime">{children}</Label>
+      </div>
+    </div>
   );
 }
 

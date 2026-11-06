@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Card, CheckIcon, ChevronLeftIcon, ExclaimIcon, Heading, Label } from "@/final";
+import { BlockBand, BlockPanel } from "@/blocks";
+import { Card, CheckIcon, ChevronLeftIcon, ExclaimIcon, Heading, JarBandStrip, Label, Text } from "@/final";
 import { cn } from "@/lib/cn";
 
 /*
@@ -9,15 +10,93 @@ import { cn } from "@/lib/cn";
  */
 
 /**
- * Hunter hero with the brand fade (Hunter → Fern → Leaf) toward the lower right and a lime rule under it.
- * The fade starts late so every line of text sits on Hunter or Fern; keep text left-aligned inside it.
+ * Hunter hero on the block pattern: the tiles run behind, a Hunter overlay (dim) keeps every line of text on dark
+ * green, and a lime-to-Hunter rule closes it. Pick a different `seed` per screen so each reads as its own wall.
+ * Keep text left-aligned inside it. Tighter on desktop (lg:p-5) so the screen fits one view.
  */
-export function HeroBlock({ className, children, rule = true }: { className?: string; children: ReactNode; rule?: boolean }) {
+export function HeroBlock({
+  className,
+  children,
+  rule = true,
+  seed = 1,
+  dim = 78,
+  lit,
+}: {
+  className?: string;
+  children: ReactNode;
+  rule?: boolean;
+  seed?: number;
+  dim?: number;
+  /** Tile indexes to light lime (a tier, a milestone). */
+  lit?: number[];
+}) {
   return (
     <section className={cn("relative flex flex-col overflow-hidden rounded-lg bg-hunter text-canvas", className)}>
-      <div className="flex flex-1 flex-col gap-4 bg-linear-115 from-hunter from-60% via-fern via-85% to-leaf p-5 md:gap-5 md:p-7">{children}</div>
-      {rule ? <div aria-hidden className="h-1 shrink-0 bg-lime" /> : null}
+      <BlockPanel
+        seed={seed}
+        dim={dim}
+        lit={lit}
+        cols={8}
+        rows={6}
+        grain={false}
+        className="flex-1 rounded-none"
+        bodyClassName="flex-1 gap-4 p-5 md:gap-5 md:p-7 lg:gap-3 lg:p-5"
+      >
+        {children}
+      </BlockPanel>
+      {rule ? <JarBandStrip className="h-1 shrink-0 rounded-none" /> : null}
     </section>
+  );
+}
+
+/** A thin strip of tiles (about 20px): a card edge or divider. Phones show half the strip. */
+export function BlockRule({ seed = 1, className }: { seed?: number; className?: string }) {
+  return <BlockBand cols={24} rows={1} seed={seed} grain={false} className={cn("h-5 shrink-0", className)} />;
+}
+
+/**
+ * Screen header. Phones: the standard stacked head (back link, label, h1, note). Desktop (lg+): one compact row,
+ * so the screen below it gets the height: back link and label inline, a 20px title, the note beside it.
+ */
+export function ScreenHead({
+  back,
+  backLabel = "Back",
+  label,
+  title,
+  children,
+  actions,
+}: {
+  back?: string;
+  backLabel?: string;
+  label?: ReactNode;
+  title: ReactNode;
+  children?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+      <div className="flex min-w-0 flex-col gap-2 lg:gap-0.5">
+        {back || label ? (
+          <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:gap-3">
+            {back ? (
+              <Link
+                href={back}
+                className="-ml-2 inline-flex min-h-11 w-fit items-center gap-1 rounded-md pr-3 pl-1 font-body text-note font-semibold text-charcoal-soft hover:bg-well hover:text-charcoal lg:-ml-1 lg:min-h-7 lg:pr-2"
+              >
+                <ChevronLeftIcon size={16} />
+                {backLabel}
+              </Link>
+            ) : null}
+            {label ? <Label>{label}</Label> : null}
+          </div>
+        ) : null}
+        <Heading level={1} size="h1" className="lg:text-h1-sm">
+          {title}
+        </Heading>
+        {children ? <Text className="max-w-[60ch] lg:text-note">{children}</Text> : null}
+      </div>
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+    </div>
   );
 }
 
@@ -33,7 +112,7 @@ export function HeroLabel({ children, className }: { children: ReactNode; classN
 
 /** The screen's one big number. `as="h1"` when the figure is the page title. */
 export function BigFigure({ children, className, as: Tag = "span" }: { children: ReactNode; className?: string; as?: "span" | "h1" }) {
-  return <Tag className={cn("m-0 font-display text-hero-sm tabular-nums md:text-hero", className)}>{children}</Tag>;
+  return <Tag className={cn("m-0 font-display text-hero-sm tabular-nums md:text-hero lg:text-hero-sm", className)}>{children}</Tag>;
 }
 
 /** The back link PageHead draws, for screens whose title lives in the hero. */
@@ -41,7 +120,7 @@ export function BackLink({ href, children }: { href: string; children: ReactNode
   return (
     <Link
       href={href}
-      className="-ml-2 -mb-2 inline-flex min-h-11 w-fit items-center gap-1 rounded-md pr-3 pl-1 font-body text-note font-semibold text-charcoal-soft hover:bg-well hover:text-charcoal"
+      className="-ml-2 -mb-2 inline-flex min-h-11 w-fit items-center gap-1 rounded-md pr-3 pl-1 lg:min-h-8 lg:-mb-3 font-body text-note font-semibold text-charcoal-soft hover:bg-well hover:text-charcoal"
     >
       <ChevronLeftIcon size={18} />
       {children}

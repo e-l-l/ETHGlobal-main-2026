@@ -1,6 +1,7 @@
 "use client";
 
 import type { WorldView } from "@repo/sdk";
+import { BlockBand } from "@/blocks";
 import { Banner, Card, Columns, KeyValue, LockIcon, Pill, Stack, WorldMark } from "@/final";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -17,12 +18,15 @@ export function WorldViewLists({ initial }: { initial: WorldView | null }) {
   const { data, error } = useMRA(q.world, { initial });
   if (!data) return <MRAState error={error} />;
   return (
-    <Stack gap="lg">
+    <Stack gap="md">
+      <BlockBand cols={24} seed={21} grain={false} className="pointer-events-none h-8 rounded-md opacity-90 lg:h-10" />
       <Columns className="items-stretch">
         <WorldMark kind="pub" show={wv} className="h-full">
-          <Card padding="lg" className="h-full">
+          <Card padding="md" className="h-full">
             <CardTitle end={<Pill tone="onchain">anyone</Pill>}>Public onchain</CardTitle>
-            <KeyValue rows={data.public.map((r) => [r.k, r.v])} />
+            <div className="lg:max-h-[calc(100vh-27rem)] lg:overflow-auto">
+              <KeyValue rows={data.public.map((r) => [r.k, r.v])} />
+            </div>
           </Card>
         </WorldMark>
         <WorldMark kind="priv" show={wv} className="h-full">
@@ -34,7 +38,7 @@ export function WorldViewLists({ initial }: { initial: WorldView | null }) {
                 only you
               </span>
             </div>
-            <dl className="m-0 flex flex-col font-body text-read">
+            <dl className="m-0 flex flex-col font-body text-read lg:max-h-[calc(100vh-27rem)] lg:overflow-auto">
               {data.private.map((r) => (
                 <div key={r.k} className="flex justify-between gap-4 border-t border-honeydew/20 py-2.5 first:border-t-0 first:pt-0 last:pb-0">
                   <dt className="text-honeydew">{r.k}</dt>

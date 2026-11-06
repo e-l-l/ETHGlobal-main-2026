@@ -23,6 +23,7 @@ import {
 import { copy, stepEyebrow, type Lang } from "@/lib/copy";
 import { isFailReason, routes, type FailReason } from "@/lib/routes";
 import type { BusinessPassView } from "@repo/sdk";
+import { PanelBlocks, litTiles } from "./panel-blocks";
 import { FailSheet, OnboardingHeader, PassFacts, StepProgress, World, WorldNote } from "./onboarding-client";
 
 function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
@@ -56,6 +57,7 @@ export function WelcomeScreen({ lang }: { lang: Lang }) {
       <SplitPage
         panel={
           <BrandPanel
+            top={<PanelBlocks seed={3} />}
             eyebrow={t.eyebrow}
             title={
               <>
@@ -107,6 +109,7 @@ export function ProveScreen({ lang }: { lang: Lang }) {
       <SplitPage
         panel={
           <BrandPanel
+            top={<PanelBlocks seed={11} lit={litTiles(1)} />}
             eyebrow={stepEyebrow(lang, 1)}
             title={
               <>
@@ -202,9 +205,13 @@ export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPas
             }
             body={t.panel}
             top={
-              <span aria-hidden className="hidden size-16 place-items-center rounded-full bg-lime text-hunter md:grid">
-                <CheckIcon size={32} strokeWidth={3} />
-              </span>
+              <>
+                {/* Tier 1 pass: two bands lit on the mark, two tiles lit here. */}
+                <PanelBlocks seed={23} lit={litTiles(2)} />
+                <span aria-hidden className="hidden size-16 place-items-center rounded-full bg-lime text-hunter md:grid">
+                  <CheckIcon size={32} strokeWidth={3} />
+                </span>
+              </>
             }
           />
         }
@@ -215,7 +222,7 @@ export function PassScreen({ lang, initial }: { lang: Lang; initial: BusinessPas
           <Card as="section" aria-label="Business Pass" tone="tint">
             <div className="flex items-center justify-between gap-3">
               <span className="flex items-center gap-2">
-                <JarMark size={24} lit={2} />
+                <JarMark size={24} lit={2} build />
                 <Label>Business Pass</Label>
               </span>
               <Pill tone="locked">{t.onPhone}</Pill>
@@ -245,6 +252,7 @@ export function FailedScreen({ lang, reason }: { lang: Lang; reason?: string }) 
       <SplitPage
         panel={
           <BrandPanel
+            top={<PanelBlocks seed={5} calm />}
             eyebrow={t.eyebrow}
             title={
               <>

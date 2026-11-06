@@ -1,6 +1,6 @@
 # Local development playbook
 
-This playbook runs the whole DripMoni stack on your own machine (macOS, Windows or Linux) with **no real keys**:
+This playbook runs the whole DripMoney stack on your own machine (macOS, Windows or Linux) with **no real keys**:
 - an anvil devnet with the contracts deployed and seeded
 - the agents API and worker
 - the Business Pass issuer
@@ -62,7 +62,7 @@ curl -s -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method"
 ## 0. Get the code
 
 ```sh
-git clone <repo-url> dripmoni && cd dripmoni
+git clone <repo-url> dripmoney && cd dripmoney
 git submodule update --init --recursive      # contracts/lib (forge-std, uniswap-hooks); dev-up does it too
 ```
 
@@ -73,7 +73,7 @@ git submodule update --init --recursive      # contracts/lib (forge-std, uniswap
   git config --global core.autocrlf input
   git rm -rq --cached . ; git reset --hard
   ```
-- **Where to clone.** For Path B, clone **inside WSL** (`~/code/dripmoni`, not `/mnt/c/...`). The Linux filesystem is much faster for `node_modules`, and file watching works. For Path A either works. A WSL clone is reachable from Windows at `\\wsl$\Ubuntu\home\<you>\code\dripmoni`.
+- **Where to clone.** For Path B, clone **inside WSL** (`~/code/dripmoney`, not `/mnt/c/...`). The Linux filesystem is much faster for `node_modules`, and file watching works. For Path A either works. A WSL clone is reachable from Windows at `\\wsl$\Ubuntu\home\<you>\code\dripmoney`.
 - Avoid paths with spaces, and OneDrive-synced folders such as `C:\Users\<you>\OneDrive\...`.
 
 **Toolchain pins** (`scripts/doctor.sh` / `scripts\doctor.ps1` checks all of them):
@@ -405,7 +405,7 @@ Before you start: open the app in **one** browser profile, and keep the same ori
 | 1 | **Onboarding: Business Pass** | `/onboarding` → Prove business | The issuer's `/mock/proof` stands in for Reclaim (zkTLS), and logs in as the demo portal account **donpepe** (Kiosco Don Pepe, Argentina, band 2) by default. The same issuer rejects `newshop` ("too new") and `suspended` ("not active"), as in the live flow. The app makes a **real** Noir proof in the browser, and the pass is issued on chain. The explorer (`/explorer`) shows only `BusinessPassIssued`. |
 | 2 | **Agent: set up once** | `/merchant/agent/setup` → approve | World Agent Pass is mocked (`WORLD_MOCK=1`): approve gives you an attestation and `registerMandate` on chain. Try deny once: no mandate, so no draws. |
 | 3 | <a id="3-advance"></a>**Advance** | `/merchant/advance`, the agent log at `/merchant/agent` | The agent asks `/offers`: the Underwriter proposes, the Critic reviews, code clamps, the offer is signed and relayed (`drawFirst` / `drawByMandate`). **Needs an LLM key** (see [Env files](#env-files)). Without one, the decision is `error` and no advance opens. The seeded ghost-shop advance still shows on the lender and protocol screens. |
-| 4 | **Pay** | `/pay/corner-kiosk` (also the merchant QR, `/merchant/qr`) | The customer's burner wallet gets faucet USDC, approves, and pays. 10% repays the active advance; without an advance there is no holdback. Watch the merchant home (`/merchant`): the balance falls. |
+| 4 | **Pay** | `/pay/corner-kiosk` (also the merchant QR, `/merchant/qr`) | The customer's burner wallet gets faucet USDC, approves, and pays. 8% repays the active advance; without an advance there is no holdback. Watch the merchant home (`/merchant`): the balance falls. |
 | 5 | **Swap (junior token)** | `/junior/trade` (`/junior`, `/junior/mint`) | Buy or sell DripCoin (DRIP) on the Uniswap v4 junior/USDC pool through `PoolSwapTest`, with `RiskHook` taking its fee. Lenders: `/earn`, `/earn/deposit`, `/earn/position`. |
 | 6 | **Default scene** | `scripts/dev-devnet.sh scene --execute` (Path B: `demo_default_scene.py --execute`), then `/risk`, `/protocol`, `/junior`, `/explorer` | **setup** → **stop** → **warp** +31 days → **writeoff** (the junior vault pays, senior untouched) → **sell** (junior pool price −15%) → **twap** (1h/24h ≈ 0.86 < 0.90) → **risk** (`lowerLimits`: caps 250/500 → 187.5/375, maxExposure 100k → 75k) → **summary**. |
 

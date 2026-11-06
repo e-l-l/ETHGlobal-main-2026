@@ -1,5 +1,8 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useEnterOnce } from "./data";
 import { ChevronRightIcon } from "./icons";
 import { Label, Ledger, Money } from "./text";
 import { Pill } from "./status";
@@ -75,17 +78,30 @@ export function LossWaterfall({ you, layers }: { you: LossViewer; layers?: reado
   ] as const;
   const live = new Map(layers?.map((l) => [l.key, l]));
   const mineKey = viewerKey(you);
+  /* Layers appear top to bottom (150ms apart) the first time the list is seen; the viewer's layer fills Hunter last. */
+  const [ref, phase] = useEnterOnce<HTMLOListElement>();
+  const STEP = 150;
+  const [lit, setLit] = useState(false);
+  useEffect(() => {
+    if (phase !== "play") return;
+    const id = window.setTimeout(() => setLit(true), tiers.length * STEP);
+    return () => window.clearTimeout(id);
+  }, [phase, tiers.length]);
   return (
-    <ol className="m-0 flex list-none flex-col p-0">
+    <ol ref={ref} className="m-0 flex list-none flex-col p-0">
       {tiers.map((t, i) => {
         const l = live.get(t.k);
-        const mine = t.k === mineKey;
+        const isMine = t.k === mineKey;
+        /* Hidden: every row reads as a neutral layer until its turn; mine switches to Hunter after the last one lands. */
+        const mine = isMine && (phase === "idle" || lit);
+        const enter = phase === "hidden" ? "translate-y-2 opacity-0" : phase === "play" ? "translate-y-0 opacity-100 transition-[opacity,translate] duration-500 ease-snappy" : "";
         return (
-          <li key={t.k} className="flex flex-col">
+          <li key={t.k} className={cn("flex flex-col", enter)} style={phase === "play" ? { transitionDelay: `${i * STEP}ms` } : undefined}>
             {i > 0 ? <span aria-hidden className="grid h-5.5 place-items-center text-charcoal-muted"><ChevronRightIcon size={16} className="rotate-90" /></span> : null}
             <div
               className={cn(
                 "flex items-center gap-3 rounded-xl border px-4 py-3.5",
+                phase === "play" && isMine && "transition-colors duration-500 ease-snappy",
                 mine ? "border-hunter bg-hunter text-canvas" : "border-hairline bg-surface text-charcoal",
               )}
             >

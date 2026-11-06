@@ -25,7 +25,7 @@ export const SHOP = {
     total: 115,
     repaid: 46,
     percentRepaid: 40,
-    holdback: "10%",
+    holdback: "8%",
   },
   limits: [
     { label: "First advance · now", cap: "$50" },

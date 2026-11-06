@@ -18,7 +18,7 @@ export function MRAState({ error }: { error?: string | undefined }) {
       </p>
     );
   }
-  const m = MESSAGES[error] ?? { text: `Couldn't load this screen (${error}).`, href: routes.screens, link: "All screens" };
+  const m = MESSAGES[error] ?? { text: `Couldn't load this screen (${error}).`, href: routes.home, link: "Back to start" };
   return (
     <div role="alert" className="flex flex-col gap-2 p-6 font-body text-note text-charcoal-muted">
       <p className="m-0">{m.text}</p>

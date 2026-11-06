@@ -121,6 +121,20 @@
   100% { opacity: 0; transform: translate(14px, -18px); }
 }
 @keyframes sheet-up { from { transform: translateY(100%); } }
+/* A new payment lands in the feed: drops in from above and settles out of a honeydew wash. */
+@keyframes sale-in {
+  from { opacity: 0; transform: translateY(-10px); background-color: var(--color-honeydew); }
+  35% { opacity: 1; transform: translateY(0); background-color: var(--color-honeydew); }
+  to { background-color: transparent; }
+}
+/* The 10% that drips back: the segment flashes lime, then settles to Hunter. */
+@keyframes drip-pop {
+  0% { background-color: var(--color-lime); transform: scaleX(0.3); }
+  45% { background-color: var(--color-lime); transform: scaleX(1.5); }
+  100% { background-color: var(--color-hunter); transform: scaleX(1); }
+}
+/* Pixel dune and tier tiles build upward, one column at a time (set animation-delay per column). */
+@keyframes rise { from { transform: scaleY(0); } }
 
 @layer base {
   html { background: var(--color-canvas); color: var(--color-charcoal); }

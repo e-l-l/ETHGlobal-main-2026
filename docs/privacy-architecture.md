@@ -150,7 +150,7 @@ A ZK proof hides *which* credential you hold. But to **build** the proof, the ap
 ```
 Lenders ──USDC──► Senior vault ──lend──► fresh merchant address
 Risk takers ──USDC──► Junior vault (shares = junior token ⇄ Uniswap v4 pool + RiskHook)
-Customer ──pay──► AdvanceBook ──90%──► merchant
+Customer ──pay──► AdvanceBook ──92%──► merchant
                               └─10%──► principal → Senior ; fee → 60% Senior / 30% Junior / 10% Reserve
 Default (30 days, no repaying sale) ─► anyone calls writeOff (bounty) ─► Junior pays → Reserve pays → Senior writes down
 Uniswap swaps (junior/USDC) ─► hook fee → Reserve ; TWAP → Risk agent → lowerLimits (down only)
@@ -219,7 +219,7 @@ A customer who pays at the stall learns its **pseudonym**, and can then see that
             Agents: red lines → Underwriter (Mistral) → independent Critic (Kimi) → clamp → EIP-712 offer
 ④ Delegate  Once: World Agent Pass approves the merchant's managed agent + limits → mandate onchain (denied → no mandate)
 ⑤ Draw      Automatic: managed agent → offer → relayer drawByMandate ─► USDC to a fresh address. Nobody taps.
-⑥ Sell      Customers pay the QR; 10% repays automatically; voice: "Recibiste 10 dólares, 1 fue a tu adelanto"
+⑥ Sell      Customers pay the QR; 8% repays automatically; voice: "Recibiste 10 dólares, 80 centavos fueron a tu adelanto"
 ⑦ Repaid    Relayer claims the Standing Pass (count = 1). Merchant rotates to a new shop ID.
 ⑧ Grow      Next advance: Standing Pass proof (tier 1+) from a fresh shop and a fresh wallet: no visible link.
 ⑨ Default   No repaying sale for 30 days → anyone writes off → junior absorbs → junior TWAP falls → Risk agent lowers caps

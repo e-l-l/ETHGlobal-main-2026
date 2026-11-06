@@ -1,3 +1,4 @@
+import { BlockPanel } from "@/blocks";
 import { ActionBar, Button, Card, Heading, KeyValue, Label, Page, Text } from "@/final";
 import { routes } from "@/lib/routes";
 import { CardTitle } from "../../../_ui";
@@ -9,11 +10,11 @@ import { CardTitle } from "../../../_ui";
 export default async function AgentDeniedPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
   const expired = (await searchParams).reason === "expired";
   return (
-    <Page width="narrow" tabs className="md:justify-center">
-      <div className="flex flex-col gap-2">
-        <Label className="text-caution">{expired ? "World approval expired" : "World approval cancelled"}</Label>
-        <Heading level={1}>{expired ? "Time ran out. Try again." : "No agent set up. Nothing will be drawn."}</Heading>
-        <Text>
+    <Page width="narrow" tabs dense className="md:justify-center">
+      <BlockPanel seed={9} dim={78} cols={6} rows={5} bodyClassName="gap-2 p-5 md:p-6">
+        <Label className="text-lime">{expired ? "World approval expired" : "World approval cancelled"}</Label>
+        <Heading level={1} className="text-canvas">{expired ? "Time ran out. Try again." : "No agent set up. Nothing will be drawn."}</Heading>
+        <Text className="text-honeydew">
           {expired ? (
             <>
               The World request expired before it was approved. Nothing happened: no agent, no limits. Start again and approve it in
@@ -26,7 +27,7 @@ export default async function AgentDeniedPage({ searchParams }: { searchParams: 
             </>
           )}
         </Text>
-      </div>
+      </BlockPanel>
       <Card padding="lg">
         <CardTitle>Where things stand</CardTitle>
         <KeyValue

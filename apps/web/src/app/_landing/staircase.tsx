@@ -88,7 +88,7 @@ export function Staircase() {
         ))}
       </ol>
 
-      <div role="radiogroup" aria-label="Repaid advances" className="grid h-[340px] grid-cols-4 items-end gap-2 md:h-[420px] md:gap-4">
+      <div role="radiogroup" aria-label="Repaid advances" className="grid h-85 grid-cols-4 items-end gap-2 md:h-105 md:gap-4">
         {limitsLadder.map((s, g) => {
           const on = g === tier;
           const reached = g <= tier;

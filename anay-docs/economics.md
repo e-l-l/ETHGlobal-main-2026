@@ -1,4 +1,4 @@
-# DripMoni contract economics
+# DripMoney contract economics
 
 Illustrative contract economics for the current pilot parameters. These are not forecasts or legal disclosures. The fee accrues at 50 bps per week on original principal while principal remains, caps at 300 bps, and is collected fee-first. Paying principal sooner reduces the fee. The merchant holdback is 8% of each sale while the advance is active; there is no checkout fee.
 

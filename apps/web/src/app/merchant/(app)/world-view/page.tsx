@@ -8,7 +8,7 @@ import { WorldViewLists } from "./world-view-lists";
 export default async function WorldViewPage() {
   const initial = await serverView(q.world);
   return (
-    <Page tabs>
+    <Page tabs dense>
       <PageHead back={routes.merchant} backLabel="Home" label="World view · on every screen" title="What the world sees.">
         Left: what anyone can read onchain. Right: what stays on this device and never leaves it.
       </PageHead>

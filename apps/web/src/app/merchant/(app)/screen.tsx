@@ -4,6 +4,7 @@ import type { HomeView } from "@repo/sdk";
 import {
   Button,
   AgentStop,
+  CountUp,
   Card,
   EyeIcon,
   JarMark,
@@ -11,7 +12,6 @@ import {
   Ledger,
   ListRow,
   Page,
-  PageHead,
   Pill,
   PixelDune,
   ProgressBar,
@@ -27,7 +27,7 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
-import { BigFigure, CardTitle, DarkBlock, DarkMeter, HeroBlock, HeroLabel, Tile } from "../_ui";
+import { BigFigure, CardTitle, DarkBlock, DarkMeter, HeroBlock, HeroLabel, ScreenHead, Tile } from "../_ui";
 import { SalesFeed } from "./sales-feed";
 
 /** Live modes poll for new payments. Mock data never changes, so it isn't polled. */
@@ -64,8 +64,8 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
   ) : null;
 
   return (
-    <Page tabs>
-      <PageHead
+    <Page tabs dense>
+      <ScreenHead
         label={today.label}
         title="Today at your shop."
         actions={
@@ -79,11 +79,11 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
       />
 
       {/* Phones and tablets: payments and the advance at a glance. */}
-      <HeroBlock className="lg:hidden">
+      <HeroBlock seed={3} className="lg:hidden">
         <div className="grid grid-cols-2 gap-4">
           <div className="flex min-w-0 flex-col gap-1">
             <HeroLabel>Payments today</HeroLabel>
-            <span className="font-display text-amount tabular-nums">{formatMoney(today.soldUsd)}</span>
+            <span className="font-display text-amount tabular-nums"><CountUp value={today.soldUsd} format={formatMoney} /></span>
             <Ledger className="text-honeydew">
               {today.salesCount} paid
             </Ledger>
@@ -92,7 +92,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
             <HeroLabel>{advance ? "Advance left" : "Advance"}</HeroLabel>
             {advance ? (
               <>
-                <span className="font-display text-amount tabular-nums">{formatMoney(advance.left)}</span>
+                <span className="font-display text-amount tabular-nums"><CountUp value={advance.left} format={formatMoney} /></span>
                 <Ledger className="text-honeydew">of {formatMoney(advance.drawn + advance.feeSoFar)}</Ledger>
               </>
             ) : (
@@ -116,7 +116,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
         {/* ---------------------------------------------------------- Payments */}
         <section aria-label="Payments" className="flex min-w-0 flex-col gap-4 lg:gap-0 lg:overflow-hidden lg:rounded-lg lg:border lg:border-hairline lg:bg-surface">
-          <div className="flex flex-col gap-4 lg:gap-5 lg:border-b lg:border-hairline lg:p-7">
+          <div className="flex flex-col gap-4 lg:gap-3 lg:border-b lg:border-hairline lg:p-5">
             <div className="hidden items-center justify-between gap-3 lg:flex">
               <Label>Payments today</Label>
               <Pill tone="saving" dot>
@@ -124,18 +124,18 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
               </Pill>
             </div>
             <div className="hidden flex-col gap-1.5 lg:flex">
-              <BigFigure className="text-charcoal">{formatMoney(today.soldUsd)}</BigFigure>
+              <BigFigure className="text-charcoal"><CountUp value={today.soldUsd} format={formatMoney} /></BigFigure>
               <Ledger>
                 {cur.dollarsOnly ? "" : `${cur.format(today.soldUsd)} · `}{today.salesCount} {today.salesCount === 1 ? "payment" : "payments"}
                 {sales[0] ? ` · last ${sales[0].time}` : ""}
               </Ledger>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Tile label="To you" value={formatMoney(toYou)} sub={advance ? `${formatPercent(100 - holdback)} of each payment` : "all of each payment"} />
+              <Tile label="To you" value={<CountUp value={toYou} format={formatMoney} />} sub={advance ? `${formatPercent(100 - holdback)} of each payment` : "all of each payment"} />
               <Tile
                 accent
                 label="To your advance"
-                value={formatMoney(today.toRepayment)}
+                value={<CountUp value={today.toRepayment} format={formatMoney} />}
                 sub={advance ? `${formatPercent(holdback)} of each payment` : "no open advance"}
               />
             </div>
@@ -162,9 +162,9 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
             <SalesFeed sales={sales} usdToLocal={shop.usdToLocal} holdback={holdback} className="py-1 lg:py-0" />
           </div>
 
-          <div className="mt-auto hidden flex-wrap items-center justify-between gap-3 border-t border-hairline px-7 py-4 lg:flex">
+          <div className="mt-auto hidden flex-wrap items-center justify-between gap-3 border-t border-hairline px-5 py-2.5 lg:flex">
             <Text size="note" tone="muted">
-              {advance ? "Each payment splits 9 to 1 automatically." : "Every payment goes straight to you."}
+              {advance ? "Each payment splits 92 to 8 automatically." : "Every payment goes straight to you."}
             </Text>
             <Button href={routes.cashOut} variant="secondary" size="sm" width="auto">
               {available !== undefined ? `Cash out ${formatMoney(available)}` : "Cash out"}
@@ -175,7 +175,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
         {/* ----------------------------------------------------------- Advance */}
         <section aria-label="Advance" className="flex min-w-0 flex-col gap-4 lg:gap-0 lg:overflow-hidden lg:rounded-lg lg:border lg:border-hairline lg:bg-surface">
           {advance ? (
-            <HeroBlock className="hidden rounded-none lg:flex">
+            <HeroBlock seed={3} className="hidden rounded-none lg:flex">
               <div className="flex items-center justify-between gap-3">
                 <HeroLabel>Advance · {advance.purpose}</HeroLabel>
                 <TextLink href={routes.advance.details} className="text-canvas decoration-canvas/40 hover:decoration-canvas">
@@ -204,14 +204,14 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
               </div>
             </HeroBlock>
           ) : (
-            <HeroBlock className="hidden rounded-none lg:flex">
+            <HeroBlock seed={3} className="hidden rounded-none lg:flex">
               <HeroLabel>Advance</HeroLabel>
               <span className="font-display text-h1 text-canvas">No open advance.</span>
               <Text className="text-honeydew">Your agent draws one for stock when your payments can pay it back.</Text>
             </HeroBlock>
           )}
 
-          <Card className="lg:rounded-none lg:border-0 lg:border-b lg:border-hairline lg:px-7 lg:py-6">
+          <Card gap="sm" className="lg:rounded-none lg:border-0 lg:border-b lg:border-hairline lg:px-5 lg:py-4">
             <CardTitle
               end={
                 <TextLink href={agentOn ? routes.agent.log : routes.agent.setup} arrow>
@@ -221,14 +221,15 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
             >
               Your agent
             </CardTitle>
-            <div className="flex items-center justify-between gap-3 font-body text-read">
+            <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-2.5">
+            <div className="flex items-center justify-between gap-3 font-body text-read lg:text-note">
               <span className="text-charcoal-muted">Last draw</span>
               <span className="text-right font-semibold text-charcoal tabular-nums">
                 {agentSummary.lastDrawWhen ? `${formatMoney(agentSummary.lastDraw)} · ${agentSummary.lastDrawWhen}` : "None yet"}
               </span>
             </div>
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-3 font-body text-read">
+              <div className="flex items-center justify-between gap-3 font-body text-read lg:text-note">
                 <span className="text-charcoal-muted">This month</span>
                 <span className="font-semibold text-charcoal tabular-nums">
                   {formatMoney(agentSummary.monthUsed)} of {formatMoney(agentLimits.perMonth)}
@@ -236,23 +237,24 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
               </div>
               <ProgressBar value={agentLimits.perMonth > 0 ? agentSummary.monthUsed / agentLimits.perMonth : 0} label="Monthly limit used" />
             </div>
-            <div className="flex items-center justify-between gap-3 font-body text-read">
+            <div className="flex items-center justify-between gap-3 font-body text-read lg:text-note">
               <span className="text-charcoal-muted">Remaining allowance</span>
               <span className="text-right font-semibold text-charcoal tabular-nums">
                 {agent?.remainingAllowance === undefined ? "Unavailable" : formatMoney(agent.remainingAllowance)}
               </span>
             </div>
-            <div className="flex items-center justify-between gap-3 font-body text-read">
+            <div className="flex items-center justify-between gap-3 font-body text-read lg:text-note">
               <span className="text-charcoal-muted">Mandate expiry</span>
               <span className="text-right font-semibold text-charcoal tabular-nums">
                 {agent?.expiry ? new Date(agent.expiry * 1000).toLocaleDateString() : "Unavailable"}
               </span>
             </div>
+            </div>
             {agentOn ? <AgentStop onDone={reloadAgent} /> : null}
           </Card>
 
           {cap !== undefined ? (
-            <Card className="flex-row flex-wrap items-center justify-between lg:rounded-none lg:border-0 lg:px-7 lg:py-5">
+            <Card className="flex-row flex-wrap items-center justify-between lg:rounded-none lg:border-0 lg:px-5 lg:py-3">
               <div className="flex min-w-0 flex-col">
                 <span className="font-body text-note text-charcoal-muted">Your limit</span>
                 <span className="font-body text-read font-semibold text-charcoal">
@@ -273,7 +275,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
           <CardTitle end={<Label>One column per day</Label>}>This week</CardTitle>
           <div className="flex items-end gap-5">
             {week ? (
-              <PixelDune days={week.week.days.map((d) => Math.round(d.you + d.repay))} className="h-24 w-auto shrink-0" />
+              <PixelDune rise days={week.week.days.map((d) => Math.round(d.you + d.repay))} className="h-24 w-auto shrink-0 lg:h-16" />
             ) : null}
             <div className="flex min-w-0 flex-col gap-1">
               <span className="font-display text-h1 text-charcoal tabular-nums">{formatMoney(today.weekUsd)}</span>

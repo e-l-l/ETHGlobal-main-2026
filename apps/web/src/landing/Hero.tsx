@@ -113,7 +113,7 @@ export function Hero() {
   return (
     <div
       id="top"
-      className="relative flex min-h-[min(100vh,960px)] flex-col overflow-hidden bg-[#e3f1e2]"
+      className="relative flex min-h-[min(100svh,960px)] flex-col overflow-hidden bg-[#e3f1e2]"
     >
       <WatercolorBackground />
       <Nav />
@@ -127,7 +127,7 @@ export function Hero() {
           "px-[clamp(16px,4vw,40px)] pt-[clamp(40px,7vw,96px)] pb-[clamp(96px,10vw,160px)]",
         )}
       >
-        <div className="relative isolate flex min-w-0 flex-[1_1_460px] flex-col gap-6 py-[clamp(8px,2vw,24px)]">
+        <div className="relative isolate flex min-w-0 flex-[1_1_368px] flex-col gap-5 py-[clamp(8px,2vw,24px)]">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-[-22%_-18%_-22%_-30%] -z-10 blur-[18px]"
@@ -138,7 +138,7 @@ export function Hero() {
           </Label>
           <h1
             id="hero-title"
-            className="m-0 font-display text-[clamp(40px,6vw,72px)] leading-none font-bold tracking-[-0.03em] text-charcoal"
+            className="m-0 font-display text-[clamp(32px,4.8vw,58px)] leading-none font-bold tracking-[-0.03em] text-charcoal"
           >
             Dollars for stock today.{" "}
             <span className="text-hunter">Paid back one sale at a time.</span>
@@ -147,8 +147,8 @@ export function Hero() {
             No fixed instalments. 8% of each sale goes toward your advance. Fee
             0.5% per week while you owe, never more than 3%.
           </p>
-          <p className="m-0 inline-flex items-center gap-2.5 self-start rounded-full border border-honeydew-line bg-honeydew py-2.5 pr-4 pl-3 text-[15px] leading-[1.35] font-semibold text-hunter">
-            <LockGlyph size={20} className="flex-none" />
+          <p className="m-0 inline-flex items-center gap-2.5 self-start rounded-full border border-honeydew-line bg-honeydew py-2 pr-3 pl-2.5 text-[12px] leading-[1.35] font-semibold text-hunter">
+            <LockGlyph size={16} className="flex-none" />
             We never ask for your name, phone or contacts.
           </p>
           <div className="flex flex-wrap gap-3">

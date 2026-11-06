@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AgentApproveView, AgentSetupStep } from "@repo/sdk";
 import { ActionBar, Banner, Button, DemoBadge, Ledger, LockIcon, OfferDisclosure, Page, Text } from "@/final";
-import { HeroBlock, HeroLabel } from "../../../_ui";
+import { BlockPanel } from "@/blocks";
+import { HeroLabel } from "../../../_ui";
 import { capitalize, formatMoney, formatPercent } from "@/lib/format";
 import { isMock } from "@/lib/mra";
 import { q, type AgentLimitsInput } from "@/lib/mra-queries";
@@ -59,9 +60,9 @@ export function ApproveScreen({
   };
 
   return (
-    <Page width="narrow" className="justify-center">
-      <section className="flex flex-col overflow-hidden rounded-lg border border-hairline bg-surface shadow-lift">
-        <HeroBlock className="rounded-none">
+    <Page dense className="justify-center">
+      <section className="mx-auto flex w-full max-w-140 flex-col overflow-hidden rounded-lg border border-hairline bg-surface shadow-lift lg:max-w-250 lg:grid lg:grid-cols-[5fr_7fr]">
+        <BlockPanel seed={5} dim={76} cols={6} rows={8} className="rounded-none" bodyClassName="gap-4 p-5 md:gap-5 md:p-7 lg:justify-center">
           <span className="grid size-12 place-items-center rounded-full bg-lime text-charcoal" aria-hidden>
             <LockIcon size={24} />
           </span>
@@ -71,8 +72,8 @@ export function ApproveScreen({
             Only you can turn the agent on. It can never draw past these limits. The recipient is your registered payout address; the
             purpose is not enforced onchain.
           </Text>
-        </HeroBlock>
-        <div className="flex flex-col gap-4 p-5 md:p-6">
+        </BlockPanel>
+        <div className="flex flex-col gap-4 p-5 md:p-6 lg:gap-3">
           {worldReal ? null : <DemoBadge>World test mode</DemoBadge>}
           <Text size="note">Illustrative terms at your maximum per-draw limit; future offers may differ. Mandate expires after 90 days.</Text>
           <OfferDisclosure

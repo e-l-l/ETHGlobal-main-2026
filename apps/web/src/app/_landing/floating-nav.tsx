@@ -32,7 +32,7 @@ export function FloatingNav({ children }: { children: ReactNode }) {
         inert={hidden}
         onFocus={() => setHidden(false)}
         className={cn(
-          "pointer-events-auto relative w-full max-w-[1010px] rounded-2xl border border-hairline bg-canvas/80 shadow-lift backdrop-blur-xl backdrop-saturate-150 motion-reduce:backdrop-blur-none",
+          "pointer-events-auto relative w-full max-w-252.5 rounded-2xl border border-hairline bg-canvas/80 shadow-lift backdrop-blur-xl backdrop-saturate-150 motion-reduce:backdrop-blur-none",
           "transition-[transform,opacity] duration-250 ease-snappy motion-reduce:duration-150",
           hidden ? "-translate-y-[calc(100%+1.5rem)] opacity-0 motion-reduce:translate-y-0" : "translate-y-0 opacity-100",
         )}

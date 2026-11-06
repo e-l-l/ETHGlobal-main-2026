@@ -144,3 +144,34 @@ export function BlockWall({ cols = 12, rows = 4, fade = "bottom", className, gra
   const style: CSSProperties | undefined = mask ? { maskImage: mask, WebkitMaskImage: mask } : undefined;
   return <BlockGrid tiles={tiles} step={o.step} lit={o.lit} interactive={o.interactive} grain={grain} cols={COLS[cols]} className={className} style={style} />;
 }
+
+/* ------------------------------------------------------------------ Panel */
+
+export type BlockPanelProps = Shared & {
+  children: ReactNode;
+  /** Dark overlay strength over the tiles, 0 to 100. Text sits on the overlay, so keep it 60+ for body copy. Default 72. */
+  dim?: number;
+  /** Tile columns across the panel. Tiles stay square, so more columns means smaller tiles. Default 8. */
+  cols?: 6 | 8 | 12;
+  /** Tile rows. Enough to cover the panel; the panel clips the rest. Default 6. */
+  rows?: number;
+  /** Extra classes for the content layer (padding, alignment). */
+  bodyClassName?: string;
+};
+
+/**
+ * Content on a block-pattern ground: the wall of tiles runs behind, a Hunter overlay dims it, and the content
+ * sits on top. The quiet way to use the pattern in the app: headers and hero blocks, never behind data tables.
+ * Text over it should sit on a solid card or be light on the dimmed overlay.
+ */
+export function BlockPanel({ children, dim = 72, cols = 8, rows = 6, className, bodyClassName, grain = true, ...o }: BlockPanelProps) {
+  return (
+    <div className={cn("relative isolate overflow-hidden rounded-lg bg-hunter text-canvas", className)}>
+      <div aria-hidden className="absolute inset-0 -z-10">
+        <BlockWall cols={cols} rows={rows} fade="none" grain={grain} {...o} />
+        <div className="absolute inset-0 bg-hunter" style={{ opacity: dim / 100 }} />
+      </div>
+      <div className={cn("relative flex flex-col gap-2 p-5", bodyClassName)}>{children}</div>
+    </div>
+  );
+}

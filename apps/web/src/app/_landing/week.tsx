@@ -3,7 +3,7 @@ import { PixelIcon } from "./pixel-icons";
 
 /*
  * A slow week, as data. One example week of sales; each day shows what goes back:
- * DripMoni takes 8% of that day's sales, a fixed instalment takes the same amount every day.
+ * DripMoney takes 8% of that day's sales, a fixed instalment takes the same amount every day.
  * Both repay the same total. One block is one dollar. Brand greens only.
  */
 
@@ -25,7 +25,7 @@ const money = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
 /** A row of one-dollar blocks out of MAX; the last block can be a part dollar. */
 function Row({ n, on, off }: { n: number; on: string; off: string }) {
   return (
-    <span className="grid h-4 grid-cols-20 gap-[3px] md:h-5" aria-hidden>
+    <span className="grid h-4 grid-cols-20 gap-0.75 md:h-5" aria-hidden>
       {Array.from({ length: MAX }, (_, i) => {
         const fill = Math.min(1, Math.max(0, n - i));
         return (
@@ -45,11 +45,11 @@ export function WeekChart() {
         <span className="font-ledger text-tag font-medium text-honeydew uppercase">Example week · paid back each day</span>
         <span className="flex flex-wrap gap-x-5 gap-y-1 font-body text-note text-honeydew">
           <span className="inline-flex items-center gap-2">
-            <i aria-hidden className="size-3 rounded-[2px] bg-lime" />
-            DripMoni: 8% of the day&apos;s sales
+            <i aria-hidden className="size-3 rounded-xs bg-lime" />
+            DripMoney: 8% of the day&apos;s sales
           </span>
           <span className="inline-flex items-center gap-2">
-            <i aria-hidden className="size-3 rounded-[2px] bg-honeydew/35" />
+            <i aria-hidden className="size-3 rounded-xs bg-honeydew/35" />
             Fixed instalment: {money(FIXED)} every day
           </span>
         </span>
@@ -57,7 +57,7 @@ export function WeekChart() {
 
       <ol
         className="m-0 flex list-none flex-col gap-2 p-0"
-        aria-label={`Paid back each day. ${WEEK.map(([d, s]) => `${d}: sold $${s}, DripMoni ${money(s * HOLD)}, fixed ${money(FIXED)}`).join(". ")}.`}
+        aria-label={`Paid back each day. ${WEEK.map(([d, s]) => `${d}: sold $${s}, DripMoney ${money(s * HOLD)}, fixed ${money(FIXED)}`).join(". ")}.`}
       >
         {WEEK.map(([day, sales]) => {
           const slow = SLOW.has(day);
@@ -73,7 +73,7 @@ export function WeekChart() {
                 <span className="font-ledger text-[13px] font-semibold text-canvas uppercase">{day}</span>
                 <span className="font-ledger text-[12px] text-honeydew">${sales} sold</span>
               </span>
-              <span className="flex flex-col gap-[3px]">
+              <span className="flex flex-col gap-0.75">
                 <Row n={sales * HOLD} on="bg-lime" off="bg-honeydew/10" />
                 <Row n={FIXED} on="bg-honeydew/45" off="bg-honeydew/10" />
               </span>

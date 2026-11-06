@@ -1,6 +1,7 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useLayoutEffect, useState } from "react";
+import { useReducedMotion } from "@/lib/use-live";
 import { cn } from "@/lib/cn";
 import { APP_NAME } from "@/lib/brand";
 
@@ -29,6 +30,8 @@ const SURFACE = {
   dark: "[--band-base:var(--color-honeydew)] [--band-on:var(--color-lime)] [--band-off:color-mix(in_oklab,var(--color-honeydew)_30%,transparent)]",
 } as const;
 
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export type JarMarkProps = {
   lit?: 0 | 1 | 2 | 3 | 4;
   size?: number;
@@ -37,11 +40,30 @@ export type JarMarkProps = {
   loading?: boolean;
   /** Decorative: the bands walk the brand greens, a wave falling from the tip to the base. */
   cycle?: boolean;
+  /** Light the bands one at a time, bottom to top, once on mount (a tier just earned). Static with reduced motion. */
+  build?: boolean;
   label?: string;
   className?: string;
 };
 
-export function JarMark({ lit = 1, size = 40, on = "light", loading, cycle, label, className }: JarMarkProps) {
+export function JarMark({ lit: litProp = 1, size = 40, on = "light", loading, cycle, build, label, className }: JarMarkProps) {
+  const reduced = useReducedMotion();
+  /* null = show the real tier (server, no-JS, reduced motion, after the climb). A number = mid-climb. */
+  const [step, setStep] = useState<number | null>(null);
+  useIsoLayoutEffect(() => {
+    if (!build || reduced) return;
+    let n = 0;
+    setStep(0);
+    const id = window.setInterval(() => {
+      n += 1;
+      if (n >= litProp) {
+        setStep(null);
+        window.clearInterval(id);
+      } else setStep(n);
+    }, 260);
+    return () => window.clearInterval(id);
+  }, [build, reduced, litProp]);
+  const lit = (step ?? litProp) as 0 | 1 | 2 | 3 | 4;
   const clip = `fdrop${useId().replace(/[:«»]/g, "")}`;
   const a11y = label ? { role: "img" as const, "aria-label": label } : { "aria-hidden": true as const };
 

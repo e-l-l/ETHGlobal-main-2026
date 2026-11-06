@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { BadWeek } from "@/landing/BadWeek";
 import { FinalCta } from "@/landing/FinalCta";
 import { Footer } from "@/landing/Footer";
@@ -14,11 +15,12 @@ import { UnderTheHood } from "@/landing/UnderTheHood";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "DripMoni: first landing page",
+    absolute: "DripMoney: first landing page",
   },
 };
 
 export default function LandingPage() {
+  if (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_SHOW_KIT !== "1") notFound();
   return (
     <>
       <main className="min-w-0 bg-canvas leading-[normal] text-charcoal">

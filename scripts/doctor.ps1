@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Check the local toolchain against the versions DripMoni pins (docs/LOCAL.md). Windows PowerShell 5.1 / pwsh 7.
+  Check the local toolchain against the versions DripMoney pins (docs/LOCAL.md). Windows PowerShell 5.1 / pwsh 7.
 
 .DESCRIPTION
   Read-only: installs nothing and only prints versions and fix hints.
@@ -40,7 +40,7 @@ function Test-VersionGe([string]$a, [string]$b) {
 }
 function First-Line($cmdOutput) { "$(@($cmdOutput) | Select-Object -First 1)".Trim() }
 
-Write-Host "DripMoni doctor  (PowerShell $($PSVersionTable.PSVersion), repo $RepoDir)"
+Write-Host "DripMoney doctor  (PowerShell $($PSVersionTable.PSVersion), repo $RepoDir)"
 Write-Host ''
 Write-Host ('{0,-5} {1,-15} {2,-30} {3}' -f '', 'tool', 'found', 'wanted')
 

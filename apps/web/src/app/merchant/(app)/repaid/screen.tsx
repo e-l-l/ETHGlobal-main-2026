@@ -41,10 +41,10 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
   };
 
   return (
-    <Page tabs>
+    <Page tabs dense>
       <BackLink href={routes.merchant}>Home</BackLink>
 
-      <HeroBlock>
+      <HeroBlock seed={11} lit={Array.from({ length: lit }, (_, i) => 7 - i)}>
         <HeroLabel>Paid back in full</HeroLabel>
         <BigFigure as="h1" className="max-w-[16ch] text-balance">
           Your limit is now <span className="text-lime">{formatMoney(cap)}.</span>
@@ -56,8 +56,8 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
       </HeroBlock>
 
       <Columns ratio="3:2">
-        <Stack gap="lg">
-          <DarkBlock>
+        <Stack gap="lg" className="lg:gap-4">
+          <DarkBlock className="lg:p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-3">
@@ -69,12 +69,12 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
                   the proof; we never see it.
                 </Text>
               </div>
-              <JarMark lit={lit} on="dark" size={64} label={`Tier ${currentTier}`} />
+              <JarMark lit={lit} on="dark" size={64} build label={`Tier ${currentTier}`} />
             </div>
           </DarkBlock>
 
           {claimable ? (
-            <Card padding="lg">
+            <Card padding="lg" gap="sm" className="lg:p-4">
               <Text>
                 Claim your Standing Pass to raise your limit to{" "}
                 <strong className="text-charcoal">{formatMoney(data.standingPass.nextCap ?? 0)}</strong>. It stays on this
@@ -90,8 +90,8 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
           {claimed ? <Banner>Standing Pass claimed. Your new limit is {formatMoney(claimed.newCap)} per advance.</Banner> : null}
         </Stack>
 
-        <Stack gap="lg">
-          <Card padding="lg">
+        <Stack gap="lg" className="lg:gap-4">
+          <Card padding="lg" gap="sm" className="lg:p-4">
             <CardTitle>How your limit grows</CardTitle>
             <ol aria-label="Limits ladder" className="m-0 grid list-none grid-cols-2 gap-2 p-0">
               {limitsLadder.map((t, i) => {
@@ -100,8 +100,9 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
                 return (
                   <li
                     key={t.label}
+                    style={{ animationDelay: `${i * 90}ms` }}
                     className={cn(
-                      "flex flex-col gap-1 rounded-md px-3 py-3.5",
+                      "flex origin-bottom flex-col gap-1 rounded-md px-3 py-3.5 lg:py-2.5 motion-safe:animate-[rise_500ms_var(--ease-snappy)_both]",
                       now ? "bg-hunter text-canvas" : done ? "bg-honeydew text-hunter" : "bg-well text-charcoal-soft",
                     )}
                   >

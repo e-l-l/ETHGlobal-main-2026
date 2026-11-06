@@ -38,9 +38,9 @@ export const metadata: Metadata = {
 
 const PRIMARY = "Get an advance";
 const LEND = "Lend to shops";
-const WRAP = "mx-auto w-full max-w-[1200px] px-4 md:px-8";
+const WRAP = "mx-auto w-full max-w-300 px-4 md:px-8";
 /** How it works runs wider than the rest. */
-const WIDE = "mx-auto w-full max-w-[1440px] px-4 md:px-8";
+const WIDE = "mx-auto w-full max-w-360 px-4 md:px-8";
 const H2 = "m-0 font-display text-[40px] leading-[1.04] font-bold tracking-[-0.035em] text-balance md:text-[56px]";
 
 /* Hero copy enters once on load: lead first, support overlapping (choreograph). */
@@ -136,7 +136,6 @@ function SiteFooter() {
       [
         ["How it works", routes.protocol],
         ["Explorer", routes.explorer],
-        ["First landing page", routes.oldLanding],
       ],
     ],
   ];
@@ -199,15 +198,15 @@ const PARTNERS = ["Uniswap v4", "World ID", "Anon-RPC"];
 
 function Hero() {
   return (
-    <section aria-labelledby="hero-h" className="relative h-svh min-h-[1320px] overflow-hidden bg-canvas md:min-h-[1100px]">
+    <section aria-labelledby="hero-h" className="relative h-svh min-h-330 overflow-hidden bg-canvas md:min-h-275">
       <PixelScene />
       {/* Fog: a soft white wash over the left of the scene so the copy reads, fading out to the right. The pixels stay visible through it. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 w-full bg-linear-to-r from-canvas/74 via-canvas/56 to-transparent backdrop-blur-[2px] [mask-image:linear-gradient(to_right,black_40%,transparent)] md:w-[94%]"
+        className="pointer-events-none absolute inset-y-0 left-0 w-full bg-linear-to-r from-canvas/74 via-canvas/56 to-transparent backdrop-blur-[2px] mask-[linear-gradient(to_right,black_40%,transparent)] md:w-[94%]"
       />
       <div className="pointer-events-none relative z-10 w-full px-4 pt-24 md:px-20 md:pt-44 xl:px-36">
-        <div className="pointer-events-auto flex max-w-[980px] flex-col gap-8">
+        <div className="pointer-events-auto flex max-w-245 flex-col gap-8">
           <span className={cn("inline-flex w-fit items-center gap-3", enter)}>
             <JarMark size={94} />
             <span className="font-display text-[49px] leading-none font-extrabold tracking-[-0.03em] text-charcoal md:text-[61px]">{APP_NAME}</span>
@@ -444,9 +443,9 @@ const SPONSORS: Sponsor[] = [
 function Sponsors() {
   return (
     <section id="sponsors" aria-labelledby="sponsors-h" className="scroll-mt-16 bg-well py-28 md:py-44">
-      <div className={cn("mx-auto flex w-full max-w-[1760px] flex-col gap-16 px-4 md:gap-24 md:px-10 xl:w-[92%]")}>
+      <div className={cn("mx-auto flex w-full max-w-440 flex-col gap-16 px-4 md:gap-24 md:px-10 xl:w-[92%]")}>
         <Reveal className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div className="flex max-w-[640px] flex-col gap-5">
+          <div className="flex max-w-160 flex-col gap-5">
             <Eyebrow>Built with</Eyebrow>
             <h2 id="sponsors-h" className={cn(H2, "text-charcoal")}>
               Tailored to each of our three partners.

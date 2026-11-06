@@ -11,6 +11,7 @@ import { setWorldView, useWorldView } from "@/lib/world-view";
 import { Lockup } from "./brand";
 import { ChevronLeftIcon, CrossIcon, EyeIcon } from "./icons";
 import { Heading, Label, Text } from "./text";
+import { ScrollProgress } from "./reveal";
 
 /*
  * App chrome for every screen. One header, one page container, one action bar.
@@ -66,8 +67,8 @@ export function AppHeader({
           hideFrom === "lg" && "lg:hidden",
         )}
       >
-        <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center gap-4 px-4 md:px-8">
-          <Link href={home} aria-label={`${APP_NAME} home`} className="shrink-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal">
+        <div className="mx-auto flex h-16 w-full max-w-280 items-center gap-4 px-4 md:px-8">
+          <Link href={home} aria-label={`${APP_NAME} home`} className="inline-flex min-h-11 shrink-0 items-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal">
             <Lockup size={28} />
           </Link>
           <div className="flex min-w-0 flex-1 justify-center">
@@ -96,6 +97,7 @@ export function AppHeader({
           </div>
         </div>
         {world && wv ? <WorldLegend /> : null}
+        <ScrollProgress />
       </header>
       {nav ? <TabBar nav={nav} current={current} /> : null}
     </>
@@ -133,7 +135,7 @@ function TabBar({ nav, current }: { nav: NavItem[]; current?: string }) {
 
 function WorldLegend() {
   return (
-    <div role="status" className="mx-auto flex w-full max-w-[1120px] flex-wrap gap-x-5 gap-y-1 px-4 pb-3 font-ledger text-ledger text-charcoal-soft md:px-8">
+    <div role="status" className="mx-auto flex w-full max-w-280 flex-wrap gap-x-5 gap-y-1 px-4 pb-3 font-ledger text-ledger text-charcoal-soft md:px-8">
       <span className="inline-flex items-center gap-2">
         <i aria-hidden className="size-3 rounded-[3px] border-[1.5px] border-dashed border-hunter" />
         Onchain, anyone can see
@@ -204,10 +206,13 @@ export function StepDots({ at, of, label }: { at: number; of: number; label: str
 export function Page({
   width = "wide",
   tabs,
+  dense,
   className,
   children,
 }: {
   width?: "wide" | "narrow";
+  /** Desktop (lg+): tighter gaps and padding so a dashboard fits one screen. Phones are unchanged. */
+  dense?: boolean;
   /** Set when the header has nav, so content clears the phone tab bar. */
   tabs?: boolean;
   className?: string;
@@ -218,8 +223,9 @@ export function Page({
       id="main"
       className={cn(
         "mx-auto flex w-full flex-1 flex-col gap-6 px-4 pt-6 pb-10 md:px-8 md:pt-10 md:pb-16",
-        width === "narrow" ? "max-w-[560px] md:px-0" : "max-w-[1120px]",
+        width === "narrow" ? "max-w-140 md:px-0" : "max-w-280",
         tabs && "pb-28 md:pb-16",
+        dense && "lg:gap-4 lg:pt-6 lg:pb-8",
         "animate-[page-in_240ms_var(--ease-snappy)_both] motion-reduce:animate-none",
         className,
       )}
@@ -446,7 +452,7 @@ export function SplitPage({ panel, children, className }: { panel: ReactNode; ch
           className,
         )}
       >
-        <div className="flex w-full max-w-[480px] flex-col gap-6 md:my-auto">{children}</div>
+        <div className="flex w-full max-w-120 flex-col gap-6 md:my-auto">{children}</div>
       </main>
     </div>
   );
@@ -460,7 +466,7 @@ export function Accent({ children }: { children: ReactNode }) {
 /** The Hunter panel of a SplitPage: eyebrow, big headline, one line of body, the lime wave at the foot. */
 export function BrandPanel({ eyebrow, title, body, top, children }: { eyebrow?: ReactNode; title: ReactNode; body?: ReactNode; top?: ReactNode; children?: ReactNode }) {
   return (
-    <aside className="relative flex flex-col gap-5 overflow-hidden bg-hunter px-4 pt-5 text-canvas md:sticky md:top-16 md:h-[calc(100dvh-4rem)] md:w-[44%] md:max-w-[620px] md:shrink-0 md:gap-8 md:px-12 md:pt-12 lg:px-14">
+    <aside className="relative flex flex-col gap-5 overflow-hidden bg-hunter px-4 pt-5 text-canvas md:sticky md:top-16 md:h-[calc(100dvh-4rem)] md:w-[44%] md:max-w-155 md:shrink-0 md:gap-8 md:px-12 md:pt-12 lg:px-14">
       {top}
       <div className="flex flex-col gap-3 md:my-auto md:gap-5">
         {eyebrow ? <span className="font-ledger text-tag tracking-[0.1em] text-lime uppercase">{eyebrow}</span> : null}

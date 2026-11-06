@@ -1,6 +1,6 @@
-# web: DripMoni app
+# web: DripMoney app
 
-The Next.js app for every DripMoni surface: merchant onboarding and app, customer pay page, demo seller portal, lender and junior views, and the public dashboard. For what the product is, see the [root README](../../README.md).
+The Next.js app for every DripMoney surface: merchant onboarding and app, customer pay page, demo seller portal, lender and junior views, and the public dashboard. For what the product is, see the [root README](../../README.md).
 
 ## Run
 
