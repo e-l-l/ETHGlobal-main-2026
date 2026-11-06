@@ -1,10 +1,10 @@
 /**
- * Screen-specific mock data for the merchant app (Person A).
+ * Screen-specific mock data for the merchant app.
  * Shared shop / advance numbers live in ./shop.ts.
  */
-import type { ActivityKind } from "@/components/data";
-import { APP_NAME } from "@/lib/brand";
+import { appUrl } from "@/lib/brand";
 import { formatMoney } from "@/lib/format";
+import { routes } from "@/lib/routes";
 import { advance, agentLimits, shop, toUsd } from "./shop";
 
 /* ------------------------------------------------------------- M10 home */
@@ -82,74 +82,6 @@ export const week = {
   newEstimateDays: 31,
 } as const;
 
-/* --------------------------------------------------------- M14 agent log */
-
-export const agentStats = {
-  draws: 2,
-  drawsSince: "5 Oct",
-  skipped: 1,
-  skippedReason: "sales too low",
-} as const;
-
-export const agentActivity: { id: string; time: string; kind: ActivityKind; title: string; reason: string }[] = [
-  {
-    id: "a5",
-    time: "today",
-    kind: "accent",
-    title: "Drew $100 for stock",
-    reason: "Sales up 12% this week; usual Monday restock; inside your limits.",
-  },
-  {
-    id: "a4",
-    time: "2 Nov",
-    kind: "neutral",
-    title: "Skipped a draw",
-    reason: "Sales were 40% below normal. Waiting so repayment stays easy.",
-  },
-  {
-    id: "a3",
-    time: "28 Oct",
-    kind: "warn",
-    title: "Limit lowered by risk agent",
-    reason: "Pool-wide max advance cut 20% after a market signal. Your $100 limit still fits.",
-  },
-  {
-    id: "a2",
-    time: "22 Oct",
-    kind: "neutral",
-    title: "Advance fully repaid",
-    reason: "$57.50 repaid in 17 days. Standing Pass updated privately.",
-  },
-  {
-    id: "a1",
-    time: "5 Oct",
-    kind: "neutral",
-    title: "Agent approved",
-    reason: "You approved with World. Limits: $100 per advance, $200 per month.",
-  },
-];
-
-/* --------------------------------------------------------- M07 agent setup */
-
-export const perAdvanceOptions = [
-  { value: 50 },
-  { value: 100 },
-  { value: 250, lockedReason: "$250 unlocks after 2 repaid advances" },
-] as const;
-
-export const perMonthStepper = { step: 50, min: 50, max: 500 } as const;
-
-export const purposes = ["stock", "rent", "repairs"] as const;
-
-export const agentPermissions = {
-  can: [
-    `Draw up to ${formatMoney(agentLimits.perAdvance)} at a time for ${agentLimits.purpose}`,
-    `Draw up to ${formatMoney(agentLimits.perMonth)} in a month`,
-    "Only when your sales can repay it",
-  ],
-  never: ["Go past these limits: the contract blocks it", "Move money anywhere but to you or your supplier"],
-};
-
 /* ------------------------------------------------------------ M18 cash out */
 
 export const cashOut = {
@@ -166,7 +98,7 @@ export const cashOut = {
 
 export const myQr = {
   /** Shown under the QR; also the encoded value until real pay links exist. */
-  payLink: `pay.${APP_NAME}/corner-kiosk`,
+  payLink: appUrl(routes.pay),
   howToPay: [
     "Scan with any phone camera, no app needed",
     "Pay in any token; you always get dollars",
@@ -178,7 +110,7 @@ export const myQr = {
 
 export const worldView = {
   public: [
-    { k: "Shop", v: shop.pseudonym },
+    { k: "Shop", v: shop.id },
     { k: "Sale amounts", v: "15,000 · 4,500 …" },
     { k: "Advance drawn", v: "$100 · 9:12" },
     { k: "Repayments", v: `${advance.holdback}% per sale` },

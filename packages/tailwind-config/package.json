@@ -4,8 +4,8 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": "./theme.css",
-    "./theme.css": "./theme.css",
+    ".": "./final.css",
+    "./final.css": "./final.css",
     "./postcss": "./postcss.config.js"
   },
   "devDependencies": {

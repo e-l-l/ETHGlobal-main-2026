@@ -1,0 +1,114 @@
+/*
+ * Design tokens: the single source of colour, type, radius and motion (kit in apps/web/src/final, gallery at /final/components).
+ * Light mode only, green focused.
+ *
+ * - Ground: white cards on a very light green-grey canvas. Nowhere near lime.
+ * - Greens: the dev2 harmony (OKLCH hues 128–157). Warm greens act, cool greens hold surfaces.
+ * - Type: dev2 only (Urbanist display, Figtree body, JetBrains Mono ledger).
+ *
+ * Keep apps/web/src/lib/cn.ts in sync when a token is added here.
+ *
+ * Measured contrast (WCAG):
+ *   charcoal on canvas 13.3 · charcoal-soft 9.0 · charcoal-muted 5.9
+ *   canvas on hunter 7.6 (primary button) · hunter on white 8.0 (links)
+ *   lime on hunter 6.3 · charcoal on lime 11.0
+ *   control on white 3.8 (inputs, secondary buttons: 3:1 non-text minimum)
+ *   lime on white 1.2: NEVER. Lime is a fill on Hunter or Charcoal only.
+ */
+
+@theme {
+  /* Only brand colours exist: Tailwind's default palette is reset. */
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  /* dev2 greens */
+  --color-charcoal: #262e24;       /* text, deepest ink */
+  --color-charcoal-soft: #3b4a38;  /* body copy */
+  --color-charcoal-muted: #55664f; /* labels, captions */
+  --color-deep: #151a13;           /* phone chrome, dark decals */
+  --color-hunter: #2c5a3a;         /* primary action, links, brand panels */
+  --color-forest: #234a2f;         /* hunter pressed / hover */
+  --color-fern: #3f7d4f;           /* success text, positive deltas (4.9 on white) */
+  --color-sage: #5c7c62;           /* icons on light, quiet brand */
+  --color-leaf: #6fa65a;           /* decoration only: gradients, lit band on white, dune */
+  --color-lime: #c6f28c;           /* fill on Hunter/Charcoal only, never on white */
+  --color-honeydew: #ddf7e6;       /* tint banners, tonal buttons */
+  --color-honeydew-line: #bfe5cc;  /* border around honeydew */
+
+  /* grounds and lines (green-grey, low chroma) */
+  --color-canvas: #f6faf5;   /* page */
+  --color-surface: #ffffff;  /* cards, inputs, sheets */
+  --color-well: #eef4ec;     /* segmented well, quiet fills, disabled */
+  --color-hairline: #dfe9dc; /* card borders, dividers */
+  --color-control: #6f8a68;  /* borders on anything tappable */
+  --color-track: #b7cdb1;    /* empty progress, toggle off */
+  --color-unlit: #a9c3a2;    /* unlit meter bands, empty dune pixels, the 90% */
+
+  /* status */
+  --color-caution: #7a4f00;
+  --color-caution-tint: #fbf1dc;
+  --color-risk: #a3341d;
+  --color-risk-tint: #fbe6e1;
+
+  /* dev2 type scale (anay-design.md section 4) */
+  --text-hero: 56px;    --text-hero--line-height: 1;      --text-hero--letter-spacing: -0.03em;   --text-hero--font-weight: 700;
+  --text-hero-sm: 40px; --text-hero-sm--line-height: 1;   --text-hero-sm--letter-spacing: -0.03em; --text-hero-sm--font-weight: 700;
+  --text-amount: 40px;  --text-amount--line-height: 1.05;  --text-amount--letter-spacing: -0.025em;  --text-amount--font-weight: 700;
+  --text-h1: 28px;      --text-h1--line-height: 1.15;     --text-h1--letter-spacing: -0.02em;     --text-h1--font-weight: 700;
+  --text-h1-sm: 24px;   --text-h1-sm--line-height: 1.15;  --text-h1-sm--letter-spacing: -0.02em;  --text-h1-sm--font-weight: 700;
+  --text-h2: 20px;      --text-h2--line-height: 1.25;     --text-h2--letter-spacing: -0.01em;     --text-h2--font-weight: 650;
+  --text-read: 16px;    --text-read--line-height: 1.55;
+  --text-note: 14px;    --text-note--line-height: 1.45;
+  --text-ledger: 13px;  --text-ledger--line-height: 1.45;
+  --text-tag: 11px;     --text-tag--line-height: 1.3;     --text-tag--letter-spacing: 0.1em;
+
+  /* dev2 radii: chip 4 · button 8 (md) · card 16 (lg) · sheet 28 */
+  --radius-chip: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 18px;
+  --radius-sheet: 28px;
+
+  /* Cards separate by border only. Lift is for things that float: segmented thumb, nav, sheet. */
+  --shadow-lift: 0 1px 2px rgb(38 46 36 / 0.06), 0 8px 24px -12px rgb(38 46 36 / 0.22);
+
+  /* motion: the three dev2 curves */
+  --ease-snappy: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-swap: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Logo meter: bands light bottom to top on an 8s loop (loading, saving). */
+  --animate-band: band 8s linear infinite;
+  @keyframes band {
+    0%, 100% { fill: var(--band-off); }
+    6%, 70% { fill: var(--band-on); }
+  }
+}
+
+/* Inline: next/font sets --font-urbanist etc. on a wrapper, so the value must resolve at the element. */
+@theme inline {
+  --font-display: var(--font-urbanist), "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: var(--font-figtree), "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-ledger: var(--font-jetbrains), ui-monospace, Menlo, monospace;
+}
+
+/* App chrome motion (apps/web/src/final/shell.tsx). */
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes sheet-up { from { transform: translateY(100%); } }
+
+@layer base {
+  html { background: var(--color-canvas); color: var(--color-charcoal); }
+  body { font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+  :focus-visible { outline: 2px solid var(--color-charcoal); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

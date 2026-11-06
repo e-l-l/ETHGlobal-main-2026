@@ -1,17 +1,41 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ActionBar, CopyHash, DoneMark, Keypad, LinkButton, Main, Note, Screen, Stat, TopBar, typedUsd } from "@/jar/app";
-import { I } from "@/jar/app-icons";
-import { Sparkline } from "@/jar/app-data";
-import { Button, Chips, Pill, Segmented } from "@/jar/controls";
-import { usdText } from "@/jar/format";
+import {
+  ActionBar,
+  Banner,
+  Button,
+  Card,
+  Chips,
+  Columns,
+  CopyHash,
+  DataTable,
+  Heading,
+  Keypad,
+  Label,
+  LineChart,
+  PageHead,
+  Pill,
+  Segmented,
+  Stack,
+  StatGrid,
+  Steps,
+  Text,
+  TextField,
+  typedUsd,
+  CheckIcon,
+} from "@/final";
 import { routes } from "@/lib/routes";
 import { JUNIOR_WRITE_OFF_INDEX, VAULT, explorerEvents, juniorSeries, type ExplorerKind } from "./data";
+import { LendShell, Pub } from "./shell";
+
+const usdText = (n: number, d = 0) => `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
+const fmt = (n: number, d = 1) => n.toLocaleString("en-US", { maximumFractionDigits: d });
+const price = (v: number) => `$${v.toFixed(3)}`;
 
 /* ------------------------------------------------------------ VaultAction
  * L02 Deposit / withdraw and J02 Mint / redeem: one shape. Amount on a keypad, the quote under it,
- * the wallet steps on the button. The demo wallet confirms by itself; nothing leaves the phone.
+ * the wallet steps on the button. The demo wallet confirms by itself; nothing leaves the browser.
  */
 type Side = {
   key: string;
@@ -26,7 +50,25 @@ type Side = {
 
 type Phase = "idle" | "wallet" | "pending";
 
-function VaultAction({ title, back, sides, initial, after, worldNote }: { title: string; back: string; sides: [Side, Side]; initial?: string; after: { href: string; label: string }; worldNote: string }) {
+function VaultAction({
+  title,
+  label,
+  back,
+  backLabel,
+  sides,
+  initial,
+  after,
+  worldNote,
+}: {
+  title: string;
+  label: string;
+  back: string;
+  backLabel: string;
+  sides: [Side, Side];
+  initial?: string;
+  after: { href: string; label: string };
+  worldNote: string;
+}) {
   const [sideKey, setSideKey] = useState(sides.some((s) => s.key === initial) ? initial! : sides[0].key);
   const side = sides.find((s) => s.key === sideKey) ?? sides[0];
   const [value, setValue] = useState("");
@@ -56,73 +98,80 @@ function VaultAction({ title, back, sides, initial, after, worldNote }: { title:
 
   if (done) {
     return (
-      <Screen mode="light">
-        <TopBar back={back} title={title} worldNote={worldNote} />
-        <Main center>
-          <div className="dj-stack" style={{ alignItems: "center", textAlign: "center", gap: 10 }}>
-            <DoneMark size={80} />
-            <h1 className="app-display">{side.done(n)}</h1>
-            <p className="dj-body">{side.doneSub}</p>
-          </div>
-          <Note>Simulated. A demo wallet confirmed it; nothing left this phone.</Note>
-        </Main>
+      <LendShell width="narrow" note={worldNote}>
+        <PageHead back={back} backLabel={backLabel} label={label} title={title} />
+        <Card padding="lg" className="items-center gap-4 text-center">
+          <span className="grid size-16 place-items-center rounded-full bg-hunter text-lime">
+            <CheckIcon size={32} strokeWidth={3} />
+          </span>
+          <Heading level={2} size="h1">
+            {side.done(n)}
+          </Heading>
+          <Text>{side.doneSub}</Text>
+        </Card>
+        <Banner>Simulated. A demo wallet confirmed it; nothing left this browser.</Banner>
         <ActionBar>
-          <LinkButton href={after.href}>{after.label}</LinkButton>
+          <Button href={after.href}>{after.label}</Button>
         </ActionBar>
-      </Screen>
+      </LendShell>
     );
   }
 
-  const label = n <= 0 ? "Enter an amount" : over ? `More than ${side.maxLabel}` : phase === "wallet" ? "Confirm in wallet" : phase === "pending" ? "Confirming" : side.steps[step]!;
+  const cta = n <= 0 ? "Enter an amount" : over ? `More than ${side.maxLabel}` : phase === "wallet" ? "Confirm in wallet" : phase === "pending" ? "Confirming" : side.steps[step]!;
 
   return (
-    <Screen mode="light">
-      <TopBar back={back} title={title} worldNote={worldNote} />
-      <Main tight enter="fade">
-        <Segmented label={title} value={sideKey} onChange={reset} options={sides.map((s) => ({ value: s.key, label: s.label }))} />
-        <div className="app-amount pub" style={{ paddingTop: 4 }}>
-          <span className="app-amount__value app-amount__value--md" data-empty={n === 0} aria-live="polite" aria-atomic>
+    <LendShell width="narrow" note={worldNote}>
+      <PageHead back={back} backLabel={backLabel} label={label} title={title} />
+      <Segmented label={title} value={sideKey} onChange={reset} options={sides.map((s) => ({ value: s.key, label: s.label }))} />
+      <Pub>
+        <div className="flex flex-col items-center gap-1 py-2 text-center">
+          <span
+            className={n === 0 ? "font-display text-amount tabular-nums text-charcoal-muted" : "font-display text-amount tabular-nums text-charcoal"}
+            aria-live="polite"
+            aria-atomic
+          >
             {typedUsd(value)}
           </span>
-          <span className="dj-local" style={over ? { color: "var(--risk)" } : undefined}>
+          <span className={over ? "font-ledger text-ledger text-risk" : "font-ledger text-ledger text-charcoal-muted"}>
             {n > 0 && !over ? side.quote(n) : side.maxLabel}
           </span>
         </div>
-        <div className="app-quick" role="group" aria-label="Quick amounts">
-          {[0.25, 0.5, 1].map((f) => (
-            <button key={f} type="button" className="dj-chip" disabled={busy} onClick={() => setValue(String(Math.floor(side.max * f * 100) / 100))}>
-              {f === 1 ? "Max" : `${f * 100}%`}
-            </button>
-          ))}
-        </div>
-        <Keypad value={value} onChange={(v) => !busy && setValue(v)} />
-      </Main>
+      </Pub>
+      <div role="group" aria-label="Quick amounts" className="flex justify-center gap-2">
+        {[0.25, 0.5, 1].map((f) => (
+          <button
+            key={f}
+            type="button"
+            disabled={busy}
+            onClick={() => setValue(String(Math.floor(side.max * f * 100) / 100))}
+            className="min-h-11 cursor-pointer rounded-chip border border-control bg-surface px-4 font-body text-note font-semibold text-charcoal hover:bg-well disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            {f === 1 ? "Max" : `${f * 100}%`}
+          </button>
+        ))}
+      </div>
+      <Keypad value={value} onChange={(v) => !busy && setValue(v)} />
       <ActionBar>
         {side.steps.length > 1 ? (
-          <ol className="app-txsteps" aria-label="Wallet steps">
-            {side.steps.map((s, i) => (
-              <li key={s} data-s={i < step ? "done" : i === step ? "current" : "next"}>
-                <span>{i < step ? "✓" : i + 1}</span>
-                {s}
-              </li>
-            ))}
-          </ol>
+          <div className="md:mr-auto">
+            <Steps items={side.steps.map((s, i) => ({ label: s, state: i < step ? "done" : i === step ? "current" : "next" }))} />
+          </div>
         ) : null}
-        <Button block onClick={run} loading={busy} loadingLabel={label} disabled={n <= 0 || over || busy}>
-          {label}
+        <Button width="full" onClick={run} loading={busy} disabled={n <= 0 || over || busy}>
+          {cta}
         </Button>
       </ActionBar>
-    </Screen>
+    </LendShell>
   );
 }
-
-const fmt = (n: number, d = 1) => n.toLocaleString("en-US", { maximumFractionDigits: d });
 
 export function DepositScreen({ side }: { side?: string }) {
   return (
     <VaultAction
       title="Senior vault"
+      label="Earn"
       back={routes.earn}
+      backLabel="Earn"
       initial={side}
       worldNote="Deposits and shares are onchain under this wallet. Your name is not."
       after={{ href: routes.position, label: "See my position" }}
@@ -132,7 +181,7 @@ export function DepositScreen({ side }: { side?: string }) {
           label: "Deposit",
           max: VAULT.walletUsdc,
           maxLabel: `Wallet: ${usdText(VAULT.walletUsdc)} USDC`,
-          quote: (n) => `≈ ${fmt(n / VAULT.sharePrice)} shares at $${VAULT.sharePrice.toFixed(3)}`,
+          quote: (n) => `≈ ${fmt(n / VAULT.sharePrice)} shares at ${price(VAULT.sharePrice)}`,
           steps: ["Approve USDC", "Deposit"],
           done: (n) => `Deposited ${usdText(n, 2)}`,
           doneSub: "You earn from shop fees. Senior is paid back before junior.",
@@ -156,7 +205,9 @@ export function MintScreen() {
   return (
     <VaultAction
       title="JAR-J"
+      label="Junior"
       back={routes.junior}
+      backLabel="Junior"
       worldNote="Mints and redemptions are public, like every token transfer."
       after={{ href: routes.junior, label: "Back to junior" }}
       sides={[
@@ -165,7 +216,7 @@ export function MintScreen() {
           label: "Mint",
           max: VAULT.walletUsdc,
           maxLabel: `Wallet: ${usdText(VAULT.walletUsdc)} USDC`,
-          quote: (n) => `${fmt(n / VAULT.juniorBook, 2)} JAR-J at book $${VAULT.juniorBook.toFixed(3)}`,
+          quote: (n) => `${fmt(n / VAULT.juniorBook, 2)} JAR-J at book ${price(VAULT.juniorBook)}`,
           steps: ["Approve USDC", "Mint"],
           done: (n) => `Minted ${fmt(n / VAULT.juniorBook, 2)} JAR-J`,
           doneSub: "First loss: you take losses before senior, for 30% of every fee.",
@@ -196,49 +247,70 @@ export function TradeScreen() {
   const discount = (((VAULT.juniorBook - VAULT.juniorPrice) / VAULT.juniorBook) * 100).toFixed(1);
 
   return (
-    <Screen mode="light">
-      <TopBar back={routes.junior} title="Trade JAR-J" worldNote="The pool, its price and every swap are public." />
-      <Main tight enter="fade">
-        <section className="dj-card pub" style={{ gap: 8, padding: 14 }}>
-          <div className="dj-between">
-            <span className="dj-label">Uniswap v4 · JAR-J / USDC</span>
-            <Pill kind="slow">{discount}% under book</Pill>
+    <LendShell note="The pool, its price and every swap are public.">
+      <PageHead back={routes.junior} backLabel="Junior" label="Uniswap v4 · JAR-J / USDC" title="Trade JAR-J" />
+      <Columns ratio="3:2">
+        <Stack gap="lg">
+          <Pub>
+            <Card>
+              <div className="flex items-center justify-between gap-3">
+                <Label>JAR-J price, 12 weeks</Label>
+                <Pill tone="slow">{discount}% under book</Pill>
+              </div>
+              <LineChart
+                points={juniorSeries}
+                height={180}
+                label="JAR-J price over 12 weeks, dipping at the write-off"
+                markers={[{ index: JUNIOR_WRITE_OFF_INDEX, label: "The $100 write-off" }]}
+                xLabels={["12 weeks ago", "Now"]}
+                format={price}
+              />
+            </Card>
+          </Pub>
+          <Pub>
+            <StatGrid
+              items={[
+                { label: "Price", value: price(VAULT.juniorPrice) },
+                { label: "TWAP", value: price(VAULT.juniorTwap) },
+                { label: "Book", value: price(VAULT.juniorBook) },
+              ]}
+            />
+          </Pub>
+        </Stack>
+        <Stack gap="lg">
+          <Segmented
+            label="Buy or sell"
+            value={side}
+            onChange={(s) => {
+              setSide(s);
+              setDone(null);
+            }}
+            options={[
+              { value: "buy", label: "Buy JAR-J" },
+              { value: "sell", label: "Sell JAR-J" },
+            ]}
+          />
+          <div className="flex flex-col items-center gap-1 text-center">
+            <span className={n === 0 ? "font-display text-amount tabular-nums text-charcoal-muted" : "font-display text-amount tabular-nums text-charcoal"} aria-live="polite" aria-atomic>
+              {side === "buy" ? typedUsd(value) : `${value || "0"} J`}
+            </span>
+            <span className="font-ledger text-ledger text-charcoal-muted">
+              {n > 0 ? (side === "buy" ? `≈ ${fmt(out, 2)} JAR-J` : `≈ ${usdText(out, 2)} USDC`) : "Enter an amount"} · hook fee to reserve
+            </span>
           </div>
-          <Sparkline points={juniorSeries} mark={JUNIOR_WRITE_OFF_INDEX} height={56} label="JAR-J price over 12 weeks, dipping at the write-off" />
-        </section>
-        <div className="app-stats app-stats--3 pub">
-          <Stat label="Price" value={`$${VAULT.juniorPrice.toFixed(3)}`} />
-          <Stat label="TWAP" value={`$${VAULT.juniorTwap.toFixed(3)}`} />
-          <Stat label="Book" value={`$${VAULT.juniorBook.toFixed(3)}`} />
-        </div>
-        <Segmented
-          label="Buy or sell"
-          value={side}
-          onChange={(s) => {
-            setSide(s);
-            setDone(null);
-          }}
-          options={[
-            { value: "buy", label: "Buy JAR-J" },
-            { value: "sell", label: "Sell JAR-J" },
-          ]}
-        />
-        <div className="app-amount">
-          <span className="app-amount__value app-amount__value--md" data-empty={n === 0} aria-live="polite" aria-atomic>
-            {side === "buy" ? typedUsd(value) : `${value || "0"} J`}
-          </span>
-          <span className="dj-local">
-            {n > 0 ? (side === "buy" ? `≈ ${fmt(out, 2)} JAR-J` : `≈ ${usdText(out, 2)} USDC`) : "Enter an amount"} · hook fee to reserve
-          </span>
-        </div>
-        <Keypad value={value} onChange={(v) => { setDone(null); setValue(v); }} />
-        {done ? <Note>{done}</Note> : null}
-      </Main>
+          <Keypad
+            value={value}
+            onChange={(v) => {
+              setDone(null);
+              setValue(v);
+            }}
+          />
+          {done ? <Banner>{done}</Banner> : null}
+        </Stack>
+      </Columns>
       <ActionBar>
         <Button
-          block
           loading={busy}
-          loadingLabel="Swapping"
           disabled={n <= 0 || busy}
           onClick={() => {
             setBusy(true);
@@ -251,7 +323,7 @@ export function TradeScreen() {
           {side === "buy" ? "Buy JAR-J" : "Sell JAR-J"}
         </Button>
       </ActionBar>
-    </Screen>
+    </LendShell>
   );
 }
 
@@ -262,6 +334,10 @@ const FILTERS: { value: "all" | ExplorerKind; label: string }[] = [
   { value: "Draw", label: "Draws" },
   { value: "Pass", label: "Passes" },
 ];
+
+const kindTone = (k: ExplorerKind) => (k === "Draw" ? ("repaying" as const) : k === "Sale" ? ("saving" as const) : ("locked" as const));
+
+type Ev = (typeof explorerEvents)[number];
 
 export function ExplorerScreen() {
   const [q, setQ] = useState("");
@@ -274,48 +350,55 @@ export function ExplorerScreen() {
   }, [q, filter]);
 
   return (
-    <Screen mode="light">
-      <TopBar back={routes.protocol} title="Explorer" worldNote="This is the whole public record. Look for a name: there isn't one." />
-      <Main tight enter="fade">
-        <label className="dj-row" style={{ position: "relative" }}>
-          <span className="sr-only-dj">Search shops, transactions and commitments</span>
-          <span aria-hidden style={{ position: "absolute", left: 14, display: "inline-flex", color: "var(--text-3)" }}>
-            <I.search />
-          </span>
-          <input className="dj-input" type="search" inputMode="search" enterKeyHint="search" autoCapitalize="none" autoCorrect="off" placeholder="shop_7f3a, 0x…" value={q} onChange={(e) => setQ(e.target.value)} style={{ paddingLeft: 44, fontWeight: 400 }} />
-        </label>
-        <Chips label="Filter" value={filter} onChange={setFilter} options={FILTERS} />
-        <ul className="app-rows pub" aria-label="Public events, newest first">
-          {rows.map((e) => (
-            <li key={e.hash}>
-              <details className="app-details">
-                <summary className="app-row">
-                  <span className="app-row__body">
-                    <span className="dj-row" style={{ gap: 8 }}>
-                      <Pill kind={e.kind === "Draw" ? "repaying" : e.kind === "Sale" ? "saving" : "locked"}>{e.kind}</Pill>
-                      <span className="dj-mono">{e.when}</span>
+    <LendShell note="This is the whole public record. Look for a name: there isn't one.">
+      <PageHead label="Public record" title="Explorer">
+        Every sale, draw and pass, newest first.
+      </PageHead>
+      <Columns ratio="1:2">
+        <Stack>
+          <TextField
+            label="Search"
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            autoCapitalize="none"
+            autoCorrect="off"
+            placeholder="shop_7f3a, 0x…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <Chips label="Filter" value={filter} onChange={setFilter} options={FILTERS} />
+          <Banner>No names anywhere. shop_b19c has no onchain link to shop_7f3a, even though it is the same owner.</Banner>
+        </Stack>
+        <Pub>
+          {rows.length > 0 ? (
+            <DataTable<Ev>
+              caption="Public events, newest first"
+              rows={rows}
+              rowKey={(e) => e.hash}
+              columns={[
+                { key: "kind", label: "Type", render: (e) => <Pill tone={kindTone(e.kind)}>{e.kind}</Pill> },
+                {
+                  key: "event",
+                  label: "Event",
+                  render: (e) => (
+                    <span className="flex flex-col gap-0.5 md:text-left">
+                      <span className="font-semibold">{e.title}</span>
+                      <span className="font-normal text-charcoal-muted">{e.detail}</span>
                     </span>
-                    <span className="app-row__title">{e.title}</span>
-                  </span>
-                  <span className="app-row__end">
-                    <I.next />
-                  </span>
-                </summary>
-                <div className="dj-stack" style={{ padding: "0 16px 12px", gap: 4 }}>
-                  <span className="dj-small">{e.detail}</span>
-                  <CopyHash value={e.hash} />
-                </div>
-              </details>
-            </li>
-          ))}
-          {rows.length === 0 ? (
-            <li className="app-row" style={{ cursor: "default" }}>
-              <span className="dj-small">Nothing matches. Try a shop id like shop_b19c.</span>
-            </li>
-          ) : null}
-        </ul>
-        <Note>No names anywhere. shop_b19c has no onchain link to shop_7f3a, even though it is the same owner.</Note>
-      </Main>
-    </Screen>
+                  ),
+                },
+                { key: "when", label: "When", render: (e) => e.when },
+                { key: "hash", label: "Hash", render: (e) => <CopyHash value={e.hash} short /> },
+              ]}
+            />
+          ) : (
+            <Card>
+              <Text>Nothing matches. Try a shop id like shop_b19c.</Text>
+            </Card>
+          )}
+        </Pub>
+      </Columns>
+    </LendShell>
   );
 }

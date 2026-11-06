@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { getLang } from "@/lib/lang";
-import { jarViewport } from "@/lib/viewport";
 import { PaidScreen } from "@/screens/pay";
 
 export const metadata: Metadata = { title: "Paid" };
-export const viewport = jarViewport("light");
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ amt?: string; tok?: string }> }) {
   const q = await searchParams;

@@ -4,6 +4,8 @@
  * lowered the tier 3 cap. Numbers are numbers here, so the keypad screens can do arithmetic.
  */
 
+import { limitsLadder } from "@/lib/mock/shop";
+
 export const VAULT = {
   apy: "8.2%",
   totalLent: "$310,000",
@@ -42,12 +44,12 @@ export const positionActivity = [
   { when: "Nov 2", what: "Deposited", amount: "$2,500" },
 ];
 
-export const TIER_CAPS = [
-  { tier: 0, cap: "$50" },
-  { tier: 1, cap: "$100" },
-  { tier: 2, cap: "$250" },
-  { tier: 3, cap: "$250", was: "$500" },
-] as const;
+/** Tier caps come from the shop's limits ladder. Tier 3 is currently lowered by the Risk agent. */
+const LOWERED_TIER = 3;
+const LOWERED_CAP = 250;
+export const TIER_CAPS: { tier: number; cap: string; was?: string }[] = limitsLadder.map((l, tier) =>
+  tier === LOWERED_TIER ? { tier, cap: `$${LOWERED_CAP}`, was: `$${l.cap}` } : { tier, cap: `$${l.cap}` },
+);
 
 export const signals = [
   { name: "Junior price (TWAP)", value: "$0.986", state: "watch" as const, note: "Fell through $0.97 after the write-off, recovering" },

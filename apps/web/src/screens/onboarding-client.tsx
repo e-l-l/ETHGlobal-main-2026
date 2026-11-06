@@ -1,53 +1,65 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
-import { ActionBar, LangToggle, LinkButton, Main, Row, Screen, Sheet, TopBar } from "@/jar/app";
-import { I } from "@/jar/app-icons";
-import { Coin } from "@/jar/app-data";
-import { Button, StepsList } from "@/jar/controls";
+import {
+  ActionBar,
+  AlertIcon,
+  AppHeader,
+  Banner,
+  Button,
+  Card,
+  Chips,
+  Heading,
+  JarMark,
+  LangToggle,
+  Label,
+  Ledger,
+  ListRow,
+  Page,
+  QRCode,
+  RowList,
+  Sheet,
+  StepDots,
+  Steps,
+  Text,
+  TextField,
+  TextLink,
+  WorldMark,
+} from "@/final";
+import { appUrl } from "@/lib/brand";
 import { copy, type Lang } from "@/lib/copy";
 import { isFailReason, routes, verifyingHref, type FailReason } from "@/lib/routes";
-import { SHOP, SHOP_NAME_IDEAS } from "@/lib/mock/shop";
+import { shop, SHOP_NAME_IDEAS } from "@/lib/mock/shop";
+import { useWorldView } from "@/lib/world-view";
 
-/* ------------------------------------------------------------ Demo menu
- * Judges jump between roles from the Welcome screen without a page of links in the way.
- */
-const ROLES = [
-  { href: routes.welcome, title: "Merchant onboarding", sub: "Prove, pass, name the shop", icon: <I.store /> },
-  { href: routes.pay, title: "Customer pays", sub: "Scan the shop's QR", icon: <I.phone /> },
-  { href: routes.portalLogin, title: "Demo seller portal", sub: "What the private check reads", icon: <I.person /> },
-  { href: routes.earn, title: "Lender", sub: "Senior vault, earn and deposit", icon: <I.earn size={20} /> },
-  { href: routes.junior, title: "Risk taker", sub: "Junior token, mint and trade", icon: <I.layers size={20} /> },
-  { href: routes.protocol, title: "Public dashboard", sub: "Protocol, risk, explorer", icon: <I.grid size={20} /> },
-  { href: routes.home, title: "Merchant app", sub: "Home, agent, advance", icon: <I.sparkle /> },
-  { href: routes.screens, title: "All screens", sub: "Every route with its canvas ID", icon: <I.search /> },
-];
+/* ---------------------------------------------------------- Shared bits */
 
-export function DemoMenu({ lang }: { lang: Lang }) {
-  const t = copy[lang].welcome;
+/** Onboarding header: logo goes to the /home hub, step dots in the middle, ES/EN at the end. */
+export function OnboardingHeader({ lang, step }: { lang: Lang; step?: number }) {
   return (
-    <Sheet
-      title={t.demoTitle}
-      description={t.demoBody}
-      trigger={
-        <button type="button" className="app-chip">
-          <I.sparkle size={14} />
-          {t.demo}
-        </button>
-      }
-    >
-      <ul className="app-rows">
-        {ROLES.map((r) => (
-          <li key={r.title}>
-            <Row href={r.href} lead={r.icon} title={r.title} sub={r.sub} />
-          </li>
-        ))}
-      </ul>
-    </Sheet>
+    <AppHeader
+      home={routes.home}
+      center={step ? <StepDots at={step} of={3} label={copy[lang].steps(step)} /> : undefined}
+      end={<LangToggle lang={lang} />}
+    />
   );
+}
+
+/** Marks its children as public (onchain) or private (on device) when World view is on. */
+export function World({ kind, className, children }: { kind: "pub" | "priv"; className?: string; children: ReactNode }) {
+  const wv = useWorldView();
+  return (
+    <WorldMark kind={kind} show={wv} className={className}>
+      {children}
+    </WorldMark>
+  );
+}
+
+/** What the world sees on this screen, shown only while World view is on. */
+export function WorldNote({ children }: { children: ReactNode }) {
+  const wv = useWorldView();
+  return wv ? <Banner>{children}</Banner> : null;
 }
 
 /* ------------------------------------------------------------ Fail sheet */
@@ -60,18 +72,16 @@ export function FailSheet({ lang }: { lang: Lang }) {
       title={c.prove.failTitle}
       description={c.prove.failBody}
       trigger={
-        <button type="button" className="app-text-btn">
+        <Button variant="ghost" size="sm" width="auto">
           {c.prove.showFail}
-        </button>
+        </Button>
       }
     >
-      <ul className="app-rows">
+      <RowList>
         {reasons.map((r) => (
-          <li key={r}>
-            <Row href={verifyingHref(r)} lead={<I.alert />} title={c.failed[r].tag} sub={c.failed[r].title} />
-          </li>
+          <ListRow key={r} href={verifyingHref(r)} lead={<AlertIcon size={20} />} title={c.failed[r].tag} sub={c.failed[r].title} />
         ))}
-      </ul>
+      </RowList>
     </Sheet>
   );
 }
@@ -109,27 +119,30 @@ export function VerifyingScreen({ lang, outcome }: { lang: Lang; outcome?: strin
   }));
 
   return (
-    <Screen lang={lang}>
-      <TopBar back={routes.prove} backLabel={t.cancel} steps={{ at: 1, of: 3, label: c.steps(1) }} end={<LangToggle lang={lang} />} worldNote={t.world} />
-      <Main center>
-        <div className="dj-stack" style={{ alignItems: "center", textAlign: "center", gap: 14 }}>
-          <Coin size={112} loading label={t.title} />
-          <h1 className="app-display">{t.title}</h1>
-          <p className="dj-body">{t.body}</p>
+    <>
+      <OnboardingHeader lang={lang} step={1} />
+      <Page width="narrow">
+        <div className="flex flex-col items-center gap-3 pt-4 text-center">
+          <JarMark loading size={96} label={t.title} />
+          <Heading level={1}>{t.title}</Heading>
+          <Text>{t.body}</Text>
         </div>
-        <div className="dj-card priv">
-          <StepsList steps={steps} />
-        </div>
-        <p role="status" className="sr-only-dj">
+        <World kind="priv">
+          <Card>
+            <Steps items={steps} />
+          </Card>
+        </World>
+        <WorldNote>{t.world}</WorldNote>
+        <p role="status" className="sr-only">
           {steps.find((s) => s.state === "current")?.label ?? t.steps[t.steps.length - 1]}
         </p>
-      </Main>
-      <ActionBar>
-        <LinkButton href={routes.prove} variant="ghost">
-          {t.cancel}
-        </LinkButton>
-      </ActionBar>
-    </Screen>
+        <ActionBar>
+          <Button href={routes.prove} variant="ghost">
+            {t.cancel}
+          </Button>
+        </ActionBar>
+      </Page>
+    </>
   );
 }
 
@@ -139,69 +152,53 @@ export function VerifyingScreen({ lang, outcome }: { lang: Lang; outcome?: strin
 export function ShopScreen({ lang }: { lang: Lang }) {
   const c = copy[lang];
   const t = c.shop;
-  const [name, setName] = useState<string>(SHOP.name);
-  const id = useId();
-  const hintId = useId();
+  const [name, setName] = useState<string>(shop.name);
   const clean = name.trim();
-  const payUrl = `https://dollarjar.app${routes.pay}`;
+  const payUrl = appUrl(routes.pay);
 
   return (
-    <Screen lang={lang}>
-      <TopBar back={routes.pass} steps={{ at: 3, of: 3, label: c.steps(3) }} end={<LangToggle lang={lang} />} worldNote={t.world} />
-      <Main>
-        <div className="dj-stack" style={{ gap: 8 }}>
-          <h1 className="app-display">{t.title}</h1>
-          <p className="dj-body">{t.body}</p>
+    <>
+      <OnboardingHeader lang={lang} step={3} />
+      <Page width="narrow">
+        <div className="flex flex-col gap-2">
+          <Heading level={1}>{t.title}</Heading>
+          <Text>{t.body}</Text>
         </div>
-        <div className="dj-stack" style={{ gap: 8 }}>
-          <label className="dj-label" htmlFor={id}>
-            {t.label}
-          </label>
-          <input
-            id={id}
-            className="dj-input"
+        <div className="flex flex-col gap-3">
+          <TextField
+            label={t.label}
+            hint={t.hint}
             value={name}
             maxLength={24}
             onChange={(e) => setName(e.target.value)}
             autoComplete="off"
             autoCapitalize="words"
             enterKeyHint="done"
-            aria-describedby={hintId}
           />
-          <span id={hintId} className="dj-small">
-            {t.hint}
-          </span>
-          <div className="dj-chips" role="group" aria-label={t.ideas}>
-            {SHOP_NAME_IDEAS.filter((n) => n !== clean).slice(0, 3).map((n) => (
-              <button key={n} type="button" className="dj-chip" style={{ minHeight: 40 }} onClick={() => setName(n)}>
-                {n}
-              </button>
-            ))}
-          </div>
+          <Chips label={t.ideas} value={clean} onChange={setName} options={SHOP_NAME_IDEAS.map((n) => ({ value: n, label: n }))} />
         </div>
-        <section className="dj-card" aria-label={t.qr} style={{ flexDirection: "row", alignItems: "center", gap: 16, padding: 14 }}>
-          <div className="dj-qr pub" style={{ padding: 10 }}>
-            <QRCodeSVG value={payUrl} size={104} level="M" fgColor="currentColor" bgColor="transparent" role="img" aria-label={`${t.qr}: ${clean || SHOP.name}`} />
-          </div>
-          <div className="dj-stack" style={{ gap: 4, minWidth: 0 }}>
-            <span className="dj-label">{t.qr}</span>
-            <span className="dj-h2 dj-wrap pub">{clean || "—"}</span>
-            <span className="dj-mono pub">{SHOP.id}</span>
-          </div>
-        </section>
-      </Main>
-      <ActionBar>
-        {clean.length >= 2 ? (
-          <LinkButton href={routes.agent.setup}>{t.cta}</LinkButton>
-        ) : (
-          <Button block disabled>
-            {t.empty}
-          </Button>
-        )}
-        <Link href={routes.pay} className="app-text-btn">
-          {t.preview}
-        </Link>
-      </ActionBar>
-    </Screen>
+        <World kind="pub">
+          <Card aria-label={t.qr} className="flex-row items-center gap-4" padding="sm">
+            <QRCode value={payUrl} size={104} label={`${t.qr}: ${clean || shop.name}`} className="p-2.5" />
+            <div className="flex min-w-0 flex-col gap-1">
+              <Label>{t.qr}</Label>
+              <span className="font-display text-h2 [overflow-wrap:anywhere] text-charcoal">{clean || "—"}</span>
+              <Ledger>{shop.id}</Ledger>
+            </div>
+          </Card>
+        </World>
+        <WorldNote>{t.world}</WorldNote>
+        <ActionBar>
+          {clean.length >= 2 ? (
+            <Button href={routes.agent.setup}>{t.cta}</Button>
+          ) : (
+            <Button disabled>
+              {t.empty}
+            </Button>
+          )}
+          <TextLink href={routes.pay}>{t.preview}</TextLink>
+        </ActionBar>
+      </Page>
+    </>
   );
 }

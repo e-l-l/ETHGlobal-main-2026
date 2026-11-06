@@ -1,19 +1,40 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ActionBar, CopyHash, DoneMark, Keypad, LangToggle, LinkButton, Main, Screen, TopBar, typedUsd } from "@/jar/app";
-import { I } from "@/jar/app-icons";
-import { Button, Segmented } from "@/jar/controls";
-import { WaveHeader } from "@/jar/domain";
-import { arsText, usdText } from "@/jar/format";
+import {
+  ActionBar,
+  AppHeader,
+  Button,
+  Card,
+  CheckIcon,
+  CopyHash,
+  Heading,
+  Keypad,
+  KeyValue,
+  LangToggle,
+  Label,
+  Ledger,
+  Page,
+  Segmented,
+  Text,
+  TextLink,
+  typedUsd,
+  WaveBand,
+  WorldMark,
+} from "@/final";
+import { formatMoney } from "@/lib/format";
 import { payCopy, type Lang } from "@/lib/copy";
 import { routes } from "@/lib/routes";
-import { SHOP, WALLET } from "@/lib/mock/shop";
+import { shop, toLocal, WALLET } from "@/lib/mock/shop";
+import { useWorldView } from "@/lib/world-view";
 
 type Token = "USDT" | "USDC" | "DAI";
 const TOKENS: Token[] = ["USDT", "USDC", "DAI"];
+
+function PayHeader({ lang }: { lang: Lang }) {
+  return <AppHeader home={routes.home} end={<LangToggle lang={lang} />} />;
+}
 
 /*
  * C01 Scan & pay. The customer's phone: the shop, the amount, the token. Nothing about an advance,
@@ -22,6 +43,7 @@ const TOKENS: Token[] = ["USDT", "USDC", "DAI"];
 export function PayScreen({ lang }: { lang: Lang }) {
   const t = payCopy[lang];
   const router = useRouter();
+  const wv = useWorldView();
   const [value, setValue] = useState("10");
   const [token, setToken] = useState<Token>("USDT");
   const [paying, setPaying] = useState(false);
@@ -33,103 +55,104 @@ export function PayScreen({ lang }: { lang: Lang }) {
 
   const pay = () => {
     setPaying(true);
-    // Demo: shown as received the moment it is sent (anay-docs/ux.md, judge-ready payment).
+    // Demo: shown as received the moment it is sent.
     window.setTimeout(() => router.push(`${routes.paid}?amt=${amount.toFixed(2)}&tok=${token}`), 900);
   };
 
   return (
-    <Screen mode="light" lang={lang}>
-      <TopBar title={t.verified} end={<LangToggle lang={lang} />} worldNote={t.world} />
-      <Main tight enter="fade">
-        <WaveHeader>
-          <div className="dj-row" style={{ gap: 12 }}>
-            <span className="app-avatar" aria-hidden>
-              {SHOP.initials}
-            </span>
-            <span className="dj-stack" style={{ gap: 0, minWidth: 0 }}>
-              <span className="dj-h2 dj-wrap pub">{SHOP.name}</span>
-              <span className="dj-mono pub" style={{ color: "inherit", opacity: 0.85 }}>
-                {SHOP.id}
+    <>
+      <PayHeader lang={lang} />
+      <Page width="narrow">
+        <WorldMark kind="pub" show={wv}>
+          <WaveBand>
+            <Label className="text-honeydew/80">{t.verified}</Label>
+            <div className="flex items-center gap-3">
+              <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-lime font-display text-read font-bold text-charcoal">
+                {shop.initials}
               </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="font-display text-h2 [overflow-wrap:anywhere]">{shop.name}</span>
+                <Ledger className="text-honeydew/85">{shop.id}</Ledger>
+              </span>
+            </div>
+          </WaveBand>
+        </WorldMark>
+        <WorldMark kind="pub" show={wv}>
+          <div className="flex flex-col items-center gap-1 py-1 text-center">
+            <span
+              aria-live="polite"
+              aria-atomic
+              className={`font-display text-hero-sm tabular-nums md:text-hero ${amount === 0 ? "text-charcoal-muted" : "text-charcoal"}`}
+            >
+              {typedUsd(value)}
             </span>
+            <Ledger className="text-charcoal-muted">{amount > 0 ? `${formatMoney(Math.round(toLocal(amount)), "ARS")} · example rate` : t.enter}</Ledger>
           </div>
-        </WaveHeader>
-        <div className="app-amount pub" style={{ paddingBlock: 6 }}>
-          <span className="app-amount__value" data-empty={amount === 0} aria-live="polite" aria-atomic>
-            {typedUsd(value)}
-          </span>
-          <span className="dj-local">{amount > 0 ? `${arsText(amount)} · example rate` : t.enter}</span>
-        </div>
-        <div className="dj-stack" style={{ gap: 6 }}>
-          <span className="dj-label">{t.youPay}</span>
+        </WorldMark>
+        <div className="flex flex-col gap-2">
+          <Label>{t.youPay}</Label>
           <Segmented label={t.youPay} value={token} onChange={setToken} options={TOKENS.map((k) => ({ value: k, label: k }))} />
-          <p className="dj-row dj-small" style={{ gap: 8, alignItems: "flex-start" }}>
-            <span style={{ display: "inline-flex", color: "var(--accent)", marginTop: 1 }}>
-              <I.swap />
-            </span>
+          <Text size="note" tone="muted">
             {t.swap(token)}
-          </p>
+          </Text>
         </div>
         <Keypad value={value} onChange={setValue} />
-      </Main>
-      <ActionBar>
-        <Button block onClick={pay} loading={paying} loadingLabel={t.paying} disabled={amount <= 0 || paying}>
-          {amount > 0 ? t.pay(usdText(amount, 2)) : t.enter}
-        </Button>
-      </ActionBar>
-    </Screen>
+        <ActionBar>
+          <Button onClick={pay} loading={paying} disabled={amount <= 0 || paying}>
+            {amount > 0 ? t.pay(formatMoney(amount)) : t.enter}
+          </Button>
+        </ActionBar>
+      </Page>
+    </>
   );
 }
 
-/* C02 Payment success. A rare moment: the check draws itself once. */
+/* C02 Payment success. */
 export function PaidScreen({ lang, amount, token }: { lang: Lang; amount: number; token: string }) {
   const t = payCopy[lang];
+  const wv = useWorldView();
   const [time] = useState(() => new Date().toLocaleTimeString(lang === "es" ? "es-AR" : "en-GB", { hour: "2-digit", minute: "2-digit" }));
-  const usd = usdText(amount, 2);
+  const usd = formatMoney(Number(amount.toFixed(2)));
   return (
-    <Screen mode="light" lang={lang}>
-      <TopBar title={t.receipt} heading={false} end={<LangToggle lang={lang} />} worldNote={t.world} />
-      <Main center>
-        <div className="dj-stack" style={{ alignItems: "center", textAlign: "center", gap: 10 }}>
-          <DoneMark size={88} />
-          <h1 className="app-display" style={{ fontSize: 40 }}>
+    <>
+      <PayHeader lang={lang} />
+      <Page width="narrow">
+        <div className="flex flex-col items-center gap-2.5 pt-4 text-center">
+          <span className="grid size-22 place-items-center rounded-full bg-hunter text-lime">
+            <CheckIcon size={44} strokeWidth={3} />
+          </span>
+          <Heading level={1} size="hero">
             {t.paidTitle(usd)}
-          </h1>
-          <p className="dj-body">
-            {t.paidTo(SHOP.name)} · <span suppressHydrationWarning>{time}</span>
-          </p>
+          </Heading>
+          <Text>
+            {t.paidTo(shop.name)} · <span suppressHydrationWarning>{time}</span>
+          </Text>
         </div>
-        <section className="dj-card" aria-label={t.receipt}>
-          <dl className="dj-kv">
-            <div>
-              <dt>{t.sent}</dt>
-              <dd>
-                {amount.toFixed(2)} {token}
-              </dd>
-            </div>
-            <div className="pub">
-              <dt>{t.received}</dt>
-              <dd>{usd}</dd>
-            </div>
-            <div>
-              <dt>{t.fee}</dt>
-              <dd>{t.covered}</dd>
-            </div>
-            <div className="pub" style={{ alignItems: "center", paddingBlock: 2 }}>
-              <dt>{t.ref}</dt>
-              <dd>
-                <CopyHash value={WALLET} short />
-              </dd>
-            </div>
-          </dl>
-        </section>
-      </Main>
-      <ActionBar>
-        <LinkButton href={routes.pay}>{t.done}</LinkButton>
-        <Link href={routes.home} className="app-text-btn">
-          {t.shopPhone}
-        </Link>
-      </ActionBar>
-    </Screen>
+        <Card as="section" aria-label={t.receipt}>
+          <KeyValue
+            rows={[
+              [t.sent, `${amount.toFixed(2)} ${token}`],
+              [
+                t.received,
+                <WorldMark key="r" kind="pub" show={wv}>
+                  {usd}
+                </WorldMark>,
+              ],
+              [t.fee, t.covered],
+              [
+                t.ref,
+                <WorldMark key="f" kind="pub" show={wv}>
+                  <CopyHash value={WALLET} short />
+                </WorldMark>,
+              ],
+            ]}
+          />
+        </Card>
+        <ActionBar>
+          <Button href={routes.pay}>{t.done}</Button>
+          <TextLink href={routes.merchant}>{t.shopPhone}</TextLink>
+        </ActionBar>
+      </Page>
+    </>
   );
 }
