@@ -444,7 +444,7 @@ function InContext() {
         <article className="flex flex-col gap-4 rounded-xl border border-hairline bg-surface p-5">
           <Caption>Row · shop avatar</Caption>
           {[
-            ["Corner Kiosk", 101, "$10.00"],
+            ["Block Bodega", 101, "$10.00"],
             ["Mama Ruth's", 202, "$4.50"],
             ["Bike Fix", 303, "$22.00"],
           ].map(([n, seed, v]) => (

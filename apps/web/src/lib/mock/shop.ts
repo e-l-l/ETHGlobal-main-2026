@@ -7,10 +7,10 @@
 export const ARS_PER_USD = 1010;
 
 export const shop = {
-  name: "Corner Kiosk",
+  name: "Block Bodega",
   /** Public pseudonym. The only thing onchain that names the shop. */
   id: "shop_7f3a",
-  initials: "CK",
+  initials: "BB",
   country: "Argentina",
   band: "2",
   bandRange: "$2,000–5,000 a month",
@@ -22,7 +22,7 @@ export const shop = {
 export const WALLET = "0x7a3e5b2c4d1f9e8a7b6c5d4e3f2a1b0c9d8e91c2";
 
 /** Ordinary names offered on Create shop. Neutral on purpose: nothing about the owner. */
-export const SHOP_NAME_IDEAS = ["Corner Kiosk", "Chai Stop", "Daily Needs", "Sai Kirana"] as const;
+export const SHOP_NAME_IDEAS = ["Block Bodega", "Satoshi Snacks", "Gwei Grocers", "Mempool Mart"] as const;
 
 /** Max advance per tier, unlocked by repaid advances. */
 export const limitsLadder = [
@@ -32,7 +32,7 @@ export const limitsLadder = [
   { label: "3 or more", cap: 300 },
 ] as const;
 
-/** Index into limitsLadder: Corner Kiosk has repaid one advance, so its limit is $100. */
+/** Index into limitsLadder: Block Bodega has repaid one advance, so its limit is $100. */
 export const currentTier = 1;
 
 const drawn = limitsLadder[currentTier].cap;

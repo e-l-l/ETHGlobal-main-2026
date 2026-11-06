@@ -17,8 +17,8 @@ describe("mock-mode flows (the demo path)", () => {
     expect(steps).toEqual(["starting", "waiting_for_portal", "proof_received", "issuing", "registering", "saved"]);
     const stored = await mra.raw.vault.get("business_pass");
     expect(stored?.secret).toMatch(/^0x[0-9a-f]{64}$/);
-    const shop = await mra.onboarding.createShop("Corner Kiosk");
-    expect(shop).toMatchObject({ name: "Corner Kiosk", id: "shop_7f3a", initials: "CK", payLink: "pay.[app]/corner-kiosk" });
+    const shop = await mra.onboarding.createShop("Block Bodega");
+    expect(shop).toMatchObject({ name: "Block Bodega", id: "shop_7f3a", initials: "BB", payLink: "pay.[app]/block-bodega" });
   });
 
   it("onboarding: seeded failing accounts → M05 reasons", async () => {
@@ -55,7 +55,7 @@ describe("mock-mode flows (the demo path)", () => {
 
   it("pay + cash out + lender deposit are simulated in mock mode", async () => {
     const mra = createMRA({ mode: "mock" });
-    expect(await mra.pay.pay("shop_7f3a", 10)).toMatchObject({ amount: 10, toShop: 9.2, toRepayment: 0.8, shopName: "Corner Kiosk" });
+    expect(await mra.pay.pay("shop_7f3a", 10)).toMatchObject({ amount: 10, toShop: 9.2, toRepayment: 0.8, shopName: "Block Bodega" });
     expect(await mra.merchant.cashOut(100, "bank")).toMatchObject({ status: "simulated" });
     await expect(mra.merchant.cashOut(100, "nowhere")).rejects.toMatchObject({ code: "invalid_request" });
     const steps: string[] = [];

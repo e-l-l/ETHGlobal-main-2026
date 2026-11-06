@@ -28,7 +28,7 @@ describe("mock mode: literal values from apps/web", () => {
   it("M10 home", async () => {
     const h = await mra.merchant.home();
     expect(h.source).toBe("mock");
-    expect(h.shop).toEqual({ name: "Corner Kiosk", pseudonym: "shop_7f3a", localCurrency: "ARS", usdToLocal: 1010 });
+    expect(h.shop).toEqual({ name: "Block Bodega", pseudonym: "shop_7f3a", localCurrency: "ARS", usdToLocal: 1010 });
     expect(h.advance).toMatchObject({ drawn: 100, fee: 2, total: 102, repaid: 46, left: 56, pct: 45, holdback: 8, etaDays: 23, drawnOn: "5 Nov" });
     expect(h.today).toEqual({ label: "Thursday 5 Nov", soldLocal: 142500, soldUsd: 142500 / 1010, salesCount: 18, toRepayment: (142500 / 1010) * 0.08, weekUsd: 475 });
     expect(h.sales.map((s) => s.total)).toEqual([15000, 4500, 22000, 7500]);

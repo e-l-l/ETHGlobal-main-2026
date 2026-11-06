@@ -406,7 +406,7 @@ export function FinalGallery() {
           <div className={grid}>
             <Spec name="Wave band · checkout and Get Paid headers">
               <WaveBand>
-                <Label className="text-honeydew/80">Pay Corner Kiosk</Label>
+                <Label className="text-honeydew/80">Pay Block Bodega</Label>
                 <span className="font-display text-amount text-canvas">$12.40</span>
               </WaveBand>
             </Spec>
@@ -550,7 +550,7 @@ export function FinalGallery() {
             </Spec>
             <Spec name="Text fields">
               <TextField label="Amount" prefix="$" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} hint="Up to $200 at your tier" />
-              <TextField label="Shop name" defaultValue="Corner Kiosk 7" error="That name is taken. Try another." />
+              <TextField label="Shop name" defaultValue="Block Bodega 7" error="That name is taken. Try another." />
             </Spec>
           </div>
         </Section>
@@ -795,7 +795,7 @@ export function FinalGallery() {
               </div>
               <div className="rounded-md bg-hunter p-4">
                 <Eyebrow tone="dark">The app</Eyebrow>
-                <span className="mt-2 block font-display text-h2 font-bold text-canvas">A day at Corner Kiosk.</span>
+                <span className="mt-2 block font-display text-h2 font-bold text-canvas">A day at Block Bodega.</span>
               </div>
             </Spec>
           </div>

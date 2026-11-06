@@ -7,7 +7,7 @@ import { advance, agentLimits, limitsLadder, shop, toLocal } from "@/lib/mock/sh
 import { PixelBar, Waffle } from "./blocky";
 
 /*
- * A day at Corner Kiosk, as a wall of widgets: the whole merchant app at a glance.
+ * A day at Block Bodega, as a wall of widgets: the whole merchant app at a glance.
  * Two widgets answer the pointer: the announcement plays the sale out loud, and the agent switch pauses it.
  */
 

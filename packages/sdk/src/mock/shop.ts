@@ -10,9 +10,9 @@ export const ARS_PER_USD = 1010;
 /* ------------------------------------------------------- Person B screens */
 
 export const SHOP = {
-  name: "Corner Kiosk",
+  name: "Block Bodega",
   id: "shop_7f3a",
-  initials: "CK",
+  initials: "BB",
   country: "Argentina",
   band: "2",
   bandRange: "$2,000–5,000 a month",
@@ -38,12 +38,12 @@ export const SHOP = {
 export const WALLET = "0x7a3e5b2c4d1f9e8a7b6c5d4e3f2a1b0c9d8e91c2";
 
 /** Ordinary names offered on Create shop. Neutral on purpose: nothing about the owner. */
-export const SHOP_NAME_IDEAS = ["Corner Kiosk", "Chai Stop", "Daily Needs", "Sai Kirana"] as const;
+export const SHOP_NAME_IDEAS = ["Block Bodega", "Satoshi Snacks", "Gwei Grocers", "Mempool Mart"] as const;
 
 /* ------------------------------------------------------- Person A screens */
 
 export const shop = {
-  name: "Corner Kiosk",
+  name: "Block Bodega",
   pseudonym: "shop_7f3a",
   localCurrency: "ARS",
   /** 1 USD ≈ 1,010 ARS (apps/web's ARS_PER_USD). */

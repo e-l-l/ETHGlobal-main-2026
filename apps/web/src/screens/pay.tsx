@@ -41,7 +41,7 @@ const TOKEN = "USDC";
  * (`registerShop(keccak(label), payout)`). Checked with `cast keccak "chai-stall"`.
  */
 const DEMO_SHOP_ID = "0xd2ad3e1920c292f23975ba7355ac9c6e2cfa409b3e12ff1537d187e9fd77ffa4";
-const DEMO_SHOP_HREF = `${routes.pay}?shop=${DEMO_SHOP_ID}&name=Chai+Stall`;
+const DEMO_SHOP_HREF = `${routes.pay}?shop=${DEMO_SHOP_ID}&name=Hash+House+Chai`;
 
 /** Live mode, opened without a QR: no shop id to pay. Point at the demo shop instead of an error. */
 function ScanToPay() {

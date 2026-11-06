@@ -6,7 +6,7 @@ import { useLive } from "./use-live";
 
 /*
  * Hero scene: a pixel-art Buenos Aires street on a bright day, drawn in brand greens only.
- * Pale sky, striped sun, skyline with the Obelisco, Corner Kiosk under a wave-striped awning.
+ * Pale sky, striped sun, skyline with the Obelisco, Block Bodega under a wave-striped awning.
  *
  * One sale, told in order (explanation, so it plays slowly and in sequence):
  *   1. a customer walks up to the counter

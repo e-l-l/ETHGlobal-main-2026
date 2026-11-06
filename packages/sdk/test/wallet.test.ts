@@ -118,13 +118,13 @@ describe("pay link (SDK gap 6)", () => {
     expect(url.origin + url.pathname).toBe("https://app.test/pay/corner-kiosk");
     expect(url.searchParams.get("shop")).toBe(SHOP);
     expect(url.searchParams.get("name")).toBe("Kiosco Don Pepe & Hijos");
-    expect(payUrlFor(undefined, "Corner Kiosk", SHOP)).toMatch(/^https:\/\/pay\..+\/corner-kiosk\?shop=0x(ab){32}&name=Corner\+Kiosk$/);
+    expect(payUrlFor(undefined, "Block Bodega", SHOP)).toMatch(/^https:\/\/pay\..+\/block-bodega\?shop=0x(ab){32}&name=Block\+Bodega$/);
   });
 
   it("merchant.qr() returns it for the device's shop", async () => {
     const net = fakeNet();
     const mra = await realMra(net);
-    await mra.raw.vault.put("session", { shopId: SHOP, shopName: "Corner Kiosk", pseudonym: "shop_abab" });
+    await mra.raw.vault.put("session", { shopId: SHOP, shopName: "Block Bodega", pseudonym: "shop_abab" });
     const realRpc = net.rpc;
     // qr() reads the last week of Sale logs: answer block number + empty logs.
     const rpc: FetchFn = async (url, init) => {
@@ -143,7 +143,7 @@ describe("pay link (SDK gap 6)", () => {
     const qr = await mra2.merchant.qr();
     const url = new URL(qr.payLink);
     expect(url.searchParams.get("shop")).toBe(SHOP);
-    expect(url.searchParams.get("name")).toBe("Corner Kiosk");
+    expect(url.searchParams.get("name")).toBe("Block Bodega");
   });
 });
 

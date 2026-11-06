@@ -263,7 +263,7 @@ describe("World ID FIRST: checkHuman → ticket → createShop / bindHumanTicket
     expect(r).toMatchObject({ eligible: true, source: "mock" });
     expect(steps).toEqual(["verifying_human", "checking", "eligible"]);
     expect(await mra.raw.vault.get("world_ticket")).toMatchObject({ kind: "world_ticket" });
-    const shop = await mra.onboarding.createShop("Corner Kiosk");
+    const shop = await mra.onboarding.createShop("Block Bodega");
     expect(shop.human).toEqual({ verified: true });
     expect(await mra.raw.vault.get("world_ticket")).toBeUndefined();
     // No ticket left: the next bind asks for World ID again.

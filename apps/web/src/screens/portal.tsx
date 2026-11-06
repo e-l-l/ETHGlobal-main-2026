@@ -88,7 +88,7 @@ const ACCOUNTS: Account[] = [
   },
   {
     key: "norte",
-    name: "Daily Needs",
+    name: "Gwei Grocers",
     shop: "Small monthly sales",
     email: "dailyneeds@seller.demo",
     since: "May 2023",
