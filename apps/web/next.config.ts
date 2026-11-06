@@ -40,6 +40,10 @@ const stubs = Object.fromEntries(
   Object.entries(BROWSER_SUBPATHS).filter(([spec]) => forceStubs || !sdkShips(spec)),
 );
 
+/** Optional imports of @coinbase/cdp-sdk (via the Coinbase wallet connector) that aren't installed: see the stub. */
+const X402 = ["@x402/core/client", "@x402/evm", "@x402/evm/exact/client", "@x402/evm/upto/client", "@x402/svm/exact/client"];
+for (const spec of X402) (stubs as Record<string, string>)[spec] = "./src/lib/mra-fallback/x402.ts";
+
 const nextConfig: NextConfig = {
   turbopack: { resolveAlias: stubs },
   webpack(config: { resolve: { alias: Record<string, string> } }) {

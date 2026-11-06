@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { APP_NAME } from "@/lib/brand";
 import { jarFonts } from "@/final/fonts";
+import { WalletProvider } from "@/components/wallet-provider";
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
@@ -31,7 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
-        <div className="flex min-h-dvh flex-col">{children}</div>
+        <div className="flex min-h-dvh flex-col">
+          <WalletProvider>{children}</WalletProvider>
+        </div>
       </body>
     </html>
   );
