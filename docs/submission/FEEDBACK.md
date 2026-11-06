@@ -20,7 +20,7 @@ The junior tranche of our lending book is an ERC-4626 vault, and its shares are 
 | Tests: 21 tests, including fee direction, flush, TWAP and the HookMiner address | [`contracts/test/RiskHook.t.sol`](../../contracts/test/RiskHook.t.sol) |
 | **In-app swap on Sepolia.** `/junior/trade` swaps DripCoin (DRIP) ⇄ USDC for real from the app's burner wallet through Uniswap's official v4 `PoolSwapTest`. Buys are exact-output, so both directions leave USDC unspecified and pay the hook fee. The result shows the fee and the new TWAP observation. The pool is seeded by a script. | [`packages/sdk/src/domains/lender.ts`](../../packages/sdk/src/domains/lender.ts) (`junior.swap`), [`packages/sdk/src/chain/swap.ts`](../../packages/sdk/src/chain/swap.ts), [`apps/web/src/screens/lend/client.tsx`](../../apps/web/src/screens/lend/client.tsx), [`agents/scripts/seed_junior_pool.py`](../../agents/scripts/seed_junior_pool.py) |
 
-Live on Sepolia: RiskHook `0x216ec669911e5e042c73de8f593397a51e00d044` on PoolManager `0xE03A1074c86CFeDd5C142C4F04F1a1536e203543`. Pool key: junior `0x3091…1a90` / MockUSDC `0x6603…55bb`, fee 3000, tick spacing 60 (`agents/deployments/sepolia.json`).
+Live on Sepolia: RiskHook `0xd9cfcadf7ea8a753198383ce7f210070e5559044` on PoolManager `0xE03A1074c86CFeDd5C142C4F04F1a1536e203543`. Pool key: junior `0x26c6…38f4` / MockUSDC `0x6603…55bb`, fee 3000, tick spacing 60 (`agents/deployments/sepolia.json`).
 
 Not built: Uniswap API swaps at checkout (customer pays in USDT, it settles in USDC). Checkout takes USDC only at submission; the app defaults to USDC in live mode and does not claim a swap. The v4 integration we ship is the junior-token market above, which is core to the product: it prices default risk and drives the Risk agent.
 

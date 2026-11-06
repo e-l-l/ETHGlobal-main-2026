@@ -51,7 +51,7 @@ function raw(over: Partial<RiskRaw> = {}): RiskRaw {
     ],
     risk: null,
     mine: { senior: $(500), junior: 0n },
-    contracts: [{ label: "AdvanceBook", address: "0x873bb34ad35a66947dbd2f9482d15ba5d400d8db" }],
+    contracts: [{ label: "AdvanceBook", address: "0x76424347274b1ff54efa942d9d7adf668049b884" }],
     timesEstimated: false,
     ...over,
   };
@@ -140,7 +140,7 @@ describe("riskPanelFrom (pure)", () => {
   });
 
   it("links contracts to Sepolia Etherscan, and to nothing on a local chain", () => {
-    expect(riskPanelFrom(raw()).contracts[0]!.href).toBe("https://sepolia.etherscan.io/address/0x873bb34ad35a66947dbd2f9482d15ba5d400d8db");
+    expect(riskPanelFrom(raw()).contracts[0]!.href).toBe("https://sepolia.etherscan.io/address/0x76424347274b1ff54efa942d9d7adf668049b884");
     expect(riskPanelFrom(raw({ chainId: 31337 })).contracts[0]!.href).toBeUndefined();
   });
 
