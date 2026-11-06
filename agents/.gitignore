@@ -6,3 +6,4 @@ deployments/local.json
 deployments/verifier.txt
 deployments/biz_verifier.txt
 deployments/sepolia-fork*
+deployments/scene-state.json

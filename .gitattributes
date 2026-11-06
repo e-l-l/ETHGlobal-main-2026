@@ -1,0 +1,28 @@
+# Line endings. Windows checkouts with core.autocrlf=true would otherwise turn these into CRLF, and then
+# bash / sh inside Linux containers fail with "$'\r': command not found" or "bad interpreter".
+# Docker bind-mounts several of these into containers (deploy/devnet/*.sh, deploy/agents/worker_entry.py).
+* text=auto
+
+*.sh                 text eol=lf
+*.bash               text eol=lf
+*.py                 text eol=lf
+*.yml                text eol=lf
+*.yaml               text eol=lf
+*.toml               text eol=lf
+*.env.example        text eol=lf
+.env.example         text eol=lf
+Caddyfile            text eol=lf
+Dockerfile           text eol=lf
+Dockerfile.*         text eol=lf
+*.dockerignore       text eol=lf
+*.nr                 text eol=lf
+*.sol                text eol=lf
+
+# PowerShell scripts: CRLF so Windows PowerShell 5.1 and editors are happy (pwsh on macOS/Linux reads either).
+*.ps1                text eol=crlf
+
+# Binary
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.gz   binary

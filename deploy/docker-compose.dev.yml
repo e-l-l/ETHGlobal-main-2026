@@ -1,0 +1,144 @@
+# Local development stack: everything on one machine, no domain, no Caddy, no real keys (docs/LOCAL.md, Path A).
+# Layered on docker-compose.yml. Always start it through the wrappers, which set the files, project and profiles:
+#   scripts/dev-up.sh      | scripts/dev-up.ps1        create env files, deploy + seed the devnet, build, start
+#   scripts/dev-compose.sh | scripts/dev-compose.ps1   any docker compose command on this stack (ps, logs, exec ...)
+#   scripts/dev-down.sh    | scripts/dev-down.ps1      stop (keeps the chain); --reset also deletes the volumes
+#
+# What runs (compose project "mra-dev", profiles devnet + ui; volumes are separate from the EC2 project "mra"):
+#   anvil                 chain 31337, state on a volume, clock fix on restart      http://127.0.0.1:8545
+#   devnet-deployer       one-shot: contracts + seed_demo.py + seed_devnet.py        (exits 0 when done)
+#   agents-api-devnet     agents FastAPI, public anvil keys, demo faucet on          http://localhost:8000
+#   agents-worker-devnet  Risk agent + keeper loops (deploy/agents/worker_entry.py)
+#   issuer-devnet         Business Pass issuer, ISSUER_MOCK=1 (no Reclaim keys)      http://localhost:8787
+#   demo-portal           PagoSur demo seller portal                                 http://localhost:3001
+#   app                   apps/web, NEXT_PUBLIC_MRA_MODE=local                       http://localhost:3000
+#   rpc-proxy             the public-RPC allowlist from EC2; internal only here (deploy/devnet.sh needs it)
+# Those are the ports apps/web and @repo/sdk expect in local mode (API :8000, issuer :8787, RPC :8545).
+# Override a host port with DEV_RPC_PORT / DEV_API_PORT / DEV_ISSUER_PORT / DEV_APP_PORT / DEV_PORTAL_PORT
+# (and DEV_CORS_ORIGINS for the allowed browser origins). Everything binds to 127.0.0.1 only.
+#
+# The Sepolia services of the base file (agents-api, agents-worker, issuer) and Caddy are switched off here by
+# moving them to profiles this stack never enables. EC2 never loads this file, so its behaviour is unchanged.
+
+name: mra-dev
+
+x-dev-cors: &dev-cors ${DEV_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:3002,http://127.0.0.1:3002}
+
+services:
+  # --------------------------------------------------------------------------- off in the dev stack
+  agents-api:
+    profiles: ["sepolia"]
+  agents-worker:
+    profiles: ["sepolia"]
+  issuer:
+    profiles: ["sepolia"]
+  caddy:
+    profiles: ["edge"]
+
+  # --------------------------------------------------------------------------- chain
+  anvil:
+    # Published on loopback so the browser, cast and the native tools reach it. Unlike EC2 there is no allowlist:
+    # this is your own chain, and the time warp (evm_increaseTime) is part of the local workflow.
+    ports: ["127.0.0.1:${DEV_RPC_PORT:-8545}:8545"]
+
+  # devnet-deployer and rpc-proxy are used as defined in docker-compose.yml.
+
+  # --------------------------------------------------------------------------- agents
+  agents-api-devnet:
+    # Built here because the Sepolia agents-api (which builds the image on EC2) is off in this stack.
+    build:
+      context: ../agents
+      dockerfile: Dockerfile
+    environment:
+      CORS_ALLOW_ORIGINS: *dev-cors
+      DEMO_FAUCET: "1" # burner wallets in the browser get anvil ETH + MockUSDC from /demo/faucet
+      WORLD_MOCK: "1"
+    ports: ["127.0.0.1:${DEV_API_PORT:-8000}:8787"]
+
+  agents-worker-devnet:
+    profiles: ["devnet"]
+    restart: unless-stopped
+    image: mra-agents:local
+    pull_policy: never
+    init: true
+    command: ["python", "/srv/deploy/worker_entry.py"]
+    env_file:
+      - path: ./env/agents-devnet.env
+        required: true
+    environment:
+      RPC_URL: http://anvil:8545
+      CHAIN_ID: "31337"
+      DB_PATH: /srv/agents/data/agents.sqlite
+      DEPLOYMENTS_FILE: /srv/agents/deployments-devnet/devnet.json
+      WORKER_HEARTBEAT_FILE: /tmp/worker.heartbeat
+      WORLD_MOCK: "1"
+    volumes:
+      - agents-devnet-data:/srv/agents/data
+      - devnet-data:/srv/agents/deployments-devnet:ro
+      - ./agents/worker_entry.py:/srv/deploy/worker_entry.py:ro
+    networks: [internal]
+    depends_on:
+      agents-api-devnet:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,sys,time; f='/tmp/worker.heartbeat'; sys.exit(0 if not os.path.exists(f) or time.time()-os.path.getmtime(f) < 900 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    mem_limit: 512m
+
+  # --------------------------------------------------------------------------- issuer
+  issuer-devnet:
+    profiles: ["devnet"]
+    restart: unless-stopped
+    build:
+      context: ../issuer
+      dockerfile: Dockerfile
+    image: mra-issuer:local
+    init: true
+    env_file:
+      # Public anvil key 4 (the devnet Business Pass issuer) + a random pepper. Template: issuer-devnet.env.example
+      - path: ./env/issuer-devnet.env
+        required: true
+    environment:
+      PORT: "8787"
+      HOST: 0.0.0.0
+      CHAIN_ID: "31337"
+      ISSUER_MOCK: "1" # issuer /mock/proof stands in for Reclaim; everything after the proof is real
+      CORS_ALLOW_ORIGINS: *dev-cors
+      MANIFEST: /srv/devnet/devnet.json
+    # REGISTRY_ADDRESS comes from the manifest the deployer wrote, so it is always the deployed registry.
+    entrypoint: ["sh", "-c", "export REGISTRY_ADDRESS=\"$$(node -p 'require(process.env.MANIFEST).BusinessPassRegistry')\" && exec node dist/server.js"]
+    volumes:
+      - devnet-data:/srv/devnet:ro
+    networks: [internal]
+    ports: ["127.0.0.1:${DEV_ISSUER_PORT:-8787}:8787"]
+    depends_on:
+      devnet-deployer:
+        condition: service_completed_successfully
+    mem_limit: 384m
+
+  # --------------------------------------------------------------------------- web
+  demo-portal:
+    ports: ["127.0.0.1:${DEV_PORTAL_PORT:-3001}:3000"]
+
+  app:
+    image: mra-app:dev # its own tag, so it never collides with an EC2-style (sepolia) build on the same machine
+    build:
+      args:
+        NEXT_PUBLIC_MRA_MODE: ${DEV_MRA_MODE:-local}
+        NEXT_PUBLIC_API_URL: http://localhost:${DEV_API_PORT:-8000}
+        NEXT_PUBLIC_ISSUER_URL: http://localhost:${DEV_ISSUER_PORT:-8787}
+        NEXT_PUBLIC_RPC_URL: http://127.0.0.1:${DEV_RPC_PORT:-8545}
+        NEXT_PUBLIC_ANON_RPC: "0" # the anon network's exits cannot reach anvil on your machine
+        # The manifest JSON of this devnet (dev-up reads it from the deployer). A fresh devnet's addresses differ
+        # from the SDK's bundled local.json, so the browser bundle must carry them.
+        NEXT_PUBLIC_MRA_DEPLOYMENT: ${DEV_MRA_DEPLOYMENT:-}
+    environment:
+      APP_ORIGIN: http://localhost:${DEV_APP_PORT:-3000}
+      API_URL: http://agents-api-devnet:8787
+      DEPLOYMENTS_PATH: /srv/devnet/devnet.json
+    volumes:
+      - devnet-data:/srv/devnet:ro
+    ports: ["127.0.0.1:${DEV_APP_PORT:-3000}:3000"]

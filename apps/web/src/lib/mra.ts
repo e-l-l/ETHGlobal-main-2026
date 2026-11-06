@@ -16,7 +16,7 @@
  * This module is isomorphic (no "use client", no next/headers). The browser-only adapters (Anon-RPC worker,
  * prover) are loaded by `./mra-browser` through dynamic import(), only outside mock mode.
  */
-import { createMRA, type MRA, type MRAConfig, type Mode } from "@repo/sdk";
+import { createMRA, parseDeployment, type Deployment, type MRA, type MRAConfig, type Mode } from "@repo/sdk";
 import { ARS_PER_USD, shop } from "./mock/shop";
 
 export type { MRA };
@@ -60,7 +60,17 @@ export const MRA_ENV = {
   account: (process.env.NEXT_PUBLIC_LENDER_ACCOUNT || undefined) as `0x${string}` | undefined,
   /** Mock mode only: simulated latency per call, so spinners show. */
   mockLatencyMs: Number(process.env.NEXT_PUBLIC_MRA_MOCK_LATENCY_MS || 0) || 0,
+  /**
+   * Contract addresses: the JSON of agents/deployments/<net>.json, used instead of the SDK's bundled copy. A fresh
+   * local devnet gets different addresses from the bundled local.json, so docs/LOCAL.md sets this. Ignored in mock.
+   */
+  deployment: process.env.NEXT_PUBLIC_MRA_DEPLOYMENT || undefined,
 } as const;
+
+/** NEXT_PUBLIC_MRA_DEPLOYMENT, parsed and validated (throws config_invalid on a bad manifest), or undefined. */
+function deploymentOverride(): Deployment | undefined {
+  return MRA_ENV.deployment ? parseDeployment(JSON.parse(MRA_ENV.deployment)) : undefined;
+}
 
 export const MRA_MODE: Mode = MRA_ENV.mode;
 export const isMock = MRA_MODE === "mock";
@@ -75,6 +85,10 @@ export function baseConfig(): MRAConfig {
   if (MRA_ENV.rpcUrl) cfg.rpc = { url: MRA_ENV.rpcUrl };
   if (!isMock && !MRA_ENV.demoFaucet) cfg.faucet = false;
   if (MRA_ENV.payUrl) cfg.payUrl = MRA_ENV.payUrl;
+  if (!isMock) {
+    const deployment = deploymentOverride();
+    if (deployment) cfg.deployment = deployment;
+  }
   // Reads routed through the Anon-RPC mixnet take 0.5-30 s each, and a write waits on several of them (balance check,
   // faucet, approve, receipt). The SDK default (20 s) made the first Business Pass time out intermittently.
   if (!isMock) cfg.timeoutMs = Number(process.env.NEXT_PUBLIC_MRA_TIMEOUT_MS || 0) || (MRA_ENV.anonRpc ? 90_000 : 45_000);
