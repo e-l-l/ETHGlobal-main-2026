@@ -63,6 +63,8 @@ export const q = {
   protocol: (m: MRA) => m.protocol.stats(), // P02
   risk: (m: MRA) => m.protocol.risk(), // P03
   explorer: (m: MRA) => m.protocol.explorer(), // P04
+  /** Proof center ("Verify it yourself"): one read-only call, each section fails on its own (`errors`). */
+  proofCenter: (m: MRA) => m.protocol.proofCenter(),
 };
 
 /** Parse limits from M07 → M08 query params (`?perAdvance=100&perMonth=200&purpose=stock`). */

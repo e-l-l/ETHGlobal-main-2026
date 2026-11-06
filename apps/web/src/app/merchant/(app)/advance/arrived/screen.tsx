@@ -53,14 +53,17 @@ export function AdvanceArrivedScreen({ initial }: { initial: AdvanceArrivedView 
             <CardTitle>What you pay back</CardTitle>
             <KeyValue
               rows={[
-                ["Owed now", formatMoney(advance.owedNow)],
-                ["Fee so far, included", formatMoney(advance.feeSoFar)],
+                ["Advance", formatMoney(advance.drawn)],
+                ["Fee", "0.5% a week while you owe"],
                 ["Fee if repaid in 2 weeks", formatMoney(advance.feeIfRepaidIn2Weeks)],
                 [`Max fee (${formatPercent(advance.maxFeeBps / 100)})`, formatMoney((advance.drawn * advance.maxFeeBps) / 10_000)],
                 ["From each payment", formatPercent(advance.holdback)],
                 ...(etaKnown(advance.etaDays) ? [["At your usual pace", formatDays(advance.etaDays)] as [string, string]] : []),
               ]}
             />
+            <Text size="note" tone="muted">
+              {advance.feeRule} Pay early, pay less.
+            </Text>
           </Card>
           <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-2">
             <Button href={routes.advance.details} width="full">

@@ -351,7 +351,7 @@ export function FinalGallery() {
             </Spec>
             <Spec name="Body · Figtree 16 · Note 14">
               <Text>Every sale sends 8% to your advance. Nobody can tell who owes.</Text>
-              <Text size="note" tone="muted">No penalty, no late fee.</Text>
+              <Text size="note" tone="muted">A slow week just slows repayment. Keep paying the 1% weekly minimum and the fee stays 0.5% a week.</Text>
             </Spec>
             <Spec name="Label · Mono 11 · Ledger · Mono 13">
               <Label>Repaid this week</Label>
@@ -487,7 +487,7 @@ export function FinalGallery() {
             </Card>
             <Spec name="Banners">
               <Banner>Your agent drew $100 for stock.</Banner>
-              <Banner tone="caution">Repayment slowed this week. No penalty.</Banner>
+              <Banner tone="caution">Repayment slowed this week. Still above the weekly minimum, so no late fee.</Banner>
               <Banner tone="risk">Couldn&apos;t verify the shop. Nothing was drawn.</Banner>
             </Spec>
           </div>

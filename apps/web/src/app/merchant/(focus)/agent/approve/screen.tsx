@@ -1,35 +1,43 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AgentApproveView, AgentSetupStep } from "@repo/sdk";
-import { ActionBar, AppHeader, Banner, Button, Ledger, LockIcon, OfferDisclosure, Page, Text } from "@/final";
-import { BlockPanel } from "@/blocks";
-import { HeroLabel } from "../../../_ui";
+import { Accent, ActionBar, Banner, BrandPanel, Button, Card, Heading, OfferDisclosure, SplitPage, Steps, Text, TextLink } from "@/final";
+import { CardTitle } from "../../../_ui";
+import { UnlockMeter } from "../../../_unlock";
 import { capitalize, formatMoney, formatPercent } from "@/lib/format";
 import { isMock } from "@/lib/mra";
 import { q, type AgentLimitsInput } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
-import { agentDeniedHref, routes } from "@/lib/routes";
+import { agentDeniedHref, blockedHref, redlineHref, routes, worldIdHref } from "@/lib/routes";
 import { useMRA, useMRAAction } from "@/lib/use-mra";
 import { WORLD_MODE, useWorldPrompt } from "@/lib/world-prompt";
 import { AgentPassWait } from "../../../_world";
 import { ApproveMarks } from "./marks";
 
-const STEP_LABEL: Record<AgentSetupStep, string> = {
-  creating_agent: "Creating your agent",
-  awaiting_agent_pass: "Waiting for World approval",
-  proving_credential: "Proving your pass privately",
-  registering_mandate: "Registering your limits onchain",
-  activating: "Turning it on",
-  done: "Done",
+/** The setup steps after "Continue with World", in order; the SDK's `onStep` moves the highlight. */
+const SETUP_STEPS: { step: AgentSetupStep; label: string }[] = [
+  { step: "awaiting_agent_pass", label: "Approve in World App" },
+  { step: "proving_credential", label: "Private credential proof" },
+  { step: "registering_mandate", label: "Limits registered onchain" },
+  { step: "activating", label: "Agent active" },
+];
+const STEP_INDEX: Record<AgentSetupStep, number> = {
+  creating_agent: 0,
+  awaiting_agent_pass: 0,
+  proving_credential: 1,
+  registering_mandate: 2,
+  activating: 3,
+  done: 4,
 };
 
 /**
- * M08 Approve: `agent.approveView(limits)`, then (live modes) `agent.setup(limits, { onStep })`: World Agent Pass
- * (mock adapter with the backend's WORLD_MOCK=1), a private credential proof, the owner's mandate signature and the
- * relayed registerMandate. `active` → M10 Home, `denied` → M09, `expired` → M09 ?reason=expired. Mock mode keeps the
- * plain link. NEXT_PUBLIC_WORLD_MODE=real shows the World QR, user code and countdown while `awaiting_agent_pass`.
+ * M08 Approve: `agent.approveView(limits)`, then (live modes) `agent.setup(limits, { onStep })`: World Agent Pass,
+ * a private credential proof, the owner's mandate signature and the relayed registerMandate. `active` → Home,
+ * `denied` → M09, `expired` → M09 ?reason=expired. World ID red lines route first: banned → blocked,
+ * not verified → the onboarding World ID step. NEXT_PUBLIC_WORLD_MODE=real shows the World QR, user code and
+ * countdown while `awaiting_agent_pass`.
  */
 export function ApproveScreen({
   initial,
@@ -43,13 +51,32 @@ export function ApproveScreen({
   const router = useRouter();
   const { data, error } = useMRA(q.agentApprove(limits), { initial });
   const [step, setStep] = useState<AgentSetupStep | undefined>();
-  const setup = useMRAAction((m, l: AgentLimitsInput) => m.agent.setup(l, { onStep: setStep, ...(outcome ? { mockOutcome: outcome } : {}) }));
-  /* NEXT_PUBLIC_WORLD_MODE=real: the device-flow QR / code / deadline, published by lib/mra-browser. */
+  const setup = useMRAAction((m, l: AgentLimitsInput) =>
+    m.agent.setup(l, {
+      onStep: setStep,
+      ...(outcome ? { mockOutcome: outcome } : {}),
+    }),
+  );
   const worldPrompt = useWorldPrompt("agent-pass");
+
+  const redirect = data ? (data.banned ? blockedHref("banned") : data.humanVerified ? undefined : worldIdHref({ bind: true })) : undefined;
+  const errorHref = redlineHref(setup.error);
+  useEffect(() => {
+    const to = redirect ?? errorHref;
+    if (to) router.replace(to);
+  }, [redirect, errorHref, router]);
+
   if (!data) return <MRAState error={error} />;
   const { advance, agentLimits } = data;
   const worldReal = WORLD_MODE === "real";
-  const waitingOnWorld = setup.pending && step === "awaiting_agent_pass" && worldPrompt;
+  const waiting = setup.pending && step !== undefined;
+  const passPrompt = setup.pending && step === "awaiting_agent_pass" ? worldPrompt : undefined;
+  // The first draw is capped by the gradual unlock: suggest at most `availableNow`, and price the offer at that size.
+  const firstDraw = data.availableNow > 0 ? Math.min(agentLimits.perAdvance, data.availableNow) : agentLimits.perAdvance;
+  const capped = firstDraw < agentLimits.perAdvance;
+  const scale = advance.drawn > 0 ? firstDraw / advance.drawn : 1;
+  const owed = advance.owedNow * scale;
+  const maxFee = (firstDraw * advance.maxFeeBps) / 10_000;
 
   const approve = () => {
     setup.run(limits ?? agentLimits).then(
@@ -59,46 +86,118 @@ export function ApproveScreen({
     );
   };
 
+  const at = step ? STEP_INDEX[step] : 0;
+  const steps = SETUP_STEPS.map((s, i) => ({
+    label: s.label,
+    state: (i < at ? "done" : i === at ? "current" : "next") as "done" | "current" | "next",
+  }));
+
   return (
-    <>
-      <AppHeader home={routes.merchant} />
-      <Page dense className="justify-center">
-      <section className="mx-auto flex w-full max-w-140 flex-col overflow-hidden rounded-lg border border-hairline bg-surface shadow-lift lg:max-w-250 lg:grid lg:grid-cols-[5fr_7fr]">
-        <BlockPanel seed={5} dim={76} cols={6} rows={8} className="rounded-none" bodyClassName="gap-4 p-5 md:gap-5 md:p-7 lg:justify-center">
-          <span className="grid size-12 place-items-center rounded-full bg-lime text-charcoal" aria-hidden>
-            <LockIcon size={24} />
-          </span>
-          <HeroLabel>World Agent Pass · one time</HeroLabel>
-          <h1 className="m-0 font-display text-h1-sm text-canvas md:text-h1">Approve your agent once.</h1>
-          <Text className="text-honeydew">
-            Only you can turn the agent on. It can never draw past these limits. The recipient is your registered payout address; the
-            purpose is not enforced onchain.
-          </Text>
-        </BlockPanel>
-        <div className="flex flex-col gap-4 p-5 md:p-6 lg:gap-3">
-          <Text size="note">Illustrative terms at your maximum per-draw limit; future offers may differ. Mandate expires after 90 days.</Text>
-          <OfferDisclosure
-            principal={advance.drawn}
-            maxFeeBps={advance.maxFeeBps}
-            feeIfRepaidIn2Weeks={advance.feeIfRepaidIn2Weeks}
-            annualizedCostPercent={advance.annualizedCostPercent}
-            holdback={advance.holdback}
-            estimates={[100, 200, 400].map((sales, i) => ({
-              label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!,
-              days: Math.ceil(advance.owedNow / ((sales * advance.holdback) / 100)),
-            }))}
-          />
-          <ApproveMarks
-            rows={[
-              ["Max per advance", formatMoney(agentLimits.perAdvance)],
-              ["Max per month", formatMoney(agentLimits.perMonth)],
-              ["Draws for", capitalize(agentLimits.purpose)],
-            ]}
-            publicRows={[["Paid back from", `${formatPercent(advance.holdback)} of each payment`]]}
-          />
-          {waitingOnWorld ? <AgentPassWait prompt={waitingOnWorld} /> : null}
-          {setup.pending && step ? <Ledger role="status">{STEP_LABEL[step]}…</Ledger> : null}
-          {setup.error ? <Banner tone="risk">Not approved ({setup.error}). Nothing was drawn.</Banner> : null}
+    <SplitPage
+      panel={
+        <BrandPanel
+          home={routes.merchant}
+          eyebrow={waiting ? "World Agent Pass · awaiting approval" : "Your agent's first advance"}
+          title={
+            waiting ? (
+              <>
+                Approve in <Accent>World App.</Accent>
+              </>
+            ) : (
+              <>
+                {formatMoney(firstDraw).replace(/\.00$/, "")} for {agentLimits.purpose}, <Accent>repaid as you sell.</Accent>
+              </>
+            )
+          }
+          body={
+            waiting
+              ? "World checks that a real person stands behind this agent. Your name never leaves World App."
+              : "Your agent asks for an advance when stock runs low, inside the limits you set. The money goes straight to your supplier."
+          }
+        >
+          {waiting ? null : (
+            <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+              {[
+                `Advance ${formatMoney(firstDraw)}`,
+                `${formatPercent(advance.holdback)} of each payment`,
+                `Max fee ${formatMoney(maxFee)}`,
+              ].map((chip) => (
+                <li key={chip} className="rounded-md border border-honeydew/25 bg-honeydew/10 px-3 py-2 font-body text-note text-honeydew">
+                  {chip}
+                </li>
+              ))}
+            </ul>
+          )}
+        </BrandPanel>
+      }
+    >
+      {waiting ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <Heading level={2} size="h1">
+              Scan with World App
+            </Heading>
+            <Text>Approve the request in World App. This page moves on by itself.</Text>
+          </div>
+          {passPrompt ? <AgentPassWait prompt={passPrompt} /> : null}
+          <Card>
+            <Steps items={steps} />
+          </Card>
+          <p role="status" className="sr-only">
+            {steps.find((s) => s.state === "current")?.label ?? ""}
+          </p>
+        </>
+      ) : (
+        <>
+          <TextLink href={routes.agent.setup} className="w-fit text-note">
+            ‹ Change limits
+          </TextLink>
+          <div className="flex flex-col gap-2">
+            <Heading level={2} size="h1">
+              Approve your agent
+            </Heading>
+            <Text>Check the terms, then approve with World App. No money moves until you do.</Text>
+          </div>
+          <Card padding="lg">
+            <UnlockMeter
+              availableNow={data.availableNow}
+              limit={data.limit}
+              unlockSteps={data.unlockSteps}
+              nextUnlockAt={data.nextUnlockAt}
+            />
+            {capped ? (
+              <Text size="note">
+                Your first advance is up to {formatMoney(firstDraw)}. The rest of your {formatMoney(agentLimits.perAdvance)} per-advance limit unlocks as you pay on time.
+              </Text>
+            ) : null}
+          </Card>
+          <Card padding="lg">
+            <CardTitle>The offer</CardTitle>
+            <OfferDisclosure
+              principal={firstDraw}
+              maxFeeBps={advance.maxFeeBps}
+              feeIfRepaidIn2Weeks={advance.feeIfRepaidIn2Weeks * scale}
+              annualizedCostPercent={advance.annualizedCostPercent}
+              holdback={advance.holdback}
+              {...(advance.feeRule ? { feeRule: advance.feeRule } : {})}
+              estimates={[100, 200, 400].map((sales, i) => ({
+                label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!,
+                days: Math.ceil(owed / ((sales * advance.holdback) / 100)),
+              }))}
+            />
+            <ApproveMarks
+              rows={[
+                ["Max per advance", capped ? `${formatMoney(agentLimits.perAdvance)} (${formatMoney(firstDraw)} available now)` : formatMoney(agentLimits.perAdvance)],
+                ["Max per month", formatMoney(agentLimits.perMonth)],
+                ["Draws for", capitalize(agentLimits.purpose)],
+              ]}
+              publicRows={[["Paid back from", `${formatPercent(advance.holdback)} of each payment`]]}
+            />
+            <Text size="note">
+              Illustrative terms at your maximum per-draw limit; future offers may differ. Mandate expires after 90 days.
+            </Text>
+          </Card>
+          {setup.error && !errorHref ? <Banner tone="risk">Not approved ({setup.error}). Nothing was drawn.</Banner> : null}
           <ActionBar>
             {isMock ? (
               <Button href={routes.merchant}>Approve in World test mode</Button>
@@ -109,11 +208,10 @@ export function ApproveScreen({
             )}
             <Button href={routes.agent.denied} variant="ghost">
               Not now
-              </Button>
-            </ActionBar>
-          </div>
-        </section>
-      </Page>
-    </>
+            </Button>
+          </ActionBar>
+        </>
+      )}
+    </SplitPage>
   );
 }

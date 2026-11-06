@@ -192,7 +192,7 @@ function Eyebrow({ children, tone = "light" }: { children: ReactNode; tone?: "li
 /* ------------------------------------------------------------------ Hero */
 
 
-const PROMISES = ["0.5% a week, never more than 3%", "No late fees", "Your agent, your limits"];
+const PROMISES = ["0.5% a week, never more than 3%", "On time? Never more than 3%", "Your agent, your limits"];
 
 const PARTNERS = ["Uniswap v4", "World ID", "Anon-RPC"];
 
@@ -265,8 +265,8 @@ function Hero() {
 
 const WEEK_PROMISES: [PixelIconName, string, string][] = [
   ["check", "Fee capped at 3%", "0.5% a week while you owe. Pay early, pay less."],
-  ["calendar", "No late fees", "A slow day just pays back less."],
-  ["phone", "Nobody calling", "No reminders, no penalties, no pressure."],
+  ["calendar", "Slow day? Pay back less", "A slow day just pays back less. Fall behind the 1% weekly minimum and the fee doubles until you catch up."],
+  ["phone", "Nobody calling", "No reminders, no debt collectors, no pressure."],
 ];
 
 function BadWeek() {
@@ -307,7 +307,7 @@ function BadWeek() {
 
 /** Positioning: one line each. */
 const DIFFERENT: [PixelIconName, string, string][] = [
-  ["lock", "Private", "A ZK pass, so lenders never see who you are."],
+  ["lock", "Private", "A ZK pass and World ID, so lenders never see who you are."],
   ["shop", "Built for tiny shops", "Advances from $50 to $300."],
   ["agent", "An agent draws for you", "It restocks inside the limits you set."],
   ["chart", "Risk priced in public", "DripCoin trades on Uniswap, so anyone can see the risk."],
@@ -408,7 +408,7 @@ const SPONSORS: Sponsor[] = [
     h: 317,
     title: "The market prices default risk.",
     points: [
-      ["coin", "DripCoin, first loss, listed", "DripCoin is the junior tranche, an ERC-4626 vault. Its shares trade against USDC on a v4 pool."],
+      ["coin", "DripCoin, first loss, listed", "DripCoin (DRIP) is the first-loss tranche, an ERC-4626 vault. Its shares trade against USDC on a v4 pool."],
       ["swap", "RiskHook fee funds the reserve", "A USDC-only fee on swaps, flushed to the reserve that covers losses after DripCoin."],
       ["chart", "TWAP oracle: price drops, limits drop", "The risk agent compares the 1h and 24h TWAP. A fall of over 10% lowers lending limits."],
     ],

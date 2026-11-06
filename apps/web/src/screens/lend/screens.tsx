@@ -58,7 +58,7 @@ const FEE_SPLIT_LOOK: Record<string, { name: string; long: string; row: string; 
 };
 
 /** `mra.lender.earn().feeSplit` (4 rows of {k, v}) → stacked-bar parts plus a one-line label. */
-function feeSplitParts(rows: KV[] | undefined): { parts: (SplitPart & { row: string })[]; label: string } {
+function feeSplitParts(rows: KV[] | undefined): { parts: (SplitPart & { row: string; long: string })[]; label: string } {
   const src = rows?.length ? rows : FEE_SPLIT_DEFAULT;
   const parts = src.map((r) => {
     const key = r.k.trim().split(/[\s/]/)[0]?.toLowerCase() ?? "";
@@ -68,13 +68,20 @@ function feeSplitParts(rows: KV[] | undefined): { parts: (SplitPart & { row: str
   return { parts, label: `Fee split: ${parts.map((p) => `${p.pct}% ${p.long}`).join(", ")}` };
 }
 
+/** The worked example: a $100 advance repaid in 4 weeks pays a $2 fee (0.5% a week), split by the rows. */
+function feeExample(parts: (SplitPart & { long: string })[]): string {
+  const to = (p: SplitPart & { long: string }) => `$${((2 * p.pct) / 100).toFixed(2)} to ${p.long === "DripCoin" ? "DripCoin (DRIP)" : `the ${p.long}`}`;
+  return `A $100 advance repaid in 4 weeks pays a $2 fee: ${parts.map(to).join(", ")}.`;
+}
+
 /** Every advance sits on top of this much DripCoin cover. */
 const COVER_LINE = "Every advance has 20% DripCoin cover underneath it.";
 
 /** One stacked bar: who gets what. Widths from the numbers; labels inside when they fit. */
-function SplitStrip({ label, parts }: { label: string; parts: SplitPart[] }) {
+function SplitStrip({ label, parts, showLabel = false }: { label: string; parts: SplitPart[]; showLabel?: boolean }) {
   return (
     <div className="flex flex-col gap-3">
+      {showLabel ? <Label>{label}</Label> : null}
       <div role="img" aria-label={label} className="flex h-12 gap-1 overflow-hidden rounded-md">
         {parts.map((p) => (
           <span key={p.name} className={`flex min-w-0 items-center px-3 font-body text-note font-semibold whitespace-nowrap ${p.className}`} style={{ flexGrow: p.pct, flexBasis: 0 }}>
@@ -109,6 +116,7 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
   const VAULT = data.vault;
   const wroteOff = VAULT.writtenOff !== "$0" && VAULT.writtenOff !== "—";
   const series = data.seniorSeries;
+  const split = feeSplitParts(data.feeSplit);
   const last = series.at(-1) ?? 100;
   return (
     <LendShell>
@@ -183,6 +191,17 @@ export function EarnScreen({ initial, initialRisk }: { initial: EarnView | null;
               />
             </Card>
           </div>
+          </Reveal>
+          <Reveal delay={80}>
+          <Card padding="lg">
+            <Heading level={2} size="h2">
+              Where each advance fee goes
+            </Heading>
+            <SplitStrip showLabel label={split.label} parts={split.parts} />
+            <Text size="note" tone="muted">
+              A small weekly fee on every advance (max 3%). Most of it goes to the vault. {feeExample(split.parts)}
+            </Text>
+          </Card>
           </Reveal>
           {isMock ? (
             <Banner>A shop stopped selling. DripCoin took the $100 loss. The vault was not touched.</Banner>
@@ -344,7 +363,7 @@ export function DripCoinScreen({
     <LendShell>
       <div>
         <LendHero
-          label="DripCoin · DRIP"
+          label="DripCoin (DRIP)"
           title={
             <>
               Earn more. <span className="text-lime">Take losses first.</span>
@@ -373,7 +392,7 @@ export function DripCoinScreen({
             </>
           }
         >
-          DRIP is the first-loss layer under the vault. It earns {vault.feeShareJunior} of every advance fee and covers write-offs before vault lenders lose
+          DripCoin (DRIP) is the first-loss layer under the vault. It earns {vault.feeShareJunior} of every advance fee and covers write-offs before vault lenders lose
           anything.
         </LendHero>
       </div>
@@ -386,7 +405,7 @@ export function DripCoinScreen({
             { label: "Price", value: vault.juniorPrice, sub: "Uniswap v4" },
             { label: "Book value", value: price(V.juniorBook), sub: "Mint and redeem here" },
             { label: "DRIP outstanding", value: vault.junior },
-            { label: "Coverage", value: vault.coverage, sub: "DRIP + reserve vs advances out" },
+            { label: "Coverage", value: vault.coverage, sub: "DRIP cover vs advances out · 20% rule" },
           ]}
         />
       </div>
@@ -418,10 +437,9 @@ export function DripCoinScreen({
             <Heading level={2} size="h2">
               Where each advance fee goes
             </Heading>
-            <SplitStrip label={split.label} parts={split.parts} />
+            <SplitStrip showLabel label={split.label} parts={split.parts} />
             <Text size="note" tone="muted">
-              Fees are 0.5% a week while a shop owes, never more than 3%. A $100 advance repaid in 4 weeks pays $2: $0.80 to the vault, $0.60 to DRIP, $0.40
-              to the reserve, $0.20 to the protocol.
+              A small weekly fee on every advance (max 3%). Most of it goes to the vault. {feeExample(split.parts)}
             </Text>
             <Text size="note" tone="muted">
               The reserve slice builds the reserve, together with a small fee from every DRIP trade on Uniswap.
@@ -482,7 +500,7 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
   const { data, error } = useMRA(q.protocol, { initial });
   if (!data) return <MRAState error={error} />;
   const { vault: VAULT, tierCaps: TIER_CAPS } = data;
-  const lowered = TIER_CAPS.some((t) => t.was);
+  const lowered = TIER_CAPS.some((t) => t.was && t.was !== t.cap);
   const split = feeSplitParts(data.feeSplit);
   return (
     <LendShell>
@@ -500,7 +518,7 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
             { label: "Vault APY", value: VAULT.apy },
             { label: "Loss rate", value: VAULT.defaultRate },
             { label: "DRIP price (TWAP)", value: VAULT.juniorTwap },
-            { label: "Coverage", value: VAULT.coverage, sub: "DRIP + reserve" },
+            { label: "Coverage", value: VAULT.coverage, sub: "DRIP cover · 20% rule" },
           ]}
         />
       </div>
@@ -537,7 +555,7 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
                 rows={TIER_CAPS.map((t) => [
                   TIER_NAMES[t.tier] ?? `Tier ${t.tier}`,
                   <span key={t.tier} className="inline-flex items-baseline gap-2">
-                    {t.was ? <s className="font-ledger text-ledger font-normal text-charcoal-muted">was {t.was}</s> : null}
+                    {t.was && t.was !== t.cap ? <s className="font-ledger text-ledger font-normal text-charcoal-muted">was {t.was}</s> : null}
                     {t.cap}
                   </span>,
                 ])}
@@ -567,14 +585,14 @@ export function ProtocolScreen({ initial }: { initial: ProtocolView | null }) {
             </Heading>
             <KeyValue rows={split.parts.map((p) => [p.row, `${p.pct}%`])} />
             <Text size="note" tone="muted">
-              0.5% a week while the shop owes, never more than 3%.
+              A small weekly fee on every advance (max 3%). Most of it goes to the vault.
             </Text>
           </Card>
           <RowList>
             <ListRow
               href={routes.risk}
               title="Risk status"
-              sub={isMock ? "Tier 3 limit lowered today" : lowered ? "A limit was lowered" : "Signals and every limit change"}
+              sub={isMock ? "Tier 3 limit reviewed today" : lowered ? "A limit was lowered" : "Signals and every limit change"}
             />
             <ListRow href={routes.explorer} title="Explorer" sub="Every payment, advance and pass. No names" />
           </RowList>
@@ -679,7 +697,7 @@ export function RiskScreen({ initial }: { initial: RiskView | null }) {
                 rows={tierCaps.map((t) => [
                   TIER_NAMES[t.tier] ?? `Tier ${t.tier}`,
                   <span key={t.tier} className="inline-flex items-baseline gap-2">
-                    {t.was ? <s className="font-ledger text-ledger font-normal text-charcoal-muted">was {t.was}</s> : null}
+                    {t.was && t.was !== t.cap ? <s className="font-ledger text-ledger font-normal text-charcoal-muted">was {t.was}</s> : null}
                     {t.cap}
                   </span>,
                 ])}

@@ -1,4 +1,4 @@
-import { FEE_LINE, FEE_TERMS, feeAfterDays } from "@/lib/fees";
+import { FEE_LINE, FEE_RULE, FEE_TERMS, feeAfterDays } from "@/lib/fees";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { Card, KeyValue } from "./surface";
 import { Pill } from "./status";
@@ -19,6 +19,7 @@ export function OfferDisclosure({
   annualizedCostPercent,
   holdback,
   estimates = [],
+  feeRule = FEE_RULE,
 }: {
   principal: number;
   maxFeeBps: number;
@@ -26,6 +27,8 @@ export function OfferDisclosure({
   annualizedCostPercent: number;
   holdback: number;
   estimates?: { label: string; days: number }[];
+  /** `AdvanceVM.feeRule`: the on-time / late rule in the merchant's words. */
+  feeRule?: string;
 }) {
   const terms = { rateBpsPerWeek: FEE_TERMS.rateBpsPerWeek, capBps: maxFeeBps };
   return <Card tone="well" gap="sm">
@@ -38,12 +41,13 @@ export function OfferDisclosure({
         ["Yearly cost", `≈${formatPercent(Math.round(annualizedCostPercent))}/yr maximum (simple, not an APR)`],
       ]}
     />
+    {feeRule ? <Text size="note">{feeRule}</Text> : null}
     {estimates.map((e) => (
       <Text size="note" key={e.label}>
         {e.label}: {e.days > 0 ? `${e.days} days · fee ${formatMoney(feeAfterDays(principal, e.days, terms))}` : "estimate unavailable"}
       </Text>
     ))}
-    <Text size="note" tone="muted">The fee builds on the original advance, is paid before the advance itself and stops once it&rsquo;s paid off. Pay early, pay less. No late fees.</Text>
+    <Text size="note" tone="muted">The fee builds on the original advance, is paid before the advance itself and stops once it&rsquo;s paid off. Pay early, pay less.</Text>
   </Card>;
 }
 

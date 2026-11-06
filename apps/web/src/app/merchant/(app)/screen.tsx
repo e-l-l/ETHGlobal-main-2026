@@ -27,7 +27,9 @@ import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
 import { useMRA } from "@/lib/use-mra";
+import { isBehindDemo, withBehind } from "@/lib/mock/behind";
 import { BigFigure, CardTitle, DarkBlock, DarkMeter, HeroBlock, HeroLabel, ScreenHead, Tile } from "../_ui";
+import { BehindNotice, UnlockMeter } from "../_unlock";
 import { SalesFeed } from "./sales-feed";
 
 /** Live modes poll for new payments. Mock data never changes, so it isn't polled. */
@@ -38,22 +40,29 @@ const SALES_POLL_MS = 4000;
  * ready to cash out, `merchant.week()` for the week's dune while an advance is open).
  * Desktop: payments and the advance side by side, equal weight. Phones: one green summary on top, then payments.
  */
-export function HomeScreen({ initial }: { initial: HomeView | null }) {
-  const { data, error } = useMRA(q.home, { initial, ...(isMock ? {} : { refreshMs: SALES_POLL_MS }) });
+export function HomeScreen({ initial, demo }: { initial: HomeView | null; demo?: string }) {
+  const { data: raw, error } = useMRA(q.home, { initial, ...(isMock ? {} : { refreshMs: SALES_POLL_MS }) });
   const { data: agent, reload: reloadAgent } = useMRA(q.agentStatus);
   const { data: cash } = useMRA(q.cashOut);
-  const { data: week } = useMRA(q.week, { enabled: data?.advance != null });
+  const { data: week } = useMRA(q.week, { enabled: raw?.advance != null });
   const cur = useCurrency();
-  if (!data) return <MRAState error={error} />;
-  const { shop, today, agentSummary, agentLimits, advance, sales, limitsLadder, currentTier } = data;
+  if (!raw) return <MRAState error={error} />;
+  const data = isMock && isBehindDemo(demo) ? withBehind(raw) : raw;
+  const { shop, today, agentSummary, agentLimits, advance, sales, currentTier } = data;
+  const behind = advance?.isBehind === true;
   const holdback = advance?.holdback ?? 0;
   const agentOn = agent?.active === true;
   const toYou = Math.max(0, today.soldUsd - today.toRepayment);
   const available = cash?.available;
-  const cap = limitsLadder[currentTier]?.cap;
-  const nextCap = limitsLadder[currentTier + 1]?.cap;
   const lit = Math.min(4, Math.max(1, currentTier + 1)) as 1 | 2 | 3 | 4;
   const eta = advance ? (etaKnown(advance.etaDays) ? `${formatDays(advance.etaDays)} to go at this pace` : ETA_PENDING) : "";
+  // "Fee so far $x · owed now $y · eta", plus the late fee only when there is one; caution tone while behind.
+  const feeLine = advance ? (
+    <span className={behind ? "text-caution-tint" : undefined}>
+      Fee so far {formatMoney(advance.feeSoFar)} · owed now {formatMoney(advance.owedNow)} · {eta}
+      {advance.lateFee > 0 ? ` · late fee ${formatMoney(advance.lateFee)}` : ""}
+    </span>
+  ) : null;
 
   const agentPill = agentOn ? (
     <Pill tone="saving" dot>
@@ -78,6 +87,19 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
         }
       />
 
+      {data.banned ? (
+        <DarkBlock className="flex-row flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <HeroLabel>Advances off</HeroLabel>
+            <span className="font-body text-read text-canvas">This World ID can&apos;t borrow on DripMoni after a default. Payments still work.</span>
+          </div>
+          <Button href={routes.blocked} variant="lime" size="sm" width="auto">
+            What this means
+          </Button>
+        </DarkBlock>
+      ) : null}
+      {advance && behind ? <BehindNotice advance={advance} /> : null}
+
       {/* Phones and tablets: payments and the advance at a glance. */}
       <HeroBlock seed={3} className="lg:hidden">
         <div className="grid grid-cols-2 gap-4">
@@ -93,7 +115,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
             {advance ? (
               <>
                 <span className="font-display text-amount tabular-nums"><CountUp value={advance.left} format={formatMoney} /></span>
-                <Ledger className="text-honeydew">of {formatMoney(advance.drawn + advance.feeSoFar)}</Ledger>
+                <Ledger className="text-honeydew">of {formatMoney(advance.drawn + advance.feeSoFar + advance.lateFee)}</Ledger>
               </>
             ) : (
               <span className="font-body text-note text-honeydew">None open</span>
@@ -109,6 +131,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
                 Details
               </TextLink>
             </div>
+            <div className="font-body text-note text-honeydew">{feeLine}</div>
           </div>
         ) : null}
       </HeroBlock>
@@ -164,7 +187,7 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
 
           <div className="mt-auto hidden flex-wrap items-center justify-between gap-3 border-t border-hairline px-5 py-2.5 lg:flex">
             <Text size="note" tone="muted">
-              {advance ? "Each payment splits 92 to 8 automatically." : "Every payment goes straight to you."}
+              {advance ? `${formatPercent(holdback)} of each payment goes to your advance, automatically.` : "Every payment goes straight to you."}
             </Text>
             <Button href={routes.cashOut} variant="secondary" size="sm" width="auto">
               {available !== undefined ? `Cash out ${formatMoney(available)}` : "Cash out"}
@@ -186,7 +209,8 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
                 <div className="flex min-w-0 flex-col gap-1.5">
                   <BigFigure>{formatMoney(advance.left)}</BigFigure>
                   <Ledger className="text-honeydew">
-                    left of {formatMoney(advance.drawn + advance.feeSoFar)}{cur.dollarsOnly ? "" : ` · ${cur.approx(advance.left)}`}
+                    left of {formatMoney(advance.drawn + advance.feeSoFar + advance.lateFee)}
+                  {advance.lateFee > 0 ? ` · includes ${formatMoney(advance.lateFee)} late fee` : cur.dollarsOnly ? "" : ` · ${cur.approx(advance.left)}`}
                   </Ledger>
                 </div>
                 <JarMark lit={lit} on="dark" size={72} label={`Limit meter: tier ${currentTier} of 3`} />
@@ -197,26 +221,32 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
                   <span>
                     {formatMoney(advance.repaid)} paid back · {formatPercent(advance.pct)}
                   </span>
-                  <span>
-                    Fee so far {formatMoney(advance.feeSoFar)} · owed now {formatMoney(advance.owedNow)} · {eta}
-                  </span>
+                  {feeLine}
                 </div>
               </div>
             </HeroBlock>
           ) : (
             <HeroBlock seed={3} className="hidden rounded-none lg:flex">
               <HeroLabel>Advance</HeroLabel>
-              <span className="font-display text-h1 text-canvas">No open advance.</span>
-              <Text className="text-honeydew">Your agent draws one for stock when your payments can pay it back.</Text>
+              <span className="font-display text-h1 text-canvas">{data.banned ? "Advances off." : "No open advance."}</span>
+              <Text className="text-honeydew">
+                {data.banned ? "This World ID can't borrow on DripMoni after a default." : "Your agent draws one for stock when your payments can pay it back."}
+              </Text>
             </HeroBlock>
           )}
 
           <Card gap="sm" className="lg:rounded-none lg:border-0 lg:border-b lg:border-hairline lg:px-5 lg:py-4">
             <CardTitle
               end={
-                <TextLink href={agentOn ? routes.agent.log : routes.agent.setup} arrow>
-                  {agentOn ? "Activity" : "Set up"}
-                </TextLink>
+                agentOn ? (
+                  <TextLink href={routes.agent.log} arrow>
+                    Activity
+                  </TextLink>
+                ) : data.banned ? null : (
+                  <TextLink href={routes.agent.setup} arrow>
+                    Set up
+                  </TextLink>
+                )
               }
             >
               Your agent
@@ -253,16 +283,17 @@ export function HomeScreen({ initial }: { initial: HomeView | null }) {
             {agentOn ? <AgentStop onDone={reloadAgent} /> : null}
           </Card>
 
-          {cap !== undefined ? (
-            <Card className="flex-row flex-wrap items-center justify-between lg:rounded-none lg:border-0 lg:px-5 lg:py-3">
-              <div className="flex min-w-0 flex-col">
-                <span className="font-body text-note text-charcoal-muted">Your limit</span>
-                <span className="font-body text-read font-semibold text-charcoal">
-                  {formatMoney(cap)} now{nextCap !== undefined ? ` · ${formatMoney(nextCap)} after this is repaid` : ""}
-                </span>
-              </div>
-              <TextLink href={routes.repaid} arrow>
-                How it grows
+          {data.limit > 0 && !data.banned ? (
+            <Card className="lg:rounded-none lg:border-0 lg:px-7 lg:py-5">
+              <UnlockMeter
+                availableNow={data.availableNow}
+                limit={data.limit}
+                unlockSteps={data.unlockSteps}
+                nextUnlockAt={data.nextUnlockAt}
+                frozen={behind}
+              />
+              <TextLink href={routes.advance.details} arrow className="w-fit">
+                How it unlocks
               </TextLink>
             </Card>
           ) : null}

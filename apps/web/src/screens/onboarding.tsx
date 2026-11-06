@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   Accent,
   ActionBar,
+  AlertIcon,
   Banner,
   BrandPanel,
   Button,
@@ -20,8 +21,8 @@ import {
   TextLink,
 } from "@/final";
 import { copy, stepEyebrow } from "@/lib/copy";
-import { isFailReason, routes, type FailReason } from "@/lib/routes";
-import type { BusinessPassView } from "@repo/sdk";
+import { isFailReason, routes, worldIdHref, type FailReason } from "@/lib/routes";
+import { reasonMessage, type BusinessPassView } from "@repo/sdk";
 import { PanelBlocks } from "./panel-blocks";
 import { litTiles } from "./lit-tiles";
 import { FailSheet, PassFacts, StepProgress } from "./onboarding-client";
@@ -47,8 +48,8 @@ function FormHead({ title, children }: { title: ReactNode; children?: ReactNode 
   );
 }
 
-/* M01 Welcome. One promise, one action. */
-export function WelcomeScreen() {
+/* M01 Welcome. One promise, one action: World ID first. Mock: `?mockWorld=` is forwarded to the World ID screen. */
+export function WelcomeScreen({ mockWorld }: { mockWorld?: string } = {}) {
   const t = copy.welcome;
   const icons = [<ShieldIcon key="s" size={22} />, <LockIcon key="l" size={22} />, <CheckIcon key="c" size={22} />];
   return (
@@ -88,7 +89,7 @@ export function WelcomeScreen() {
           {t.restore}
         </TextLink>
         <ActionBar>
-          <Button href={routes.prove}>{t.cta}</Button>
+          <Button href={worldIdHref({ mockWorld })}>{t.cta}</Button>
           <Button href={routes.home} variant="ghost">
             {t.back}
           </Button>
@@ -108,7 +109,7 @@ export function ProveScreen() {
         panel={
           <BrandPanel
             top={<PanelBlocks seed={11} lit={litTiles(1)} />}
-            eyebrow={stepEyebrow(1)}
+            eyebrow={stepEyebrow(2)}
             title={
               <>
                 {t.title} <Accent>{t.accent}</Accent>
@@ -118,7 +119,7 @@ export function ProveScreen() {
           />
         }
       >
-        <StepProgress at={1} />
+        <StepProgress at={2} />
         <FormHead title={t.heading}>{t.body}</FormHead>
         <section aria-label={t.whereSell} className="flex flex-col gap-2">
           <Label>{t.whereSell}</Label>
@@ -192,7 +193,7 @@ export function PassScreen({ initial }: { initial: BusinessPassView | null }) {
       <SplitPage
         panel={
           <BrandPanel
-            eyebrow={stepEyebrow(3)}
+            eyebrow={stepEyebrow(4)}
             title={
               <>
                 {t.title} <Accent>{t.accent}</Accent>
@@ -211,7 +212,7 @@ export function PassScreen({ initial }: { initial: BusinessPassView | null }) {
           />
         }
       >
-        <StepProgress at={3} />
+        <StepProgress at={4} />
         <FormHead title={t.heading}>{t.body}</FormHead>
         <div>
           <Card as="section" aria-label="Business Pass" tone="tint">
@@ -281,5 +282,64 @@ export function FailedScreen({ reason }: { reason?: string }) {
         </ActionBar>
       </SplitPage>
     </>
+  );
+}
+
+/* M01b World ID stop screen. `checkHuman()` said no: banned after a default, or an open advance on another shop.
+ * The red lines end here: no business steps after it and no retry button. Any other reason never lands here (the
+ * World ID screen offers a retry instead), but if one does, it links back to that screen.
+ */
+export function WorldStoppedScreen({ reason }: { reason?: string }) {
+  const t = copy.worldId;
+  const s = t.stop;
+  const banned = reason === "human_banned";
+  const open = reason === "human_has_open_advance";
+  const redLine = banned || open;
+  const message = reasonMessage(reason ?? "verification_failed");
+  return (
+    <SplitPage
+      panel={
+        <BrandPanel
+          top={<PanelBlocks seed={5} calm />}
+          eyebrow={s.eyebrow}
+          title={
+            <>
+              {t.panelTitle} <Accent>{t.accent}</Accent>
+            </>
+          }
+          body={t.panel}
+        />
+      }
+    >
+      <div className="flex flex-col items-start gap-3.5">
+        {banned ? (
+          <span aria-hidden className="grid size-12 place-items-center rounded-full bg-charcoal text-lime">
+            <LockIcon size={22} />
+          </span>
+        ) : (
+          <span aria-hidden className="grid size-12 place-items-center rounded-full bg-caution-tint text-caution">
+            <AlertIcon size={22} />
+          </span>
+        )}
+        <Pill tone={banned ? "risk" : "slow"}>{banned ? s.bannedTag : open ? s.openTag : t.failedTitle}</Pill>
+        <FormHead title={message}>{banned ? s.bannedBody : open ? s.openBody : t.failedBody}</FormHead>
+      </div>
+      <Banner tone="caution">{s.nothing}</Banner>
+      <Card as="section" aria-label="Why" tone="well">
+        <Label>Why</Label>
+        <Text size="note">{s.why}</Text>
+      </Card>
+      <ActionBar>
+        {redLine ? null : <Button href={routes.worldId}>{t.retry}</Button>}
+        {open ? (
+          <Button href={routes.merchant} variant="secondary">
+            {s.openShop}
+          </Button>
+        ) : null}
+        <Button href={routes.home} variant={redLine && !open ? "secondary" : "ghost"}>
+          {s.back}
+        </Button>
+      </ActionBar>
+    </SplitPage>
   );
 }

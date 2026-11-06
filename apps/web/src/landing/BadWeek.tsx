@@ -40,11 +40,12 @@ export function BadWeek() {
     <Section className="flex flex-wrap items-center gap-12">
       <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-4">
         <Eyebrow>Built for real weeks</Eyebrow>
-        <SectionTitle>A slow week never costs more than 3%.</SectionTitle>
+        <SectionTitle>On time, it never costs more than 3%.</SectionTitle>
         <Text className="m-0">
-          Fee 0.5% per week while you owe, never more than 3%. When sales slow
-          down, paying back slows with them. No penalty, no late fee, nobody
-          calling. Pay early, pay less.
+          Fee 0.5% per week while you owe, never more than 3%. A slow week just
+          slows repayment. Keep paying the 1% weekly minimum and the fee stays
+          0.5% a week. Fall behind it and the fee doubles until you catch up.
+          Pay early, pay less.
         </Text>
       </div>
       <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-3">
