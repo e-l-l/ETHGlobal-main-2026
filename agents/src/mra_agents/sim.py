@@ -19,8 +19,8 @@ ARCHETYPES = [
     {"id": "honest_kiosk", "name": "Honest kiosk", "city": "Buenos Aires", "emoji": "🏪", "blurb": "Steady sales", "expected": "Repays and claims a Standing Pass"},
     {"id": "slow_week", "name": "Slow week", "city": "Lagos", "emoji": "📉", "blurb": "Sales dip for a week", "expected": "Repayment slows without a penalty"},
     {"id": "wash_ring", "name": "Wash ring", "city": "", "emoji": "🔄", "blurb": "Circular funding and few payers", "expected": "Red lines or Critic reject"},
-    {"id": "defaulter", "name": "Defaulter", "city": "", "emoji": "⚠️", "blurb": "Sales stop after drawing", "expected": "Write-off and risk response"},
-    {"id": "repeat_borrower", "name": "Repeat borrower", "city": "", "emoji": "🔁", "blurb": "A returning merchant", "expected": "Standing Pass and a tier-1 offer"},
+    {"id": "defaulter", "name": "Defaulter", "city": "", "emoji": "⚠️", "blurb": "Sales stop after drawing", "expected": "Write-off, World ID ban; a new shop is refused"},
+    {"id": "repeat_borrower", "name": "Repeat borrower", "city": "", "emoji": "🔁", "blurb": "A returning merchant", "expected": "Standing Pass, then tier 1 at 50% of the limit"},
 ]
 
 

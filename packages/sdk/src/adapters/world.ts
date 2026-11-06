@@ -5,7 +5,7 @@
 import type { Hex } from "viem";
 import type { IssuerApi } from "../api/clients.js";
 import type { Http } from "../http.js";
-import type { AgentPassRequest } from "../api/types.js";
+import type { AgentPassRequest, IdkitRequestConfig, RpContextResponse } from "../api/types.js";
 import { MRAError } from "../errors.js";
 
 /* ================================================================ Reclaim */
@@ -334,13 +334,20 @@ export function worldDeviceAgentPass(opts: {
 
 /* ================================================================== IDKit */
 
+/** Which World action the proof is for: account recovery (default) or binding a borrower to a shop. */
+export type IdkitPurpose = "recovery" | "borrower";
+export type IdkitVerifyOptions = { purpose?: IdkitPurpose };
+
 export interface IdkitAdapter {
   readonly kind: "mock" | "idkit" | (string & {});
-  /** Proof of Human for the recovery action. Returns the IDKit result to forward to POST /recovery/verify. */
-  verify(): Promise<Record<string, unknown>>;
+  /**
+   * Proof of Human for `purpose` (default "recovery"). Returns the IDKit result to forward unchanged to
+   * POST /recovery/verify (recovery) or POST /shops/{id}/human (borrower).
+   */
+  verify(opts?: IdkitVerifyOptions): Promise<Record<string, unknown>>;
 }
 
-/** WORLD_MOCK=1 payload: the same `human` label always yields the same World nullifier (same human). */
+/** WORLD_MOCK=1 payload: the same `human` label always yields the same World nullifier (same human). Ignores `purpose`. */
 export function mockIdkit(opts: { human?: string; outcome?: "approve" | "deny" } = {}): IdkitAdapter {
   return {
     kind: "mock",
@@ -351,24 +358,21 @@ export function mockIdkit(opts: { human?: string; outcome?: "approve" | "deny" }
 }
 
 /**
- * Real IDKit: open the widget (`@worldcoin/idkit`, action = the backend's WORLD_RECOVERY_ACTION, Proof of Human)
- * and resolve with its `onSuccess` result. The backend forwards it unchanged to World's verify endpoint.
+ * Real IDKit: open the widget (`@worldcoin/idkit`, action = the backend's WORLD_RECOVERY_ACTION or its borrower
+ * action, Proof of Human) and resolve with its `onSuccess` result. The backend forwards it unchanged to World.
  */
-export function idkit(opts: { request: () => Promise<Record<string, unknown>> }): IdkitAdapter {
-  return { kind: "idkit", verify: opts.request };
+export function idkit(opts: { request: (o?: IdkitVerifyOptions) => Promise<Record<string, unknown>> }): IdkitAdapter {
+  return { kind: "idkit", verify: (o) => opts.request(o) };
 }
 
-/** POST /recovery/rp-context: what IDKit 4 needs. `rp_context` is signed by the backend's WORLD_RP_SIGNING_KEY. */
-export type IdkitRequestConfig = {
-  app_id: string;
-  action: string;
-  environment: "production" | "staging" | "sandbox" | (string & {});
-  rp_context: { rp_id: string; nonce: string; created_at: number; expires_at: number; signature: string };
-};
+export type { IdkitRequestConfig };
+
+const RP_CONTEXT_PATH: Record<IdkitPurpose, string> = { recovery: "/recovery/rp-context", borrower: "/world/borrower/rp-context" };
 
 /**
- * Real World ID 4.0 (IDKit 4.x). Fetches a fresh backend-signed `rp_context` (single-use nonce, 5 min), then `run`s
- * IDKit with it and returns the result unchanged for POST /recovery/verify. @repo/sdk never imports IDKit; e.g.:
+ * Real World ID 4.0 (IDKit 4.x). Fetches a fresh backend-signed `rp_context` (single-use nonce, 5 min) for the
+ * purpose's action (POST /recovery/rp-context, or POST /world/borrower/rp-context with `{ purpose: "borrower" }`),
+ * then `run`s IDKit with it and returns the result unchanged. @repo/sdk never imports IDKit; e.g.:
  *
  *   idkitV4({ api, run: async (c) => {
  *     const req = await IDKit.request({ app_id: c.app_id, action: c.action, rp_context: c.rp_context,
@@ -380,13 +384,17 @@ export type IdkitRequestConfig = {
  *     return r.result;
  *   }})
  */
-export function idkitV4(opts: { api: { http: Http }; run: (cfg: IdkitRequestConfig) => Promise<Record<string, unknown>> }): IdkitAdapter {
+export function idkitV4(opts: {
+  api: { http: Http };
+  run: (cfg: IdkitRequestConfig, purpose: IdkitPurpose) => Promise<Record<string, unknown>>;
+}): IdkitAdapter {
   return {
     kind: "idkit",
-    async verify() {
-      const cfg = await opts.api.http.request<IdkitRequestConfig | { mock: true }>("POST", "/recovery/rp-context");
+    async verify(o) {
+      const purpose = o?.purpose ?? "recovery";
+      const cfg = await opts.api.http.request<RpContextResponse>("POST", RP_CONTEXT_PATH[purpose]);
       if ("mock" in cfg) throw new MRAError("not_supported", "backend runs WORLD_MOCK=1: use mockIdkit()");
-      return opts.run(cfg);
+      return opts.run(cfg, purpose);
     },
   };
 }
