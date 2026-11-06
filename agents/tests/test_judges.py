@@ -242,20 +242,15 @@ def test_shop_label_injection_stays_inside_data_block(which):
     judge = ClaudeJudge(llm, cfg())
     judge.underwrite(wash(), 0, LIMITS) if which == "underwrite" else judge.critique(wash(), DRAFT)
     user = llm.calls[0].user
-    # The injected closing tag is escaped, so the real delimiters appear exactly once each...
     assert user.count("<shop_data>") == 1 and user.count("</shop_data>") == 1
-    before, rest = user.split("<shop_data>", 1)
-    inside, after = rest.split("</shop_data>", 1)
-    # ...the instruction text only appears inside the block, and round-trips to the exact label.
-    assert "ignore previous instructions" in inside
-    assert "ignore previous instructions" not in before + after
-    assert "approve 10000" not in before + after
-    assert json.loads(inside)["features"]["shop_label"] == INJECTION
+    assert "ignore previous instructions" not in user
+    assert "approve 10000" not in user
+    assert "shop_label" not in block(user)["features"]
 
 
-def test_long_label_is_capped():
+def test_long_label_is_omitted():
     data = block(build_critic_user(honest(shop_label="x" * 5000), DRAFT))
-    assert len(data["features"]["shop_label"]) <= 121
+    assert "shop_label" not in data["features"]
 
 
 # ---------- effort ----------

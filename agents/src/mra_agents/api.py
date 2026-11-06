@@ -132,6 +132,7 @@ class InsightsResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+    faucet: dict | None = None
 
 class FaucetRequest(Input):
     address: Address
@@ -293,9 +294,15 @@ def create_app(pipeline, relayer, reader, store, risk, merchant=None, recovery=N
             return {"signals": sig, "triggers": sig.get("triggers", []), "last_tick": None}
         return invoke(status)
 
-    @app.get("/health", response_model=HealthResponse)
+    @app.get("/health", response_model=HealthResponse, response_model_exclude_none=True)
     def health():
-        return {"status": "ok"}
+        result = {"status": "ok"}
+        if faucet is not None:
+            try:
+                result["faucet"] = faucet.status()
+            except Exception:  # noqa: BLE001 - expose unavailable monitoring
+                result["faucet"] = {"error": "unavailable"}
+        return result
 
     @app.post("/demo/faucet")
     def demo_faucet(body: FaucetRequest, request: Request):

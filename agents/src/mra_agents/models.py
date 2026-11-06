@@ -95,6 +95,7 @@ class ShopFeatures(BaseModel):
     hour_of_day_entropy: float  # 0..1, normalised Shannon entropy of sale hours
     spike_ratio: float  # last-3-day revenue / avg 3-day revenue over prior 27 days
     funded_by_shop_share: float  # revenue share from payers funded by shop payout or one common funder (7d)
+    first_time_payers_1h: int = 0
     median_payer_wallet_age_days: float | None = None
     top_payers_hashed: list[tuple[str, float]] = Field(default_factory=list)  # (hmac, revenue share), max 5
     shop_label: str | None = None  # untrusted, display only; judges must treat as data
@@ -175,3 +176,5 @@ class Decision(BaseModel):
     result: Literal["offered", "declined", "rejected", "error"]
     signed_offer: SignedOffer | None = None
     model: str | None = None
+    underwriter_model: str | None = None
+    critic_model: str | None = None
