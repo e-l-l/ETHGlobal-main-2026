@@ -39,6 +39,10 @@ The **World view** toggle on every screen shows exactly which data is onchain an
 | Part | State |
 |---|---|
 | Web app: every screen for merchant, customer, lender, DripCoin holder and public users | ✅ Built, responsive (390px phone, 1440px desktop). Reads through `@repo/sdk`: mock by default, live on Sepolia with `NEXT_PUBLIC_MRA_MODE=sepolia` |
+| Landing page (`/`) | ✅ Redesigned: pixel-art hero, bento and mosaic blocks, a day-of-sales timeline and a bad-week chart that animate on scroll (`apps/web/src/app/_landing/`). The first landing is kept at `/old-landing`. |
+| Wallet connect | ✅ RainbowKit + wagmi (the Scaffold-ETH 2 stack) on Sepolia. A wallet prompt only appears on click; page load checks silently and falls back to the on-device wallet. |
+| Faucet (`/faucet`) | ✅ Gas, test USDC and DRIP to any address, plus "Add to MetaMask" |
+| Loading states | ✅ Page skeleton plus a status card (steps, elapsed time, why private reads are slower) |
 | Design system (`/final/components`) | ✅ Built |
 | Demo seller portal | ✅ Built (inside the web app, deliberately unbranded) |
 | Contracts (Foundry): AdvanceBook, BusinessPassRegistry, vault and DripCoin ERC-4626 tranches, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 170 Foundry tests (offline suite) |
@@ -87,7 +91,7 @@ pnpm install
 pnpm dev
 ```
 
-Open <http://localhost:3001/home> to choose a role (merchant, lender or public dashboard).
+Open <http://localhost:3001> for the landing page, or <http://localhost:3001/home> to choose a role (merchant, lender or public dashboard).
 
 | Command (repo root) | What it does |
 |---|---|
@@ -102,9 +106,14 @@ Open <http://localhost:3001/home> to choose a role (merchant, lender or public d
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `NEXT_PUBLIC_MRA_MODE` | `mock` | `mock` (built-in demo data, no network), `local` (anvil + local services) or `sepolia` (live). |
+| `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ISSUER_URL` | unset | Agents API and Business Pass issuer. Required for `sepolia`. |
+| `NEXT_PUBLIC_ANON_RPC` | on for `sepolia` | Route browser reads through Anon-RPC (Nox). Set `NEXT_PUBLIC_ANON_RPC_STRICT=1` to fail closed. |
+| `NEXT_PUBLIC_WORLD_MODE` | mock | `real` uses World IDKit + Agent Pass. |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | unset | WalletConnect project id for the RainbowKit connect button. Optional: without it the on-device wallet is used. |
 | `NEXT_PUBLIC_SHOW_KIT` | unset | Set to `1` to serve the component gallery (`/final/components`) in a production build. It is always on in dev. |
 
-No other secrets are needed today. All data comes from `apps/web/src/lib/mock`.
+The default `mock` mode needs no secrets and reads from `apps/web/src/lib/mock`. Every `NEXT_PUBLIC_*` value ends up in the browser bundle, so no secrets belong there. Full list with comments: [`apps/web/.env.example`](apps/web/.env.example); keys for real mode: [integration-keys.md](docs/integration-keys.md).
 
 ## Tour of the app
 
@@ -117,7 +126,8 @@ No other secrets are needed today. All data comes from `apps/web/src/lib/mock`.
 | Lender | `/earn` | Vault: overview, deposit / withdraw, position |
 | Risk taker | `/dripcoin` | DripCoin (DRIP): overview, mint / redeem, trade on Uniswap v4 |
 | Public / judges | `/protocol`, `/proof`, `/simulator` | Protocol dashboard, `/risk` status, `/explorer`, the proof center, and the simulator |
-| Dev | `/screens`, `/final/components` | Every screen on one page; the component gallery |
+| Anyone | `/` , `/faucet` | The landing page; the testnet faucet (gas, test USDC, DRIP) |
+| Dev | `/screens`, `/covers`, `/final/components` | Every screen on one page (`pnpm --filter web screenshots` captures them); cover-image generator; the component gallery |
 
 Every route lives in [`apps/web/src/lib/routes.ts`](apps/web/src/lib/routes.ts). Link through `routes.*` rather than hard-coding paths.
 
@@ -191,7 +201,7 @@ Full spec: [anay-design.md](anay-design.md).
 
 ## Tech stack
 
-Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 · Radix UI primitives · class-variance-authority · tailwind-merge · Playwright + axe-core · Turborepo · pnpm.
+Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 · RainbowKit + wagmi · Radix UI primitives · class-variance-authority · tailwind-merge · Playwright + axe-core · Turborepo · pnpm.
 
 Onchain and services: Solidity (Foundry) · Uniswap v4 hooks · ERC-4626 · Noir + bb.js (UltraHonk) · World Agent Pass / IDKit 4 · Reclaim zkTLS · Anon-RPC (Nox, Nym) · Python (FastAPI, web3.py, AWS Bedrock) · Node (Fastify) · viem · Ethereum Sepolia.
 
@@ -213,7 +223,7 @@ Secrets live in git-ignored `.env` files; each folder has a `.env.example`.
 
 ## Development history
 
-This repository was assembled on 6 Nov from the team's working repo; full commit history: TODO(team): link the original repository.
+This repository was assembled on 6 Nov from the team's working repo, then continued here through 7 Nov (wallet connect, faucet, loading states, privacy hygiene, landing redesign). Full commit history: TODO(team): link the original repository.
 
 ## License
 
