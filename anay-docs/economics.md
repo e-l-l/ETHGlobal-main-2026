@@ -1,38 +1,33 @@
-# Economics
+# DripMoni contract economics
 
-The merchant receives a fixed advance and repays principal plus a flat fee from sales routed through DripMoni while an advance is active. There is no holdback without an active advance. The contract permits factors of 1.10–1.50 and repayment slices of 5–20%; 1.15 and 10% are demo examples. Diversion of sales to other channels can prevent repayment.
+Illustrative contract economics for the current pilot parameters. These are not forecasts or legal disclosures. The fee accrues at 50 bps per week on original principal while principal remains, caps at 300 bps, and is collected fee-first. Paying principal sooner reduces the fee. The merchant holdback is 8% of each sale while the advance is active; there is no checkout fee.
 
-## A $100 offer
+## Merchant cost
 
-At factor 1.15 the merchant receives $100 and owes $115: $100 principal plus a $15 fee. A 10% repayment slice requires $1,150 in captured sales for full repayment. Illustrative simple annualized cost is 15% × 365 / days, not an APR derived from actual cash flows:
-
-| Captured sales per day | Repayment per day | Estimated days | Simple annualized cost |
+| Time outstanding | Fee on $100 | Total repaid if paid then | Simple annualized cost |
 |---:|---:|---:|---:|
-| $50 (slow) | $5 | 23 | 238% |
-| $100 (normal) | $10 | 11.5 | 476% |
-| $200 (busy) | $20 | 5.75 | 952% |
+| 1 week | $0.50 | $100.50 | 26% |
+| 2 weeks | $1.00 | $101.00 | 26% |
+| 4 weeks | $2.00 | $102.00 | 26% |
+| 6 weeks | $3.00 | $103.00 | 26% (fee cap reached) |
 
-These are estimates assuming constant captured sales; actual payment timing and effective APR differ. There are no real loss data for this testnet prototype.
+Disclosure: “Fee 0.5% per week while you owe, never more than 3%.” This simple annualized figure is not an APR derived from actual sale cash flows. The 8% holdback controls payment pace; it is not an additional fee.
 
-## Fee and loss waterfall
+## Fee waterfall and lender scenarios
 
-On full repayment of $100 at 1.15, the $15 fee currently goes 60/30/10: **$9 senior, $4.50 junior, $1.50 reserve; protocol operating revenue is $0**. Payments split principal and fee pro rata. Reserve is loss capital, not revenue. A proposed split is **$8 senior, $4 junior, $1.50 reserve, $1.50 protocol**; this is proposed, contract change pending. A write-off covers unpaid principal from junior, then reserve, then senior; a caller may receive up to $5 from reserve remaining after coverage. Senior is not guaranteed.
+For a $100 advance repaid after four weeks, the $2 fee is allocated 40/30/20/10: $0.80 senior, $0.60 junior/DRIP, $0.40 reserve, and $0.20 protocol. Fees are distributed only as collected. Junior cover is 20% of senior outstanding and absorbs losses first, then reserve, then senior. At 75% utilization, a 4-week cycle, and 12 cycles/year, the illustrative senior return is $0.80 × 12 = **9.6%** on the lending base in this simple model. Utilization changes capital efficiency and idle cash, not fee earned per dollar lent. Neither is guaranteed.
 
-DripCoin (DRIP): junior, takes losses first. Junior withdrawals are constrained by 10% of senior outstanding, but new draws do not enforce that ratio; losses can also reduce coverage. Outstanding principal is valued at face value until write-off. Idle liquidity limits withdrawals.
+DRIP return illustration assumes $20 junior cover per $100 senior principal and deducts each stated loss from that cover before annualizing 12 cycles:
 
-The v4 pool charges a **0.30% LP fee** and a separate **0.30% hook fee only when USDC is the unspecified swap currency**; hook proceeds go to reserve. Pool LPs face inventory and adverse-selection risk and do not earn advance fees merely by supplying USDC. Thin seeded pool prices can reflect liquidity needs or manipulation, not just credit risk; the Risk agent's TWAP trigger can tighten credit.
+| Loss per 4-week cycle | DRIP annualized simple return |
+|---:|---:|
+| 0.25% | 21% |
+| 0.50% | 6% |
+| 1.00% | -24% |
+| 2.00% | -84% |
 
-### Illustrative break-even default rates
+These simplified sensitivities do not model correlated defaults, recoveries, late repayments, provisioning, liquidity constraints, or market price. DRIP is the junior ERC-4626 share token, takes losses first, and can lose value. The protocol's 10% fee share yields **$2,000 per $1 million lent** at the four-week fee, before costs. RiskHook fees route 75% to reserve and 25% to treasury. Tier caps are $50/$100/$200/$300. No checkout processing fee is charged.
 
-For equal $100 advances, full repayment or immediate total loss, no recoveries, operating costs or time value: whole book **13.04%**, junior absorbing each default in full **4.31%**, senior with no protection **8.26%**, and senior with a hypothetical aggregate junior buffer of 10% of original principal plus reserve funded only by successful advances approximately **10.45%**. These are loss-frequency illustrations, not forecasts or APYs. Timing, concentrations, partial repayment, idle capital, costs and bounties change outcomes.
+## Limits and caveats
 
-## Tier caps
-
-| Tier | Maximum |
-|---|---:|
-| 0 | $50 |
-| 1 | $100 |
-| 2 | $250 |
-| 3+ | $500 |
-
-Actual offers are further limited by revenue band, mandate, underwriting and risk limits. The demo Business Pass uses a mock attestor; a genuine external revenue figure would still not establish future captured sales. A settlement-integrated payment-provider partnership is a distribution hypothesis, not a validated channel.
+The onchain minimum repayment is 1% of original principal plus fee accrued by the repayment point per 7-day window. Full principal payoff stops further fee accrual. Contract `AdvanceOpened.totalOwed` records the maximum amount at the fee cap; live owed is principal outstanding plus accrued unpaid fee. A merchant can divert sales, and the pool can incur losses beyond junior cover and reserve. This pilot has no validated loss history and no guaranteed lender return.

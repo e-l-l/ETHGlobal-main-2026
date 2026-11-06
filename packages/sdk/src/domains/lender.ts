@@ -85,7 +85,7 @@ export async function lenderSnapshot(ctx: Ctx): Promise<LenderSnapshot> {
     0,
   );
   const writtenOff = writeOffs.reduce((t, e) => t + usd(e.args.loss as bigint), 0);
-  const reserveBps = 10_000 - snap.seniorFeeBps - snap.juniorFeeBps;
+  const reserveBps = snap.reserveFeeBps;
   const twap = settled(twapR);
   const spot = settled(spotR);
   const deposited = (settled(depR) ?? []).reduce((t, e) => t + usd(e.args.assets as bigint), 0) - (settled(wdR) ?? []).reduce((t, e) => t + usd(e.args.assets as bigint), 0);
@@ -109,7 +109,7 @@ export async function lenderSnapshot(ctx: Ctx): Promise<LenderSnapshot> {
     reserve: money(usd(snap.reserve)),
     coverage: coverageStr(coveragePct(snap.juniorAssets, snap.reserve, snap.seniorOutstanding)),
     feeShareJunior: pctStr(snap.juniorFeeBps / 100, 0),
-    feeSplit: `${snap.seniorFeeBps / 100}% senior · ${snap.juniorFeeBps / 100}% junior · ${reserveBps / 100}% reserve`,
+    feeSplit: `${snap.seniorFeeBps / 100}% senior · ${snap.juniorFeeBps / 100}% junior/DRIP · ${reserveBps / 100}% reserve · ${snap.protocolFeeBps / 100}% protocol`,
     receivedShares: pos ? `${num(usd(pos.seniorShares))} sUSD` : dash,
     juniorPrice: spot !== undefined ? usd3(tickPrice(spot)) : usd3(juniorBook),
     juniorTwap: twap !== undefined ? usd3(tickPrice(twap)) : dash,
@@ -126,6 +126,7 @@ export async function lenderSnapshot(ctx: Ctx): Promise<LenderSnapshot> {
     { k: "Senior", v: pctStr(snap.seniorFeeBps / 100, 0) },
     { k: "Junior", v: pctStr(snap.juniorFeeBps / 100, 0) },
     { k: "Reserve", v: pctStr(reserveBps / 100, 0) },
+    { k: "Protocol", v: pctStr(snap.protocolFeeBps / 100, 0) },
   ];
   const waterfall: [LossTier, LossTier, LossTier] = [
     { title: "Junior", description: "Takes the first write-off", amount: vault.junior },

@@ -76,7 +76,7 @@ contract StandingPassE2ETest is Test {
     }
 
     function _offer(address recipient) internal view returns (Offer memory o, bytes memory sig) {
-        o = Offer(OFFER_ID, SHOP, recipient, 100e6, 50, 300, 1000, 1, 0, 0, uint64(block.timestamp + 1 days));
+        o = Offer(OFFER_ID, SHOP, recipient, 100e6, 50, 300, 1000, 1, 0, 0, uint64(vm.getBlockTimestamp() + 1 days));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PK, book.hashOffer(o));
         sig = abi.encodePacked(r, s, v);
     }

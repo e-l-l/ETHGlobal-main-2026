@@ -16,7 +16,8 @@ from .llm import data_block, load_prompt
 from .models import (
     ALLOWED_AMOUNTS,
     BAND_MIN_MONTHLY_USD,
-    FACTOR_BPS_RANGE,
+    FEE_RATE_BPS_PER_WEEK,
+    FEE_CAP_BPS,
     HOLDBACK_BPS_RANGE,
     MAX_TIER,
     ChainLimits,
@@ -31,8 +32,7 @@ UNDERWRITER_SYSTEM = load_prompt("underwriter")
 RISK_SYSTEM = load_prompt("risk")
 
 USDC = 1_000_000
-REFERENCE_FACTOR_BPS = 11_500
-SAMPLE_HOLDBACKS_BPS = (500, 1_000, 1_500, 2_000)
+SAMPLE_HOLDBACKS_BPS = (800,)
 MAX_DAYS_SHOWN = 365  # "a year or more"
 
 
@@ -64,40 +64,67 @@ def days_to_repay(total_owed_usd: float, pace_usd_per_day: float, holdback_bps: 
     return min(MAX_DAYS_SHOWN, math.ceil(total_owed_usd / per_day))
 
 
-def offer_options(features: ShopFeatures, tier: int, limits: ChainLimits) -> tuple[dict[str, Any], dict]:
-    """(options for the prompt, paces). Days are at REFERENCE_FACTOR_BPS."""
+def time_fee_usd(principal_usd: float, days: float, rate: int = FEE_RATE_BPS_PER_WEEK, cap: int = FEE_CAP_BPS) -> float:
+    return principal_usd * min(cap, rate * days / 7) / 10_000
+
+
+def days_to_repay_time_based(principal_usd: float, pace_usd_per_day: float, holdback_bps: int,
+                             rate: int = FEE_RATE_BPS_PER_WEEK, cap: int = FEE_CAP_BPS) -> int:
+    """Daily settlement approximation: fees accrue on original principal until payoff, fee first."""
+    daily = pace_usd_per_day * holdback_bps / 10_000
+    if not daily > 0 or not math.isfinite(daily):
+        return MAX_DAYS_SHOWN
+    principal_left, fee_left = principal_usd, 0.0
+    fee_per_day = principal_usd * rate / 10_000 / 7
+    for day in range(1, MAX_DAYS_SHOWN + 1):
+        if principal_left <= 1e-9:
+            return day - 1
+        fee_left = min(principal_usd * cap / 10_000, fee_left + fee_per_day)
+        paid = min(daily, principal_left + fee_left)
+        fee_paid = min(fee_left, paid)
+        fee_left -= fee_paid
+        principal_left -= paid - fee_paid
+    return MAX_DAYS_SHOWN
+
+
+def offer_options(features: ShopFeatures, tier: int, limits: ChainLimits, rate: int = FEE_RATE_BPS_PER_WEEK,
+                  cap: int = FEE_CAP_BPS) -> tuple[dict[str, Any], dict]:
+    """(options for the prompt, paces). Four-week time-based fee estimate."""
     paces = paces_usd_per_day(features)
     amounts = eligible_amounts(tier, limits)
     rows = []
     for amount in amounts:
-        owed_usd = amount / USDC * REFERENCE_FACTOR_BPS / 10_000
+        owed_usd = amount / USDC * (1 + min(cap, rate * 4) / 10_000)
         for hb in SAMPLE_HOLDBACKS_BPS:
             rows.append({
                 "amount": amount,
                 "amount_usd": amount // USDC,
                 "holdback_bps": hb,
                 "total_owed_usd": round(owed_usd, 2),
-                "days_slow": days_to_repay(owed_usd, paces["slow"], hb),
-                "days_normal": days_to_repay(owed_usd, paces["normal"], hb),
-                "days_busy": days_to_repay(owed_usd, paces["busy"], hb),
+                "days_slow": days_to_repay_time_based(amount / USDC, paces["slow"], hb, rate, cap),
+                "days_normal": days_to_repay_time_based(amount / USDC, paces["normal"], hb, rate, cap),
+                "days_busy": days_to_repay_time_based(amount / USDC, paces["busy"], hb, rate, cap),
             })
     return {
         "eligible_amounts": amounts,
-        "reference_factor_bps": REFERENCE_FACTOR_BPS,
+        "fee_rate_bps_per_week": rate,
+        "fee_cap_bps": cap,
         "table": rows,
     }, paces
 
 
-def build_underwriter_user(features: ShopFeatures, tier: int, limits: ChainLimits, max_days: int) -> str:
+def build_underwriter_user(features: ShopFeatures, tier: int, limits: ChainLimits, max_days: int,
+                           rate: int = FEE_RATE_BPS_PER_WEEK, cap: int = FEE_CAP_BPS) -> str:
     if not 0 <= tier <= MAX_TIER:
         raise ValueError(f"tier must be 0..{MAX_TIER}, got {tier}")
-    options, paces = offer_options(features, tier, limits)
+    options, paces = offer_options(features, tier, limits, rate, cap)
     payload = {
         "features": critic.features_payload(features),
         "tier": tier,
         "rules": {
             "allowed_amounts": list(ALLOWED_AMOUNTS),
-            "factor_bps_range": list(FACTOR_BPS_RANGE),
+            "fee_rate_bps_per_week": rate,
+            "fee_cap_bps": cap,
             "holdback_bps_range": list(HOLDBACK_BPS_RANGE),
             "max_days_to_repay": max_days,
         },
@@ -157,7 +184,8 @@ class ClaudeJudge:
         return getattr(self.llm, "last_served_model", None) or getattr(self.llm, "model", None)
 
     def underwrite(self, features: ShopFeatures, tier: int, limits: ChainLimits) -> OfferDraft:
-        user = build_underwriter_user(features, tier, limits, self.settings.max_days_to_repay)
+        user = build_underwriter_user(features, tier, limits, self.settings.max_days_to_repay,
+                                      self.settings.fee_rate_bps_per_week, self.settings.fee_cap_bps)
         return self.llm.parse(system=UNDERWRITER_SYSTEM, user=user, schema=OfferDraft,
                               effort=self.settings.underwriter_effort)
 

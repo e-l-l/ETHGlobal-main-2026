@@ -93,7 +93,7 @@ LIMITS = ChainLimits(
 )
 
 DRAFT = OfferDraft(
-    decision="offer", amount=50_000_000, factor_bps=11_500, holdback_bps=1_000,
+    decision="offer", amount=50_000_000, fee_rate_bps_per_week=50, fee_cap_bps=300, holdback_bps=1_000,
     est_days_slow=60, est_days_normal=45, est_days_busy=35,
     reasons_en=[UNDERWRITER_REASON, "Your sales come from 81 different customers"],
     reasons_es=[UNDERWRITER_REASON_ES, "Tus ventas vienen de 81 clientes distintos"],
@@ -170,7 +170,8 @@ def test_underwrite_prompt_contains_features_json_and_delimiters():
     assert data["features"]["daily_revenue_30d_usd"] == f.daily_revenue_30d_usd
     assert data["tier"] == 1
     assert data["rules"]["allowed_amounts"] == list(ALLOWED_AMOUNTS)
-    assert data["rules"]["factor_bps_range"] == [11_000, 15_000]
+    assert data["rules"]["fee_rate_bps_per_week"] == 50
+    assert data["rules"]["fee_cap_bps"] == 300
     assert data["rules"]["holdback_bps_range"] == [500, 2_000]
     assert data["rules"]["max_days_to_repay"] == 60
     assert data["limits"] == {"tier_cap_for_this_tier": 100_000_000, "exposure_room": 8_000_000_000}
@@ -180,9 +181,9 @@ def test_underwrite_prompt_contains_features_json_and_delimiters():
 
 def test_options_table_numbers_are_computed_in_code():
     data = block(build_underwriter_user(honest(avg_daily_revenue_30d_usd=10.0), 0, LIMITS, 60))
-    row = next(r for r in data["options"]["table"] if r["holdback_bps"] == 1_000)
-    # $50 x 1.15 = $57.50 owed; $10/day x 10% = $1/day -> 58 days
-    assert row["total_owed_usd"] == 57.5 and row["days_normal"] == 58
+    row = next(r for r in data["options"]["table"] if r["holdback_bps"] == 800)
+    # Four-week checkpoint fee is $1; a daily accrual + fee-first payoff at 8% holdback takes 66 days.
+    assert row["total_owed_usd"] == 51.0 and row["days_normal"] == 66
     assert data["paces_usd_per_day"]["slow"] <= data["paces_usd_per_day"]["normal"] <= \
         data["paces_usd_per_day"]["busy"]
 
@@ -207,7 +208,8 @@ def test_critique_prompt_contains_features_json_and_draft_numbers():
     assert call.system == CRITIC_SYSTEM and call.schema is CriticVerdict
     data = block(call.user)
     assert data["features"]["unique_payers_30d"] == 81
-    assert data["draft"] == {"decision": "offer", "amount": 50_000_000, "factor_bps": 11_500,
+    assert data["draft"] == {"decision": "offer", "amount": 50_000_000, "fee_rate_bps_per_week": 50,
+                             "fee_cap_bps": 300,
                              "holdback_bps": 1_000, "est_days_slow": 60, "est_days_normal": 45,
                              "est_days_busy": 35}
     assert data["red_lines"]["spike_ratio"] == "<= 4.0"

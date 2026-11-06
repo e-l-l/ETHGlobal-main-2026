@@ -127,7 +127,8 @@ class UnderwritingPipeline:
                 decision.redline_hits.append("cold_start_cap")
                 return finish("rejected")
         offer = Offer(offer_id="0x" + secrets.token_hex(32), shop_id=shop_id, recipient=recipient,
-                      amount=draft.amount, factor_bps=draft.factor_bps, holdback_bps=draft.holdback_bps,
+                      amount=draft.amount, fee_rate_bps_per_week=draft.fee_rate_bps_per_week,
+                      fee_cap_bps=draft.fee_cap_bps, holdback_bps=draft.holdback_bps,
                       tier=tier, pass_nullifier=pass_nullifier, min_revenue_band=min_revenue_band,
                       expires_at=now + self.settings.offer_ttl_seconds)
         decision.signed_offer = self.signer.sign_offer(offer, chain_id=self.reader.chain_id,

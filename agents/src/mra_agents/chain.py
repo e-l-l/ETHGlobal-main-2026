@@ -322,20 +322,30 @@ class Web3ChainReader:
         out = []
         for i in range(1, n):
             a = self.book.functions.getAdvance(i).call()
-            # (shopId, principal, totalOwed, repaid, principalRepaid, holdbackBps, tier,
-            #  lastSaleAt, status, credentialClaimed, pendingCommitment)
+            # (shopId, principal, maxOwed, repaid, principalRepaid, feePaid, drawnAt,
+            #  feeRateBpsPerWeek, feeCapBps, holdbackBps, tier, lastSaleAt, status, ...)
+            now = self.block_timestamp(self.latest_block())
+            raw_fee = int(a[1]) * int(a[7]) * max(0, now - int(a[6])) // (10_000 * 7 * 86_400)
+            fee_so_far = min(int(a[1]) * int(a[8]) // 10_000, raw_fee)
+            fee_due = max(0, fee_so_far - int(a[5])) if int(a[4]) < int(a[1]) else 0
+            owed_now = max(0, int(a[1]) - int(a[4])) + fee_due
             out.append(AdvanceState(
                 advance_id=i,
                 shop_id=_hex(a[0]),
                 principal=int(a[1]),
                 total_owed=int(a[2]),
                 repaid=int(a[3]),
-                holdback_bps=int(a[5]),
-                tier=int(a[6]),
-                last_sale_at=int(a[7]),
-                status=_STATUS.get(int(a[8]), AdvanceStatus.NONE),
-                credential_claimed=bool(a[9]),
+                holdback_bps=int(a[9]),
+                tier=int(a[10]),
+                last_sale_at=int(a[11]),
+                status=_STATUS.get(int(a[12]), AdvanceStatus.NONE),
+                credential_claimed=bool(a[13]),
                 opened_at=self._opened_at.get(i),
+                principal_repaid=int(a[4]), fee_paid=int(a[5]), drawn_at=int(a[6]),
+                fee_rate_bps_per_week=int(a[7]), fee_cap_bps=int(a[8]),
+                owed_now=owed_now, fee_so_far=fee_so_far,
+                minimum_repayment=(int(a[1]) + fee_so_far + 99) // 100,
+                window_start=int(a[15]), window_repaid=int(a[16]),
             ))
         return out
 

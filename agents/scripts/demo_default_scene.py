@@ -214,7 +214,7 @@ class Scene:
         if not self.execute:
             line(f"would: register shop {self.label}, issue a Business Pass (devnet issuer), prove it with Noir/bb,")
             line(f"       drawFirst a {usd(ADVANCE)} advance to a fresh payout address, then {len(SALES)} customer "
-                 "sales (10% holdback repays)")
+                 "sales (8% holdback repays)")
             return
         self.ensure_baseline()
         if not self.st.get("run_start"):
@@ -239,7 +239,7 @@ class Scene:
             leaves = bizpass.tree_leaves(registry, int(d.dep.get("deployBlock", 0)))
             line(f"Business Pass issued by the devnet issuer: Argentina, revenue band 2 (leaf {len(leaves) - 1})")
             offer = Offer(offer_id="0x" + secrets.token_hex(32), shop_id="0x" + self.shop_id.hex().removeprefix("0x"),
-                          recipient=pay.address, amount=ADVANCE, factor_bps=11_500, holdback_bps=1_000, tier=0,
+                          recipient=pay.address, amount=ADVANCE, fee_rate_bps_per_week=50, fee_cap_bps=300, holdback_bps=800, tier=0,
                           pass_nullifier=zk.business_nullifier(secret), min_revenue_band=1,
                           expires_at=d.now() + 900)
             inputs = bizpass.prover_inputs(
@@ -257,7 +257,7 @@ class Scene:
             tx = ag["relayer"].draw_first(so, "0x" + proof.hex(), inputs.root, inputs.commitment_next)
             active = self.shop()[2]
             line(f"{G}drawFirst{X}: advance #{active}, {usd(ADVANCE)} to {short(pay.address)}, "
-                 f"factor 1.15 (owes {usd(ADVANCE * 115 // 100)}), 10% holdback (tx {short(tx)})")
+                 f"fee 0.5% per week, capped at 3%; 8% holdback (tx {short(tx)})")
         aid = int(active)
         a = self.advance(aid)
         if a[3] == 0:  # no repayment yet: the customer sales
@@ -269,7 +269,7 @@ class Scene:
                 d.send(d.book.functions.pay(self.shop_id, amount), p)
             a = self.advance(aid)
             line(f"{len(SALES)} customer sales, {usd(sum(SALES))} total: holdback repaid {usd(a[3])} of "
-                 f"{usd(a[2])}")
+                 f"{usd(d.book.functions.owedOf(aid).call())} owed now")
         self.mark("setup", advance_id=aid, label=self.label)
 
     def step_stop(self, i: int) -> None:

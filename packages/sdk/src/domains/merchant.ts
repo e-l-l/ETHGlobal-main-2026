@@ -42,17 +42,28 @@ export function shopVM(ctx: Ctx, name?: string, pseudonym?: string): ShopVM {
 
 export function advanceVM(a: AdvanceOnchain, openedAt: number | undefined, purpose: string, etaDays: number, now: number): AdvanceVM {
   const drawn = round2(usd(a.principal));
-  const total = round2(usd(a.totalOwed));
+  const owed = a.owedNow ?? a.totalOwed;
+  const total = round2(usd(owed));
   const repaid = round2(usd(a.repaid));
+  const fee = round2(usd(a.feeSoFar ?? (a.totalOwed - a.principal)));
+  const rate = a.feeRateBpsPerWeek ?? 50;
+  const cap = a.feeCapBps ?? 300;
+  const feeAt = (weeks: number) => round2(drawn * Math.min(cap, rate * weeks) / 10_000);
   return {
     purpose,
     drawn,
-    feeLabel: S.advance.feeLabel,
-    fee: round2(total - drawn),
+    feeLabel: "Fee so far",
+    fee,
     total,
+    owedNow: total,
+    feeSoFar: fee,
+    feeIfRepaidIn1Week: feeAt(1), feeIfRepaidIn2Weeks: feeAt(2),
+    feeIfRepaidIn4Weeks: feeAt(4), feeIfRepaidIn6Weeks: feeAt(6),
+    maxFeeBps: cap,
+    annualizedCostPercent: Math.min(cap, rate * 52) / 100,
     repaid,
-    left: round2(total - repaid),
-    pct: total > 0 ? Math.round((repaid / total) * 100) : 0,
+    left: total,
+    pct: repaid + total > 0 ? Math.round((repaid / (repaid + total)) * 100) : 0,
     holdback: a.holdbackBps / 100,
     drawnOn: openedAt ? shortDate(openedAt) : "",
     drawnAt: openedAt ? `${sameDay(openedAt, now) ? "today" : shortDate(openedAt)} ${clock(openedAt)}` : "",
@@ -213,7 +224,7 @@ export function merchantDomain(ctx: Ctx) {
       ]);
       let advance: AdvanceVM | null = null;
       if (loaded) {
-        const left = usd(loaded.onchain.totalOwed - loaded.onchain.repaid);
+        const left = usd(loaded.onchain.owedNow ?? (loaded.onchain.totalOwed - loaded.onchain.repaid));
         advance = advanceVM(loaded.onchain, loaded.openedAt, s.purpose ?? "stock", etaFrom(left, sales, now, 0), now);
       }
       const salesVM: SaleVM[] = sales
@@ -268,7 +279,7 @@ export function merchantDomain(ctx: Ctx) {
         cum += sales.filter((x) => x.at >= since + (d - 1) * DAY && x.at < since + d * DAY).reduce((t, x) => t + x.repay, 0);
         points.push(round2(cum));
       }
-      const vm = advanceVM(a.onchain, a.openedAt, s.purpose ?? "stock", etaFrom(usd(a.onchain.totalOwed - a.onchain.repaid), sales, now, draft?.est_days_normal ?? 0), now);
+      const vm = advanceVM(a.onchain, a.openedAt, s.purpose ?? "stock", etaFrom(usd(a.onchain.owedNow ?? (a.onchain.totalOwed - a.onchain.repaid)), sales, now, draft?.est_days_normal ?? 0), now);
       return {
         advance: vm,
         repaymentCurve: { points, ariaLabel: `Repayment growing from $0 to $${Math.round(cum)} over ${days} days` },
@@ -302,7 +313,7 @@ export function merchantDomain(ctx: Ctx) {
         const repay = day.reduce((sum, x) => sum + x.repay, 0);
         return { t, you: Math.round(day.reduce((sum, x) => sum + x.total, 0) - repay), repay: Math.round(repay) };
       });
-      const left = usd(a.onchain.totalOwed - a.onchain.repaid);
+      const left = usd(a.onchain.owedNow ?? (a.onchain.totalOwed - a.onchain.repaid));
       return {
         advance: advanceVM(a.onchain, a.openedAt, s.purpose ?? "stock", etaFrom(left, sales, now, 0), now),
         week: {

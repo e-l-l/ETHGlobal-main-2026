@@ -42,8 +42,8 @@ export function signalsFrom(status: RiskStatus, coveragePct?: number): SignalVM[
   out.push({
     name: "Junior coverage",
     value: coverageStr(coveragePct),
-    state: coveragePct !== undefined && coveragePct < 15 ? "watch" : "ok",
-    note: coveragePct === undefined ? "No advances outstanding" : coveragePct < 15 ? "Below the 15% floor" : "Above the 15% floor",
+    state: coveragePct !== undefined && coveragePct < 20 ? "watch" : "ok",
+    note: coveragePct === undefined ? "No advances outstanding" : coveragePct < 20 ? "Below the 20% cover ratio" : "At or above the 20% cover ratio",
   });
   return out;
 }

@@ -188,12 +188,12 @@ describe("repaid() and the agent-setup tier lock (live)", () => {
       const v = await agentDomain(ctx).setupOptions();
       return { tier: v.currentTier, locked: v.perAdvanceOptions.filter((o) => o.lockedReason).map((o) => o.value) };
     };
-    expect(await lock()).toEqual({ tier: 0, locked: [100, 250] });
+    expect(await lock()).toEqual({ tier: 0, locked: [100, 200, 300] });
     const claimed: StandingPassSecret = { kind: "standing_pass", secret: "0x09", h: "0x0", commitment: "0x0", count: 1, claimed: true, leafIndex: 0 };
     await ctx.vault.put("standing_pass", claimed);
-    expect(await lock()).toEqual({ tier: 1, locked: [250] });
+    expect(await lock()).toEqual({ tier: 1, locked: [200, 300] });
     await ctx.vault.put("standing_pass", { ...claimed, spent: true });
-    expect(await lock()).toEqual({ tier: 0, locked: [100, 250] });
+    expect(await lock()).toEqual({ tier: 0, locked: [100, 200, 300] });
     expect(provableTier({ ...claimed, count: 5 })).toBe(3);
   });
 });

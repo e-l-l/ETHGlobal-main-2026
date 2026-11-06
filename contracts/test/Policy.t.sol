@@ -30,7 +30,7 @@ contract PolicyTest is Test {
     }
 
     function offer() internal view returns (Offer memory) {
-        return Offer(bytes32(uint256(1)), bytes32(uint256(2)), address(0x123), 50e6, 50, 300, 500, 0, 42, 2, uint64(block.timestamp + 100));
+        return Offer(bytes32(uint256(1)), bytes32(uint256(2)), address(0x123), 50e6, 50, 300, 500, 0, 42, 2, uint64(vm.getBlockTimestamp() + 100));
     }
 
     function sign(Offer memory item, uint256 key) internal view returns (bytes memory) {

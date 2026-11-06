@@ -120,7 +120,7 @@ def simulate(sales: list[int], holdback_bps: int, left: int) -> int:
 @dataclass
 class AdvanceState:
     advance_id: int
-    total_owed: int
+    owed_now: int
     repaid: int
     holdback_bps: int
     status: int
@@ -128,7 +128,7 @@ class AdvanceState:
 
     @property
     def left(self) -> int:
-        return self.total_owed - self.repaid
+        return self.owed_now
 
 
 # ------------------------------------------------------------------ chain
@@ -172,9 +172,9 @@ class Demo:
         if active == 0:
             return None
         a = self.book.functions.getAdvance(active).call()
-        # Advance struct order: shopId, principal, totalOwed, repaid, principalRepaid, holdbackBps, tier, lastSaleAt,
-        # status, credentialClaimed, pendingCommitment, windowStart, windowRepaid
-        return AdvanceState(active, a[2], a[3], a[5], a[8], a[6])
+        # totalOwed is the max-at-cap value; use the live contract owedOf view.
+        owed_now = self.book.functions.owedOf(active).call()
+        return AdvanceState(active, owed_now, a[3], a[9], a[12], a[10])
 
     def send(self, acct, tx: dict) -> str:
         tx = {**tx, "from": acct.address, "nonce": self.w3.eth.get_transaction_count(acct.address, "pending"),
@@ -219,7 +219,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"shop {shop[:10]}…: no open advance (already repaid, or not drawn yet). Nothing to do.")
         return 0
     print(f"shop {shop[:10]}…  advance #{adv.advance_id}  tier {adv.tier}  status {STATUS.get(adv.status)}")
-    print(f"  owed ${adv.total_owed / 1e6:.2f}, repaid ${adv.repaid / 1e6:.2f}, left ${adv.left / 1e6:.2f}, "
+    print(f"  owed now ${adv.owed_now / 1e6:.2f}, repaid ${adv.repaid / 1e6:.2f}, left ${adv.left / 1e6:.2f}, "
           f"holdback {adv.holdback_bps / 100:g}%")
     sales = plan_sales(adv.left, adv.holdback_bps, args.sales, random.Random(args.seed))
     assert simulate(sales, adv.holdback_bps, adv.left) == 0

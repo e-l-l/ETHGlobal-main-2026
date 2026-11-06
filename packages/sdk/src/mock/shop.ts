@@ -28,10 +28,10 @@ export const SHOP = {
     holdback: "10%",
   },
   limits: [
-    { label: "First advance · now", cap: "$100" },
-    { label: "1 repaid", cap: "$250" },
-    { label: "2 repaid", cap: "$500" },
-    { label: "3 or more", cap: "$500" },
+    { label: "First advance · now", cap: "$50" },
+    { label: "1 repaid", cap: "$100" },
+    { label: "2 repaid", cap: "$200" },
+    { label: "3 or more", cap: "$300" },
   ],
 } as const;
 
@@ -51,23 +51,30 @@ export const shop = {
 } as const;
 
 const drawn = 100;
-const fee = 15;
+const fee = 2;
 const repaid = 46;
 const total = drawn + fee;
 
 export const advance = {
   purpose: "stock",
   drawn,
-  /** Fee wording is undecided ("Flat fee" vs interest): change the label here only. */
-  feeLabel: "Flat fee",
+  feeLabel: "Fee so far",
   fee,
   total,
+  owedNow: total,
+  feeSoFar: fee,
+  feeIfRepaidIn1Week: drawn * 0.005,
+  feeIfRepaidIn2Weeks: drawn * 0.01,
+  feeIfRepaidIn4Weeks: drawn * 0.02,
+  feeIfRepaidIn6Weeks: drawn * 0.03,
+  maxFeeBps: 300,
+  annualizedCostPercent: 26,
   repaid,
   left: total - repaid,
   /** Percent of the total already repaid. */
   pct: Math.round((repaid / total) * 100),
   /** Percent of each sale that goes to repayment. */
-  holdback: 10,
+  holdback: 8,
   drawnOn: "5 Nov",
   drawnAt: "today 9:12 am",
   /** Days to go at the current pace. */
@@ -84,8 +91,8 @@ export const agentLimits = {
 export const limitsLadder = [
   { label: "First advance", cap: 50 },
   { label: "1 repaid", cap: 100 },
-  { label: "2 repaid", cap: 250 },
-  { label: "3 or more", cap: 500 },
+  { label: "2 repaid", cap: 200 },
+  { label: "3 or more", cap: 300 },
 ] as const;
 
 /** Index into limitsLadder for this shop. */

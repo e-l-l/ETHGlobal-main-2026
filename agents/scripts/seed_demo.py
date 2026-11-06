@@ -90,11 +90,11 @@ def main():
                              (bn, leaf, exp), bytes.fromhex(sig[2:]), leaf), accounts[3]))
     leaves = bizpass.tree_leaves(registry, deployment.get('deployBlock', 0))
     offer = {'offerId': Web3.keccak(text='ghost-demo-offer'), 'shopId': ids['ghost-shop'],
-             'recipient': payouts['ghost-shop'], 'amount': 50_000_000, 'factorBps': 11500,
-             'holdbackBps': 1000, 'tier': 0, 'passNullifier': zk.business_nullifier(secret), 'minRevenueBand': 1,
+             'recipient': payouts['ghost-shop'], 'amount': 50_000_000, 'feeRateBpsPerWeek': 50,
+             'feeCapBps': 300, 'holdbackBps': 800, 'tier': 0, 'passNullifier': zk.business_nullifier(secret), 'minRevenueBand': 1,
              'expiresAt': now + 3600}
     fields = [('offerId','bytes32'), ('shopId','bytes32'), ('recipient','address'), ('amount','uint256'),
-              ('factorBps','uint16'), ('holdbackBps','uint16'), ('tier','uint8'),
+              ('feeRateBpsPerWeek','uint16'), ('feeCapBps','uint16'), ('holdbackBps','uint16'), ('tier','uint8'),
               ('passNullifier','uint256'), ('minRevenueBand','uint8'), ('expiresAt','uint64')]
     inputs = bizpass.prover_inputs(secret=secret, country=32, revenue_band=2, age_ok=1, leaves=leaves,
                                    leaf_index=leaves.index(zk.business_leaf(secret, 32, 2, 1)),

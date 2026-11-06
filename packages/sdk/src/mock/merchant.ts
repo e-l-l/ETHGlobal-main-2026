@@ -136,7 +136,8 @@ export const agentActivity: { id: string; time: string; kind: ActivityKind; titl
 export const perAdvanceOptions = [
   { value: 50 },
   { value: 100 },
-  { value: 250, lockedReason: "$250 unlocks after 2 repaid advances" },
+  { value: 200, lockedReason: "$200 unlocks after 2 repaid advances" },
+  { value: 300, lockedReason: "$300 unlocks after 3 repaid advances" },
 ] as const;
 
 export const perMonthStepper = { step: 50, min: 50, max: 500 } as const;

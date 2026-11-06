@@ -55,7 +55,7 @@ Identity never touches the chain or our servers. Only ZK yes/no answers and pseu
   - all in git-ignored env files ([`contracts/README.md`](../../contracts/README.md), [`deploy/secrets-howto.md`](../../deploy/secrets-howto.md))
   - the agent key signs offers only and holds no funds
 - **No upgrades, no pause, nobody can move user funds.**
-- Every advance is bounded onchain: tier caps of $50 / $100 / $250 / $500, an exposure cap, fixed sizes, and junior first-loss of at least 10% of senior outstanding.
+- Every advance is bounded onchain: tier caps of $50 / $100 / $200 / $300, an exposure cap, fixed sizes, and junior first-loss cover of 20% of senior outstanding.
 - **Operator powers** ([`docs/architecture.md`](../../docs/architecture.md#operator-powers-named-for-crops), [`contracts/SPEC.md`](../../contracts/SPEC.md) "Trust assumptions"):
 
 | Power | Held by | What it can do to users | If the key is lost |

@@ -275,7 +275,7 @@ contract AdvanceBookTest is Test {
             tier: tier,
             passNullifier: tier == 0 ? uint256(keccak256(abi.encode("bizpass", ++passNonce))) % SNARK_FIELD : 0,
             minRevenueBand: 0,
-            expiresAt: uint64(block.timestamp + 1 days)
+            expiresAt: uint64(vm.getBlockTimestamp() + 1 days)
         });
     }
 
@@ -427,7 +427,7 @@ contract AdvanceBookTest is Test {
     /// (4 principal + 1 fee). Total fee 25 -> senior 15, junior 7.5, reserve 2.5.
     function test_happyPath_fullRepayment_exactBalances() public {
         uint256 id = _drawFirst(SHOP, 100e6, 12500, 1000);
-        vm.warp(block.timestamp + 6 weeks);
+        vm.warp(vm.getBlockTimestamp() + 6 weeks);
         assertEq(id, 1);
         assertEq(usdc.balanceOf(recipient), 100e6);
         assertEq(senior.outstanding(), 100e6);
@@ -469,7 +469,7 @@ contract AdvanceBookTest is Test {
 
     function test_pay_emitsSaleAndSplit() public {
         uint256 id = _drawFirst(SHOP, 100e6, 12500, 1000);
-        vm.warp(block.timestamp + 6 weeks);
+        vm.warp(vm.getBlockTimestamp() + 6 weeks);
         usdc.mint(customer, 100e6);
         vm.expectEmit(true, false, false, true, address(book));
         emit AdvanceBook.RepaymentSplit(id, 7e6, 1_200_000, 900_000, 600_000, 300_000);
@@ -482,7 +482,7 @@ contract AdvanceBookTest is Test {
     /// Odd sizes, factor 1.1x, holdback 7.77%: no dust owed at the end and every unit accounted for.
     function test_partialSales_finalRepaymentLeavesNoDust() public {
         uint256 id = _drawFirst(SHOP, 50e6, 11000, 777);
-        vm.warp(block.timestamp + 6 weeks);
+        vm.warp(vm.getBlockTimestamp() + 6 weeks);
         Bal memory b0 = _snap();
         uint256[6] memory sizes = [uint256(12_345_678), 1_000_001, 333_333, 98_765_432, 7, 4_444_444];
         uint256 spent;
@@ -518,7 +518,7 @@ contract AdvanceBookTest is Test {
     /// principal part larger than the final 1-unit repayment and the fee underflows (repayment
     /// bricked). The cumulative formula keeps principalPart <= rep on every sale.
     function test_tinySalesThenOneUnitFinal_noUnderflow() public {
-        uint256 id=_drawFirst(SHOP,50e6,50,2000); vm.warp(block.timestamp+6 weeks); uint256 due=book.owedOf(id);
+        uint256 id=_drawFirst(SHOP,50e6,50,2000); vm.warp(vm.getBlockTimestamp()+6 weeks); uint256 due=book.owedOf(id);
         usdc.mint(customer,due); vm.startPrank(customer); usdc.approve(address(book),type(uint256).max);
         book.repay(id,due-1); assertEq(book.owedOf(id),1); book.repay(id,1); vm.stopPrank();
         assertEq(uint8(_adv(id).status),uint8(AdvanceBook.Status.Repaid)); assertEq(_adv(id).principalRepaid,50e6); assertEq(senior.outstanding(),0);
@@ -538,25 +538,25 @@ contract AdvanceBookTest is Test {
 
     /// Zero and sub-1% repayments no longer restart the default clock; reaching 1% in the window does.
     function test_repaymentClock_needsOnePercentPerWindow() public {
-        uint256 id=_drawFirst(SHOP,100e6,50,1000); uint64 opened=_adv(id).lastSaleAt; vm.warp(block.timestamp+6 weeks+10 days);
+        uint256 id=_drawFirst(SHOP,100e6,50,1000); uint64 opened=_adv(id).lastSaleAt; vm.warp(vm.getBlockTimestamp()+6 weeks+10 days);
         uint256 minimum=book.minWindowRepayment(103e6); _pay(SHOP,9); assertEq(_adv(id).lastSaleAt,opened);
         _pay(SHOP,10); assertEq(_adv(id).windowRepaid,1);
         _pay(SHOP,(minimum-2)*10); assertEq(_adv(id).windowRepaid,minimum-1);
-        _pay(SHOP,10); assertEq(_adv(id).lastSaleAt,block.timestamp); assertEq(_adv(id).windowRepaid,0);
+        _pay(SHOP,10); assertEq(_adv(id).lastSaleAt,vm.getBlockTimestamp()); assertEq(_adv(id).windowRepaid,0);
     }
 
     /// Repayments only add up inside one window: last second in, first second out.
     function test_repaymentClock_windowBoundaries() public {
-        uint256 id=_drawFirst(SHOP,100e6,50,1000); vm.warp(block.timestamp+6 weeks); uint256 minimum=book.minWindowRepayment(103e6); uint256 w=block.timestamp;
+        uint256 id=_drawFirst(SHOP,100e6,50,1000); vm.warp(vm.getBlockTimestamp()+6 weeks); uint256 minimum=book.minWindowRepayment(103e6); uint256 w=vm.getBlockTimestamp();
         _pay(SHOP,(minimum-1)*10); vm.warp(w+7 days-1); _pay(SHOP,10); assertEq(_adv(id).lastSaleAt,w+7 days-1);
-        uint256 w2=block.timestamp; _pay(SHOP,(minimum-1)*10); vm.warp(w2+7 days); _pay(SHOP,10);
+        uint256 w2=vm.getBlockTimestamp(); _pay(SHOP,(minimum-1)*10); vm.warp(w2+7 days); _pay(SHOP,10);
         assertEq(_adv(id).lastSaleAt,w2); assertEq(_adv(id).windowStart,w2+7 days); assertEq(_adv(id).windowRepaid,1);
     }
 
     /// Dust sales every day can no longer postpone a write-off.
     function test_dustSales_cannotDelayWriteOff() public {
         uint256 id = _drawFirst(SHOP, 100e6, 12500, 1000);
-        uint256 t0 = block.timestamp;
+        uint256 t0 = vm.getBlockTimestamp();
         for (uint256 d = 1; d <= 30; d++) {
             vm.warp(t0 + d * 1 days);
             _pay(SHOP, 1e6); // rep 100_000/day = 700_000/week < 1_250_000
@@ -573,10 +573,10 @@ contract AdvanceBookTest is Test {
 
     /// Fuzz: two repaying sales; the clock resets iff they land in one window and sum to >= 1%.
     function testFuzz_repaymentClock(uint256 rep1, uint256 rep2, uint256 gap) public {
-        uint256 id=_drawFirst(SHOP,100e6,50,1000); vm.warp(block.timestamp+6 weeks); uint64 opened=_adv(id).lastSaleAt;
+        uint256 id=_drawFirst(SHOP,100e6,50,1000); vm.warp(vm.getBlockTimestamp()+6 weeks); uint64 opened=_adv(id).lastSaleAt;
         uint256 threshold=book.minWindowRepayment(103e6); rep1=bound(rep1,1,threshold-1); rep2=bound(rep2,1,2*threshold); gap=bound(gap,0,14 days);
-        _pay(SHOP,rep1*10); assertEq(_adv(id).lastSaleAt,opened); vm.warp(block.timestamp+gap); _pay(SHOP,rep2*10);
-        bool same=gap<7 days; if ((same?rep1+rep2:rep2)>=threshold) assertEq(_adv(id).lastSaleAt,block.timestamp); else assertEq(_adv(id).lastSaleAt,opened);
+        _pay(SHOP,rep1*10); assertEq(_adv(id).lastSaleAt,opened); vm.warp(vm.getBlockTimestamp()+gap); _pay(SHOP,rep2*10);
+        bool same=gap<7 days; if ((same?rep1+rep2:rep2)>=threshold) assertEq(_adv(id).lastSaleAt,vm.getBlockTimestamp()); else assertEq(_adv(id).lastSaleAt,opened);
     }
 
     // ================================================================== drawFirst
@@ -592,7 +592,7 @@ contract AdvanceBookTest is Test {
         AdvanceBook.Advance memory a = _adv(id);
         assertEq(a.pendingCommitment, COMMIT1_VEC, "proven first Standing Pass commitment stored");
         assertEq(a.totalOwed, 103e6);
-        assertEq(a.lastSaleAt, block.timestamp);
+        assertEq(a.lastSaleAt, vm.getBlockTimestamp());
         assertEq(usdc.balanceOf(recipient), 100e6, "funds to offer recipient, not the sender");
         assertEq(usdc.balanceOf(makeAddr("anyRelayer")), 0);
         assertEq(book.exposure(), 100e6);
@@ -749,9 +749,9 @@ contract AdvanceBookTest is Test {
     function test_delinquencyProvisionAndRecovery() public {
         uint256 id = _drawFirst(SHOP, 100e6, 11500, 1000);
         uint256 beforeAssets = junior.totalAssets();
-        vm.warp(block.timestamp + 14 days - 1);
+        vm.warp(vm.getBlockTimestamp() + 14 days - 1);
         assertEq(junior.totalAssets(), beforeAssets);
-        vm.warp(block.timestamp + 1);
+        vm.warp(vm.getBlockTimestamp() + 1);
         assertEq(book.delinquentPrincipal(), 100e6);
         assertEq(junior.totalAssets(), beforeAssets - 100e6);
         assertLt(junior.previewRedeem(junior.balanceOf(lp)), beforeAssets);
@@ -772,7 +772,7 @@ contract AdvanceBookTest is Test {
         book.setFeeShares(5000, 3000, 0, 2000);
         vm.stopPrank();
         _drawFirst(SHOP, 100e6, 12500, 1000);
-        vm.warp(block.timestamp + 6 weeks);
+        vm.warp(vm.getBlockTimestamp() + 6 weeks);
         uint256 prior = usdc.balanceOf(lp);
         _pay(SHOP, 100e6);
         assertEq(usdc.balanceOf(lp) - prior, 600_000);
@@ -791,7 +791,7 @@ contract AdvanceBookTest is Test {
 
     function test_feeFirstAllocation_andEarlyFullRepaymentStopsAccrual() public {
         uint256 id = _drawFirst(SHOP, 100e6, 50, 800);
-        vm.warp(block.timestamp + 2 weeks);
+        vm.warp(vm.getBlockTimestamp() + 2 weeks);
         usdc.mint(customer, 100e6 + 1e6);
         vm.startPrank(customer); usdc.approve(address(book), type(uint256).max);
         book.repay(id, 500_000);
@@ -803,14 +803,14 @@ contract AdvanceBookTest is Test {
         vm.stopPrank();
         assertEq(uint8(_adv(id).status), uint8(AdvanceBook.Status.Repaid));
         uint256 repaid = _adv(id).repaid;
-        vm.warp(block.timestamp + 10 weeks);
+        vm.warp(vm.getBlockTimestamp() + 10 weeks);
         assertEq(book.owedOf(id), 0);
         assertEq(_adv(id).repaid, repaid);
     }
 
     function test_writeOffWithAccruedFee_doesNotTreatUncollectedFeeAsPrincipal() public {
         uint256 id = _drawFirst(SHOP, 100e6, 50, 800);
-        vm.warp(block.timestamp + 6 weeks);
+        vm.warp(vm.getBlockTimestamp() + 6 weeks);
         assertEq(book.owedOf(id), 103e6);
         uint256 seniorBefore = senior.totalAssets();
         book.writeOff(id);
@@ -826,7 +826,7 @@ contract AdvanceBookTest is Test {
         uint16 reserveShare = 10_000 - seniorShare - juniorShare - protocolShare;
         vm.prank(owner); book.setFeeShares(seniorShare, juniorShare, reserveShare, protocolShare);
         uint256 id = _drawFirst(SHOP, 100e6, 50, 800);
-        vm.warp(block.timestamp + 6 weeks);
+        vm.warp(vm.getBlockTimestamp() + 6 weeks);
         uint256 owed = book.owedOf(id);
         usdc.mint(customer, owed); vm.startPrank(customer); usdc.approve(address(book), type(uint256).max);
         book.repay(id, owed); vm.stopPrank();
@@ -985,7 +985,7 @@ contract AdvanceBookTest is Test {
         book.claimStandingPass(99);
 
         uint256 id = _drawFirst(SHOP, 100e6, 12500, 1000);
-        vm.warp(block.timestamp + WINDOW);
+        vm.warp(vm.getBlockTimestamp() + WINDOW);
         book.writeOff(id);
         vm.expectRevert(abi.encodeWithSelector(AdvanceBook.AdvanceNotRepaid.selector, id));
         book.claimStandingPass(id);
@@ -998,7 +998,7 @@ contract AdvanceBookTest is Test {
     /// reserve 0.6). Loss on write-off = 76.
     function _writeOffSetup() internal returns (uint256 id) {
         id = _drawFirst(SHOP, 100e6, 12500, 1000);
-        vm.warp(block.timestamp + 6 weeks);
+        vm.warp(vm.getBlockTimestamp() + 6 weeks);
         _pay(SHOP, 100e6);
         _pay(SHOP, 100e6);
         _pay(SHOP, 100e6);
@@ -1021,7 +1021,7 @@ contract AdvanceBookTest is Test {
 
     function test_writeOff_reverts_tooEarly_and_saleResetsClock() public {
         uint256 id = _writeOffSetup();
-        uint256 t = block.timestamp;
+        uint256 t = vm.getBlockTimestamp();
         vm.warp(t + WINDOW - 1);
         vm.expectRevert(abi.encodeWithSelector(AdvanceBook.DefaultWindowNotElapsed.selector, id, t + WINDOW));
         book.writeOff(id);
@@ -1042,7 +1042,7 @@ contract AdvanceBookTest is Test {
         uint256 id = _writeOffSetup();
         _depositReserve(10e6); // reserve 10.6
         uint256 seniorBefore = usdc.balanceOf(address(senior)); // 1000 - 100 + 27.6
-        vm.warp(block.timestamp + WINDOW);
+        vm.warp(vm.getBlockTimestamp() + WINDOW);
 
         vm.expectEmit(true, false, false, true, address(book));
         emit AdvanceBook.AdvanceWrittenOff(id, 73e6, 73e6, 0, 0, BOUNTY);
@@ -1065,7 +1065,7 @@ contract AdvanceBookTest is Test {
     function test_writeOff_fullWaterfall_noBounty() public {
         uint256 id = _writeOffSetup();
         _shrinkJuniorTo(20e6);
-        vm.warp(block.timestamp + WINDOW);
+        vm.warp(vm.getBlockTimestamp() + WINDOW);
 
         vm.expectEmit(true, false, false, true, address(book));
         emit AdvanceBook.AdvanceWrittenOff(id, 73e6, 20e6, 600_000, 52_400_000, 0);
@@ -1086,7 +1086,7 @@ contract AdvanceBookTest is Test {
         uint256 id = _writeOffSetup();
         _shrinkJuniorTo(20e6);
         _depositReserve(58e6); // reserve 58.6; rest after junior = 53
-        vm.warp(block.timestamp + WINDOW);
+        vm.warp(vm.getBlockTimestamp() + WINDOW);
 
         vm.expectEmit(true, false, false, true, address(book));
         emit AdvanceBook.AdvanceWrittenOff(id, 73e6, 20e6, 53e6, 0, BOUNTY);
@@ -1101,7 +1101,7 @@ contract AdvanceBookTest is Test {
 
     function test_writeOff_afterwards_shopFree_secondWriteOffReverts() public {
         uint256 id = _writeOffSetup();
-        vm.warp(block.timestamp + WINDOW);
+        vm.warp(vm.getBlockTimestamp() + WINDOW);
         book.writeOff(id);
         vm.expectRevert(abi.encodeWithSelector(AdvanceBook.AdvanceNotActive.selector, id));
         book.writeOff(id);

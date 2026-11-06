@@ -225,7 +225,7 @@ await step("5 repay fully (customer pays)", async () => {
   for (let i = 0; i < 4; i++) {
     const a = await chain.advance(BigInt(st.advance0));
     if (a.status === 2) break;
-    const left = a.totalOwed - a.repaid;
+    const left = a.owedNow ?? (a.totalOwed - a.repaid);
     const need = (left * 10_000n + BigInt(a.holdbackBps) - 1n) / BigInt(a.holdbackBps); // sale that repays the rest
     const cents = (need + 9_999n) / 10_000n; // round up to whole cents
     const amount = Number(cents) / 100;
@@ -240,7 +240,7 @@ await step("5 repay fully (customer pays)", async () => {
     log(`   sale: $${r.toRepayment} to repayment, $${r.toShop} to the shop`);
   }
   const a = await chain.advance(BigInt(st.advance0));
-  ok(a.status === 2 && a.repaid === a.totalOwed, "advance fully repaid (status Repaid)");
+  ok(a.status === 2 && a.owedNow === 0n, "advance fully repaid (status Repaid)");
 });
 
 await step("6 claim Standing Pass", async () => {

@@ -115,14 +115,15 @@ def exposure_fires(exposure: int, max_exposure: int) -> bool:
 
 
 def pace_ratio(adv: AdvanceState, now: int, expected_days: float) -> Fraction | None:
-    """(repaid / elapsed) / (total_owed / expected_days). None when not measurable yet."""
-    if adv.opened_at is None or adv.total_owed <= 0 or expected_days <= 0:
+    """Compare observed payment pace to the current live payoff estimate."""
+    target = adv.owed_now or max(0, adv.total_owed - adv.repaid)
+    if adv.opened_at is None or target <= 0 or expected_days <= 0:
         return None
     elapsed = now - adv.opened_at
     if elapsed < PACE_MIN_AGE_SECONDS:
         return None
     expected = Fraction(expected_days).limit_denominator(10_000)
-    return Fraction(adv.repaid) * expected * 86_400 / (Fraction(adv.total_owed) * elapsed)
+    return Fraction(adv.repaid) * expected * 86_400 / (Fraction(target + adv.repaid) * elapsed)
 
 
 def junior_is_token0_from_deployments(path: Path) -> bool | None:

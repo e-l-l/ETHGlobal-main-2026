@@ -19,7 +19,7 @@ MAX_LABEL_CHARS = 120
 
 # The only draft fields the Critic may see. reasons_en / reasons_es are deliberately excluded.
 DRAFT_NUMBER_FIELDS = frozenset(
-    {"decision", "amount", "factor_bps", "holdback_bps", "est_days_slow", "est_days_normal", "est_days_busy"}
+    {"decision", "amount", "fee_rate_bps_per_week", "fee_cap_bps", "holdback_bps", "est_days_slow", "est_days_normal", "est_days_busy"}
 )
 
 

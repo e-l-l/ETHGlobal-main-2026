@@ -27,9 +27,9 @@ DripCoin (DRIP): junior, takes losses first. The deployed contract still uses Ju
 DripMoni is a private **merchant cash advance** for small shops in dollar-short economies, such as a kiosco in Buenos Aires, a phone-accessory stall in Lagos or a duka in Nairobi.
 
 1. **Prove the business, not the person.** The merchant proves with zkTLS that their seller dashboard shows a country, a revenue band and 6+ months of activity. That becomes a **Business Pass**. We never ask for a name, phone number or contacts.
-2. **Get paid in stablecoins.** Customers scan the shop's QR and pay in test USDC. While an advance is active, a repayment slice goes toward it: 10% in the demo, 5–20% in the contract. Without an advance there is no holdback. Any-token checkout swaps are planned.
+2. **Get paid in stablecoins.** Customers scan the shop's QR and pay in test USDC. While an advance is active, 8% of each sale goes toward repayment; without an advance there is no holdback. Any-token checkout swaps are planned.
 3. **An agent draws stock on credit.** The merchant sets limits (max per advance, max per month, recipient and expiry) and approves them once with a **test-mode World Agent Pass**. The cash-flow agent draws small advances to pay suppliers, and `PolicyGuard` enforces the limits onchain.
-4. **Repay through sales, build a private record.** Repayment comes out of the 10% split automatically. There's one flat fee, and no interest, late fees or penalties. A fully repaid advance mints a **Standing Pass**, a Noir zero-knowledge credential that raises the merchant's limit without revealing their history.
+4. **Repay through sales, build a private record.** Repayment comes out of the 8% split automatically. The fee is 0.5% per week while principal remains, capped at 3%; early payoff saves fee. A fully repaid advance mints a **Standing Pass**, a Noir zero-knowledge credential that raises the merchant's limit without revealing their history.
 5. **Lenders fund it.** A senior ERC-4626 USDC vault earns most of the fee. A junior first-loss token (DripCoin (DRIP)) earns more for taking losses first, and trades on a Uniswap v4 pool with a `RiskHook`.
 
 The **World view** toggle on every screen shows exactly which data is onchain and which stays on the device.
@@ -146,7 +146,7 @@ Full spec: [anay-design.md](anay-design.md).
 | Doc | Covers |
 |---|---|
 | [architecture.md](anay-docs/architecture.md) | System diagram, contracts, off-chain services, onboarding and advance lifecycle, chain and deployment |
-| [economics.md](anay-docs/economics.md) | Advance terms (factor, holdback, flat fee), tier caps, the senior / junior / reserve waterfall |
+| [economics.md](anay-docs/economics.md) | Time-based fee, 8% holdback, $50/$100/$200/$300 tier caps, and the 40/30/20/10 fee waterfall |
 | [zk-privacy.md](anay-docs/zk-privacy.md) | Threat model, Business Pass (zkTLS), Standing Pass (Noir), what is and isn't hidden |
 | [agents.md](anay-docs/agents.md) | Cash-flow, Underwriter, Critic and Risk agents; mandates; what agents can't do |
 | [ux.md](anay-docs/ux.md) | Users, every screen, copy rules |

@@ -19,7 +19,7 @@ PROOF = "0x" + "ab" * 64
 
 def signed(*, tier=0, pn=42, band=0, shop=SHOP_A, expires=NOW + 900, amount=100_000_000, sig=SIG, oid=1, **kw):
     o = {"offer_id": "0x" + f"{oid:064x}", "shop_id": shop,
-         "recipient": "0x000000000000000000000000000000000000beef", "amount": amount, "factor_bps": 11500,
+         "recipient": "0x000000000000000000000000000000000000beef", "amount": amount, "fee_rate_bps_per_week": 50, "fee_cap_bps": 300,
          "holdback_bps": 1000, "tier": tier, "pass_nullifier": pn, "min_revenue_band": band, "expires_at": expires}
     o.update(kw)
     return SignedOffer(offer=Offer(**o), signature=sig, digest="0x" + "00" * 32)
@@ -62,7 +62,7 @@ def test_draw_first_args_and_signer(relayer, w):
     assert fn == "drawFirst" and signer == "relayer" and tx == "0x" + f"{1:064x}"
     offer, sig, proof, root, nxt = args
     assert offer[2] == "0x000000000000000000000000000000000000bEEF"  # checksummed
-    assert offer[0] == (1).to_bytes(32, "big") and offer[3:] == (100_000_000, 11500, 1000, 0, 42, 2, NOW + 900)
+    assert offer[0] == (1).to_bytes(32, "big") and offer[3:] == (100_000_000, 50, 300, 1000, 0, 42, 2, NOW + 900)
     assert len(sig) == 65 and sig[64] == 27 and proof == bytes.fromhex("ab" * 64) and (root, nxt) == (5, 7)
 
 
@@ -163,8 +163,8 @@ def test_v28_ok(relayer, w):
 
 @pytest.mark.parametrize("kw,code", [
     ({"amount": 75_000_000}, "bad_amount"),
-    ({"factor_bps": 10_999}, "bad_factor"),
-    ({"factor_bps": 15_001}, "bad_factor"),
+    ({"fee_rate_bps_per_week": 49}, "bad_fee_terms"),
+    ({"fee_cap_bps": 301}, "bad_fee_terms"),
     ({"holdback_bps": 499}, "bad_holdback"),
     ({"holdback_bps": 2_001}, "bad_holdback"),
     ({"tier": 1}, "bad_tier"),
@@ -273,7 +273,7 @@ def test_draw_by_mandate_args(relayer, w):
     (fn, args, signer), = w.calls
     assert fn == "drawByMandate" and signer == "relayer"
     offer, osig, mid, asig = args
-    assert offer[7:9] == (0, 1) and mid == 7 and len(osig) == 65 and asig == bytes.fromhex(AGENT_SIG[2:])
+    assert offer[7:9] == (0, 0) and mid == 7 and len(osig) == 65 and asig == bytes.fromhex(AGENT_SIG[2:])
 
 
 @pytest.mark.parametrize("kw,mid,asig,code", [

@@ -10,8 +10,10 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-ALLOWED_AMOUNTS: tuple[int, ...] = (50_000_000, 100_000_000, 250_000_000, 500_000_000)
-FACTOR_BPS_RANGE = (11_000, 15_000)
+ALLOWED_AMOUNTS: tuple[int, ...] = (50_000_000, 100_000_000, 200_000_000, 300_000_000)
+FEE_RATE_BPS_PER_WEEK = 50
+FEE_CAP_BPS = 300
+TIER_CAPS = (50_000_000, 100_000_000, 200_000_000, 300_000_000)
 HOLDBACK_BPS_RANGE = (500, 2_000)
 MAX_TIER = 3
 MAX_REVENUE_BAND = 255  # Business Pass revenue band is a uint8
@@ -70,6 +72,16 @@ class AdvanceState(BaseModel):
     status: AdvanceStatus
     credential_claimed: bool
     opened_at: int | None = None
+    principal_repaid: int = 0
+    fee_paid: int = 0
+    drawn_at: int = 0
+    fee_rate_bps_per_week: int = FEE_RATE_BPS_PER_WEEK
+    fee_cap_bps: int = FEE_CAP_BPS
+    owed_now: int = 0
+    fee_so_far: int = 0
+    minimum_repayment: int = 0
+    window_start: int = 0
+    window_repaid: int = 0
 
 
 # ---------- features (input to judges) ----------
@@ -110,8 +122,9 @@ class OfferDraft(BaseModel):
     """Underwriter output. The clamp fixes anything out of bounds."""
     decision: Literal["offer", "decline"]
     amount: int  # must be one of ALLOWED_AMOUNTS
-    factor_bps: int
-    holdback_bps: int
+    fee_rate_bps_per_week: int = FEE_RATE_BPS_PER_WEEK
+    fee_cap_bps: int = FEE_CAP_BPS
+    holdback_bps: int = 800
     est_days_slow: int
     est_days_normal: int
     est_days_busy: int
@@ -147,7 +160,8 @@ class Offer(BaseModel):
     shop_id: Hex32
     recipient: Address
     amount: int
-    factor_bps: int
+    fee_rate_bps_per_week: int
+    fee_cap_bps: int
     holdback_bps: int
     tier: int
     pass_nullifier: int  # tier 0 manual draw: Business Pass first-advance nullifier; mandate draws and tier > 0: 0

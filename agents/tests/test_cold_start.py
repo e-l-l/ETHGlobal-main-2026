@@ -58,7 +58,7 @@ def test_established_shop_is_not_cold_start():
 
 
 def draft(amount=50_000_000):
-    return OfferDraft(decision="offer", amount=amount, factor_bps=11500, holdback_bps=1000, est_days_slow=40,
+    return OfferDraft(decision="offer", amount=amount, fee_rate_bps_per_week=50, fee_cap_bps=300, holdback_bps=1000, est_days_slow=40,
                       est_days_normal=25, est_days_busy=15, reasons_en=["a", "b"], reasons_es=["a", "b"])
 
 

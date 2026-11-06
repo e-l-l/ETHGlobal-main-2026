@@ -30,8 +30,17 @@ export type AdvanceVM = {
   purpose: string;
   drawn: number;
   feeLabel: string;
+  /** Deprecated aliases retained while the UI consumes the handoff migration. */
   fee: number;
   total: number;
+  owedNow: number;
+  feeSoFar: number;
+  feeIfRepaidIn1Week: number;
+  feeIfRepaidIn2Weeks: number;
+  feeIfRepaidIn4Weeks: number;
+  feeIfRepaidIn6Weeks: number;
+  maxFeeBps: number;
+  annualizedCostPercent: number;
   repaid: number;
   left: number;
   /** Percent of the total already repaid (0–100, rounded). */

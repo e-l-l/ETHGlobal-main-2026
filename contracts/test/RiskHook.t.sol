@@ -164,7 +164,7 @@ contract RiskHookTest is Test, Deployers {
     }
 
     function _next(uint256 dt) internal {
-        vm.warp(block.timestamp + dt);
+        vm.warp(vm.getBlockTimestamp() + dt);
         vm.roll(block.number + 1);
     }
 
@@ -436,7 +436,7 @@ contract RiskHookTest is Test, Deployers {
 
         _next(10);
         assertEq(hook.consult(hookKey, 10), 0);
-        vm.expectRevert(abi.encodeWithSelector(RiskHook.InsufficientHistory.selector, uint32(block.timestamp - 11), uint32(block.timestamp - 10)));
+        vm.expectRevert(abi.encodeWithSelector(RiskHook.InsufficientHistory.selector, uint32(vm.getBlockTimestamp() - 11), uint32(vm.getBlockTimestamp() - 10)));
         hook.consult(hookKey, 11);
 
         vm.expectRevert(RiskHook.ZeroWindow.selector);
@@ -448,7 +448,7 @@ contract RiskHookTest is Test, Deployers {
     }
 
     function test_consult_ringBufferEvictsOldHistory() public {
-        uint256 start = block.timestamp;
+        uint256 start = vm.getBlockTimestamp();
         for (uint256 i; i < 70; i++) {
             _next(10);
             _swap(hookKey, i % 2 == 0, -1e6);
@@ -460,7 +460,7 @@ contract RiskHookTest is Test, Deployers {
         vm.expectRevert();
         hook.consult(hookKey, 631);
         vm.expectRevert();
-        hook.consult(hookKey, uint32(block.timestamp - start));
+        hook.consult(hookKey, uint32(vm.getBlockTimestamp() - start));
     }
 
     function _floorDiv(int256 a, int256 b) internal pure returns (int24) {

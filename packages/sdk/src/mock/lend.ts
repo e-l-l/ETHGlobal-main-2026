@@ -24,7 +24,7 @@ export const VAULT = {
   reserve: "$8,400",
   coverage: "20.3%",
   feeShareJunior: "30%",
-  feeSplit: "60% senior · 30% junior · 10% reserve",
+  feeSplit: "40% senior · 30% junior/DRIP · 20% reserve · 10% protocol",
   receivedShares: "2,441.4 sUSD",
   juniorPrice: "$0.982",
   juniorTwap: "$0.986",
@@ -40,9 +40,10 @@ export const VAULT = {
 
 /** Of each fee. Senior earns most, junior earns more for its size, reserve keeps a slice. */
 export const FEE_SPLIT = [
-  { k: "Senior", v: "60%" },
-  { k: "Junior", v: "30%" },
-  { k: "Reserve", v: "10%" },
+  { k: "Senior", v: "40%" },
+  { k: "Junior / DRIP", v: "30%" },
+  { k: "Reserve", v: "20%" },
+  { k: "Protocol", v: "10%" },
 ] as const;
 
 /** Share value, calm, then a write-off that junior eats. Senior's line barely moves. */
@@ -61,20 +62,20 @@ export const positionActivity = [
 export const TIER_CAPS = [
   { tier: 0, cap: "$50" },
   { tier: 1, cap: "$100" },
-  { tier: 2, cap: "$250" },
-  { tier: 3, cap: "$250", was: "$500" },
+  { tier: 2, cap: "$200" },
+  { tier: 3, cap: "$300", was: "$300" },
 ] as const;
 
 export const signals = [
   { name: "Junior price (TWAP)", value: "$0.986", state: "watch" as const, note: "Fell through $0.97 after the write-off, recovering" },
   { name: "Repayment speed", value: "−40%", state: "watch" as const, note: "One shop is selling slower than its usual week" },
-  { name: "Junior coverage", value: "20.3%", state: "ok" as const, note: "Above the 15% floor" },
+  { name: "Junior coverage", value: "20.3%", state: "ok" as const, note: "Above the 20% junior cover ratio" },
 ];
 
 export const riskLog = [
   {
     time: "14:41",
-    title: "Lowered the tier 3 cap, $500 → $250",
+    title: "Limits reviewed at the $300 tier cap",
     kind: "down" as const,
     reason: "Junior TWAP fell through $0.97 after a $100 write-off. Tier 3 advances are the largest, so they move first. Limits only move down, inside the preset band. A person raises them back.",
     reasons: [
@@ -258,8 +259,8 @@ export const RISK_PANEL: RiskPanelView = {
     tierCaps: [
       { tier: 0, cap: "$50", floor: "$25", atFloor: false },
       { tier: 1, cap: "$100", floor: "$50", atFloor: false },
-      { tier: 2, cap: "$250", floor: "$100", atFloor: false },
-      { tier: 3, cap: "$250", floor: "$100", was: "$500", atFloor: false },
+  { tier: 2, cap: "$200", floor: "$100", atFloor: false },
+  { tier: 3, cap: "$300", floor: "$100", was: "$300", atFloor: false },
     ],
     recentlyLowered: true,
     lastChange: "Lowered today, 2:41 pm",
@@ -287,7 +288,7 @@ export const WATERFALL: WaterfallView = {
       usd: 37200,
       estimated: true,
     },
-    { key: "junior", title: "Junior (DRIP)", description: "Cash in the junior vault. Takes the first write-off.", amount: VAULT.junior, usd: 42000, estimated: false },
+    { key: "junior", title: "DripCoin (DRIP) junior", description: "Cash in the junior vault. Takes the first write-off.", amount: VAULT.junior, usd: 42000, estimated: false },
     { key: "reserve", title: "Reserve", description: "Fees and hook fees held back. Pays what junior can't.", amount: VAULT.reserve, usd: 8400, estimated: false },
     {
       key: "senior",

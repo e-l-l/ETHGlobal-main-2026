@@ -56,7 +56,7 @@ def falling_sales():
 
 
 def offered(amount=100_000_000, offer_id="0x" + "ab" * 32):
-    offer = SimpleNamespace(offer_id=offer_id, amount=amount, factor_bps=11500, holdback_bps=1000,
+    offer = SimpleNamespace(offer_id=offer_id, amount=amount, fee_rate_bps_per_week=50, fee_cap_bps=300, holdback_bps=1000,
                             expires_at=NOW + 900)
     return SimpleNamespace(result="offered", decision_id="dec-1", redline_hits=[], clamp_changes=[],
                            draft=SimpleNamespace(reasons_en=["Steady daily sales", "Many repeat customers"]),

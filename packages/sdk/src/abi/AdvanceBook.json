@@ -112,13 +112,13 @@
   },
   {
     "type": "function",
-    "name": "JUNIOR_FEE_BPS",
+    "name": "DELINQUENCY_WINDOW",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "uint16",
-        "internalType": "uint16"
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "stateMutability": "view"
@@ -177,6 +177,19 @@
   },
   {
     "type": "function",
+    "name": "MAX_PROTOCOL_FEE_BPS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MIN_REPAY_BPS",
     "inputs": [],
     "outputs": [
@@ -229,19 +242,6 @@
   },
   {
     "type": "function",
-    "name": "SENIOR_FEE_BPS",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint16",
-        "internalType": "uint16"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "TREE_DEPTH",
     "inputs": [],
     "outputs": [
@@ -259,85 +259,6 @@
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "advances",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "shopId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "principal",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "totalOwed",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "repaid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "principalRepaid",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "holdbackBps",
-        "type": "uint16",
-        "internalType": "uint16"
-      },
-      {
-        "name": "tier",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "lastSaleAt",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "status",
-        "type": "uint8",
-        "internalType": "enum AdvanceBook.Status"
-      },
-      {
-        "name": "credentialClaimed",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "pendingCommitment",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "windowStart",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "windowRepaid",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -486,6 +407,19 @@
   },
   {
     "type": "function",
+    "name": "delinquentPrincipal",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "depositReserve",
     "inputs": [
       {
@@ -527,7 +461,12 @@
             "internalType": "uint256"
           },
           {
-            "name": "factorBps",
+            "name": "feeRateBpsPerWeek",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "feeCapBps",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -613,7 +552,12 @@
             "internalType": "uint256"
           },
           {
-            "name": "factorBps",
+            "name": "feeRateBpsPerWeek",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "feeCapBps",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -704,7 +648,12 @@
             "internalType": "uint256"
           },
           {
-            "name": "factorBps",
+            "name": "feeRateBpsPerWeek",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "feeCapBps",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -866,6 +815,26 @@
             "name": "principalRepaid",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "feePaid",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "drawnAt",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "feeRateBpsPerWeek",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "feeCapBps",
+            "type": "uint16",
+            "internalType": "uint16"
           },
           {
             "name": "holdbackBps",
@@ -1074,7 +1043,12 @@
             "internalType": "uint256"
           },
           {
-            "name": "factorBps",
+            "name": "feeRateBpsPerWeek",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "feeCapBps",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -1143,6 +1117,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract TrancheVault"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "juniorFeeBps",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
       }
     ],
     "stateMutability": "view"
@@ -1339,10 +1326,36 @@
   },
   {
     "type": "function",
+    "name": "maxFeeCapBps",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "maxFeeRateBpsPerWeek",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "minWindowRepayment",
     "inputs": [
       {
-        "name": "totalOwed",
+        "name": "principalPlusAccruedFee",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -1543,6 +1556,19 @@
   },
   {
     "type": "function",
+    "name": "protocolFeeBps",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "registerMandate",
     "inputs": [
       {
@@ -1695,6 +1721,24 @@
   },
   {
     "type": "function",
+    "name": "repay",
+    "inputs": [
+      {
+        "name": "advanceId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "reserve",
     "inputs": [],
     "outputs": [
@@ -1702,6 +1746,19 @@
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "reserveFeeBps",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
       }
     ],
     "stateMutability": "view"
@@ -1752,12 +1809,71 @@
   },
   {
     "type": "function",
+    "name": "seniorFeeBps",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "setAgentPassAttester",
     "inputs": [
       {
         "name": "a",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setFeeShares",
+    "inputs": [
+      {
+        "name": "s",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "j",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "r",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "p",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setFeeTermBounds",
+    "inputs": [
+      {
+        "name": "rateBpsPerWeek",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "capBps",
+        "type": "uint16",
+        "internalType": "uint16"
       }
     ],
     "outputs": [],
@@ -1818,6 +1934,19 @@
     "inputs": [
       {
         "name": "r",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setTreasury",
+    "inputs": [
+      {
+        "name": "t",
         "type": "address",
         "internalType": "address"
       }
@@ -1904,6 +2033,19 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "treasury",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -2079,6 +2221,56 @@
     "type": "event",
     "name": "EIP712DomainChanged",
     "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FeeSharesSet",
+    "inputs": [
+      {
+        "name": "seniorBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      },
+      {
+        "name": "juniorBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      },
+      {
+        "name": "reserveBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      },
+      {
+        "name": "protocolBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FeeTermBoundsSet",
+    "inputs": [
+      {
+        "name": "maxFeeRateBpsPerWeek",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      },
+      {
+        "name": "maxFeeCapBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      }
+    ],
     "anonymous": false
   },
   {
@@ -2349,6 +2541,12 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      },
+      {
+        "name": "protocolFee",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -2448,6 +2646,19 @@
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "TreasurySet",
+    "inputs": [
+      {
+        "name": "treasury",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "AdvanceNotActive",
     "inputs": [
@@ -2519,6 +2730,22 @@
   },
   {
     "type": "error",
+    "name": "InsufficientJuniorCover",
+    "inputs": [
+      {
+        "name": "assets",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "required",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "InvalidAgentPass",
     "inputs": []
   },
@@ -2534,7 +2761,17 @@
   },
   {
     "type": "error",
-    "name": "InvalidFactor",
+    "name": "InvalidFeeCap",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidFeeRate",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidFeeShares",
     "inputs": []
   },
   {

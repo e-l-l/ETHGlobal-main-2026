@@ -69,7 +69,7 @@ contract BusinessPassE2ETest is Test {
 
         // 1. The issuer verified zkTLS offchain and signs; a relayer submits. The onchain root must equal the
         //    root the fixture proofs were made against.
-        BusinessVerified memory a = BusinessVerified(uint256(keccak256("hmac(pepper, acct_123)")), LEAF, uint64(block.timestamp + 1 hours));
+        BusinessVerified memory a = BusinessVerified(uint256(keccak256("hmac(pepper, acct_123)")), LEAF, uint64(vm.getBlockTimestamp() + 1 hours));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ISSUER_PK, registry.hashBusinessVerified(a));
         vm.prank(address(0x5E1A7));
         registry.issue(a, abi.encodePacked(r, s, v), LEAF);
@@ -80,7 +80,7 @@ contract BusinessPassE2ETest is Test {
     }
 
     function _offer(address recipient, uint8 minBand) internal view returns (Offer memory o, bytes memory sig) {
-        o = Offer(OFFER_ID, SHOP, recipient, 50e6, 50, 300, 1000, 0, BIZ_NULL, minBand, uint64(block.timestamp + 1 days));
+        o = Offer(OFFER_ID, SHOP, recipient, 50e6, 50, 300, 1000, 0, BIZ_NULL, minBand, uint64(vm.getBlockTimestamp() + 1 days));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PK, book.hashOffer(o));
         sig = abi.encodePacked(r, s, v);
     }
@@ -152,7 +152,7 @@ contract BusinessPassE2ETest is Test {
     }
 
     function _att(MandateRequest memory r, uint256 nonce) internal view returns (AgentPassAttestation memory) {
-        uint64 exp = uint64(block.timestamp + 1 hours);
+        uint64 exp = uint64(vm.getBlockTimestamp() + 1 hours);
         bytes32 sh = keccak256(abi.encode(book.AGENT_PASS_TYPEHASH(), r.agentKey, book.hashLimits(r.limits), nonce, exp));
         return AgentPassAttestation(nonce, exp, _sig(ATTESTER_PK, sh));
     }
@@ -176,7 +176,7 @@ contract BusinessPassE2ETest is Test {
         book.registerMandate(r, CredentialProof(drawProof, ROOT, BIZ_NULL + 1, NEXT), att2, os2);
 
         // automatic draw: nobody taps; the managed agent signs, the relayer submits
-        Offer memory o = Offer(OFFER_ID, SHOP, RECIPIENT, 50e6, 50, 300, 1000, 0, 0, 1, uint64(block.timestamp + 1 days));
+        Offer memory o = Offer(OFFER_ID, SHOP, RECIPIENT, 50e6, 50, 300, 1000, 0, 0, 1, uint64(vm.getBlockTimestamp() + 1 days));
         (uint8 v, bytes32 rr, bytes32 ss) = vm.sign(SIGNER_PK, book.hashOffer(o));
         bytes memory sig = abi.encodePacked(rr, ss, v);
         bytes memory agentSig = _sig(AGENT_PK, keccak256(abi.encode(book.MANDATE_DRAW_TYPEHASH(), o.offerId, id)));

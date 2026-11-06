@@ -8,32 +8,25 @@ econ = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(econ)
 
 
-def test_critique_break_evens():
-    assert econ.break_even(0.15) == pytest.approx(0.13043478)
-    assert econ.break_even(0.045) == pytest.approx(0.0430622)
-    assert econ.break_even(0.09) == pytest.approx(0.0825688)
+def test_fee_checkpoints_and_annualized_disclosure():
+    r = econ.model(econ.DEFAULTS)
+    assert r["merchant_cost_percent"] == {"1": 0.5, "2": 1.0, "4": 2.0, "6": 3.0}
+    assert r["merchant_simple_annualized_percent"] == {"1": 26.0, "2": 26.0, "4": 26.0, "6": 26.0}
+    assert r["fee_split_per_100"] == pytest.approx([0.8, 0.6, 0.4, 0.2])
+    assert r["platform_protocol_revenue_per_1m_lent"] == pytest.approx(2000)
 
 
-def test_cash_flow_and_waterfall():
-    p = econ.DEFAULTS.copy()
-    r = econ.model(p)
-    assert sum(r[k] for k in ("fee_senior", "fee_junior", "fee_reserve", "fee_protocol")) == pytest.approx(
-        r["annual_originations"] * (1 - p["default_rate"]) * (p["factor"] - 1))
-    assert sum(r[k] for k in ("junior_loss", "reserve_loss", "senior_loss", "uncovered_loss")) == pytest.approx(r["loss"])
-    assert r["gross_revenue"] - r["total_cost"] == pytest.approx(r["net_income"])
-    assert r["capital"] == pytest.approx(r["outstanding"] + r["idle_cash"])
+def test_lender_scenarios():
+    r = econ.model(econ.DEFAULTS)
+    assert r["senior_annual_return_percent"] == pytest.approx(9.6)
+    assert r["drip_annual_return_percent_by_loss"] == {
+        "0.25%": pytest.approx(21), "0.5%": pytest.approx(6),
+        "1%": pytest.approx(-24), "2%": pytest.approx(-84),
+    }
 
 
-def test_cost_and_low_utilisation():
-    p = econ.DEFAULTS.copy()
-    a = econ.model(p)
-    assert a["merchant_effective_annual_cost"][0] < a["merchant_effective_annual_cost"][1] < a["merchant_effective_annual_cost"][2]
-    p["utilisation"] = 0.35
-    b = econ.model(p)
-    assert b["idle_cash"] > a["idle_cash"]
-    assert b["senior_return"] < a["senior_return"]
-
-
-def test_invalid_split():
+def test_invalid_fee_split_and_defaults():
     with pytest.raises(ValueError):
-        econ.model({**econ.DEFAULTS, "fee_split": [0.5, 0.2, 0.1, 0.1]})
+        econ.model({**econ.DEFAULTS, "fee_split": [0.4, 0.3, 0.2, 0.2]})
+    assert econ.DEFAULTS["tier_caps"] == [50, 100, 200, 300]
+    assert econ.DEFAULTS["holdback"] == 0.08

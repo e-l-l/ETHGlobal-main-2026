@@ -45,14 +45,14 @@ contract Handler is Test {
         ++calls;
         uint256 index = seed % 4;
         ++serial;
-        Offer memory offer = Offer(bytes32(serial), shopIds[index], actors[index], 50e6, 50, 300, 2000, 0, serial, 0, uint64(block.timestamp + 1 days));
+        Offer memory offer = Offer(bytes32(serial), shopIds[index], actors[index], 50e6, 50, 300, 2000, 0, serial, 0, uint64(vm.getBlockTimestamp() + 1 days));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PK, book.hashOffer(offer));
         // Business Pass proof: MockVerifier accepts; the registry's empty root is a known root.
         try book.drawFirst(offer, abi.encodePacked(r, s, v), hex"01", EMPTY_ROOT, serial) returns (uint256) { ++successes; } catch { ++failures; }
     }
     function writeOff(uint256 seed, uint256 elapsed) external {
         ++calls;
-        vm.warp(block.timestamp + bound(elapsed, 0, 40 days));
+        vm.warp(vm.getBlockTimestamp() + bound(elapsed, 0, 40 days));
         uint256 id = bound(seed, 1, book.nextAdvanceId());
         try book.writeOff(id) { ++successes; } catch { ++failures; }
     }

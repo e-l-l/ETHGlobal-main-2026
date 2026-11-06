@@ -61,6 +61,8 @@ The vaults are seeded with a MockUSDC we deploy, because Circle's Sepolia USDC c
 
 DripCoin (DRIP): junior, takes losses first. The deployed contract still uses Junior/JNR until redeploy. The demo pool is seeded; its price is not a validated credit oracle. See [privacy architecture](../privacy-architecture.md) for public data and trust boundaries and [economics](../economics.md) for fees and risks.
 
+Latest contract build terms (not the existing Sepolia deployment): 0.5% fee per week while principal remains, capped at 3%; 8% sales holdback; $50/$100/$200/$300 tier caps; and collected-fee waterfall of 40% senior, 30% junior, 20% reserve, 10% protocol. A $100 advance repaid in four weeks accrues a $2 fee; early payoff saves fee.
+
 ## Status at a glance
 
 | Piece | Status |

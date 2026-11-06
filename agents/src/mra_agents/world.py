@@ -67,7 +67,7 @@ ATTESTATION_TYPE = "AgentPassAttestation(address agentKey,bytes32 limitsHash,uin
 
 # Business bounds on what a merchant may authorise (the contract enforces its own caps too).
 MIN_DRAW = 50_000_000
-MAX_DRAW = 500_000_000
+MAX_DRAW = 300_000_000
 MAX_PER_PERIOD = 2_000_000_000
 MIN_PERIOD = 86_400
 MAX_PERIOD = 90 * 86_400
