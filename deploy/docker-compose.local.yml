@@ -1,0 +1,52 @@
+# Laptop fallback (no Wi-Fi / EC2 down): same services, no Caddy, plain HTTP on localhost,
+# agents pointed at an anvil devnet running on the HOST (agents/scripts/devnet.sh).
+# Use via ./deploy/local.sh, which layers this file on top of docker-compose.yml.
+
+x-host-gateway: &host-gateway
+  extra_hosts:
+    - "host.docker.internal:host-gateway" # needed on Linux; Docker Desktop already provides it
+
+services:
+  agents-api:
+    <<: *host-gateway
+    env_file:
+      # Public anvil keys written by devnet.sh override the Sepolia keys from agents.env.
+      - path: ../agents/.env.devnet
+        required: false
+    environment:
+      RPC_URL: http://host.docker.internal:8545
+      CHAIN_ID: "31337"
+      DEPLOYMENTS_FILE: /srv/agents/deployments/local.json
+    ports: ["127.0.0.1:8787:8787"]
+
+  agents-worker:
+    <<: *host-gateway
+    env_file:
+      - path: ../agents/.env.devnet
+        required: false
+    environment:
+      RPC_URL: http://host.docker.internal:8545
+      CHAIN_ID: "31337"
+      DEPLOYMENTS_FILE: /srv/agents/deployments/local.json
+
+  app:
+    <<: *host-gateway
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8787
+        NEXT_PUBLIC_RPC_URL: http://localhost:8545
+        NEXT_PUBLIC_CHAIN_ID: "31337"
+    environment:
+      APP_ORIGIN: http://localhost:3000
+      DEPLOYMENTS_PATH: /srv/deployments/local.json
+      RPC_URL: http://host.docker.internal:8545
+    ports: ["127.0.0.1:3000:3000"]
+
+  demo-portal:
+    ports: ["127.0.0.1:3001:3000"]
+
+  issuer:
+    ports: ["127.0.0.1:${ISSUER_PORT:-4000}:${ISSUER_PORT:-4000}"]
+
+  caddy:
+    profiles: ["edge"] # not started locally

@@ -1,0 +1,333 @@
+# One-box deployment: Caddy (HTTPS) in front of the agents API, the agents worker, the merchant app,
+# the demo seller portal and the issuer. Only Caddy publishes ports (80/443).
+#
+# Always run through the wrappers so the right env file is used:
+#   ./deploy/deploy.sh            build + up + health checks + URLs
+#   ./deploy/compose.sh <args>    any docker compose command (ps, restart app, exec agents-api sh, ...)
+#   ./deploy/logs.sh [service]    follow logs
+#
+# Interpolation values (${...}) come from deploy/env/compose.env (passed with --env-file).
+# Per-service runtime env comes from deploy/env/<service>.env (git-ignored; templates in *.env.example).
+# Note: `environment:` entries below override the same key in an env_file. They are wiring only, no secrets.
+
+name: mra
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+x-agents-env: &agents-env
+  DB_PATH: /srv/agents/data/agents.sqlite
+  DEPLOYMENTS_FILE: /srv/agents/deployments/${DEPLOYMENTS_NAME:-sepolia}.json
+
+services:
+  agents-api:
+    <<: [*restart, *logging]
+    build:
+      context: ../agents
+      dockerfile: Dockerfile
+    image: mra-agents:local
+    init: true
+    env_file:
+      - path: ./env/agents.env
+        required: true
+    environment:
+      <<: *agents-env
+    volumes:
+      - agents-data:/srv/agents/data
+      - ../agents/deployments:/srv/agents/deployments:ro
+    networks: [internal]
+    expose: ["8787"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    mem_limit: 768m
+
+  agents-worker:
+    <<: [*restart, *logging]
+    # Same image as agents-api (built by that service; deploy.sh builds it first).
+    image: mra-agents:local
+    pull_policy: never
+    init: true
+    # Runs `python -m mra_agents.worker` if that module exists (Risk agent + keeper + MerchantAgentRunner),
+    # otherwise a fallback Risk + keeper loop shipped in deploy/agents/worker_entry.py.
+    command: ["python", "/srv/deploy/worker_entry.py"]
+    env_file:
+      - path: ./env/agents.env
+        required: true
+    environment:
+      <<: *agents-env
+      WORKER_HEARTBEAT_FILE: /tmp/worker.heartbeat
+    volumes:
+      - agents-data:/srv/agents/data
+      - ../agents/deployments:/srv/agents/deployments:ro
+      - ./agents/worker_entry.py:/srv/deploy/worker_entry.py:ro
+    networks: [internal]
+    depends_on:
+      agents-api:
+        condition: service_started
+    healthcheck:
+      # Fresh heartbeat (written by the fallback loop) or, if the real worker writes none, process alive.
+      test: ["CMD", "python", "-c", "import os,sys,time; f='/tmp/worker.heartbeat'; sys.exit(0 if not os.path.exists(f) or time.time()-os.path.getmtime(f) < 900 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    mem_limit: 768m
+
+  app:
+    # Merchant UI (apps/web). Started when deploy.sh finds apps/web/Dockerfile (or with `--profile ui`).
+    profiles: ["ui"]
+    <<: [*restart, *logging]
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Public, build-time values (inlined into the browser bundle). Override in deploy/env/compose.env.
+        NEXT_PUBLIC_MRA_MODE: ${NEXT_PUBLIC_MRA_MODE:-sepolia}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.${HOST_SUFFIX:-localhost}}
+        NEXT_PUBLIC_ISSUER_URL: ${NEXT_PUBLIC_ISSUER_URL:-https://issuer.${HOST_SUFFIX:-localhost}}
+        NEXT_PUBLIC_RPC_URL: ${NEXT_PUBLIC_RPC_URL:-}
+        NEXT_PUBLIC_ANON_RPC: ${NEXT_PUBLIC_ANON_RPC:-1}
+        NEXT_PUBLIC_ANON_NETWORK: ${NEXT_PUBLIC_ANON_NETWORK:-nox}
+        NEXT_PUBLIC_ANON_RPC_STRICT: ${NEXT_PUBLIC_ANON_RPC_STRICT:-}
+        NEXT_PUBLIC_LENDER_ACCOUNT: ${NEXT_PUBLIC_LENDER_ACCOUNT:-}
+    image: mra-app:local
+    init: true
+    env_file:
+      - path: ./env/app.env
+        required: false
+    environment:
+      API_URL: http://agents-api:8787
+      APP_ORIGIN: https://app.${HOST_SUFFIX:-localhost}
+      DEPLOYMENTS_PATH: /srv/deployments/${DEPLOYMENTS_NAME:-sepolia}.json
+    volumes:
+      - ../agents/deployments:/srv/deployments:ro
+    networks: [internal]
+    expose: ["3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 40s
+    mem_limit: 1g
+
+  demo-portal:
+    <<: [*restart, *logging]
+    build:
+      context: ../demo/portal
+      dockerfile: Dockerfile
+    image: mra-demo-portal:local
+    init: true
+    env_file:
+      - path: ./env/demo-portal.env
+        required: true
+    networks: [internal]
+    expose: ["3000"]
+    healthcheck:
+      # /api/health returns 503 when SESSION_SECRET is missing, so this also catches a bad env file.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 30s
+    mem_limit: 512m
+
+  issuer:
+    <<: [*restart, *logging]
+    # issuer/Dockerfile is owned by the issuer agent. deploy.sh skips this service until it exists.
+    build:
+      context: ../issuer
+      dockerfile: Dockerfile
+    image: mra-issuer:local
+    init: true
+    env_file:
+      - path: ./env/issuer.env
+        required: false
+    environment:
+      PORT: ${ISSUER_PORT:-4000}
+    networks: [internal]
+    expose: ["${ISSUER_PORT:-4000}"]
+    healthcheck:
+      # Assumes a Node base image (global fetch). Adjust ISSUER_HEALTH_PATH in compose.env.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:${ISSUER_PORT:-4000}${ISSUER_HEALTH_PATH:-/health}').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 30s
+    mem_limit: 512m
+
+  # ------------------------------------------------------------------------------------------------ devnet
+  # Public anvil devnet for the default scene (writeOff needs 30 quiet days, so it runs on a chain whose clock we
+  # control). Profile `devnet`: enabled by DEVNET=1 in deploy/env/compose.env (lib.sh adds the profile).
+  #   anvil              the chain; state persisted on the anvil-state volume; NOT published, NOT reachable by Caddy
+  #   devnet-deployer    one-shot: deploy + seed on first boot (no-op afterwards), writes devnet.json to devnet-data
+  #   rpc-proxy          the ONLY public path to anvil: JSON-RPC method allowlist + per-IP rate limit + CORS
+  #   agents-api-devnet  a second agents API on the devnet (public anvil keys, own DB) at api-devnet.<suffix>
+  # Admin (time warp etc.) only over SSH: deploy/devnet.sh warp 31d | scene | reset. See deploy/README.md.
+
+  anvil:
+    profiles: ["devnet"]
+    <<: [*restart, *logging]
+    image: ghcr.io/foundry-rs/foundry:v1.2.2 # pinned: same anvil/forge as the devnet tools image
+    init: true
+    entrypoint: ["/bin/sh", "/srv/devnet-kit/anvil-entry.sh"]
+    environment:
+      STATE: /home/foundry/anvil-state.json
+      DUMP_SECONDS: "30"
+      ANVIL_EXTRA_ARGS: "--silent"
+    volumes:
+      # Mounted on the image's /home/foundry so the fresh volume inherits uid 1000 (the image's user).
+      - anvil-state:/home/foundry
+      - ./devnet/anvil-entry.sh:/srv/devnet-kit/anvil-entry.sh:ro
+    networks: [internal]
+    expose: ["8545"]
+    healthcheck:
+      # Ready only after the warped clock has been restored (see anvil-entry.sh).
+      test: ["CMD-SHELL", "test -f /tmp/anvil.ready && cast chain-id --rpc-url http://127.0.0.1:8545 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    stop_grace_period: 30s # time to dump the state on `docker stop`
+    mem_limit: 512m
+
+  devnet-deployer:
+    profiles: ["devnet"]
+    <<: *logging
+    build:
+      context: ..
+      dockerfile: deploy/devnet/Dockerfile
+    image: mra-devnet-tools:local
+    init: true
+    restart: "no"
+    # Shares anvil's network namespace: 127.0.0.1:8545 is anvil, so the local-only devnet scripts run as-is.
+    network_mode: "service:anvil"
+    command: ["bash", "/srv/devnet-kit/bootstrap.sh"]
+    env_file:
+      # Only read by `deploy/devnet.sh scene --llm` (LLM provider + key); deploy/seed use public anvil keys.
+      - path: ./env/agents-devnet.env
+        required: false
+    environment:
+      RPC_URL: http://127.0.0.1:8545
+      DEPLOYMENTS_FILE: /work/agents/deployments/devnet/devnet.json
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - devnet-data:/work/agents/deployments/devnet
+      - ./devnet/bootstrap.sh:/srv/devnet-kit/bootstrap.sh:ro
+      # Scripts + package source from the checkout, so a `git pull` updates the scene without a rebuild.
+      - ../agents/scripts:/work/agents/scripts:ro
+      - ../agents/src:/work/agents/src:ro
+    depends_on:
+      anvil:
+        condition: service_healthy
+    mem_limit: 1536m # forge script + one Honk proof, first boot only
+
+  rpc-proxy:
+    profiles: ["devnet"]
+    <<: [*restart, *logging]
+    image: mra-agents:local # aiohttp ships with web3; no extra image
+    pull_policy: never
+    init: true
+    command: ["python", "/srv/devnet-kit/rpc_proxy.py"]
+    environment:
+      UPSTREAM_URL: http://anvil:8545
+      PORT: "8546"
+      MANIFEST_PATH: /srv/devnet/devnet.json
+      RATE_PER_SEC: ${DEVNET_RPC_RATE_PER_SEC:-15}
+      RATE_BURST: ${DEVNET_RPC_RATE_BURST:-60}
+      SEND_PER_MIN: ${DEVNET_RPC_SEND_PER_MIN:-30}
+      MAX_BODY_BYTES: ${DEVNET_RPC_MAX_BODY_BYTES:-262144}
+      MAX_BATCH: ${DEVNET_RPC_MAX_BATCH:-50}
+    volumes:
+      - ./devnet/rpc_proxy.py:/srv/devnet-kit/rpc_proxy.py:ro
+      - devnet-data:/srv/devnet:ro
+    networks: [internal]
+    expose: ["8546"]
+    read_only: true
+    depends_on:
+      anvil:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8546/health', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    mem_limit: 128m
+
+  agents-api-devnet:
+    profiles: ["devnet"]
+    <<: [*restart, *logging]
+    image: mra-agents:local
+    pull_policy: never
+    init: true
+    env_file:
+      # Public anvil keys ONLY (template: env/agents-devnet.env.example). deploy.sh refuses Sepolia keys here.
+      - path: ./env/agents-devnet.env
+        required: true
+    environment:
+      RPC_URL: http://anvil:8545
+      CHAIN_ID: "31337"
+      DB_PATH: /srv/agents/data/agents.sqlite
+      DEPLOYMENTS_FILE: /srv/agents/deployments-devnet/devnet.json
+    volumes:
+      - agents-devnet-data:/srv/agents/data
+      - devnet-data:/srv/agents/deployments-devnet:ro
+    networks: [internal]
+    expose: ["8787"]
+    depends_on:
+      devnet-deployer:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    mem_limit: 384m
+
+  caddy:
+    <<: [*restart, *logging]
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      HOST_SUFFIX: ${HOST_SUFFIX:?HOST_SUFFIX is empty; deploy.sh fills it from the instance public IP}
+      ISSUER_PORT: ${ISSUER_PORT:-4000}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # certificates + ACME account: keep this volume or you re-issue (rate limits)
+      - caddy-config:/config
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 256m
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  agents-data:
+  caddy-data:
+  caddy-config:
+  # devnet profile (deploy/devnet.sh reset --hard removes these three)
+  anvil-state:
+  devnet-data:
+  agents-devnet-data:

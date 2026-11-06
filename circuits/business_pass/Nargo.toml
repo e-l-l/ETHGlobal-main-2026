@@ -1,0 +1,9 @@
+[package]
+name = "business_pass"
+type = "bin"
+authors = ["merchant-revenue-advance"]
+# Pinned toolchain: nargo 1.0.0-rc.3 + bb 6.0.0 (the pair shipped together in Aztec v6.0.0).
+# bbup has no map entry for nargo 1.0.0 stable yet, so do not use `bbup -nv`.
+
+[dependencies]
+poseidon = { tag = "v0.4.0", git = "https://github.com/noir-lang/poseidon" }

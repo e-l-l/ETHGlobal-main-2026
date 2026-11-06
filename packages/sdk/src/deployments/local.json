@@ -1,0 +1,20 @@
+{
+  "AdvanceBook": "0x31C89d6188b169aDCC7f6002d9cBAB605B67fd6d",
+  "BusinessPassRegistry": "0x0fC6E11087EaAC6c564856aBfA901CDAd69eF5a9",
+  "BusinessPassVerifier": "0xe3314d15fc547d36b0E28530d7dAA4190Caa204F",
+  "HonkVerifier": "0x0218aAC7A0d10Bb2F60Cbf52Ce875ED9d64420bb",
+  "JuniorVault": "0x488b54Cf1b3F65Fa0cf76889ccb78afD2a054f4E",
+  "PoolManager": "0x0f3519FF027eD7e934F2b1Fc0cd8fe3bc44c7310",
+  "RiskHook": "0x760CBe438e33ef1A7D2fFd23Aa7f0d8C09F61044",
+  "SeniorVault": "0x7188450134eFbda4591D303dA02BE644Bb4B63Fb",
+  "USDC": "0xF97f395dAb1F8f5936d51770F277c42a86DC1B99",
+  "chainId": 31337,
+  "deployBlock": 2987,
+  "poolKey": {
+    "currency0": "0x488b54Cf1b3F65Fa0cf76889ccb78afD2a054f4E",
+    "currency1": "0xF97f395dAb1F8f5936d51770F277c42a86DC1B99",
+    "fee": 3000,
+    "hooks": "0x760CBe438e33ef1A7D2fFd23Aa7f0d8C09F61044",
+    "tickSpacing": 60
+  }
+}

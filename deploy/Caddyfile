@@ -1,0 +1,72 @@
+# Caddy: automatic HTTPS (Let's Encrypt, with ZeroSSL as Caddy's built-in fallback) for every site below.
+# HOST_SUFFIX is e.g. 13-233-45-67.sslip.io (no domain needed) or demo.example.com (real domain).
+# CORS is deliberately NOT handled here: each app owns its own CORS policy (rpc-proxy sets CORS * itself).
+{
+	# Uncomment and set to get certificate-expiry mail (optional):
+	# email you@example.com
+}
+
+(common) {
+	encode zstd gzip
+	header {
+		# No includeSubDomains/preload: sslip.io is a shared domain. 1 day so a later switch stays easy.
+		Strict-Transport-Security "max-age=86400"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+		-X-Powered-By
+	}
+	log {
+		output stdout
+		format console
+	}
+}
+
+# Pages that should never be framed. The portal is left frameable on purpose (Reclaim may load it
+# in a webview or frame during the zkTLS flow); its own next.config sets its headers.
+(noframe) {
+	header X-Frame-Options "SAMEORIGIN"
+}
+
+app.{$HOST_SUFFIX} {
+	import common
+	import noframe
+	reverse_proxy app:3000
+}
+
+api.{$HOST_SUFFIX} {
+	import common
+	import noframe
+	# LLM underwriting can take up to ~90 s; Caddy has no response timeout by default.
+	reverse_proxy agents-api:8787
+}
+
+portal.{$HOST_SUFFIX} {
+	import common
+	reverse_proxy demo-portal:3000
+}
+
+issuer.{$HOST_SUFFIX} {
+	import common
+	import noframe
+	reverse_proxy issuer:{$ISSUER_PORT}
+}
+
+# ---- public devnet (DEVNET=1 in env/compose.env; 502 when the devnet profile is off) ----
+# rpc: JSON-RPC for anvil, ONLY through rpc-proxy (method allowlist, per-IP rate limit, CORS *). anvil itself is
+# never proxied. Caddy replaces any client-sent X-Forwarded-For (no trusted_proxies), so the proxy's per-IP limit
+# keys on the real client address.
+rpc.{$HOST_SUFFIX} {
+	import common
+	import noframe
+	request_body {
+		max_size 512KB
+	}
+	reverse_proxy rpc-proxy:8546
+}
+
+api-devnet.{$HOST_SUFFIX} {
+	import common
+	import noframe
+	reverse_proxy agents-api-devnet:8787
+}

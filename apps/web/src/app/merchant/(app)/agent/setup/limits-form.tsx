@@ -1,19 +1,31 @@
 "use client";
 
 import { useState } from "react";
+import type { AgentLimitsVM, LadderStepVM } from "@repo/sdk";
 import { ActionBar, Button, Card, Chips, Label, SettingRow, Stack, Switch, Text } from "@/final";
 import { formatMoney } from "@/lib/format";
+import { q } from "@/lib/mra-queries";
+import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
-import { agentLimits, currentTier, limitsLadder } from "@/lib/mock/shop";
+import { useMRA } from "@/lib/use-mra";
 import { PrivateMark } from "../_parts";
 import { perMonthOptions, purposes } from "../_data";
 
-const lockedCaps = limitsLadder.filter((_, i) => i > currentTier);
-const cap = limitsLadder[currentTier].cap;
+type SetupPage = { agentLimits: AgentLimitsVM; limitsLadder: LadderStepVM[]; currentTier: number };
 
-/** Local-only state: nothing is saved yet. */
-export function LimitsForm() {
-  const [perAdvance, setPerAdvance] = useState(String(agentLimits.perAdvance));
+/** M07: defaults from `agent.setupOptions()`, the ladder and tier from `merchant.repaid()`. M08 gets the picks. */
+export function LimitsForm({ initial }: { initial: SetupPage | null }) {
+  const { data, error } = useMRA(q.agentSetupPage, { initial });
+  if (!data) return <MRAState error={error} />;
+  return <LimitsFields view={data} />;
+}
+
+/** Local state until "Approve with World": the picks travel to M08 in the URL. */
+function LimitsFields({ view }: { view: SetupPage }) {
+  const { agentLimits, limitsLadder, currentTier } = view;
+  const lockedCaps = limitsLadder.filter((_, i) => i > currentTier);
+  const cap = limitsLadder[currentTier]?.cap ?? agentLimits.perAdvance;
+  const [perAdvance, setPerAdvance] = useState(String(Math.min(agentLimits.perAdvance, cap)));
   const [perMonth, setPerMonth] = useState(String(agentLimits.perMonth));
   const [purpose, setPurpose] = useState<string>(agentLimits.purpose);
   const [supplier, setSupplier] = useState(true);
@@ -37,7 +49,7 @@ export function LimitsForm() {
               }))}
             />
             <Text size="note">
-              {lockedCaps.map((l) => formatMoney(l.cap)).join(" and ")} unlock as you repay. Your limit is{" "}
+              {lockedCaps.length > 0 ? `${lockedCaps.map((l) => formatMoney(l.cap)).join(" and ")} unlock as you repay. ` : ""}Your limit is{" "}
               {formatMoney(cap)} today.
             </Text>
           </Card>
@@ -76,7 +88,7 @@ export function LimitsForm() {
         </Text>
       </Card>
       <ActionBar hint="One-time approval. Only you can turn the agent on.">
-        <Button href={routes.agent.approve}>Approve with World</Button>
+        <Button href={`${routes.agent.approve}?${new URLSearchParams({ perAdvance, perMonth, purpose })}`}>Approve with World</Button>
       </ActionBar>
     </Stack>
   );

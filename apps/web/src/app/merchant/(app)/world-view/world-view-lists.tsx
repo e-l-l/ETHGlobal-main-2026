@@ -1,13 +1,22 @@
 "use client";
 
+import type { WorldView } from "@repo/sdk";
 import { Banner, Card, Columns, KeyValue, Label, LockIcon, Pill, Stack, WorldMark } from "@/final";
-import { worldView } from "@/lib/mock/merchant";
-import { shop } from "@/lib/mock/shop";
+import { q } from "@/lib/mra-queries";
+import { MRAState } from "@/lib/mra-state";
+import { useMRA } from "@/lib/use-mra";
 import { useWorldView } from "@/lib/world-view";
 
-/** The two lists side by side. The header's World view toggle outlines each on this and every other screen. */
-export function WorldViewLists() {
+/**
+ * P01: `world.publicView()`, the two lists side by side. The header's World view toggle outlines each on this and
+ * every other screen.
+ */
+export function WorldViewLists({ initial }: { initial: WorldView | null }) {
   const wv = useWorldView();
+  const { data, error } = useMRA(q.world, { initial });
+  if (!data) return <MRAState error={error} />;
+  const { shop } = data;
+  const worldView = data;
   return (
     <Stack>
       <Columns>
@@ -33,7 +42,7 @@ export function WorldViewLists() {
           </Card>
         </WorldMark>
       </Columns>
-      <Banner>No one can link {shop.id} to you, your phone, or your seller account.</Banner>
+      <Banner>No one can link {shop.pseudonym} to you, your phone, or your seller account.</Banner>
     </Stack>
   );
 }

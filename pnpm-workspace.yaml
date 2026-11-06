@@ -5,3 +5,5 @@ packages:
 allowBuilds:
   "@parcel/watcher": true
   "pnpm": true
+  # optional native msgpack accelerator pulled in by @aztec-foundation/bb.js; the pure-JS path is used
+  "msgpackr-extract": false

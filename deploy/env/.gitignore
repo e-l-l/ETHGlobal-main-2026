@@ -1,0 +1,3 @@
+# Real env files never get committed; only the *.env.example templates do.
+*.env
+!*.env.example

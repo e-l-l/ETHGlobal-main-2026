@@ -1,12 +1,16 @@
 import { Page, PageHead } from "@/final";
+import { serverView } from "@/lib/mra";
+import { q } from "@/lib/mra-queries";
 import { routes } from "@/lib/routes";
 import { CashOutForm } from "./amount-card";
 
-export default function CashOutPage() {
+/** M18 Cash out: `merchant.cashOutView()`, then `merchant.cashOut(amount, destination)`. */
+export default async function CashOutPage() {
+  const initial = await serverView(q.cashOut);
   return (
     <Page tabs>
       <PageHead back={routes.merchant} backLabel="Home" label="Cash out" title="Move your dollars." />
-      <CashOutForm />
+      <CashOutForm initial={initial} />
     </Page>
   );
 }

@@ -30,10 +30,16 @@ The **World view** toggle on every screen shows exactly which data is onchain an
 
 | Part | State |
 |---|---|
-| Web app: every screen for merchant, customer, lender, junior and public users | ✅ Built, responsive (390px phone, 1440px desktop), **running on mock data** |
+| Web app: every screen for merchant, customer, lender, junior and public users | ✅ Built, responsive (390px phone, 1440px desktop). Reads through `@repo/sdk`: mock by default, live on Sepolia with `NEXT_PUBLIC_MRA_MODE=sepolia` |
 | Design system (`/final/components`) | ✅ Built |
 | Demo seller portal | ✅ Built (inside the web app, deliberately unbranded) |
-| Contracts (Foundry), Noir circuit, agent service | 🚧 Planned. See [architecture](anay-docs/architecture.md#repo-layout-planned) |
+| Contracts (Foundry): AdvanceBook, BusinessPassRegistry, senior/junior ERC-4626 vaults, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 152 tests |
+| Noir circuits: `standing_pass`, `business_pass` | ✅ Proofs made in the browser verify on the deployed verifiers |
+| Agents service (Python): Underwriter, Critic, managed cash-flow agents, Risk agent, keeper, relayer | ✅ Running on EC2, 406 tests |
+| Business Pass issuer (zkTLS → attestation) | ✅ Running; mock attestor until the Reclaim provider is live |
+| `@repo/sdk`: the one integration layer every screen uses | ✅ Anon-RPC transport, in-browser prover, burner wallet + demo faucet |
+| World Agent Pass + IDKit | 🟡 Built and tested; test mode until the World app keys are added |
+| Live demo | https://app.65-1-36-70.sslip.io (public devnet for the default scene: `rpc.` / `api-devnet.`) |
 
 ## Quick start
 
@@ -90,9 +96,17 @@ Every route lives in [`apps/web/src/lib/routes.ts`](apps/web/src/lib/routes.ts).
 │       ├── src/lib/             routes, brand name, copy (EN/ES), formatting, mock data
 │       └── e2e/                 Playwright + axe tests
 ├── packages/
+│   ├── sdk/                     @repo/sdk: typed view-models per screen; mock | local | sepolia; Anon-RPC, prover, wallet
 │   ├── tailwind-config/         theme.css + final.css: every design token (colours, type, radii, motion)
 │   ├── eslint-config/           Shared flat ESLint configs
 │   └── typescript-config/       Shared tsconfig bases
+├── contracts/                   Solidity (Foundry), live on Sepolia
+├── circuits/                    Noir: standing_pass, business_pass
+├── agents/                      Python agents service (FastAPI): underwriting, managed agents, risk, keeper, relayer
+├── issuer/                      Node: Business Pass issuer (zkTLS proof → nullifier → signed attestation)
+├── demo/portal/                 Standalone zkTLS seller dashboard (reference for the in-app portal screens)
+├── deploy/                      EC2: Docker Compose + Caddy, public devnet with an RPC allowlist
+├── docs/                        Architecture, privacy, agents, integration keys; docs/submission for prize write-ups
 ├── anay-docs/                   Product, architecture, economics, ZK and agent docs
 ├── anay-design.md               Design source of truth (palette, type, logo, patterns, screens)
 └── work-split.md                Who builds which screens
@@ -131,9 +145,31 @@ Full spec: [anay-design.md](anay-design.md).
 | [hackathon.md](anay-docs/hackathon.md) | Partner tracks, prizes and submission checklists |
 | [judge-qa.md](anay-docs/judge-qa.md) | The hard questions and our answers |
 | [research.md](anay-docs/research.md) | Why a cash advance and not a payday loan |
+| [privacy-architecture.md](docs/privacy-architecture.md) | The full privacy design: Business Pass, Agent Pass, Anon-RPC, who learns what |
+| [packages/sdk/README.md](packages/sdk/README.md) | How any frontend plugs in: every screen → SDK call → view-model |
+| [integration-keys.md](docs/integration-keys.md) | Every key and app id for real mode, and where to get it |
+| [deploy/README.md](deploy/README.md) | Running the whole stack on one EC2 box |
+| [docs/submission/](docs/submission/) | Uniswap feedback, World debrief, CROPS, Anon-RPC, AI usage, demo script, video plan |
 
 ## Tech stack
 
 Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 · Radix UI primitives · class-variance-authority · tailwind-merge · Playwright + axe-core · Turborepo · pnpm.
 
-Planned onchain: Solidity (Foundry), Uniswap v4 hooks, ERC-4626, Noir + bb.js, World ID / IDKit, zkTLS, Anon-RPC, on Ethereum Sepolia.
+Onchain and services: Solidity (Foundry) · Uniswap v4 hooks · ERC-4626 · Noir + bb.js (UltraHonk) · World Agent Pass / IDKit 4 · Reclaim zkTLS · Anon-RPC (Nox, Nym) · Python (FastAPI, web3.py, AWS Bedrock) · Node (Fastify) · viem · Ethereum Sepolia.
+
+## Running the backend
+
+| Part | Setup | Test |
+|---|---|---|
+| Contracts | `cd contracts && git submodule update --init --recursive` | `forge test` |
+| Circuits | Noir 1.0.0-rc.3 + bb 6.0.0 (`circuits/*/build.sh`) | `nargo test` |
+| Agents | `cd agents && uv sync` | `uv run pytest` |
+| Issuer | `cd issuer && npm ci` | `npx vitest run` |
+| SDK | `pnpm install` | `pnpm --filter @repo/sdk test` |
+| Whole stack on a server | see [deploy/README.md](deploy/README.md) | `deploy.sh` runs health checks |
+
+Secrets live in git-ignored `.env` files; each folder has a `.env.example`.
+
+## License
+
+[MIT](LICENSE)

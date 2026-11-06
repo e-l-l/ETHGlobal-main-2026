@@ -34,3 +34,12 @@ yarn-error.log*
 
 # ui
 dist/
+
+# --- protocol + services (moved from ethglobal-mumbai) ---
+.env
+.env.*
+!.env.example
+contracts/out/
+contracts/cache/
+contracts/broadcast/*/31337/
+circuits/**/target/

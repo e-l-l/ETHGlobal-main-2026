@@ -22,12 +22,21 @@ import {
   Steps,
   Text,
   TextField,
+  TextLink,
   typedUsd,
   CheckIcon,
 } from "@/final";
+import type { DepositView, ExplorerEventVM, ExplorerView, TradeView, TxResult, TxStep } from "@repo/sdk";
+import { errorCode, explorerTxUrl, isMock, withMRA, type MRA } from "@/lib/mra";
+import { q } from "@/lib/mra-queries";
+import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
-import { JUNIOR_WRITE_OFF_INDEX, VAULT, explorerEvents, juniorSeries, type ExplorerKind } from "./data";
+import { useMRA } from "@/lib/use-mra";
 import { LendShell, Pub } from "./shell";
+import { vaultNumbers } from "./vault";
+
+/** The demo faucet sends a fresh burner this much test USDC on its first write (agents DEMO_FAUCET_USDC). */
+const FAUCET_USDC = 50;
 
 const usdText = (n: number, d = 0) => `$${n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
 const fmt = (n: number, d = 1) => n.toLocaleString("en-US", { maximumFractionDigits: d });
@@ -46,6 +55,8 @@ type Side = {
   steps: string[];
   done: (n: number) => string;
   doneSub: string;
+  /** Live modes: the SDK write for this side (approve + deposit, or one withdraw), reporting each wallet step. */
+  live?: (mra: MRA, n: number, onStep: (s: TxStep) => void) => Promise<TxResult>;
 };
 
 type Phase = "idle" | "wallet" | "pending";
@@ -75,6 +86,8 @@ function VaultAction({
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [done, setDone] = useState(false);
+  const [hash, setHash] = useState<string | undefined>();
+  const [failed, setFailed] = useState<string | undefined>();
   const n = Number(value || 0);
   const over = n > side.max;
   const busy = phase !== "idle";
@@ -87,6 +100,30 @@ function VaultAction({
   };
 
   const run = () => {
+    if (!isMock && side.live) {
+      // Live: one tap runs every wallet step of this side (the burner wallet signs; the faucet tops it up first).
+      const live = side.live;
+      setPhase("wallet");
+      setFailed(undefined);
+      void withMRA((m) =>
+        live(m, n, (st) => {
+          setPhase("pending");
+          if (st.status !== "pending") setStep((i) => Math.min(i + 1, side.steps.length - 1));
+        }),
+      ).then(
+        (r) => {
+          setHash(r.hash);
+          setPhase("idle");
+          setDone(true);
+        },
+        (e) => {
+          setFailed(errorCode(e));
+          setPhase("idle");
+          setStep(0);
+        },
+      );
+      return;
+    }
     setPhase("wallet");
     window.setTimeout(() => setPhase("pending"), 700);
     window.setTimeout(() => {
@@ -109,7 +146,19 @@ function VaultAction({
           </Heading>
           <Text>{side.doneSub}</Text>
         </Card>
-        <Banner>Simulated. A demo wallet confirmed it; nothing left this browser.</Banner>
+        {isMock ? (
+          <Banner>Simulated. A demo wallet confirmed it; nothing left this browser.</Banner>
+        ) : (
+          <Card gap="sm">
+            <Text size="note">Confirmed on Sepolia from the wallet on this device.</Text>
+            {hash ? <CopyHash value={hash} short /> : null}
+            {explorerTxUrl(hash) ? (
+              <TextLink href={explorerTxUrl(hash)!} target="_blank" rel="noreferrer" arrow>
+                See it on Etherscan
+              </TextLink>
+            ) : null}
+          </Card>
+        )}
         <ActionBar>
           <Button href={after.href}>{after.label}</Button>
         </ActionBar>
@@ -151,6 +200,7 @@ function VaultAction({
         ))}
       </div>
       <Keypad value={value} onChange={(v) => !busy && setValue(v)} />
+      {failed ? <Banner tone="caution">Didn&rsquo;t go through ({failed}). Nothing moved.</Banner> : null}
       <ActionBar>
         {side.steps.length > 1 ? (
           <div className="md:mr-auto">
@@ -165,7 +215,15 @@ function VaultAction({
   );
 }
 
-export function DepositScreen({ side }: { side?: string }) {
+/** Deposit max in live modes: the wallet's USDC, or what the faucet sends an empty burner on the first write. */
+const fundable = (walletUsdc: number) => (isMock || walletUsdc > 0 ? walletUsdc : FAUCET_USDC);
+
+/** L02: `lender.depositView()`, then `lender.deposit(n)` / `lender.withdraw(n)` in live modes. */
+export function DepositScreen({ side, initial }: { side?: string; initial: DepositView | null }) {
+  const { data, error } = useMRA(q.deposit, { initial });
+  if (!data) return <MRAState error={error} />;
+  const VAULT = vaultNumbers(data.vault);
+  const walletMax = fundable(VAULT.walletUsdc);
   return (
     <VaultAction
       title="Senior vault"
@@ -179,9 +237,10 @@ export function DepositScreen({ side }: { side?: string }) {
         {
           key: "deposit",
           label: "Deposit",
-          max: VAULT.walletUsdc,
-          maxLabel: `Wallet: ${usdText(VAULT.walletUsdc)} USDC`,
-          quote: (n) => `≈ ${fmt(n / VAULT.sharePrice)} shares at ${price(VAULT.sharePrice)}`,
+          max: walletMax,
+          maxLabel: walletMax === VAULT.walletUsdc ? `Wallet: ${usdText(VAULT.walletUsdc)} USDC` : `Test USDC: up to ${usdText(walletMax)}`,
+          quote: (n) => `≈ ${fmt(n / (VAULT.sharePrice || 1))} shares at ${price(VAULT.sharePrice)}`,
+          live: (m, n, onStep) => m.lender.deposit(n, { onStep }),
           steps: ["Approve USDC", "Deposit"],
           done: (n) => `Deposited ${usdText(n, 2)}`,
           doneSub: "You earn from shop fees. Senior is paid back before junior.",
@@ -191,7 +250,8 @@ export function DepositScreen({ side }: { side?: string }) {
           label: "Withdraw",
           max: VAULT.availableToWithdraw,
           maxLabel: `Available now: ${usdText(VAULT.availableToWithdraw)}`,
-          quote: (n) => `${fmt(n / VAULT.sharePrice)} shares → ${usdText(n, 2)} USDC`,
+          quote: (n) => `${fmt(n / (VAULT.sharePrice || 1))} shares → ${usdText(n, 2)} USDC`,
+          live: (m, n, onStep) => m.lender.withdraw(n, { onStep }),
           steps: ["Withdraw"],
           done: (n) => `Withdrew ${usdText(n, 2)}`,
           doneSub: "The rest stays in advances until shops repay.",
@@ -201,7 +261,13 @@ export function DepositScreen({ side }: { side?: string }) {
   );
 }
 
-export function MintScreen() {
+/** J02: `lender.junior.mintView()`, then `lender.junior.deposit(n)` / `withdraw(n)` in live modes. */
+export function MintScreen({ initial }: { initial: DepositView | null }) {
+  const { data, error } = useMRA(q.mint, { initial });
+  if (!data) return <MRAState error={error} />;
+  const VAULT = vaultNumbers(data.vault);
+  const walletMax = fundable(VAULT.walletUsdc);
+  const book = VAULT.juniorBook || 1;
   return (
     <VaultAction
       title="JAR-J"
@@ -214,12 +280,13 @@ export function MintScreen() {
         {
           key: "mint",
           label: "Mint",
-          max: VAULT.walletUsdc,
-          maxLabel: `Wallet: ${usdText(VAULT.walletUsdc)} USDC`,
-          quote: (n) => `${fmt(n / VAULT.juniorBook, 2)} JAR-J at book ${price(VAULT.juniorBook)}`,
+          max: walletMax,
+          maxLabel: walletMax === VAULT.walletUsdc ? `Wallet: ${usdText(VAULT.walletUsdc)} USDC` : `Test USDC: up to ${usdText(walletMax)}`,
+          quote: (n) => `${fmt(n / book, 2)} JAR-J at book ${price(VAULT.juniorBook)}`,
+          live: (m, n, onStep) => m.lender.junior.deposit(n, { onStep }),
           steps: ["Approve USDC", "Mint"],
-          done: (n) => `Minted ${fmt(n / VAULT.juniorBook, 2)} JAR-J`,
-          doneSub: "First loss: you take losses before senior, for 30% of every fee.",
+          done: (n) => `Minted ${fmt(n / book, 2)} JAR-J`,
+          doneSub: `First loss: you take losses before senior, for ${data.vault.feeShareJunior} of every fee.`,
         },
         {
           key: "redeem",
@@ -227,6 +294,7 @@ export function MintScreen() {
           max: VAULT.walletJarJ,
           maxLabel: `You hold ${VAULT.walletJarJ} JAR-J`,
           quote: (n) => `${usdText(n * VAULT.juniorBook, 2)} USDC at book`,
+          live: (m, n, onStep) => m.lender.junior.withdraw(n * book, { onStep }),
           steps: ["Redeem"],
           done: (n) => `Redeemed ${fmt(n, 2)} JAR-J`,
           doneSub: "USDC is back in your wallet.",
@@ -237,14 +305,23 @@ export function MintScreen() {
 }
 
 /* ------------------------------------------------------------- J03 Trade */
-export function TradeScreen() {
+/** J03: `lender.junior.trade()` for the price, TWAP, book and history. The swap itself is simulated in every mode. */
+export function TradeScreen({ initial }: { initial: TradeView | null }) {
+  const { data, error } = useMRA(q.trade, { initial });
+  if (!data) return <MRAState error={error} />;
+  return <TradeForm view={data} />;
+}
+
+function TradeForm({ view }: { view: TradeView }) {
+  const { juniorSeries, writeOffIndex } = view;
+  const VAULT = vaultNumbers(view.vault);
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [value, setValue] = useState("100");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const n = Number(value || 0);
-  const out = side === "buy" ? n / VAULT.juniorPrice : n * VAULT.juniorPrice;
-  const discount = (((VAULT.juniorBook - VAULT.juniorPrice) / VAULT.juniorBook) * 100).toFixed(1);
+  const out = side === "buy" ? n / (VAULT.juniorPrice || 1) : n * VAULT.juniorPrice;
+  const discount = VAULT.juniorBook > 0 ? (((VAULT.juniorBook - VAULT.juniorPrice) / VAULT.juniorBook) * 100).toFixed(1) : "0.0";
 
   return (
     <LendShell note="The pool, its price and every swap are public.">
@@ -261,7 +338,7 @@ export function TradeScreen() {
                 points={juniorSeries}
                 height={180}
                 label="JAR-J price over 12 weeks, dipping at the write-off"
-                markers={[{ index: JUNIOR_WRITE_OFF_INDEX, label: "The $100 write-off" }]}
+                markers={writeOffIndex >= 0 ? [{ index: writeOffIndex, label: isMock ? "The $100 write-off" : "Latest write-off" }] : []}
                 xLabels={["12 weeks ago", "Now"]}
                 format={price}
               />
@@ -270,8 +347,8 @@ export function TradeScreen() {
           <Pub>
             <StatGrid
               items={[
-                { label: "Price", value: price(VAULT.juniorPrice) },
-                { label: "TWAP", value: price(VAULT.juniorTwap) },
+                { label: "Price", value: view.vault.juniorPrice },
+                { label: "TWAP", value: view.vault.juniorTwap },
                 { label: "Book", value: price(VAULT.juniorBook) },
               ]}
             />
@@ -337,9 +414,17 @@ const FILTERS: { value: "all" | ExplorerKind; label: string }[] = [
 
 const kindTone = (k: ExplorerKind) => (k === "Draw" ? ("repaying" as const) : k === "Sale" ? ("saving" as const) : ("locked" as const));
 
-type Ev = (typeof explorerEvents)[number];
+type ExplorerKind = string;
+type Ev = ExplorerEventVM;
 
-export function ExplorerScreen() {
+/** P04: `protocol.explorer()`, the recent public events. Search and filters run on this device. */
+export function ExplorerScreen({ initial }: { initial: ExplorerView | null }) {
+  const { data, error } = useMRA(q.explorer, { initial });
+  if (!data) return <MRAState error={error} />;
+  return <ExplorerList explorerEvents={data.events} />;
+}
+
+function ExplorerList({ explorerEvents }: { explorerEvents: Ev[] }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | ExplorerKind>("all");
   const rows = useMemo(() => {
@@ -347,7 +432,7 @@ export function ExplorerScreen() {
     return explorerEvents.filter(
       (e) => (filter === "all" || e.kind === filter || (filter === "Pass" && e.kind === "Proof")) && (!s || `${e.title} ${e.detail} ${e.hash}`.toLowerCase().includes(s)),
     );
-  }, [q, filter]);
+  }, [q, filter, explorerEvents]);
 
   return (
     <LendShell note="This is the whole public record. Look for a name: there isn't one.">

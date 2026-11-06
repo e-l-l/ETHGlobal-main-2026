@@ -2,8 +2,10 @@
 
 import type { ReactNode, SVGProps } from "react";
 import { AppHeader, Banner, CopyHash, Page, WorldMark, type NavItem } from "@/final";
+import { MRA_ENV, isMock } from "@/lib/mra";
 import { routes } from "@/lib/routes";
 import { WALLET } from "@/lib/mock/shop";
+import { useMRA } from "@/lib/use-mra";
 import { useWorldView } from "@/lib/world-view";
 
 /* Small stroke icons for the phone tab bar (the kit has none for these sections). */
@@ -55,12 +57,19 @@ export const LEND_NAV: NavItem[] = [
   { key: "explorer", label: "Explorer", href: routes.explorer, icon: <ExplorerTabIcon /> },
 ];
 
-/** The demo wallet, shortened, with copy. */
+const burnerAddress = async (m: { wallet: { address(): string | undefined } }) => m.wallet.address() ?? null;
+
+/** The wallet, shortened, with copy. Mock: the demo wallet. Live: this device's burner wallet (or the read-only account). */
 export function WalletChip() {
+  const { data: burner } = useMRA(burnerAddress, { enabled: !isMock });
+  const wallet = isMock ? WALLET : (burner ?? MRA_ENV.account);
   return (
-    <span className="mr-1 inline-flex items-center gap-1 rounded-chip bg-well pl-3" title="Demo wallet. Transfers are simulated.">
-      <span className="sr-only">Demo wallet</span>
-      <CopyHash value={WALLET} short />
+    <span
+      className="mr-1 inline-flex items-center gap-1 rounded-chip bg-well pl-3"
+      title={isMock ? "Demo wallet. Transfers are simulated." : "Wallet on this device. Sepolia test funds only."}
+    >
+      <span className="sr-only">{isMock ? "Demo wallet" : "Wallet on this device"}</span>
+      {wallet ? <CopyHash value={wallet} short /> : <span className="pr-3 font-ledger text-ledger text-charcoal-muted">No wallet</span>}
     </span>
   );
 }

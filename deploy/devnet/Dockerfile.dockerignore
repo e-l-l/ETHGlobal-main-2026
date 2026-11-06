@@ -1,0 +1,22 @@
+# BuildKit reads <Dockerfile>.dockerignore for deploy/devnet/Dockerfile (context = repo root).
+# Allowlist: only what the devnet tools image copies. Secrets (.env*, deploy/env) never enter the context.
+*
+!agents/pyproject.toml
+!agents/uv.lock
+!agents/.python-version
+!agents/src
+!agents/abi
+!agents/scripts
+!contracts
+!circuits
+
+**/.git
+**/node_modules
+**/__pycache__
+**/.env
+**/.env.*
+agents/scripts/sepolia.env
+contracts/out
+contracts/cache
+contracts/broadcast
+circuits/*/target

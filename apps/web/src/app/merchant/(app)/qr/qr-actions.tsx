@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { Button, CheckIcon, CopyIcon, PrintIcon, ShareIcon } from "@/final";
-import { myQr } from "@/lib/mock/merchant";
 
 /** Share / Copy link / Print. Share falls back to copying where the Web Share API is missing. */
-export function QrActions() {
+export function QrActions({ payLink }: { payLink: string }) {
   const [copied, setCopied] = useState(false);
 
   const copy = () =>
-    navigator.clipboard?.writeText(myQr.payLink).then(
+    navigator.clipboard?.writeText(payLink).then(
       () => {
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1400);
@@ -19,7 +18,7 @@ export function QrActions() {
 
   const share = () => {
     if (typeof navigator.share === "function") {
-      navigator.share({ url: myQr.payLink }).catch(() => undefined);
+      navigator.share({ url: payLink }).catch(() => undefined);
     } else {
       void copy();
     }
