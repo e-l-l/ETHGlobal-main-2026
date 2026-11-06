@@ -5,7 +5,7 @@ import type { AgentLimitsVM, LadderStepVM } from "@repo/sdk";
 import { ActionBar, Button, Card, Chips, Columns, Label, OfferDisclosure, Stack, Text } from "@/final";
 import { BlockPanel } from "@/blocks";
 import { HeroLabel } from "../../../_ui";
-import { FEE_TERMS, HOLDBACK_PCT, annualizedMaxPercent, feeAfterDays, maxFee } from "@/lib/fees";
+import { FEE_RULE, FEE_TERMS, HOLDBACK_PCT, annualizedMaxPercent, feeAfterDays, maxFee } from "@/lib/fees";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
@@ -84,6 +84,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
             feeIfRepaidIn2Weeks={feeAfterDays(Number(perAdvance), 14)}
             annualizedCostPercent={annualizedMaxPercent()}
             holdback={HOLDBACK_PCT}
+            feeRule={FEE_RULE}
             estimates={[100, 200, 400].map((sales, i) => ({
               label: ["Slow ($100/day)", "Normal ($200/day)", "Busy ($400/day)"][i]!,
               // Worst case: the whole advance plus the full fee, repaid from the holdback share.
@@ -104,7 +105,7 @@ function LimitsFields({ view }: { view: SetupPage }) {
           <div className="grid grid-cols-2 gap-4 border-t border-honeydew/25 pt-4 font-body text-note">
             <div className="flex flex-col">
               <span className="text-honeydew">Paid back from</span>
-              <span className="font-semibold text-canvas">A share of each sale</span>
+              <span className="font-semibold text-canvas">{formatPercent(HOLDBACK_PCT)} of each sale</span>
             </div>
             <div className="flex flex-col">
               <span className="text-honeydew">Fee</span>

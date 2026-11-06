@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AppHeader, Label, Ledger, ListRow, Page, PageHead, RowList } from "@/final";
-import { failedHref, routes, verifyingHref } from "@/lib/routes";
+import { failedHref, routes, verifyingHref, worldIdStoppedHref } from "@/lib/routes";
 
 export const metadata: Metadata = { title: "All screens" };
 
@@ -13,6 +13,9 @@ const GROUPS: { group: string; screens: Item[] }[] = [
     group: "Merchant onboarding",
     screens: [
       { id: "M01", title: "Welcome", href: routes.welcome },
+      { id: "M01a", title: "World ID first", href: routes.worldId },
+      { id: "M01b", title: "World ID stopped: banned", href: worldIdStoppedHref("human_banned") },
+      { id: "M01c", title: "World ID stopped: open advance", href: worldIdStoppedHref("human_has_open_advance") },
       { id: "M02", title: "Prove your business", href: routes.prove },
       { id: "M03", title: "Verifying", href: verifyingHref() },
       { id: "M04", title: "Business Pass", href: routes.pass },

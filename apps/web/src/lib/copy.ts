@@ -13,16 +13,25 @@ const en = {
     body: "A small dollar advance for your stock. While it's active, a slice of each sale repays it; the demo uses 8%. Repay on time and your limit grows.",
     heading: "How it works",
     promises: [
-      { title: "Prove the shop, not you", body: "Four facts from your seller account. Never your name, phone or contacts." },
-      { title: "You set the limits", body: "Your agent only draws stock inside them." },
-      { title: "Slow week? No late fee", body: "Repayment is a slice of each sale, so it slows when sales do." },
+      {
+        title: "Prove the shop, not you",
+        body: "Four facts from your seller account. Never your name, phone or contacts.",
+      },
+      {
+        title: "You set the limits",
+        body: "Your agent only draws stock inside them.",
+      },
+      {
+        title: "Slow week? Repayment slows too",
+        body: "A slow week just slows repayment. Keep paying the 1% weekly minimum and the fee stays 0.5% a week.",
+      },
     ],
-    cta: "Prove your business",
+    cta: "Start with World ID",
     back: "Back",
     restore: "New phone? Restore your shop with World ID",
   },
-  steps: (at: number) => `Step ${at} of 4`,
-  stepNames: ["Prove your business", "Verifying", "Business Pass", "Your shop"],
+  steps: (at: number) => `Step ${at} of 5`,
+  stepNames: ["World ID", "Prove your business", "Verifying", "Business Pass", "Your shop"],
   prove: {
     title: "Your sales already",
     accent: "vouch for you.",
@@ -31,7 +40,10 @@ const en = {
     body: "Use the demo seller portal and mock attestor to check four facts. The issuer sees the account ID transiently.",
     whereSell: "Where you sell",
     sources: [
-      { name: "Demo seller portal", sub: "Stands in for Mercado Pago in this demo" },
+      {
+        name: "Demo seller portal",
+        sub: "Stands in for Mercado Pago in this demo",
+      },
       { name: "Other seller apps", sub: "Coming soon" },
     ],
     weCheck: "We read",
@@ -119,9 +131,56 @@ const en = {
     hint: "Keep it ordinary. Not your own name.",
     ideas: "Ideas",
     qr: "Payment QR",
-    cta: "Set up your agent",
+    cta: "Continue",
     preview: "Preview the checkout",
     empty: "Add a name to continue",
+  },
+  worldId: {
+    panelTitle: "One person,",
+    accent: "one pass.",
+    panel: "World ID comes first. It stops one person from borrowing on many shops, or again after a default. That keeps lenders safe and your fee low.",
+    title: "Prove you're a unique person",
+    body: "World ID proves you're a real, unique person. We never learn who you are and nothing goes onchain.",
+    keep: [
+      { k: "We keep", v: "An anonymous World ID code, nothing else." },
+      { k: "Never", v: "Your name, address, face or phone number." },
+      {
+        k: "Onchain",
+        v: "Nothing. The check stays between this phone and DripMoni.",
+      },
+    ],
+    plain: "We check two things: you're one real person, and you're cleared to borrow. Then you prove your business.",
+    cta: "Verify with World",
+    note: "Takes about a minute in World App. You do it once, before your business.",
+    waitingTag: "Waiting for World App",
+    waitingTitle: "Scan with World App",
+    steps: ["Verify in World App", "Checking you're cleared to borrow", "Done. On to your business"],
+    bindSteps: ["Verify in World App", "Checking you're cleared to borrow", "Linking your shop to your World ID"],
+    bindTitle: "Link your shop to your World ID",
+    bindBody: "Your shop exists, but it isn't linked to a World ID yet. Verify once more and we link it. No second shop is created.",
+    bindRetry: "Try linking again",
+    bindFailed: (code: string) => `Couldn't link your shop to your World ID (${code}). Your shop is safe. Try again.`,
+    cancel: "Cancel",
+    failedTitle: "That didn't go through",
+    failedBody: "Nothing was saved and nothing went onchain.",
+    failed: "World App couldn't confirm it was you. It may have timed out or been cancelled. Try once more.",
+    retry: "Try again",
+    bound: "This shop is already verified by someone else.",
+    boundBody: "Each shop links to one person. If this is your shop, restore it on this phone with your World ID and backup passphrase.",
+    restore: "Restore with World ID",
+    other: (code: string) => `World ID didn't go through (${code}). Nothing was saved.`,
+    done: "Verified. Your shop is ready for advances.",
+    stop: {
+      eyebrow: "World ID check",
+      bannedTag: "Advances off for this World ID",
+      bannedBody: "An earlier advance taken with this World ID was not repaid. It can't take new advances, on any shop.",
+      openTag: "One advance at a time",
+      openBody: "Your World ID already has an open advance on another shop. Once it's paid off, you can sign up here.",
+      why: "One World ID holds one advance at a time, across every shop, and a default ends borrowing for good. It keeps borrowing small and lenders safe.",
+      nothing: "We stopped before any business step. Nothing about you or your business was saved, and nothing went onchain.",
+      back: "Back to start",
+      openShop: "Open my shop",
+    },
   },
 };
 
@@ -156,7 +215,7 @@ const payEn = {
 };
 export const payCopy = payEn;
 
-/** Brand panel eyebrow for an onboarding step, e.g. "Step 1 of 4 · Prove your business". */
+/** Brand panel eyebrow for an onboarding step, e.g. "Step 1 of 5 · Prove your business". */
 export function stepEyebrow(at: number) {
   return `${copy.steps(at)} · ${copy.stepNames[at - 1] ?? ""}`;
 }

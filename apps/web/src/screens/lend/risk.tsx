@@ -153,7 +153,7 @@ export function RiskInPublic({ panel }: { panel: RiskPanelView }) {
                 <Label>Tier {t.tier}</Label>
                 <strong className="font-display text-h2 tabular-nums text-charcoal">{t.cap}</strong>
                 <span className="font-ledger text-ledger text-charcoal-muted">
-                  {t.was ? (
+                  {t.was && t.was !== t.cap ? (
                     <>
                       <s>{t.was}</s>{" "}
                     </>

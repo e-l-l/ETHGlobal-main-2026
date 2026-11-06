@@ -1,7 +1,8 @@
 /**
  * The time-based fee, as the contract charges it (AdvanceBook.accruedFee): it accrues on the ORIGINAL advance,
  * linearly per second at `rateBpsPerWeek`, and stops at `capBps`. It is paid before principal and stops growing once
- * the advance is paid off, so paying early saves fee. No late fees.
+ * the advance is paid off, so paying early saves fee. Fall behind the 1% weekly minimum and the rate doubles to 1% a week
+ * (max 6% total) until the merchant catches up; the extra goes to the safety reserve.
  *
  * These helpers are for illustrations (limits form, approve screen). Live balances come from the SDK
  * (`AdvanceVM.owedNow`, `feeSoFar`, `feeIfRepaidIn…`), never from here.
@@ -11,6 +12,10 @@
 export const FEE_TERMS = { rateBpsPerWeek: 50, capBps: 300 } as const;
 /** Pilot holdback: 8% of each sale repays the advance. */
 export const HOLDBACK_PCT = 8;
+
+/** The on-time / late rule (same text as `AdvanceVM.feeRule`), for screens without an advance yet. */
+export const FEE_RULE =
+  "Paying on time keeps your fee at 0.5% a week, max 3%. If you fall behind the minimum, the fee doubles to 1% a week (max 6% total) until you catch up; the extra goes to the safety reserve.";
 
 /** The one line every merchant surface uses. */
 export const FEE_LINE = "Fee 0.5% per week while you owe, never more than 3%.";

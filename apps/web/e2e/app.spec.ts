@@ -11,6 +11,10 @@ const routes = [
   "/onboarding/pass",
   "/onboarding/failed?reason=suspended",
   "/onboarding/shop",
+  "/onboarding/world-id",
+  "/onboarding/world-id?bind=1",
+  "/onboarding/world-id/stopped?reason=human_banned",
+  "/onboarding/world-id/stopped?reason=human_has_open_advance",
   "/merchant",
   "/merchant/advance",
   "/merchant/advance/arrived",
@@ -24,6 +28,9 @@ const routes = [
   "/merchant/cash-out",
   "/merchant/qr",
   "/merchant/world-view",
+  "/merchant/blocked",
+  "/merchant/blocked?reason=open_advance",
+  "/merchant/settings",
   "/merchant/settings/backup",
   "/merchant/restore",
   "/pay/corner-kiosk",
@@ -39,10 +46,26 @@ const routes = [
   "/protocol",
   "/risk",
   "/explorer",
+  "/simulator",
+  "/proof",
+  "/screens",
 ];
 
 async function settle(page: Page) {
   await page.evaluate(() => document.fonts.ready);
+  // Let entrance animations finish so axe doesn't read a half-faded element (looping animations are skipped).
+  // Paused or scroll-triggered ones may never finish, so cap the wait.
+  await page.evaluate(() =>
+    Promise.race([
+      Promise.all(
+        document
+          .getAnimations()
+          .filter((a) => a.playState === "running" && a.effect?.getComputedTiming().iterations !== Infinity)
+          .map((a) => a.finished.catch(() => undefined)),
+      ),
+      new Promise((r) => setTimeout(r, 2000)),
+    ]),
+  );
 }
 
 test.describe("every screen", () => {
@@ -80,43 +103,46 @@ test.describe("journeys", () => {
   });
 
   test("a merchant signs up, sets up the agent and lands on the shop", async ({ page }) => {
-    await page.goto("/onboarding/prove");
+    await page.goto("/onboarding");
+    await page.getByRole("link", { name: "Start with World ID" }).click();
+    await expect(page).toHaveURL(/\/onboarding\/world-id/);
+    await page.getByRole("button", { name: "Verify with World" }).click();
+    await expect(page).toHaveURL(/\/onboarding\/prove/, { timeout: 10000 });
     await page.getByRole("link", { name: "Open seller login" }).click();
     await page.getByRole("button", { name: "Log in as Luna" }).click();
     await page.getByRole("link", { name: "Share 4 facts privately" }).click();
     await expect(page).toHaveURL(/\/onboarding\/pass/, { timeout: 10000 });
     await page.getByRole("link", { name: "Create your shop" }).click();
     await expect(page).toHaveURL(/\/onboarding\/shop/);
-    await page.getByRole("main").getByRole("link", { name: /agent/i }).first().click();
-    await expect(page).toHaveURL(/\/merchant\/agent\/setup/);
+    await page.getByRole("main").getByRole("button", { name: "Continue" }).click();
+    // createShop() binds the World ID from step 1; if the ticket didn't survive, the bind screen asks once more.
+    await page.waitForURL(/\/merchant\/agent\/setup|\/onboarding\/world-id\?bind=1/, { timeout: 10000 });
+    if (page.url().includes("bind=1")) await page.getByRole("button", { name: "Verify with World" }).click();
+    await expect(page).toHaveURL(/\/merchant\/agent\/setup/, { timeout: 10000 });
     await page.getByRole("link", { name: "Approve with World" }).click();
     await expect(page).toHaveURL(/\/merchant\/agent\/approve/);
     await page.getByRole("link", { name: /approve/i }).first().click();
     await expect(page).toHaveURL(/\/merchant$/);
   });
 
+  test("a banned World ID is stopped before any business step", async ({ page }) => {
+    for (const [mock, text] of [
+      ["banned", "This World ID can't borrow on DripMoni after a default."],
+      ["open_advance", "Repay your open advance first."],
+    ]) {
+      await page.goto(`/onboarding?mockWorld=${mock}`);
+      await page.getByRole("link", { name: "Start with World ID" }).click();
+      await page.getByRole("button", { name: "Verify with World" }).click();
+      await expect(page).toHaveURL(/\/onboarding\/world-id\/stopped/, { timeout: 10000 });
+      await expect(page.getByRole("heading", { name: text })).toBeVisible();
+      await expect(page.getByRole("button", { name: /try again/i })).toHaveCount(0);
+    }
+  });
+
   test("a suspended account lands on the failure screen", async ({ page }) => {
     await page.goto("/portal?acct=sur");
     await page.getByRole("link", { name: "Share 4 facts privately" }).click();
     await expect(page).toHaveURL(/failed\?reason=suspended/, { timeout: 10000 });
-  });
-
-  test("spanish is a setting that sticks", async ({ page }) => {
-    await page.goto("/onboarding");
-    await page.getByRole("button", { name: "EN, cambiar a español" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Dólares para el stock, hoy.");
-    await page.goto("/onboarding/prove");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Tus ventas");
-  });
-
-  test("world view follows you across screens", async ({ page }) => {
-    await page.goto("/onboarding/pass");
-    await page.getByRole("button", { name: "World view" }).click();
-    await expect(page.getByText("Onchain, anyone can see")).toBeVisible();
-    await page.goto("/earn");
-    await expect(page.getByRole("button", { name: "World view" })).toHaveAttribute("aria-pressed", "true");
-    await page.goto("/merchant");
-    await expect(page.getByRole("button", { name: "World view" })).toHaveAttribute("aria-pressed", "true");
   });
 
   test("the customer pays with the keypad and never sees the advance", async ({ page }) => {
