@@ -104,8 +104,32 @@ export type WeekView = {
 export type RepaidView = {
   currentTier: number;
   limitsLadder: LadderStepVM[];
-  standingPass: { repaidCount: number; tier: number; claimed: boolean };
+  standingPass: {
+    repaidCount: number;
+    tier: number;
+    claimed: boolean;
+    /** Live: the shop's last advance is fully repaid and this device holds its unclaimed pass → show "Claim". */
+    claimable?: boolean;
+    /** Live: the per-advance cap the claim unlocks (USD). */
+    nextCap?: number;
+  };
   source: Source;
+};
+
+/** M16 claim progress: relayer inserts the leaf → find it in the whole tree → prove it privately on this device. */
+export type ClaimStep = "claiming" | "finding_leaf" | "proving" | "done";
+
+/** `merchant.claimStandingPass()` result. */
+export type ClaimResult = {
+  /** The relayed claimStandingPass tx; absent when the leaf was already inserted (e.g. by a retry). */
+  txHash?: string;
+  leafIndex: number;
+  repaidCount: number;
+  tier: number;
+  /** The new per-advance limit (USD), from the onchain tierCap. */
+  newCap: number;
+  /** The private self-check proof (standing_pass over the whole downloaded tree), when a real prover ran it. */
+  selfCheck?: { ms: number; proofBytes: number };
 };
 
 /** M17 Fresh shop (pseudonym rotation). */
@@ -148,6 +172,8 @@ export type AgentStatus = "none" | "pending_approval" | "approved" | "denied" | 
 export type AgentSetupView = {
   agentLimits: AgentLimitsVM;
   perAdvanceOptions: { value: number; lockedReason?: string }[];
+  /** Live: the tier this device can prove right now (an unspent, claimed Standing Pass); caps above it are locked. */
+  currentTier?: number;
   perMonthStepper: { step: number; min: number; max: number };
   purposes: string[];
   permissions: { can: string[]; never: string[] };

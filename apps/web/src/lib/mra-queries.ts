@@ -27,10 +27,13 @@ export const q = {
     const status = await m.agent.status();
     return { status, log: status.status === "none" ? null : await m.agent.log() };
   },
-  /** M07 page: defaults, plus the ladder and tier that lock the bigger caps. */
+  /**
+   * M07 page: defaults, plus the ladder and tier that lock the bigger caps. Live modes lock by the tier this device
+   * can PROVE (`setupOptions().currentTier`: a claimed, unspent Standing Pass unlocks $100), not just its history.
+   */
   agentSetupPage: async (m: MRA) => {
     const [setup, repaid] = await Promise.all([m.agent.setupOptions(), m.merchant.repaid()]);
-    return { agentLimits: setup.agentLimits, limitsLadder: repaid.limitsLadder, currentTier: repaid.currentTier, source: setup.source };
+    return { agentLimits: setup.agentLimits, limitsLadder: repaid.limitsLadder, currentTier: setup.currentTier ?? repaid.currentTier, source: setup.source };
   },
 
   /* onboarding */

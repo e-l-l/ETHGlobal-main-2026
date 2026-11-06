@@ -1,19 +1,40 @@
 "use client";
 
-import type { RepaidView } from "@repo/sdk";
-import { Button, Card, Columns, KeyValue, Label, Page, PageHead, Pill, Stack, Text, TierMeter } from "@/final";
+import { useState } from "react";
+import type { ClaimResult, ClaimStep, RepaidView } from "@repo/sdk";
+import { Banner, Button, Card, Columns, KeyValue, Label, Ledger, Page, PageHead, Pill, Stack, Text, TierMeter } from "@/final";
 import { formatMoney } from "@/lib/format";
 import { q } from "@/lib/mra-queries";
 import { MRAState } from "@/lib/mra-state";
 import { routes } from "@/lib/routes";
-import { useMRA } from "@/lib/use-mra";
+import { useMRA, useMRAAction } from "@/lib/use-mra";
 
-/** M16 Repaid: `merchant.repaid()` (Standing Pass count → tier, and the limits ladder). */
+const CLAIM_STEP: Record<ClaimStep, string> = {
+  claiming: "Saving your repayment to the private record",
+  finding_leaf: "Finding your pass in the whole record",
+  proving: "Checking your record privately",
+  done: "Done",
+};
+
+/**
+ * M16 Repaid: `merchant.repaid()` (Standing Pass count → tier, and the limits ladder). Live modes: when the last
+ * advance is fully repaid and this device holds its pass, "Claim" runs `merchant.claimStandingPass()` (relayed
+ * claim, whole-tree lookup, a private proof on this device) and then shows the new limit.
+ */
 export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
   const { data, error } = useMRA(q.repaid, { initial });
+  const [step, setStep] = useState<ClaimStep | undefined>();
+  const [claimed, setClaimed] = useState<ClaimResult | undefined>();
+  const claim = useMRAAction((m) => m.merchant.claimStandingPass({ onStep: setStep }));
   if (!data) return <MRAState error={error} />;
-  const { currentTier, limitsLadder } = data;
-  const cap = limitsLadder[currentTier]?.cap ?? 0;
+  const { limitsLadder } = data;
+  const currentTier = claimed ? claimed.tier : data.currentTier;
+  const cap = claimed ? claimed.newCap : (limitsLadder[currentTier]?.cap ?? 0);
+  const claimable = !claimed && data.standingPass.claimable === true;
+
+  const run = () => {
+    claim.run().then(setClaimed, () => undefined);
+  };
 
   return (
     <Page tabs>
@@ -39,7 +60,28 @@ export function RepaidScreen({ initial }: { initial: RepaidView | null }) {
               Nobody can see your history. Not even us.
             </Text>
           </Card>
-          <Button href={routes.merchant}>Back to home</Button>
+          {claimable ? (
+            <Card>
+              <Text>
+                Claim your Standing Pass to raise your limit to{" "}
+                <strong className="text-charcoal">{formatMoney(data.standingPass.nextCap ?? 0)}</strong>. It stays on this
+                phone, and nobody can link it to this shop.
+              </Text>
+              {claim.pending && step ? <Ledger role="status">{CLAIM_STEP[step]}…</Ledger> : null}
+              {claim.error ? <Banner tone="risk">Not claimed yet ({claim.error}). Try again.</Banner> : null}
+              <Button onClick={run} loading={claim.pending}>
+                Claim my Standing Pass
+              </Button>
+            </Card>
+          ) : null}
+          {claimed ? <Banner>Standing Pass claimed. Your new limit is {formatMoney(claimed.newCap)} per advance.</Banner> : null}
+          {claimed ? (
+            <Button href={routes.agent.setup}>Use my new limit</Button>
+          ) : (
+            <Button href={routes.merchant} {...(claimable ? { variant: "ghost" as const } : {})}>
+              Back to home
+            </Button>
+          )}
         </Stack>
 
         <Card>
