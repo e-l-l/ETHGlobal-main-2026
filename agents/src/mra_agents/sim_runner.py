@@ -5,8 +5,10 @@ Underwriter and Critic LLM calls, EIP-712 signer), real Noir/UltraHonk proofs, t
 Nothing is canned. Only the merchant's customers are simulated: burner accounts derived from the public anvil
 mnemonic at random indices.
 
-Fee model (time-based: 0.5%/week on original principal while principal remains, capped at 3%, paid fee-first)
-lives in ONE section at the top of this file: `fee_words`, `offer_terms`, `draft_summary` and `fee_status`. The
+Fee model (time-based: 0.5%/week on original principal while principal remains, capped at 3%, paid fee-first;
+plus the late-fee step-up: while behind the 1%-per-7-days minimum the fee doubles, an extra 0.5%/week capped at
+another 3%, all of it to the reserve) lives in ONE section at the top of this file: `fee_words`, `late_fee_words`,
+`offer_terms`, `draft_summary`, `late_fee` and `fee_status`. The
 rest of the runner reads advances by ABI field name (`Simulator._advance`, with `owedOf` as the live balance) and
 repays until the advance reads Repaid, so it never assumes a fixed total. Signing goes through the pipeline's
 signer and drawing through the Relayer, which own the Offer struct encoding.
@@ -39,11 +41,22 @@ COUNTRY, REVENUE_BAND, AGE_OK = 32, 2, 1  # devnet Business Pass: AR, band 2, ov
 WEEK = 7 * DAY
 BPS = 10_000
 FEE_CHECKPOINT_WEEKS = (1, 2, 4, 6)
+# AdvanceBook constants (not part of the signed Offer): the late fee while behind the minimum repayment.
+LATE_FEE_RATE_BPS_PER_WEEK = 50
+LATE_FEE_CAP_BPS = 300
+REPAY_WINDOW = 7 * DAY
 
 
 def fee_words(rate_bps: int, cap_bps: int) -> str:
     """"0.5%/week, max 3%" from the signed terms."""
     return f"{rate_bps / 100:g}%/week, max {cap_bps / 100:g}%"
+
+
+def late_fee_words(rate_bps: int, cap_bps: int) -> str:
+    """The late-fee rule in the merchant's words (FRONTEND-HANDOFF copy)."""
+    return (f"Paying on time keeps your fee at {rate_bps / 100:g}% a week, max {cap_bps / 100:g}%. If you fall "
+            f"behind the minimum, the fee doubles to {(rate_bps + LATE_FEE_RATE_BPS_PER_WEEK) / 100:g}% a week (max "
+            f"{(cap_bps + LATE_FEE_CAP_BPS) / 100:g}% total) until you catch up; the extra goes to the safety reserve.")
 
 
 def _fee_at(principal: int, rate_bps: int, cap_bps: int, seconds: int) -> int:
@@ -61,11 +74,14 @@ def offer_terms(offer) -> dict:
         "amount": amount / USDC, "tier": offer.tier, "holdback_bps": holdback,
         "fee_rate_bps_per_week": rate, "fee_cap_bps": cap, "fee_terms": fee_words(rate, cap),
         "max_fee_usd": max_fee / USDC, "max_total_usd": (amount + max_fee) / USDC,
+        "late_fee_rate_bps_per_week": LATE_FEE_RATE_BPS_PER_WEEK, "late_fee_cap_bps": LATE_FEE_CAP_BPS,
+        "max_total_if_late_usd": (amount + max_fee + amount * LATE_FEE_CAP_BPS // BPS) / USDC,
         "fee_if_repaid_in_weeks": {str(w): _fee_at(amount, rate, cap, w * WEEK) / USDC
                                    for w in FEE_CHECKPOINT_WEEKS},
         "summary": (f"${amount / USDC:.0f} advance. Fee {fee_words(rate, cap)} (never more than "
                     f"${max_fee / USDC:.2f}), charged only while you owe; paying sooner saves fee. "
-                    f"{holdback / 100:g}% of each sale goes to repayment. No late fee, no due date."),
+                    f"{holdback / 100:g}% of each sale goes to repayment, at least 1% every 7 days. "
+                    + late_fee_words(rate, cap)),
     }
 
 
@@ -75,15 +91,29 @@ def draft_summary(draft) -> str:
             f"holdback {draft.holdback_bps / 100:g}%, about {draft.est_days_normal} days to repay.")
 
 
+def late_fee(a: dict, now: int) -> tuple[int, bool]:
+    """AdvanceBook.lateFeeOf / isBehind: (late fee accrued so far, behind now). Behind = no 1% window met for more
+    than REPAY_WINDOW since lastSaleAt; settled behind-seconds (`lateSecs`) plus the open stretch, at the late rate."""
+    paid = int(a.get("lateFeePaid", 0))
+    if int(a["status"]) != 1:
+        return paid, False
+    behind = max(0, int(now) - int(a.get("lastSaleAt", now)) - REPAY_WINDOW)
+    secs = int(a.get("lateSecs", 0)) + behind
+    return _fee_at(int(a["principal"]), LATE_FEE_RATE_BPS_PER_WEEK, LATE_FEE_CAP_BPS, secs), behind > 0
+
+
 def fee_status(a: dict, now: int) -> dict:
     """Fee on a live advance (`Simulator._advance` dict, `left` = owedOf) against the published schedule.
 
-    accrued = owedOf - principal still out + fee already paid (the contract's accruedFee). `schedule` is the same
-    formula from the signed terms at `now`; `extra` is anything charged beyond it (a late fee would show here)."""
+    accrued = owedOf - principal still out - late fee still due + fee already paid (the contract's accruedFee).
+    `schedule` is the same formula from the signed terms at `now`; `extra` is anything charged beyond it and the
+    late fee. The late fee (only while behind the minimum) is reported separately: it goes 100% to the reserve."""
     principal, prepaid, fee_paid = int(a["principal"]), int(a["principalRepaid"]), int(a["feePaid"])
     rate, cap_bps = int(a["feeRateBpsPerWeek"]), int(a["feeCapBps"])
     active = int(a["status"]) == 1
-    accrued = int(a["left"]) - (principal - prepaid) + fee_paid if active else fee_paid
+    late, behind = late_fee(a, now)
+    late_paid = int(a.get("lateFeePaid", 0))
+    accrued = int(a["left"]) - (principal - prepaid) - max(0, late - late_paid) + fee_paid if active else fee_paid
     elapsed = max(0, int(now) - int(a["drawnAt"]))
     schedule = _fee_at(principal, rate, cap_bps, elapsed) if active else fee_paid
     cap = principal * cap_bps // BPS
@@ -91,6 +121,8 @@ def fee_status(a: dict, now: int) -> dict:
             "fee_paid_usd": fee_paid / USDC, "fee_schedule_usd": schedule / USDC, "fee_cap_usd": cap / USDC,
             "fee_capped": accrued >= cap, "weeks_outstanding": round(elapsed / WEEK, 2),
             "weeks_to_cap": round(cap_bps / rate, 2) if rate else None,
+            "behind": behind, "late_fee_usd": late / USDC, "late_fee_paid_usd": late_paid / USDC,
+            "late_fee_cap_usd": principal * LATE_FEE_CAP_BPS // BPS / USDC,
             # 1 cent tolerance: eth_call and d.now() can sit a block apart.
             "extra_fee_usd": round(max(0, accrued - schedule - 10_000) / USDC, 2)}
 
@@ -570,6 +602,7 @@ class Simulator:
         ctx["sim_day"] += days
         after = self._advance(d, advance_id)
         to_advance = int(after["repaid"]) - int(before["repaid"])
+        to_late = int(after.get("lateFeePaid", 0)) - int(before.get("lateFeePaid", 0))
         to_fee = int(after["feePaid"]) - int(before["feePaid"])
         done = int(after["status"]) == 2
         fee = fee_status(after, d.now())
@@ -577,12 +610,15 @@ class Simulator:
         self._step(ctx, "repay", title or f"{span}: ${to_advance / USDC:.2f} repaid from sales",
                    f"{len(amounts)} sales, ${sum(amounts) / USDC:.2f} in total; the "
                    f"{int(after['holdbackBps']) / 100:g}% holdback sent ${to_advance / USDC:.2f} to the advance "
-                   f"(fee first: ${to_fee / USDC:.2f} fee, ${(to_advance - to_fee) / USDC:.2f} principal). "
+                   f"(fee first: ${to_fee / USDC:.2f} fee, "
+                   + (f"${to_late / USDC:.2f} late fee to the reserve, " if to_late else "")
+                   + f"${(to_advance - to_fee - to_late) / USDC:.2f} principal). "
                    + (f"Fully repaid; total fee ${fee['fee_paid_usd']:.2f}." if done else
                       f"${after['left'] / USDC:.2f} left, fee so far ${fee['fee_accrued_usd']:.2f} of at most "
                       f"${fee['fee_cap_usd']:.2f}."),
                    {"sales_usd": sum(amounts) / USDC, "sales": len(amounts), "to_advance": to_advance / USDC,
-                    "to_fee": to_fee / USDC, "to_principal": (to_advance - to_fee) / USDC, **fee,
+                    "to_fee": to_fee / USDC, "to_late_fee": to_late / USDC,
+                    "to_principal": (to_advance - to_fee - to_late) / USDC, **fee,
                     "repaid": int(after["repaid"]) / USDC, "left": after["left"] / USDC, "days": days,
                     "status": ["none", "active", "repaid", "written_off"][int(after["status"])],
                     "ledger": self._ledger(ctx)}, rc)
@@ -644,16 +680,22 @@ class Simulator:
             clock_reset = int(slow["lastSaleAt"]) > int(before["lastSaleAt"])
             if fee["extra_fee_usd"] > 0:
                 raise RuntimeError("fee above the published schedule after the slow week")
-            self._step(ctx, "info", f"Slow week: the fee keeps to {fee['fee_terms']}, no late fee",
-                       f"Repayment fell from ${per_day_normal:.2f}/day to ${per_day_slow:.2f}/day, and that is all. "
+            on_time = fee["late_fee_usd"] == 0
+            self._step(ctx, "info", f"Slow week: the fee keeps to {fee['fee_terms']}, "
+                       + ("no late fee" if on_time else f"plus a ${fee['late_fee_usd']:.2f} late fee"),
+                       f"Repayment fell from ${per_day_normal:.2f}/day to ${per_day_slow:.2f}/day. "
                        f"The fee so far is ${fee['fee_accrued_usd']:.2f} after {fee['weeks_outstanding']:g} weeks: "
                        f"exactly the published {fee['fee_terms']} on ${int(slow['principal']) / USDC:.0f}, "
                        f"and it stops at ${fee['fee_cap_usd']:.2f} however slow sales get (the cap is reached after "
-                       f"{fee['weeks_to_cap']:g} weeks). No late fee, no penalty, no due date"
-                       + ("; the week's sales still met the 1% weekly minimum, so the default clock reset."
-                          if clock_reset else "."),
+                       f"{fee['weeks_to_cap']:g} weeks). "
+                       + ("The slow week's sales still met the 1% weekly minimum, so there is no late fee and no "
+                          "penalty." if on_time else
+                          f"Repayment fell behind the 1% weekly minimum, so the fee doubled while behind: a "
+                          f"${fee['late_fee_usd']:.2f} late fee, all of it to the safety reserve. It stops as soon as "
+                          "they catch up.")
+                       + (" The default clock reset." if clock_reset else ""),
                        {"repaid_per_day_normal": round(per_day_normal, 2),
-                        "repaid_per_day_slow": round(per_day_slow, 2), **fee, "late_fee_usd": 0,
+                        "repaid_per_day_slow": round(per_day_slow, 2), **fee,
                         "min_repayment_met": clock_reset, "owed_now": slow["left"] / USDC})
         final = self._repay_all(ctx, d, shop, advance_id, payers, pace, rng)
         if int(final["status"]) != 2:
@@ -665,7 +707,9 @@ class Simulator:
         days = ctx["sim_day"] - HISTORY_DAYS
         return shop, (f"Repaid ${int(final['repaid']) / USDC:.2f} in {days} days (fee "
                       f"${int(final['feePaid']) / USDC:.2f}, {fee_words(int(final['feeRateBpsPerWeek']), int(final['feeCapBps']))})"
-                      + (" despite a slow week, with no late fee" if archetype == "slow_week" else "")
+                      + ((" despite a slow week, with no late fee" if int(final.get("lateFeePaid", 0)) == 0 else
+                          f" despite a slow week, incl. ${int(final['lateFeePaid']) / USDC:.2f} late fee to the reserve")
+                         if archetype == "slow_week" else "")
                       + "; Standing Pass claimed")
 
     def _repeat(self, ctx, d, standing_secret, leaves, rng):
@@ -749,7 +793,31 @@ class Simulator:
 
         from mra_agents.keeper import Keeper
         self._sales_period(ctx, d, shop, advance_id, payers, days=2, pace=pace, rng=rng,
-                           title="Two more days of sales, then the shop goes dark")
+                           title="Two more days of sales, then the shop goes quiet")
+        # Falls behind the minimum: 3 days past the 7-day deadline (still before the 14-day delinquency mark, so
+        # the `dark` ledger below is taken before DRIP provisions), the late fee is accruing.
+        a = self._advance(d, advance_id)
+        self._at(d, int(a["lastSaleAt"]) + REPAY_WINDOW + 3 * DAY)
+        gap = max(1, round((d.now() - int(a["lastSaleAt"])) / DAY))
+        ctx["sim_day"] += gap
+        a = self._advance(d, advance_id)
+        fee = fee_status(a, d.now())
+        self._step(ctx, "warp", f"{gap} days with no sales: behind the minimum, the fee doubles",
+                   f"No 1% repayment for more than 7 days, so the advance is behind. While behind, the fee doubles "
+                   f"to 1% a week: a ${fee['late_fee_usd']:.2f} late fee so far (max ${fee['late_fee_cap_usd']:.2f}), "
+                   "on top of the normal fee. It goes 100% to the safety reserve, the first-loss buffer.",
+                   {"days": gap, **fee, "left": a["left"] / USDC, "ledger": self._ledger(ctx)})
+        # A trickle of sales while behind: fee first, then the late fee, which lands in the reserve.
+        r0 = int(d.book.functions.reserve().call())
+        after = self._sales_period(ctx, d, shop, advance_id, payers, days=1, pace=pace * 0.15, rng=rng,
+                                   title="A trickle of sales while behind: the late fee funds the reserve")
+        to_reserve = int(d.book.functions.reserve().call()) - r0
+        self._step(ctx, "info", f"Reserve +${to_reserve / USDC:.2f} from this late payer",
+                   f"Late fee paid so far ${int(after.get('lateFeePaid', 0)) / USDC:.2f}, credited 100% to the "
+                   "reserve (plus its 20% share of the normal fee). Late payers fund the default buffer that "
+                   "protects the vaults if they never pay.",
+                   {"reserve_delta": to_reserve / USDC, "late_fee_paid": int(after.get("lateFeePaid", 0)) / USDC,
+                    "ledger": self._ledger(ctx)})
         a = self._advance(d, advance_id)
         window = int(d.book.functions.defaultWindow().call())
         target = int(a["lastSaleAt"]) + window + DAY
@@ -764,7 +832,9 @@ class Simulator:
                    f"Anvil's clock jumps {days} days. The minimum repayment is 1% of principal plus fee every 7 "
                    f"days; with none, the advance is delinquent after {delinquent // DAY} days and anyone may call "
                    f"writeOff after {window // DAY}. ${a['left'] / USDC:.2f} is owed (fee "
-                   f"${fee['fee_accrued_usd']:.2f}, capped at ${fee['fee_cap_usd']:.2f}).",
+                   f"${fee['fee_accrued_usd']:.2f}, capped at ${fee['fee_cap_usd']:.2f}; late fee "
+                   f"${fee['late_fee_usd']:.2f}, of which ${fee['late_fee_paid_usd']:.2f} already in the reserve). "
+                   "The unpaid fee and late fee are simply lost at write-off.",
                    {"days": days, "default_window_days": window // DAY, "delinquency_days": delinquent // DAY,
                     "left": a["left"] / USDC, **fee, "ledger": self._ledger(ctx)})
         caps0 = [int(d.book.functions.tierCap(i).call()) for i in range(4)]

@@ -75,7 +75,10 @@ def test_offer_terms_is_the_only_fee_seam():
     assert t["fee_terms"] == "0.5%/week, max 3%"
     assert t["max_fee_usd"] == 1.5 and t["max_total_usd"] == 51.5
     assert t["fee_if_repaid_in_weeks"] == {"1": 0.25, "2": 0.5, "4": 1.0, "6": 1.5}
-    assert "0.5%/week, max 3%" in t["summary"] and "flat" not in t["summary"] and "No late fee" in t["summary"]
+    assert "0.5%/week, max 3%" in t["summary"] and "flat" not in t["summary"] and "No late fee" not in t["summary"]
+    assert ("Paying on time keeps your fee at 0.5% a week, max 3%. If you fall behind the minimum, the fee doubles to "
+            "1% a week (max 6% total) until you catch up; the extra goes to the safety reserve.") in t["summary"]
+    assert t["max_total_if_late_usd"] == 53.0 and t["late_fee_cap_bps"] == 300
     draft = SimpleNamespace(amount=100_000_000, fee_rate_bps_per_week=50, fee_cap_bps=300, holdback_bps=800,
                             est_days_normal=20)
     assert draft_summary(draft) == "$100, fee 0.5%/week, max 3%, holdback 8%, about 20 days to repay."
@@ -90,14 +93,16 @@ def _adv(**kw):
 
 def test_fee_status_accrues_on_schedule_and_caps():
     # 2 weeks in, $5 principal repaid, $0.40 fee paid: owedOf = 45 + 0.50 - 0.40
-    two = fee_status(_adv(principalRepaid=5_000_000, feePaid=400_000, left=45_100_000), 1_000 + 2 * WEEK)
+    two = fee_status(_adv(principalRepaid=5_000_000, feePaid=400_000, left=45_100_000, lastSaleAt=1_000 + 2 * WEEK),
+                     1_000 + 2 * WEEK)
+    assert two["late_fee_usd"] == 0 and not two["behind"]
     assert two["fee_accrued_usd"] == 0.5 and two["fee_schedule_usd"] == 0.5 and two["extra_fee_usd"] == 0
     assert not two["fee_capped"] and two["weeks_to_cap"] == 6
     # 10 weeks in, nothing paid: the fee stopped at 3% ($1.50)
-    late = fee_status(_adv(left=51_500_000), 1_000 + 10 * WEEK)
+    late = fee_status(_adv(left=51_500_000, lastSaleAt=1_000 + 10 * WEEK), 1_000 + 10 * WEEK)
     assert late["fee_accrued_usd"] == 1.5 and late["fee_capped"] and late["extra_fee_usd"] == 0
-    # anything above the schedule (a late fee) would show up
-    assert fee_status(_adv(left=52_000_000), 1_000 + 10 * WEEK)["extra_fee_usd"] == 0.49
+    # anything above the schedule and the late fee would show up (on time: lastSaleAt = now)
+    assert fee_status(_adv(left=52_000_000, lastSaleAt=1_000 + 10 * WEEK), 1_000 + 10 * WEEK)["extra_fee_usd"] == 0.49
     # repaid: the fee is what was paid
     assert fee_status(_adv(status=2, principalRepaid=50_000_000, feePaid=750_000, left=0), 9**9)["fee_accrued_usd"] == 0.75
 
@@ -199,3 +204,21 @@ def test_real_standing_pass_proof_from_artifacts():
     toml = (Path(__file__).resolve().parents[2] / "circuits" / "standing_pass" / "Prover.toml").read_text()
     proof, ms = prover.prove("standing_pass", toml, timeout=120)
     assert len(proof) > 1_000 and ms > 0
+
+
+def test_fee_status_late_fee_while_behind_is_separate_and_capped():
+    # never repaid: behind from week 1. 3 weeks in: fee $0.75 + late fee $0.50 (2 weeks behind) on $50
+    a = _adv(lastSaleAt=1_000, left=50_000_000 + 750_000 + 500_000)
+    st = fee_status(a, 1_000 + 3 * WEEK)
+    assert st["behind"] and st["late_fee_usd"] == 0.5 and st["fee_accrued_usd"] == 0.75
+    assert st["extra_fee_usd"] == 0 and st["late_fee_cap_usd"] == 1.5
+    # caught up after 2 weeks behind (settled in lateSecs), on time now: no new accrual, the paid part stays
+    caught = _adv(lastSaleAt=1_000 + 3 * WEEK, lateSecs=2 * WEEK, lateFeePaid=200_000, feePaid=750_000,
+                  left=50_000_000 + 300_000)
+    st = fee_status(caught, 1_000 + 3 * WEEK + 5 * 86_400)
+    assert not st["behind"] and st["late_fee_usd"] == 0.5 and st["late_fee_paid_usd"] == 0.2
+    # both caps: 3% + 3% = 6% of principal
+    st = fee_status(_adv(lastSaleAt=1_000, left=53_000_000), 1_000 + 30 * WEEK)
+    assert st["late_fee_usd"] == 1.5 and st["fee_accrued_usd"] == 1.5 and st["extra_fee_usd"] == 0
+    # written off: the late fee is what was paid
+    assert fee_status(_adv(status=3, lateFeePaid=100_000, left=0), 9**9)["late_fee_usd"] == 0.1

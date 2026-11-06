@@ -1,4 +1,8 @@
-"""DripMoni time-based fee economics; amounts are USD and rates are fractions."""
+"""DripMoni time-based fee economics; amounts are USD and rates are fractions.
+
+Late-fee step-up (AdvanceBook constants): while a merchant is behind the minimum repayment (1% of principal + fee
+per 7 days), an extra late fee accrues at the same 0.5%/week, capped at another 3% (6% total). 100% of it goes to
+the reserve, so late payers fund the default buffer. On-time merchants pay exactly the normal fee."""
 import argparse
 import json
 import math
@@ -10,11 +14,19 @@ DEFAULTS = {
     "utilisation": 0.75, "tenor_weeks": 4,
     "loss_rates_per_cycle": [0.0025, 0.005, 0.01, 0.02],
     "tier_caps": [50, 100, 200, 300], "holdback": 0.08,
+    "late_fee_rate_bps_per_week": 50, "late_fee_cap_bps": 300,
+    # assumption for the reserve estimate: share of advances that fall behind, and weeks they stay behind
+    "late_share": 0.10, "weeks_behind": 2,
 }
 
 
 def fee_rate(p, weeks):
     return min(p["fee_cap_bps"], p["fee_rate_bps_per_week"] * weeks) / 10_000
+
+
+def late_fee_rate(p, weeks_behind):
+    """Late fee as a fraction of principal after `weeks_behind` weeks behind the minimum (own cap)."""
+    return min(p["late_fee_cap_bps"], p["late_fee_rate_bps_per_week"] * max(0, weeks_behind)) / 10_000
 
 
 def merchant_cost(p, weeks):
@@ -32,6 +44,7 @@ def model(p):
     if not 0 < p["utilisation"] <= 1 or p["junior_cover"] < 0:
         raise ValueError("invalid utilisation or cover")
     cycle_fee = fee_rate(p, p["tenor_weeks"])
+    late_per_cycle = p["late_share"] * late_fee_rate(p, p["weeks_behind"])  # expected, per $ lent
     senior_fee, drip_fee, reserve_fee, protocol_fee = [cycle_fee * x for x in p["fee_split"]]
     # Annualized returns use the stated 4-week cycle and 12 cycles per year.
     senior_return = senior_fee * 12
@@ -42,6 +55,12 @@ def model(p):
     return {
         "merchant_cost_percent": {str(w): fee_rate(p, w) * 100 for w in (1, 2, 4, 6)},
         "merchant_simple_annualized_percent": {str(w): merchant_cost(p, w) for w in (1, 2, 4, 6)},
+        # worst case: no repayment at all, so behind from the end of week 1 (normal fee + late fee)
+        "merchant_cost_if_behind_percent": {str(w): (fee_rate(p, w) + late_fee_rate(p, w - 1)) * 100
+                                            for w in (1, 2, 4, 6, 7, 10)},
+        "late_fee_per_100_by_weeks_behind": {str(w): 100 * late_fee_rate(p, w) for w in (1, 2, 4, 6)},
+        "reserve_from_late_fees_per_1m_lent": 1_000_000 * late_per_cycle,
+        "reserve_total_per_1m_lent": 1_000_000 * (reserve_fee + late_per_cycle),
         "fee_split_per_100": [100 * cycle_fee * x for x in p["fee_split"]],
         "fee_per_1m_lent": 1_000_000 * cycle_fee,
         "platform_protocol_revenue_per_1m_lent": 1_000_000 * protocol_fee,
