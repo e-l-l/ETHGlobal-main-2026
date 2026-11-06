@@ -51,6 +51,20 @@ fi
 
 log "3/3 extras (junior LP position, swap router, pool activity)"
 DEPLOYMENTS_FILE="$MANIFEST" "$PY" scripts/seed_devnet.py
+# Judge simulator (agents-api-devnet /sim): share only runtime artifacts through the devnet volume, never
+# sources or build tools. The API stays the stock agents image and mounts this volume read-only.
+#   contracts-out/  PoolSwapTest ABI (v4 swaps)      circuits/<c>/  compiled circuit + verification key
+#   tools/          noir-execute (witness from the compiled artifact, no sources) + bb (prove/verify)
+mkdir -p "$OUT/contracts-out/PoolSwapTest.sol" "$OUT/tools"
+cp "$WORK/contracts/out/PoolSwapTest.sol/PoolSwapTest.json" "$OUT/contracts-out/PoolSwapTest.sol/PoolSwapTest.json"
+for c in business_pass standing_pass; do
+  mkdir -p "$OUT/circuits/$c"
+  cp "$WORK/circuits/$c/target/$c.json" "$WORK/circuits/$c/target/vk" "$OUT/circuits/$c/"
+done
+for t in noir-execute bb; do
+  if command -v "$t" >/dev/null; then cp "$(command -v "$t")" "$OUT/tools/$t"; else log "WARNING: $t missing: simulator proofs will fail"; fi
+done
+chmod -R a+rX "$OUT/contracts-out" "$OUT/circuits" "$OUT/tools"
 chmod 644 "$MANIFEST"
 date -u +%FT%TZ > "$OUT/.ready"
 log "devnet ready: $(cast block-number --rpc-url "$RPC_URL") blocks; manifest $MANIFEST"

@@ -253,6 +253,33 @@ Never delete the `caddy-data` volume. It holds the certificates, and re-issuing 
 
 Don't add `includeSubDomains` or `preload` to HSTS while you're on sslip.io. It's a shared domain.
 
+## Simulator
+
+Judges run real merchant stories on the devnet from the web app. `agents-api-devnet` (profile `devnet`) mounts
+`/sim` when `CHAIN_ID=31337` and `SIMULATOR_ENABLED=1`; the Sepolia `agents-api` never has these routes.
+
+| Endpoint | |
+|---|---|
+| `GET /sim/archetypes` | `honest_kiosk`, `slow_week`, `wash_ring`, `defaulter`, `repeat_borrower` |
+| `POST /sim/runs {archetype}` | `{run_id}`; 429 past 6 runs/hour per IP or 50/hour in total |
+| `GET /sim/runs/{id}` | status (`queued`/`running`/`done`/`failed`, `ahead` = runs before yours), steps, ledger |
+| `GET /sim/state` | global ledger (cached 3 s) + the 10 latest runs |
+
+- **Real work only:** devnet txs, the production pipeline (red lines, Underwriter and Critic LLMs, signer),
+  real UltraHonk proofs (about 7.6 KB, 0.2 s), the Keeper and the Risk agent. Only customers are simulated.
+- **Keys:** public anvil keys only. Signer, relayer and risk keys come from the anvil mnemonic, whatever
+  `agents-devnet.env` says. That file only needs the LLM provider and key (`LLM_PROVIDER`, `BEDROCK_API_KEY`).
+- **One run at a time:** a worker thread runs each one in a spawned child process. It has a 210 s budget and is killed at 240 s.
+  Runs take 30–60 s. A run that was going when the server restarted is marked failed.
+- **Shared chain:** every run moves anvil's clock forward 30–60 days. `defaulter` restores the tier caps and the
+  junior pool price at the end, even when it fails.
+- **Wiring:** `devnet-deployer` copies the runtime artifacts into the `devnet-data` volume (read-only in the
+  API): `circuits/<c>/{<c>.json,vk}`, `tools/{noir-execute,bb}` and the PoolSwapTest ABI. The API image stays
+  the stock agents image. Run history lives in `agents-devnet-data` (`sim.sqlite`).
+- **CORS** (only on `/sim`): `https://app.<HOST_SUFFIX>` and `http://localhost:*`.
+- **Check:** `curl https://api-devnet.<suffix>/sim/archetypes`. On a failed run, `done_reason` names the stage
+  (`Failed during proving (FileNotFoundError)` = the tools are missing from the volume: rebuild `mra-devnet-tools`).
+
 ## Demo-day checklist
 
 **Evening before**

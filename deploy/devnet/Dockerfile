@@ -37,7 +37,8 @@ COPY contracts contracts
 RUN cd contracts && forge build >/dev/null && ls out/PoolSwapTest.sol/PoolSwapTest.json out/DeployLocal.s.sol >/dev/null
 
 COPY circuits circuits
-RUN cd circuits/business_pass && nargo compile && bb write_vk -b target/business_pass.json -o target -t evm
+RUN cd circuits/business_pass && nargo compile && bb write_vk -b target/business_pass.json -o target -t evm \
+ && cd ../standing_pass && nargo compile && bb write_vk -b target/standing_pass.json -o target -t evm
 
 # Package + scripts (compose bind-mounts agents/src and agents/scripts over these at runtime).
 COPY agents/src agents/src
