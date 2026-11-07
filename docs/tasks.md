@@ -108,7 +108,7 @@ Beyond the original list, the app now also has a redesigned landing page, Rainbo
 |---|---|---|---|
 | ✅ D1 | `FEEDBACK.md` (Uniswap) + Developer Feedback Form | P0 | 1 |
 | ✅ D2 | World integration debrief + "why this credential is the minimum" | P0 | 0.5 |
-| ✅ D3 | Fill in the README CROPS section TODOs (license, direct-contract path). One TODO is left: the link to the original repo in the README. | P0 | 0.5 |
+| ✅ D3 | Fill in the README CROPS section TODOs (license, direct-contract path). | P0 | 0.5 |
 | ✅ D4 | AI-usage notes | P0 | 0.5 |
 | D5 | Demo video, 2–4 min, 720p or better, human voice. CROPS version ≤3 min. Checklist: [VIDEO.md](submission/VIDEO.md). | P0 | 2 |
 | D6 | Rehearse the 4-minute demo twice ([hackathon.md](hackathon.md)) | P0 | 1 |
