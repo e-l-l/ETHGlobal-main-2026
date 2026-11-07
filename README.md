@@ -4,6 +4,8 @@
 
 <h1 align="center">DripMoney</h1>
 
+<p align="center"><a href="https://youtu.be/5P_cowDnvXM"><b>▶ Watch the 3-minute demo</b></a></p>
+
 <p align="center">
   <b>A shop gets an advance and repays a slice of sales while it is active. ZK proofs protect credential details; transactions remain public.</b>
 </p>

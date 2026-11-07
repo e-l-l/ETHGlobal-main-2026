@@ -1,5 +1,7 @@
 # Submission docs: DripMoney
 
+**▶ Demo video (3 min):** [https://youtu.be/5P_cowDnvXM](https://youtu.be/5P_cowDnvXM)
+
 ETHGlobal Mumbai (Nov 5–7, 2026), From Scratch track. Partners: **Uniswap, World, Ethereum Foundation**.
 
 **Idea:** DripMoney gives a small shop a revenue-based cash advance and repays it with a slice of every sale made through the checkout. Credential details are private, while shop and transaction data are public; see [privacy architecture](../privacy-architecture.md).

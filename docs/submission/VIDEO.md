@@ -1,5 +1,7 @@
 # Video recording plan (≤ 3:00)
 
+**Demo video:** https://youtu.be/5P_cowDnvXM
+
 **Rules:** 2–4 minutes (keep it ≤ 3:00 so it also fits CROPS), 720p or better (record at 1080p), **a human voice**, **no speed-up** in the edit. Cutting between scenes is fine. The narrative and the lines to say are in [DEMO_SCRIPT.md](DEMO_SCRIPT.md).
 
 Live stack:
@@ -57,4 +59,4 @@ Live stack:
 
 - [ ] Check: 720p or better, voice clear, nothing sped up, ≤ 3:00.
 - [ ] No secrets on screen.
-- [ ] Upload unlisted on YouTube. Put the link in the ETHGlobal submission and in [README.md](README.md). `TODO(team): paste the video link.`
+- [x] Uploaded to YouTube: **https://youtu.be/5P_cowDnvXM**, linked in the ETHGlobal submission and in [README.md](README.md).
