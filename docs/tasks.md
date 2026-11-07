@@ -28,7 +28,7 @@ Design rules everyone should know:
 
 ## 1. Contracts (Solidity, Foundry): ✅ done, deployed and verified on Sepolia 2026-11-06
 
-Built in parallel by 3 Claude and 3 Codex agents, then merged. The first iteration had 97 tests; the suite is now 170 Foundry tests (offline). The fee model later changed to time-based (0.5% per week, max 3%, late fee while behind), holdback 8%, tier caps $50/$100/$200/$300, and a 40/30/20/10 fee split. See [economics.md](economics.md). Spec: [contracts/SPEC.md](../contracts/SPEC.md).
+Built in parallel by 3 Claude and 3 Codex agents, then merged. The first iteration had 97 tests; the suite is now 169 Foundry tests (offline). The fee model later changed to time-based (0.5% per week, max 3%, late fee while behind), holdback 8%, tier caps $50/$100/$200/$300, and a 40/30/20/10 fee split. See [economics.md](economics.md). Spec: [contracts/SPEC.md](../contracts/SPEC.md).
 
 | ID | Task | P | Status |
 |---|---|---|---|
@@ -108,7 +108,7 @@ Beyond the original list, the app now also has a redesigned landing page, Rainbo
 |---|---|---|---|
 | ✅ D1 | `FEEDBACK.md` (Uniswap) + Developer Feedback Form | P0 | 1 |
 | ✅ D2 | World integration debrief + "why this credential is the minimum" | P0 | 0.5 |
-| ✅ D3 | Fill in the README CROPS section TODOs (license, direct-contract path). One TODO is left: the link to the original repo in the README. | P0 | 0.5 |
+| ✅ D3 | Fill in the README CROPS section TODOs (license, direct-contract path). | P0 | 0.5 |
 | ✅ D4 | AI-usage notes | P0 | 0.5 |
 | D5 | Demo video, 2–4 min, 720p or better, human voice. CROPS version ≤3 min. Checklist: [VIDEO.md](submission/VIDEO.md). | P0 | 2 |
 | D6 | Rehearse the 4-minute demo twice ([hackathon.md](hackathon.md)) | P0 | 1 |

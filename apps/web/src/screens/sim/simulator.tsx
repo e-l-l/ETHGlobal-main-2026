@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type SVGProps } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type SVGProps } from "react";
 import { Banner, Button, Card, Columns, Heading, Label, Ledger, Pill, Spinner, Text, TextLink } from "@/final";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
@@ -198,6 +198,12 @@ function RecentRuns({ recent, names }: { recent: RecentRun[]; names: Map<string,
   );
 }
 
+/** Backend reasons arrive without a full stop; give them one so the banner reads as two sentences. */
+function sentence(s: string): string {
+  const t = s.trim();
+  return /[.!?]$/.test(t) ? t : `${t}.`;
+}
+
 function StatusPill({ status, day }: { status: SimRun["status"]; day?: number }) {
   if (status === "running") return <Pill tone="repaying" dot>Running{day !== undefined ? ` · day ${day}` : ""}</Pill>;
   if (status === "queued") return <Pill tone="locked">Queued</Pill>;
@@ -251,7 +257,7 @@ function StepRow({ s, last, running }: { s: SimStep; last: boolean; running: boo
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className={cn("font-ledger text-tag font-medium uppercase", moment ? "text-lime" : "text-charcoal-muted")}>
-          {moment ? "The moment to watch · " : ""}Day {s.sim_day} · {s.kind.replace(/_/g, " ")}
+          {moment ? `The moment to watch · Day ${s.sim_day}` : `Day ${s.sim_day} · ${s.kind.replace(/_/g, " ")}`}
         </span>
         <span className={cn("font-body font-semibold", moment ? "text-h2 font-display" : "text-read", t.title)}>{s.title}</span>
         {s.detail ? <span className={cn("font-body text-note", moment ? "text-honeydew" : "text-charcoal-soft")}>{s.detail}</span> : null}
@@ -350,18 +356,21 @@ function Timeline({ steps, running }: { steps: SimStep[]; running: boolean }) {
 function RefusalFacts({ step }: { step: SimStep }) {
   const d = step.data ?? {};
   const out = typeof d.outstanding_after === "number" ? d.outstanding_after : undefined;
-  const facts = [
-    `World ID: ${typeof d.reason === "string" ? d.reason : "human_banned"}`,
-    `Business Pass: ${typeof d.business_pass === "string" ? d.business_pass : "not started"}`,
-    `Shop: ${typeof d.shop === "string" ? d.shop : "not created"}`,
-    out !== undefined ? `Outstanding: ${formatMoney(out)}${d.unchanged === false ? "" : ", unchanged"}` : "No money moved",
+  const facts: [string, string][] = [
+    ["World ID", typeof d.reason === "string" ? d.reason : "human_banned"],
+    ["Business Pass", typeof d.business_pass === "string" ? d.business_pass : "not started"],
+    ["Shop", typeof d.shop === "string" ? d.shop : "not created"],
+    ["Outstanding", out !== undefined ? `${formatMoney(out)}${d.unchanged === false ? "" : " · unchanged"}` : "no money moved"],
   ];
   return (
-    <ul aria-label="What the retry never reached" className="m-0 mt-2 flex list-none flex-wrap gap-2 p-0">
-      {facts.map((f) => (
-        <li key={f} className="rounded-chip bg-deep px-2.5 py-1 font-ledger text-tag font-semibold uppercase text-lime">{f}</li>
+    <dl aria-label="What the retry never reached" className="m-0 mt-3 grid grid-cols-[auto_1fr] gap-x-5 gap-y-1 border-t border-honeydew/15 pt-3 font-ledger text-ledger">
+      {facts.map(([k, v]) => (
+        <Fragment key={k}>
+          <dt className="text-honeydew/70">{k}</dt>
+          <dd className="m-0 text-canvas">{v}</dd>
+        </Fragment>
       ))}
-    </ul>
+    </dl>
   );
 }
 
@@ -585,7 +594,7 @@ export function SimulatorScreen() {
               <Heading level={2} size="h2">What happened</Heading>
               {run?.status === "failed" ? <Banner tone="risk">{run.done_reason ?? "The run stopped early."}</Banner> : null}
               <Timeline steps={run?.steps ?? []} running={running} />
-              {run?.status === "done" ? <Banner tone="tint">{run.done_reason ?? "Scenario complete."} Every step with a receipt is onchain.</Banner> : null}
+              {run?.status === "done" ? <Banner tone="tint">{sentence(run.done_reason ?? "Scenario complete")} Every step with a receipt is onchain.</Banner> : null}
             </Card>
             {run ? <RunAside run={run} archetype={archetype} onAgain={back} /> : null}
           </Columns>

@@ -8,15 +8,15 @@ ETHGlobal asks every project to list its AI tool use. This is ours.
 - How it was split up:
   - The contract spec gives each file a named agent owner, for example `claude-tree` (StandingPassTree), `codex-policy` (Policy), `claude-hook` (RiskHook) and `codex-harness` (mocks, test harness, invariants). See the Ownership table in [`contracts/SPEC.md`](../../contracts/SPEC.md).
   - Each subagent worked against a frozen shared spec and its own files, and had to report any needed spec change instead of making it. The agents service also has a spec ([`agents/SPEC.md`](../../agents/SPEC.md)).
-  - Agent build reports were kept during the build and removed before merging to main (commit `baddcc5`).
+  - Agent build reports were kept during the build and removed before merging to main.
 - **What humans did:**
   - chose the product, partners and design pivots (for example: World only at human moments, business verification by zkTLS, the managed agent delegated once)
   - reviewed specs and code
   - ran deployments and handled keys and accounts (AWS, Reclaim, World, Sepolia funds)
 - **Docs**, including these submission docs, were drafted with Claude Code from the repo's own docs and edited by the team.
 - **Research** (market data, finalist analysis) was AI-assisted. Sources are listed in [`docs/research.md`](../../docs/research.md).
-- `TODO(team): list contributor names and any part written mainly by hand.`
-- `TODO(team): list any AI design or asset tools used for the UI (apps/web), or delete this line if none.`
+- **Team:** Anay Shah, Bhavya Gor, Prathmesh Ghatol.
+- **UI design:** Claude Design was used for the visual design of the app (`apps/web`).
 
 ## AI inside the product
 

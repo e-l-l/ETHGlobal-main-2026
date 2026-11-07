@@ -16,7 +16,7 @@ The minimum repayment per 7-day window is 1% of original principal plus fee accr
 >
 > **v2** (Business Pass + managed-agent mandates): `BusinessPassRegistry` (issuer-attested Business Pass tree), `business_pass` circuit + `BusinessPassVerifier`, `drawFirst` takes a Business Pass proof (no World ID anywhere in credit), `registerMandate` / `drawByMandate` / `revokeMandate`, the current Offer fields `passNullifier` and `minRevenueBand` (replacing the legacy `worldNullifierHash`), and the minimum-repayment rule. See "v2" below; it overrides anything older in this file.
 > v1.1 changes: `BookConfig` struct constructor, fee-first repayment, `lastSaleAt` restarts only on qualifying repayments, and `TrancheVault.totalAssets` is `virtual`.
-> Status: 152 tests, all passing (2 invariant suites, 2 real-proof E2E suites). `forge build --sizes`: AdvanceBook 23,005 B runtime (limit 24,576), BusinessPassRegistry 5,674 B.
+> Status: 169 tests, all passing (2 invariant suites, 2 real-proof E2E suites). `forge build --sizes`: AdvanceBook 23,005 B runtime (limit 24,576), BusinessPassRegistry 5,674 B.
 
 Read this and `../docs/architecture.md` before writing code. **Only edit the files you own** (see "Ownership"). If you need a change in someone else's file or in this spec, stop and say so in your final report. Don't edit it yourself.
 

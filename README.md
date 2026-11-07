@@ -47,11 +47,11 @@ The **World view** toggle on every screen shows exactly which data is onchain an
 | Loading states | ✅ Page skeleton plus a status card (steps, elapsed time, why private reads are slower) |
 | Design system (`/final/components`) | ✅ Built |
 | Demo seller portal | ✅ Built (inside the web app, deliberately unbranded) |
-| Contracts (Foundry): AdvanceBook, BusinessPassRegistry, vault and DripCoin ERC-4626 tranches, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 170 Foundry tests (offline suite) |
+| Contracts (Foundry): AdvanceBook, BusinessPassRegistry, vault and DripCoin ERC-4626 tranches, Uniswap v4 `RiskHook` | ✅ Live on Sepolia ([addresses](docs/submission/README.md)), 169 Foundry tests (offline suite) |
 | Noir circuits: `standing_pass`, `business_pass` | ✅ Proofs made in the browser verify on the deployed verifiers |
 | Agents service (Python): Underwriter, Critic, managed cash-flow agents, Risk agent, keeper, relayer | ✅ Running on EC2, 554 offline tests |
 | Business Pass issuer (zkTLS → attestation) | ✅ Running; demo uses a mock attestor; the real Reclaim path is built and tested |
-| `@repo/sdk`: the one integration layer every screen uses | ✅ Anon-RPC wired in the app (26/26 reads routed in a Chrome measurement), in-browser prover, burner wallet + demo faucet; 145 offline tests |
+| `@repo/sdk`: the one integration layer every screen uses | ✅ Anon-RPC wired in the app (26/26 reads routed in a Chrome measurement), in-browser prover, burner wallet + demo faucet; 152 offline tests |
 | World ID (IDKit) + Agent Pass | ✅ Real mode wired live on the hosted app (`WORLD_MOCK=0`, `NEXT_PUBLIC_WORLD_MODE=real`); test mode as a fallback and in the simulator. At this event, World's Agent Pass proofs use fake identities (per World's prize page), and IDKit testing uses World's staging environment and simulator. |
 | Proof center and simulator | ✅ `/proof` decodes onchain ZK proofs, txs and AI decisions; `/simulator` runs real proofs, AI and devnet txs with time fast-forwarded |
 | Live demo | https://app.65-1-36-70.sslip.io (public devnet for the default scene: `rpc.` / `api-devnet.`) |
@@ -220,10 +220,6 @@ Onchain and services: Solidity (Foundry) · Uniswap v4 hooks · ERC-4626 · Noir
 | Whole stack on a server | see [deploy/README.md](deploy/README.md) | `deploy.sh` runs health checks |
 
 Secrets live in git-ignored `.env` files; each folder has a `.env.example`.
-
-## Development history
-
-This repository was assembled on 6 Nov from the team's working repo, then continued here through 7 Nov (wallet connect, faucet, loading states, privacy hygiene, landing redesign). Full commit history: TODO(team): link the original repository.
 
 ## License
 

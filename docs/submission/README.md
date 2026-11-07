@@ -53,8 +53,6 @@ The vaults are seeded with a MockUSDC we deploy, because Circle's Sepolia USDC c
 - relayer `0xA6d5…Fc7e`
 - owner/deployer `0x0717…139a`
 
-**TODO:** add Etherscan links once the contracts are verified on Etherscan. Contract source verification isn't recorded in the repo.
-
 ## What is live vs simulated
 
 | Live | Demo stand-in, simulated or roadmap |
@@ -82,7 +80,7 @@ DripCoin (DRIP) is the junior, first-loss tranche share (ERC-4626). The deployed
 
 | Piece | Status |
 |---|---|
-| Contracts and Uniswap v4 hook | Live on Sepolia; 170 Foundry tests (offline suite); unaudited hackathon code |
+| Contracts and Uniswap v4 hook | Live on Sepolia; 169 Foundry tests (offline suite); unaudited hackathon code |
 | Agents (Underwriter, Critic, Risk, keeper, relayer) | Running; offline test suite; read-only Sepolia smoke test passes 24/24 |
 | Business Pass issuer and demo seller portal | Live with a **mock attestor**; the real Reclaim path is built and tested |
 | World ID (IDKit) and Agent Pass | **Real mode, wired live** on the hosted app; test mode as fallback (and in the simulator). At this event, World's Agent Pass proofs use fake identities (per World's prize page), and IDKit testing uses World's staging environment and simulator. |
