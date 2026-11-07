@@ -65,4 +65,4 @@ This isn't a Uniswap bug, but hook deployments hit it first because they go thro
 
 ## Developer Feedback Form
 
-**TODO (human): submit the Uniswap Developer Feedback Form and note the date here.**
+Submitted on 7 Nov 2026, with the link to this file.
